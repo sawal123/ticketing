@@ -1,0 +1,202 @@
+@extends('frontend.index')
+
+@section('content')
+    <style>
+        .text .icol p,
+        .text .icol h4 {
+            color: white;
+        }
+
+        p {
+            margin: 0px;
+        }
+    </style>
+    <div class="row m-0">
+        <div class="col mt-5">
+            <div class="container">
+
+                <div class="row " style="margin-top: 80px">
+                    <div class="col-12 col-lg-8 ">
+                        <img src="{{ asset('/storage/cover/' . $ticket->cover) }}" alt="" class="img-thumbnail ">
+                        <div class="mt-5"></div>
+                        <div class="row">
+                            <div class="col">
+                                <div class="d-flex justify-content-between pe-lg-4">
+                                    <h3>{{ $ticket->event }}</h3>
+                                    <div class="btn btn-secondary">{{ $ticket->status }}</div>
+                                </div>
+                                <p>{{ date('Y-m-d H:i', strtotime($ticket->tanggal)) }}</p>
+                                <p>{{ $ticket->alamat }}</p>
+                            </div>
+
+                        </div>
+                        <div class="mt-5"></div>
+                        <h4>Description</h4>
+                        <p>{!! $ticket->deskripsi !!}</p>
+                        <div class="row my-5">
+                            <h4>Talent</h4>
+                            @foreach ($tickets as $tickets)
+                                <div class="col-12 col-lg-6">
+                                    <div class="card mb-3 me-2" style="max-width: 350px">
+                                        <div class="row g-0">
+                                            <div class="col d-flex justify-content-start">
+                                                <img src="{{ asset('/storage/talent/' . $tickets->gambar) }}"
+                                                    class="rounded-start" alt="..."
+                                                    style="width: 100px; height:100px; object-fit: cover">
+                                                <div class="card-body d-flex align-items-center">
+                                                    <h5 class="card-title te">{{ $tickets->talent }}</h5>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            @endforeach
+
+                        </div>
+                    </div>
+
+                    <div class="col-lg-4  d-none d-lg-block">
+                        <div class="card ">
+                            <div class="card-header">
+                                <h5 class="card-title">Ticket Kategori</h5>
+                                @if (session('error'))
+                                    <div class="alert alert-danger">
+                                        {{ session('error') }}
+                                    </div>
+                                @endif
+                            </div>
+                            <form action="{{ url('/checkout') }}" method="post">
+                                @csrf
+                                <div class="card-body" style="overflow-y: scroll ;max-height: 300px;">
+                                    <input type="hidden" name="eventUid" value="{{ $ticket->uid }}">
+                                    @if (count($list) > 0)
+                                        @foreach ($list as $list)
+                                            <div class="card ps-3 my-2">
+                                                <div class="row d-flex align-items-center">
+                                                    <div class="col-4" style="float: right">
+                                                        <p style="font-size: 12px; font-weight: 800" class="m-0">
+                                                            {{ $list['kategori'] }}</p>
+                                                        <p style="font-weight: bold" class="harga">
+
+                                                            {{ number_format($list['harga'], 0, ',', '.') }}</p>
+                                                    </div>
+                                                    <div class="col-8 d-flex justify-content-end align-content-end">
+                                                        <div class="input-wrapper container d-flex ">
+                                                            <input type="hidden" class="price-input"
+                                                            placeholder="Price" name="harga{{ $loop->index }}"
+                                                            value="{{ $list['harga'] }}">
+                                                            <input type="hidden" class="price-input"
+                                                            placeholder="Price" name="kategori{{ $loop->index }}"
+                                                            value="{{ $list['kategori'] }}">
+
+
+                                                            <button type="button" class="btn btn-minus btn-primary"
+                                                                style="min-width: 40px; height: 40px;"
+                                                                data-target="quantity{{ $loop->index }}">-</button>
+
+                                                            <input type="text" class="form-control input" min="0"
+                                                                max="5" step="1" value="0"
+                                                                name="ticket{{ $loop->index }}"
+                                                                id="quantity{{ $loop->index }}" readonly>
+
+                                                                <input type="hidden" name="orderBy{{$loop->index}}" value="{{$loop->index+1}}">
+                                                            <button type="button" class="btn btn-plus btn btn-primary"
+                                                                style="min-width: 40px; height: 40px;"
+                                                                data-target="quantity{{ $loop->index }}">+</button>
+
+                                                         
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        @endforeach
+                                </div>
+                                <div class="card-footer text-muted">
+                                    <div class="row">
+                                        <div class="col-6 ">
+                                            <p>Total</p>
+                                            <h5 class="total">Rp 0</h5>
+                                        </div>
+                                        <div class="col-6 d-flex justify-content-end align-items-center">
+                                            <button type="submit" class="btn btn-primary">Check Out</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </form>
+                        @else
+                            <p>Ticket Belum Tersedia...</p>
+                            @endif
+
+
+                        </div>
+                    </div>
+                    <div class="mt-2"></div>
+                    <div class="row  mt-5 d-lg-none">
+                        <div class="col fixed-bottom text-center shadow-lg" style="background-color: white; height: 80px;">
+                            <button class="btn btn-primary mt-4" type="button" data-bs-toggle="offcanvas"
+                                data-bs-target="#offcanvasBottom" aria-controls="offcanvasBottom">Beli Tiket</button>
+
+                            <div class="offcanvas offcanvas-bottom" tabindex="-1" id="offcanvasBottom"
+                                aria-labelledby="offcanvasBottomLabel" style="height: auto">
+                                <div class="offcanvas-header">
+                                    <h5 class="offcanvas-title" id="offcanvasBottomLabel">Beli Tiket</h5>
+                                    <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas"
+                                        aria-label="Close"></button>
+                                </div>
+                                <div class="offcanvas-body small text-start">
+                                    @if (count($list) > 0)
+                                        @foreach ($lists as $lists)
+                                            <div class="card ps-3 my-2">
+                                                <div class="row d-flex align-items-center">
+                                                    <div class="col-4" style="float: right">
+                                                        <h5 class="m-0">{{ $lists['kategori'] }}</h5>
+                                                        <p>{{ number_format($lists['harga'], 0, ',', '.') }}</p>
+                                                    </div>
+                                                    <div class="col-8 d-flex justify-content-end align-content-end">
+                                                        <div class="input-wrapper container d-flex ">
+                                                            <div class="input-wrapper container d-flex ">
+                                                                <button type="button" class="btn btn-minus btn-primary"
+                                                                    style="min-width: 40px; height: 40px;"
+                                                                    data-target="quantity1{{ $loop->index }}">-</button>
+
+                                                                <input type="text" class="form-control input"
+                                                                    min="0" max="5" step="1"
+                                                                    value="0" name="ticket{{ $loop->index }}"
+                                                                    id="quantity1{{ $loop->index }}" readonly>
+
+                                                                <button type="button"
+                                                                    class="btn btn-plus btn btn-primary"
+                                                                    style="min-width: 40px; height: 40px;"
+                                                                    data-target="quantity1{{ $loop->index }}">+</button>
+
+                                                                <input type="number" class="price-input d-none"
+                                                                    placeholder="Price" value="{{ $lists['harga'] }}">
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        @endforeach
+                                        <div class="card-footer text-muted text-start">
+                                            <div class="row">
+                                                <div class="col-6 ">
+                                                    <p>Total</p>
+                                                    <h5 class="total">Rp 0</h5>
+                                                </div>
+                                                <div class="col-6 d-flex justify-content-end align-items-center">
+                                                    <a href="#" class="btn btn-primary">Check Out</a>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    @else
+                                        <p>Tidak Ada Ticket...</p>
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+@endsection
