@@ -31,9 +31,14 @@
                     <a class="side-menu__item has-link" data-bs-toggle="slide" href="{{ url('/admin/event') }}"><i
                             class="side-menu__icon fe fe-eye"></i><span class="side-menu__label">Event</span></a>
                 </li>
+                
                 <li class="slide">
                     <a class="side-menu__item has-link" data-bs-toggle="slide" href="{{ url('/admin/transaksi') }}"><i
                             class=" side-menu__icon fa fa-database"></i><span class="side-menu__label">Transaksi</span></a>
+                </li>
+                <li class="slide">
+                    <a class="side-menu__item has-link" data-bs-toggle="slide" href="{{ url('/admin/landing') }}"><i
+                            class=" side-menu__icon fa fa-windows"></i><span class="side-menu__label">Landing</span></a>
                 </li>
             </ul>
             <div class="slide-right" id="slide-right"><svg xmlns="http://www.w3.org/2000/svg" fill="#7b8191"

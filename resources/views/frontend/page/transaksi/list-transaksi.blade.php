@@ -5,6 +5,11 @@
         <div class="col ">
             <div class="container pt-lg-5 mt-5">
                 <h4 class=" mb-0" style="margin-top: 100px">Riwayat Transaksi</h4>
+                @if (session('deleteList'))
+                    <div class="alert alert-danger">
+                        {{ session('deleteList') }}
+                    </div>
+                @endif
                 @if (count($transaksi) > 0)
                     @foreach ($transaksi as $transaksi)
                         <div class="card d-none d-lg-block d-xl-block mt-5">
@@ -38,17 +43,26 @@
                                             <h6 class="m-0">{{ $transaksi->status }}</h6>
                                         </td>
                                         <td style="width: 10%">
-                                            <a href="{{ url('/detail-ticket/' . $transaksi->uid . '/' . Auth::user()->uid) }}"
-                                                class="btn btn-primary ">Detail</a>
+                                            <div class="d-flex  align-items-center justify-content-between">
+                                                <a href="{{ url('/detail-ticket/' . $transaksi->uid . '/' . Auth::user()->uid) }}"
+                                                    class="btn btn-primary ">Detail</a>
+                                                @if ($transaksi->status === 'Belum Bayar')
+                                                    <a href="{{ url('/detail-ticket/delete/' . $transaksi->uid . '/' . Auth::user()->uid) }}"
+                                                        class="btn btn-danger delete">Delete</a>
+                                                @endif
+
+                                            </div>
+
                                         </td>
+
                                     </tr>
                                 </table>
                             </div>
                         </div>
 
                         <div class="card  d-md-block d-sm-block d-xl-none d-lg-none " style="margin-top: 100px">
-                            <img src="https://api.yesplis.com/images/banner/9f11410e6baca676074c619753c0468bf93141eb.png.webp"
-                                alt="" class=" me-5" style="width: 100%; border-radius:1em">
+                            <img src="{{ asset('storage/cover/' . $transaksi->cover) }}" alt="" class=" me-5"
+                                style="width: 100%; border-radius:6px">
                             <div class="card-body">
                                 <div class="d-flex justify-content-between align-items-center">
                                     <p class="m-0">Ivoice</p>

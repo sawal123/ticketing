@@ -7,6 +7,7 @@ use App\Models\Harga;
 use App\Models\Talent;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
+use App\Models\Slider;
 use Illuminate\Support\Facades\Auth;
 
 class DashboardController extends Controller
@@ -52,6 +53,14 @@ class DashboardController extends Controller
         return view('backend.semiPage.addEvent',[
             'title' => 'Ubah Event',
             'ubahEvent'=> $ubahEvent
+        ]);
+    }
+
+    public function landing(){
+        $slide = Slider::orderBy('sort','asc')->get();
+        return view('backend.content.landing',[
+            'title'=> 'Landing',
+            'slide'=> $slide
         ]);
     }
 }

@@ -61,7 +61,7 @@ class BuyTicketController extends Controller
             $kategoriValue[] = $request->input('kategori' . $i);
             $orderByInput[] = $request->input('orderBy' . $i);
         }
-
+        
         $ticketValue = array_filter($ticketValue);
         $hargaValue = array_filter($hargaValue);
         $kategoriValue = array_filter($kategoriValue);
@@ -76,8 +76,8 @@ class BuyTicketController extends Controller
             $carts = Cart::where('event_uid', $event->uid)->where('user_uid', Auth::user()->uid)->first();
         }
 
-
-        if ($carts) {
+// dd($carts->status);
+        if ($carts->status === 'Belum Bayar') {
             $hargaCart = HargaCart::where('uid', $carts->uid)->orderBy('orderBy')->get();
             $hargaArray = [];
             foreach ($hargaCart as $hargaCarts) {

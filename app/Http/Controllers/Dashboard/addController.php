@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Dashboard;
 use App\Models\Event;
 
 use App\Models\Harga;
+use App\Models\Slider;
 use App\Models\Talent;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
@@ -80,5 +81,34 @@ class addController extends Controller
         ]);
         $harga->save();
         return redirect()->back()->with('harga', 'Harga berhasil disimpan');
+    }
+
+    public function addSlide(Request $request){
+        
+        $slide = Slider::orderBy('sort', 'desc')->first();
+        dd($slide->sort);
+        if($slide === null){
+            $angka = 1;
+        }
+        else{
+            $angka = $slide->sort + 1;
+            // dd($angka);
+        }
+       
+        
+        $slider = new Slider([
+            'uid' => Str::random(10),
+            'sort' => $angka,
+            'title'=> $request->title,
+            'url' => $request->url,
+        ]);
+        if ($request->hasFile('gambar')) {
+            $file = $request->file('gambar');
+            $fileName = $slider['uid_outlet'] . '_' . time() . '_' . $file->getClientOriginalName();
+            $file->storeAs('public/slide/', $fileName); // Simpan di direktori 'public/outlet/'
+            $slider['gambar'] = $fileName; // Simpan nama file gambar di kolom 'gambar' pada tabel
+        }
+        $slider->save();
+        return redirect()->back()->with('addSlide', 'Slide Berhasil Ditambah..');
     }
 }

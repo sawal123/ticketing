@@ -44,6 +44,8 @@ Route::middleware(['auth'])->group(function () {
 
     Route::post('/paynow/callback', [TransactionController::class, 'callback'])->name('midtrans-callback');
 
+    Route::get('/detail-ticket/delete/{uid}/{user_uid}', [DeleteController::class, 'deteleListTransaksi']);
+
     Route::get('/logout', function () {
         Auth::logout();
         return redirect('/');
@@ -55,16 +57,19 @@ Route::prefix('admin')
     ->middleware(['auth', 'admin'])
     ->group(function () {
         Route::get('/', [DashboardController::class, 'dashboard']);
+        Route::get('/landing', [DashboardController::class, 'landing']);
         Route::get('/ubahEvents/{uid}', [DashboardController::class, 'ubahEvents']);
 
         Route::get('/event', [DashboardController::class, 'event']);
         Route::get('/event/{addEvent?}', [DashboardController::class, 'event']);
 
 
+
         // ROUTE ADD
         Route::post('/addEvents', [addController::class, 'addEvent']);
         Route::post('/addTalent', [addController::class, 'addTalent']);
         Route::post('/addHarga', [addController::class, 'addHarga']);
+        Route::post('/addSlide', [addController::class, 'addSlide']);
 
         // ROUTE EDIT
         Route::post('/editTalent', [editController::class, 'editTalent']);
@@ -73,7 +78,9 @@ Route::prefix('admin')
 
         // ROUTE DELETE
         Route::get('/delete/{id}', [DeleteController::class, 'deleteTalent']);
+        
     });
+    
 
 
 // ====================

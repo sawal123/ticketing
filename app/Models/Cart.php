@@ -11,4 +11,9 @@ class Cart extends Model
     use HasFactory;
     use SoftDeletes;
     protected $fillable =['uid', 'user_uid', 'event_uid', 'invoice', 'status'];
+
+    public function users()
+    {
+        return $this->hasOne(User::class, 'uid', 'uid'); // 'uid' di model Event sesuai dengan kunci asing di model Harga
+    }
 }

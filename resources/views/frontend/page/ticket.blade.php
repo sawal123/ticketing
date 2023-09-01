@@ -27,6 +27,7 @@
                                 </div>
                                 <p>{{ date('Y-m-d H:i', strtotime($ticket->tanggal)) }}</p>
                                 <p>{{ $ticket->alamat }}</p>
+                                <a class="btn btn-primary" href="{{ $ticket->map }}">View Location</a>
                             </div>
 
                         </div>
@@ -82,29 +83,32 @@
                                                     </div>
                                                     <div class="col-8 d-flex justify-content-end align-content-end">
                                                         <div class="input-wrapper container d-flex ">
-                                                            <input type="hidden" class="price-input"
-                                                            placeholder="Price" name="harga{{ $loop->index }}"
-                                                            value="{{ $list['harga'] }}">
-                                                            <input type="hidden" class="price-input"
-                                                            placeholder="Price" name="kategori{{ $loop->index }}"
-                                                            value="{{ $list['kategori'] }}">
+                                                            <input type="hidden" class="price-input" placeholder="Price"
+                                                                name="harga{{ $loop->index }}"
+                                                                value="{{ $list['harga'] }}">
+
+                                                            <input type="hidden" class="price-input" placeholder="Price"
+                                                                name="kategori{{ $loop->index }}"
+                                                                value="{{ $list['kategori'] }}">
 
 
                                                             <button type="button" class="btn btn-minus btn-primary"
                                                                 style="min-width: 40px; height: 40px;"
                                                                 data-target="quantity{{ $loop->index }}">-</button>
 
-                                                            <input type="text" class="form-control input" min="0"
-                                                                max="5" step="1" value="0"
-                                                                name="ticket{{ $loop->index }}"
-                                                                id="quantity{{ $loop->index }}" readonly>
+                                                            <input type="text"
+                                                                class="form-control input quantity{{ $loop->index }}"
+                                                                min="0" max="5" step="1" value="0"
+                                                                name="ticket{{ $loop->index }}" id="" readonly>
 
-                                                                <input type="hidden" name="orderBy{{$loop->index}}" value="{{$loop->index+1}}">
+                                                            <input type="hidden" name="orderBy{{ $loop->index }}"
+                                                                value="{{ $loop->index + 1 }}">
+
                                                             <button type="button" class="btn btn-plus btn btn-primary"
                                                                 style="min-width: 40px; height: 40px;"
                                                                 data-target="quantity{{ $loop->index }}">+</button>
 
-                                                         
+
                                                         </div>
                                                     </div>
                                                 </div>
@@ -131,6 +135,8 @@
                         </div>
                     </div>
                     <div class="mt-2"></div>
+
+
                     <div class="row  mt-5 d-lg-none">
                         <div class="col fixed-bottom text-center shadow-lg" style="background-color: white; height: 80px;">
                             <button class="btn btn-primary mt-4" type="button" data-bs-toggle="offcanvas"
@@ -144,52 +150,70 @@
                                         aria-label="Close"></button>
                                 </div>
                                 <div class="offcanvas-body small text-start">
-                                    @if (count($list) > 0)
-                                        @foreach ($lists as $lists)
-                                            <div class="card ps-3 my-2">
-                                                <div class="row d-flex align-items-center">
-                                                    <div class="col-4" style="float: right">
-                                                        <h5 class="m-0">{{ $lists['kategori'] }}</h5>
-                                                        <p>{{ number_format($lists['harga'], 0, ',', '.') }}</p>
-                                                    </div>
-                                                    <div class="col-8 d-flex justify-content-end align-content-end">
-                                                        <div class="input-wrapper container d-flex ">
+                                    <form action="{{ url('/checkout') }}" method="post">
+                                        <input type="hidden" name="eventUid" value="{{ $ticket->uid }}">
+                                        @if (count($lists) > 0)
+                                            @csrf
+                                            @foreach ($lists as $lists)
+                                                <div class="card ps-3 my-2">
+                                                    <div class="row d-flex align-items-center">
+                                                        <div class="col-4" style="float: right">
+                                                            <h5 class="m-0">{{ $lists['kategori'] }}</h5>
+                                                            <p>{{ number_format($lists['harga'], 0, ',', '.') }}</p>
+                                                        </div>
+                                                        <div class="col-8 d-flex justify-content-end align-content-end">
                                                             <div class="input-wrapper container d-flex ">
-                                                                <button type="button" class="btn btn-minus btn-primary"
-                                                                    style="min-width: 40px; height: 40px;"
-                                                                    data-target="quantity1{{ $loop->index }}">-</button>
+                                                                <div class="input-wrapper container d-flex ">
+                                                                    <input type="hidden" class="price-input"
+                                                                        placeholder="Price"
+                                                                        name="harga{{ $loop->index }}"
+                                                                        value="{{ $lists['harga'] }}">
 
-                                                                <input type="text" class="form-control input"
-                                                                    min="0" max="5" step="1"
-                                                                    value="0" name="ticket{{ $loop->index }}"
-                                                                    id="quantity1{{ $loop->index }}" readonly>
+                                                                    <input type="hidden" class="price-input"
+                                                                        placeholder="Price"
+                                                                        name="kategori{{ $loop->index }}"
+                                                                        value="{{ $lists['kategori'] }}">
 
-                                                                <button type="button"
-                                                                    class="btn btn-plus btn btn-primary"
-                                                                    style="min-width: 40px; height: 40px;"
-                                                                    data-target="quantity1{{ $loop->index }}">+</button>
 
-                                                                <input type="number" class="price-input d-none"
-                                                                    placeholder="Price" value="{{ $lists['harga'] }}">
+                                                                    <button type="button"
+                                                                        class="btn btn-minus btn-primary"
+                                                                        style="min-width: 40px; height: 40px;"
+                                                                        data-target="quantity{{ $loop->index }}">-</button>
+
+                                                                    <input type="text"
+                                                                        class="form-control input quantity{{ $loop->index }}"
+                                                                        min="0" max="5" step="1"
+                                                                        value="0" name="ticket{{ $loop->index }}"
+                                                                        id="" readonly>
+
+                                                                    <input type="hidden"
+                                                                        name="orderBy{{ $loop->index }}"
+                                                                        value="{{ $loop->index + 1 }}">
+
+                                                                    <button type="button"
+                                                                        class="btn btn-plus btn btn-primary"
+                                                                        style="min-width: 40px; height: 40px;"
+                                                                        data-target="quantity{{ $loop->index }}">+</button>
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     </div>
                                                 </div>
-                                            </div>
-                                        @endforeach
-                                        <div class="card-footer text-muted text-start">
-                                            <div class="row">
-                                                <div class="col-6 ">
-                                                    <p>Total</p>
-                                                    <h5 class="total">Rp 0</h5>
+                                            @endforeach
+                                            <div class="card-footer text-muted text-start">
+                                                <div class="row">
+                                                    <div class="col-6 ">
+                                                        <p>Total</p>
+                                                        <h5 class="total">Rp 0</h5>
+                                                    </div>
+                                                    <div class="col-6 d-flex justify-content-end align-items-center">
+                                                        <button type="submit" class="btn btn-primary">Check Out</a>
+                                                    </div>
                                                 </div>
-                                                <div class="col-6 d-flex justify-content-end align-items-center">
-                                                    <a href="#" class="btn btn-primary">Check Out</a>
-                                                </div>
                                             </div>
-                                        </div>
-                                    @else
-                                        <p>Tidak Ada Ticket...</p>
+                                    </form>
+                                @else
+                                    <p>Tidak Ada Ticket...</p>
                                     @endif
                                 </div>
                             </div>

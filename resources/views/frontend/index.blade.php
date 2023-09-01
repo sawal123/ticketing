@@ -31,6 +31,7 @@
     <link rel="stylesheet" href="{{ asset('landing/css/swiper-bundle.min.css') }}" />
     <link rel="stylesheet" href="{{ asset('landing/css/icomoon-font.css') }}" />
     <link rel="stylesheet" href="{{ asset('landing/css/animate.css') }}" />
+    <link rel="stylesheet" href="{{asset('assets/plugins/sweetalert2/dist/sweetalert2.min.css')}}">
 
 
     <!-- Code Editor  -->
@@ -70,7 +71,35 @@
     <script src="{{ asset('landing/js/wow.min.js') }}"></script>
     <script src="https://maps.googleapis.com/maps/api/js?v=3&key=AIzaSyArZVfNvjnLNwJZlLJKuOiWHZ6vtQzzb1Y"></script>
 
+    <script src="{{asset('assets/plugins/sweetalert2/dist/sweetalert2.min.js')}}"></script>
+
     <script src="{{ asset('landing/js/app.js') }}"></script>
+
+
+    <script>
+         $(document).ready(function() {
+                $(document).on('click', '.delete', function() {
+                    var getLink = $(this).attr('href');
+                    Swal.fire({
+                        title: "Yakin hapus data?",
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonColor: '#d33',
+                        confirmButtonText: 'Ya',
+                        cancelButtonColor: '#3085d6',
+                        cancelButtonText: "Batal"
+                    }).then(result => {
+                        //jika klik ya maka arahkan ke proses.php
+                        if (result.isConfirmed) {
+                            window.location.href = getLink;
+                        }
+                    });
+                    return false;
+                });
+            });
+    </script>
+
+
 
     <script>
         $(document).ready(function() {
@@ -113,7 +142,7 @@
                 }
                 if (cart[targetId].quantity < 5) {
                     cart[targetId].quantity++;
-                    $("#" + targetId).val(cart[targetId].quantity);
+                    $("." + targetId).val(cart[targetId].quantity);
                     updateTotal();
                     console.log(updateTotal());
                 }
@@ -122,7 +151,7 @@
                 const targetId = $(this).data("target");
                 if (cart[targetId].quantity > 0) {
                     cart[targetId].quantity--;
-                    $("#" + targetId).val(cart[targetId].quantity);
+                    $("." + targetId).val(cart[targetId].quantity);
                     updateTotal();
                 }
             });

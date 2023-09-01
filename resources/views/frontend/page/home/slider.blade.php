@@ -14,27 +14,13 @@
             </div>
         </div> --}}
         <div class="fugu--slider-one ">
-            <img src="landing/images/banner/banner.jpg" class="img-thumbnail img" alt="">
-            <img src="landing/images/banner/banner.jpg" class="img-thumbnail img " alt="">
-            <img src="landing/images/banner/banner.jpg" class="img-thumbnail img " alt="">
-            <img src="landing/images/banner/banner.jpg" class="img-thumbnail img " alt="">
-            <img src="landing/images/banner/banner.jpg" class="img-thumbnail img " alt="">
-            {{-- <div class="fugu--card-wrap">
-                <div class="fugu--card-thumb">
-                    <img src="landing/images/all-img/noah.png" alt="">
-                </div>
-                <div class="fugu--card-data">
-                    <h3>Meta Frog Club: VIP Sale</h3>
-                    <p>Pre-sale : 18 May 2023</p>
-                    <div class="fugu--card-footer">
-                        <div class="fugu--card-footer-data">
-                            <span>Mint Price:</span>
-                            <h4>0.194 ETH</h4>
-                        </div>
-                        <a class="fugu--btn btn-sm bg-white" href="#">Place a Bid</a>
-                    </div>
-                </div>
-            </div> --}}
+            
+            @foreach ($slide as $slider)
+            <a href="{{ $slider->url }}">
+                <img src="{{ asset('storage/slide/' . $slider->gambar) }}" class="img-thumbnail img" alt="">
+            </a>
+        @endforeach
+            
         </div>
     </div>
     <div class="fugu--shape1">

@@ -158,6 +158,7 @@
                                                 {{ number_format($total += $fee, 0, ',', '.') }}
                                             </h6>
                                         </div>
+                                        @if($cart->status === 'Belum Bayar')
                                         <form action="{{url('/paynow')}}" method="post" enctype="multipart/form-data">
                                             @csrf
                                             <input type="hidden" name="invoice" value="{{$cart->invoice}}">
@@ -166,6 +167,10 @@
                                             <input type="hidden" value="{{$total}}" name="amount">
                                             <button type="submit" class="btn btn-primary w-100 mt-3">Bayar Sekarang</button>
                                         </form>
+                                        @else
+                                        <button type="submit" class="btn btn-success w-100 mt-3">{{$cart->status}}</button>
+                                        @endif
+                                        
                                      
                                     </div>
                                 </div>

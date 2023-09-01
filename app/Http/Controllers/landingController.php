@@ -10,6 +10,7 @@ use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
+use App\Models\Slider;
 use Illuminate\Support\Facades\Auth;
 // use \Illuminate\Database\Eloquent\Collection;
 
@@ -20,10 +21,12 @@ class landingController extends Controller
     {
         $event = Event::all(['*']);
         $harga = Harga::select('uid', 'harga')->orderBy('harga', 'asc')->get();
+        $slide = Slider::all(['*']);
         return view('frontend.page.home', [
             'title' => 'Home || Beli Tiket',
             'event' => $event,
-            'harga' => $harga
+            'harga' => $harga,
+            'slide' => $slide
         ]);
     }
 
