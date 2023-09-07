@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use to;
 use Exception;
 use Midtrans\Snap;
 use App\Models\Cart;
@@ -12,6 +13,9 @@ use Illuminate\Http\Request;
 use Midtrans\Config as konfig;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\MidtransPaymentNotification;
+use App\Models\User;
 
 class TransactionController extends Controller
 {
@@ -26,13 +30,16 @@ class TransactionController extends Controller
         $cart = Cart::where('user_uid', $user_uid)->where('invoice', $invoice)->first();
         // dd($invoice);
         $pay = Transaction::create([
-            'uid' => $kode,
+            'uid' => $cart->uid,
             'user_uid' => $user_uid,
             'event_uid' => $event_uid,
             'amount' => $total,
-            'status_transaksi' => 'PENDING',
+            'status_transaksi' => 'UNPAID',
             'invoice' => $invoice
         ]);
+
+        // $cart->status = 'UNPAID';
+        // $cart->save();
 
 
         // Konfigurasi midtrans
@@ -89,38 +96,49 @@ class TransactionController extends Controller
 
         // Cari transaksi berdasarkan ID
         // $transaction = Transaction::findOrFail($order_id);
-        $transaction = Transaction::where('invoice', $order_id);
-
+        $transaction = Transaction::where('invoice', $order_id)->firstOrFail();
+        $carts = Cart::where('invoice', $order_id)->firstOrFail();
+        $user = User::where('uid', $carts->user_uid)->firstOrFail();
+        // $event = Event::where('uid', $carts->user_uid)->firstOrFail();
         // Handle notification status midtrans
         if ($status == 'capture') {
             if ($type == 'credit_card') {
                 if ($fraud == 'challenge') {
-                    $transaction->status = 'PENDING';
+                    $transaction->status_transaksi = 'PENDING';
+                    $carts->status = 'PENDING';
                 } else {
-                    $transaction->status = 'SUCCESS';
+                    $transaction->status_transaksi = 'SUCCESS';
+                    $carts->status = 'SUCCESS';
                 }
             }
         } else if ($status == 'settlement') {
-            $transaction->status = 'SUCCESS';
+            $transaction->status_transaksi = 'SUCCESS';
+            $carts->status = 'SUCCESS';
         } else if ($status == 'pending') {
-            $transaction->status = 'PENDING';
+            $transaction->status_transaksi = 'PENDING';
+            $carts->status = 'PENDING';
         } else if ($status == 'deny') {
-            $transaction->status = 'CANCELLED';
+            $transaction->status_transaksi = 'CANCELLED';
+            $carts->status = 'CANCELLED';
         } else if ($status == 'expire') {
-            $transaction->status = 'CANCELLED';
+            $transaction->status_transaksi = 'CANCELLED';
+            $carts->status = 'CANCELLED';
         } else if ($status == 'cancel') {
-            $transaction->status = 'CANCELLED';
+            $transaction->status_transaksi = 'CANCELLED';
+            $carts->status = 'CANCELLED';
         }
 
         // Simpan transaksi
         $transaction->save();
+        $carts->save();
 
         // Kirimkan email
         if ($transaction) {
             if ($status == 'capture' && $fraud == 'accept') {
                 //
             } else if ($status == 'settlement') {
-                //
+               
+                Mail::to($user->email)->send(new MidtransPaymentNotification($user, $carts));
             } else if ($status == 'success') {
                 //
             } else if ($status == 'capture' && $fraud == 'challenge') {
@@ -146,5 +164,6 @@ class TransactionController extends Controller
                 ]
             ]);
         }
+        return redirect('/');
     }
 }

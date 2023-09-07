@@ -1,13 +1,14 @@
 <?php
 
 use App\Http\Controllers\Controller;
-use App\Http\Controllers\TransactionController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
-
-
 use App\Http\Controllers\landingController;
+
+
+use App\Http\Controllers\Api\SlideController;
 use App\Http\Controllers\BuyTicketController;
+use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\Dashboard\addController;
 use App\Http\Controllers\Auth\UserLoginController;
 use App\Http\Controllers\Dashboard\editController;
@@ -26,6 +27,14 @@ use App\Http\Controllers\Dashboard\DashboardController;
 |
 */
 
+// Route::get('/api/slide', [SlideController::class, 'slide']);
+// Route::post('/api/callback', [TransactionController::class, 'callback']);
+
+
+// ============================================================================
+// ============================================================================
+// ============================================================================
+
 Route::get('/', [landingController::class, 'home']);
 Route::get('/ticket/{event}', [landingController::class, 'ticket']);
 
@@ -34,15 +43,19 @@ Route::post('/registerUser', [UserRegisterController::class, 'create'])->name('r
 
 Route::get('/login', [UserLoginController::class, 'signIn'])->name('login');
 Route::post('/loginUser', [UserLoginController::class, 'loginUser']);
+// Route::get('/postEvent/{search?}', [landingController::class, 'cari']);
+Route::get('/search/{cari?}/',[landingController::class, 'search']);
+Route::get('/cari',[landingController::class, 'cari']);
 
 Route::middleware(['auth'])->group(function () {
     Route::get('/detail-ticket/{uid}/{user}', [BuyTicketController::class, 'index']);
     Route::post('/checkout', [BuyTicketController::class, 'checkout']);
     Route::get('/transaksi', [landingController::class, 'listTransaksi']);
+    
 
     Route::post('/paynow', [TransactionController::class, 'paynow']);
 
-    Route::post('/paynow/callback', [TransactionController::class, 'callback'])->name('midtrans-callback');
+    // Route::post('/paynow/callback', [TransactionController::class, 'callback'])->name('midtrans-callback');
 
     Route::get('/detail-ticket/delete/{uid}/{user_uid}', [DeleteController::class, 'deteleListTransaksi']);
 
@@ -58,12 +71,11 @@ Route::prefix('admin')
     ->group(function () {
         Route::get('/', [DashboardController::class, 'dashboard']);
         Route::get('/landing', [DashboardController::class, 'landing']);
+        Route::get('/transaksi', [DashboardController::class, 'transaksi']);
         Route::get('/ubahEvents/{uid}', [DashboardController::class, 'ubahEvents']);
 
         Route::get('/event', [DashboardController::class, 'event']);
-        Route::get('/event/{addEvent?}', [DashboardController::class, 'event']);
-
-
+        Route::get('/event/{addEvent?}/{uid?}', [DashboardController::class, 'event']);
 
         // ROUTE ADD
         Route::post('/addEvents', [addController::class, 'addEvent']);
@@ -75,11 +87,13 @@ Route::prefix('admin')
         Route::post('/editTalent', [editController::class, 'editTalent']);
         Route::post('/editEvent', [editController::class, 'editEvent']);
         Route::post('/editHarga', [editController::class, 'editHarga']);
+        Route::post('/editSlide', [editController::class, 'editSlide']);
 
         // ROUTE DELETE
         Route::get('/delete/{id}', [DeleteController::class, 'deleteTalent']);
         
     });
+    
     
 
 

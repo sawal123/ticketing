@@ -21,7 +21,8 @@ class GlobalDataMiddleware
         view()->share([
             
             'user'=> $user,
-           'csrfToken' => $csrfToken
+           'csrfToken' => $csrfToken,
+           'cari'=> null
         ]);
         return $next($request);
     }

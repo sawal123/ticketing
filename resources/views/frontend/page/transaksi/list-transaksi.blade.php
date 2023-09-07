@@ -46,7 +46,7 @@
                                             <div class="d-flex  align-items-center justify-content-between">
                                                 <a href="{{ url('/detail-ticket/' . $transaksi->uid . '/' . Auth::user()->uid) }}"
                                                     class="btn btn-primary ">Detail</a>
-                                                @if ($transaksi->status === 'Belum Bayar')
+                                                @if ($transaksi->status === 'UNPAID')
                                                     <a href="{{ url('/detail-ticket/delete/' . $transaksi->uid . '/' . Auth::user()->uid) }}"
                                                         class="btn btn-danger delete">Delete</a>
                                                 @endif

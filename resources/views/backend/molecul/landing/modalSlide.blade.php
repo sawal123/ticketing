@@ -45,22 +45,42 @@
     </div>
 </div>
 
-{{-- <div class="modal fade" id="updateTalent">
+
+
+<div class="modal fade" id="updateSlide">
     <div class="modal-dialog modal-dialog-centered text-center" role="document">
         <div class="modal-content modal-content-demo">
             <div class="modal-header">
-                <h6 class="modal-title">Ubah Talent</h6><button aria-label="Close" class="btn-close"
+                <h6 class="modal-title">Ubah Slide</h6><button aria-label="Close" class="btn-close"
                     data-bs-dismiss="modal"><span aria-hidden="true">&times;</span></button>
             </div>
-            <form action="{{ url('admin/editTalent') }}" method="post" enctype="multipart/form-data">
+            <form action="{{ url('admin/editSlide') }}" method="post" enctype="multipart/form-data">
                 @csrf
                 <div class="modal-body">
-                    <input type="hidden" name="uid" id="uidTalent">
+                    <input type="hidden" name="uid" id="uidSlide">
                     <div class="row mb-4">
-                        <label class="col-md-3 form-label">Nama Talent :</label>
+                        <label class="col-md-3 form-label">Title :</label>
                         <div class="col-md-9">
-                            <input type="text" class="form-control" name="talent" id="namaTalent" placeholder="Nama Talent"
-                                required>
+                            <input type="text" class="form-control" id="titleSlide" name="title"
+                                placeholder="Masukan title.." required>
+                        </div>
+                    </div>
+                    <div class="row mb-4">
+                        <label class="col-md-3 form-label">Url :</label>
+                        <div class="col-md-9">
+                            <input type="text" class="form-control" id="urlSlide" name="url"
+                                placeholder="Masukan url.." required>
+                        </div>
+                    </div>
+                    <div class="row mb-4">
+                        <label class="col-md-3 form-label">Sort :</label>
+                        <div class="col-md-9">
+                            <select class="form-select" id="sortSelect" aria-label="Default select example" name="sort">
+                                <option disabled>Buat Urutan Slide</option>
+                                @foreach ($slider as $key => $slider)
+                                    <option value="{{ $key + 1 }}">{{ $key + 1 }}</option>
+                                @endforeach
+                            </select>
                         </div>
                     </div>
 
@@ -77,4 +97,4 @@
             </form>
         </div>
     </div>
-</div> --}}
+</div>

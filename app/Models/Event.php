@@ -15,4 +15,13 @@ class Event extends Model
     {
         return $this->hasOne(Harga::class, 'uid', 'uid'); // 'uid' di model Event sesuai dengan kunci asing di model Harga
     }
+
+    public function talent(){
+        return $this->hasOne(Talent::class, 'uid', 'uid');
+    }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'user_uid', 'uid');
+    }
 }

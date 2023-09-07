@@ -111,6 +111,19 @@
                 modal.find("#qtyHarga").val(qty);
                 modal.find("#kategoriHarga").val(kategori);
             })
+            $(document).on("show.bs.modal", "#updateSlide", function(e) {
+                var tombol = $(e.relatedTarget);
+                var uid = tombol.data('uid');
+                var title = tombol.data('title');
+                var sort = tombol.data('sort');
+                var url = tombol.data('url');
+                var modal = $(this);
+                modal.find('#uidSlide').val(uid)
+                modal.find('#titleSlide').val(title)
+                // modal.find('#sortSlide').val(sort)
+                modal.find('#urlSlide').val(url)
+                $('#sortSelect').val(sort);
+            })
 
 
             $(document).ready(function() {

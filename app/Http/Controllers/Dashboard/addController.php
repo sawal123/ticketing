@@ -48,7 +48,7 @@ class addController extends Controller
             // $talent->save();
             // $harga->save();
             // DB::commit();
-            return redirect()->back()->with('success', 'Berhasil disimpan');
+            return redirect('admin/event/eventDetail/'.$uid)->with('addEvent', 'Event Berhasil Disimpan..');
         // } catch (\Exception $e) {
         //     DB::rollback();
         //     return redirect()->back()->with('error', 'Event Gagal. Silakan coba lagi.');
@@ -86,7 +86,7 @@ class addController extends Controller
     public function addSlide(Request $request){
         
         $slide = Slider::orderBy('sort', 'desc')->first();
-        dd($slide->sort);
+        // dd($slide->sort);
         if($slide === null){
             $angka = 1;
         }

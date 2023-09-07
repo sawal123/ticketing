@@ -15,6 +15,7 @@ class BuyTicketController extends Controller
 {
     public function index($uid, $user)
     {
+        // ?order_id=INV-05484&status_code=200&transaction_status=settlement
         $cart = Cart::where('uid', $uid)->where('user_uid', $user)->first();
         // dd($cart);
         if ($cart == null) {
@@ -48,8 +49,8 @@ class BuyTicketController extends Controller
     {
         error_reporting(0);
         $kode = Str::random(10);
-        $number = mt_rand(1000, 9999);
-        $invoice = str_pad($number, 5, '0', STR_PAD_LEFT);
+        $number = mt_rand(1000, 9999999999);
+        $invoice = str_pad($number, 10, '0', STR_PAD_LEFT);
         $ticketValue = [];
         $hargaValue = [];
         $kategoriValue = [];
@@ -77,7 +78,7 @@ class BuyTicketController extends Controller
         }
 
 // dd($carts->status);
-        if ($carts->status === 'Belum Bayar') {
+        if ($carts->status === 'UNPAID') {
             $hargaCart = HargaCart::where('uid', $carts->uid)->orderBy('orderBy')->get();
             $hargaArray = [];
             foreach ($hargaCart as $hargaCarts) {
@@ -126,7 +127,7 @@ class BuyTicketController extends Controller
                 'user_uid' => Auth::user()->uid,
                 'event_uid' => $event->uid,
                 'invoice' => 'INV-' . $invoice,
-                'status' => 'Belum Bayar'
+                'status' => 'UNPAID'
             ]);
 
             foreach ($ticketValue as $index => $value) {

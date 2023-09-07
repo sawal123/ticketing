@@ -11,4 +11,5 @@ class Talent extends Model
     protected $fillable = [
         'uid', 'talent', 'gambar',
     ];
+    
 }

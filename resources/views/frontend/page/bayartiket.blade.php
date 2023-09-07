@@ -3,6 +3,7 @@
 @section('content')
     <div class="row mt-5">
         <div class="col">
+
             <div class="container pt-lg-5">
                 <div class="row mt-5 ">
                     <div class="col-12 col-lg-4">
@@ -16,6 +17,11 @@
                         </div>
                     </div>
                     <div class="col-12 col-lg-8">
+                        @if (session('success'))
+                            <div class="alert alert-success">
+                                {{ session('success') }}
+                            </div>
+                        @endif
                         <div class="card mb-2">
                             <h5 class="card-header">Ticket Detail </h5>
 
@@ -35,17 +41,15 @@
                                             </div>
                                             <h6>
                                                 @php
-                                                    $total1 = (int)$harga->quantity * (int)$harga->harga_ticket;
+                                                    $total1 = (int) $harga->quantity * (int) $harga->harga_ticket;
                                                 @endphp
                                                 Rp{{ number_format($total1 ?? 0) }}
                                             </h6>
-                                            
+
                                         </div>
                                     </div>
                                     <hr>
                                 @endforeach
-
-
                             </div>
                         </div>
 
@@ -158,20 +162,23 @@
                                                 {{ number_format($total += $fee, 0, ',', '.') }}
                                             </h6>
                                         </div>
-                                        @if($cart->status === 'Belum Bayar')
-                                        <form action="{{url('/paynow')}}" method="post" enctype="multipart/form-data">
-                                            @csrf
-                                            <input type="hidden" name="invoice" value="{{$cart->invoice}}">
-                                            <input type="hidden" name="person" value="{{Auth::user()->uid}}">
-                                            <input type="hidden" name="event" value="{{$uid}}">
-                                            <input type="hidden" value="{{$total}}" name="amount">
-                                            <button type="submit" class="btn btn-primary w-100 mt-3">Bayar Sekarang</button>
-                                        </form>
+                                        @if ($cart->status === 'UNPAID')
+                                            <form action="{{ url('/paynow') }}" method="post"
+                                                enctype="multipart/form-data">
+                                                @csrf
+                                                <input type="hidden" name="invoice" value="{{ $cart->invoice }}">
+                                                <input type="hidden" name="person" value="{{ Auth::user()->uid }}">
+                                                <input type="hidden" name="event" value="{{ $uid }}">
+                                                <input type="hidden" value="{{ $total }}" name="amount">
+                                                <button type="submit" class="btn btn-primary w-100 mt-3">Bayar
+                                                    Sekarang</button>
+                                            </form>
                                         @else
-                                        <button type="submit" class="btn btn-success w-100 mt-3">{{$cart->status}}</button>
+                                            <button type="submit"
+                                                class="btn btn-success w-100 mt-3">{{ $cart->status }}</button>
                                         @endif
-                                        
-                                     
+
+
                                     </div>
                                 </div>
                             </div>

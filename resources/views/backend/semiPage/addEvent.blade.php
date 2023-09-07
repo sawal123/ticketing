@@ -63,13 +63,13 @@
                             <label class="col-md-3 form-label">Nama Event :</label>
                             <div class="col-md-9">
                                 <input type="text" class="form-control" value="{{ $ubahEvent->event }}" name="event"
-                                    placeholder="Nama Event">
+                                    placeholder="Nama Event" required>
                             </div>
                         </div>
                         <div class="row mb-4">
                             <label class="col-md-3 form-label">Alamat :</label>
                             <div class="col-md-9">
-                                <input type="text" value="{{ $ubahEvent->alamat }}" name="alamat" class="form-control">
+                                <input type="text" value="{{ $ubahEvent->alamat }}" name="alamat" class="form-control" required>
                             </div>
                         </div>
                         @if (request()->is('admin/event/addEvent') === false)
@@ -93,19 +93,19 @@
                             <label class="col-md-3 form-label">Tanggal Event :</label>
                             <div class="col-md-9">
                                 <input type="datetime-local" value="{{ $ubahEvent->tanggal }}" name="tanggal"
-                                    class="form-control">
+                                    class="form-control" required>
                             </div>
                         </div>
                         <div class="row mb-4">
                             <label class="col-md-3 form-label">Link Map :</label>
                             <div class="col-md-9">
-                                <input type="text" value="{{ $ubahEvent->map }}" name="map" class="form-control">
+                                <input type="text" value="{{ $ubahEvent->map }}" name="map" class="form-control" required>
                             </div>
                         </div>
                         <div class="row mb-4">
                             <label class="col-md-3 form-label">Cover Thumbnail :</label>
                             <div class="col-md-9">
-                                <input type="file" name="cover" class="form-control">
+                                <input type="file" name="cover" class="form-control" required>
                             </div>
                         </div>
 
@@ -114,7 +114,7 @@
                             <label class="col-md-3 form-label mb-4">Deskripsi Event :</label>
                             <div class="col-md-9 mb-4">
                                 <div class="form-floating">
-                                    <textarea id="summernote" name="deskripsi">
+                                    <textarea id="summernote" name="deskripsi" required>
                                         {{ $ubahEvent->deskripsi }}
                                         </textarea>
                                     {{-- <textarea class="form-control" name="deskripsi" placeholder="Leave a comment here" id="floatingTextarea2"

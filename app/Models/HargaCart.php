@@ -2,12 +2,15 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Models\Cart;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class HargaCart extends Model
 {
     use HasFactory;
+    use SoftDeletes;
     protected $fillable=['uid','orderBy', 'event_uid', 'quantity', 'harga_ticket', 'kategori_harga'];
 
     public function carts()

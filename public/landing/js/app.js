@@ -1120,3 +1120,94 @@ function _defineProperty(obj, key, value) { if (key in obj) { Object.definePrope
   });
   wow.init();
 })(jQuery);
+
+
+
+
+
+
+
+
+
+$(document).ready(function() {
+       $(document).on('click', '.delete', function() {
+           var getLink = $(this).attr('href');
+           Swal.fire({
+               title: "Yakin hapus data?",
+               icon: 'warning',
+               showCancelButton: true,
+               confirmButtonColor: '#d33',
+               confirmButtonText: 'Ya',
+               cancelButtonColor: '#3085d6',
+               cancelButtonText: "Batal"
+           }).then(result => {
+               //jika klik ya maka arahkan ke proses.php
+               if (result.isConfirmed) {
+                   window.location.href = getLink;
+               }
+           });
+           return false;
+       });
+   });
+
+
+// ===============================================================================
+// ===============================================================================
+// ===============================================================================
+// ===============================================================================
+// ===============================================================================
+
+$(document).ready(function() {
+   $('.tes').slick({
+       infinite: true,
+       slidesToShow: 3,
+       slidesToScroll: 3
+   });
+});
+
+$(document).ready(function() {
+   const totalDisplay = $(".total");
+   let cart = {};
+
+   function updateTotal() {
+       let total = 0;
+       for (const productId in cart) {
+           total += cart[productId].quantity * cart[productId].price;
+       }
+       totalDisplay.text("Rp " + total.toLocaleString("id-ID"));
+   }
+
+   // Initialize cart data with the price from the input
+   $(".input-wrapper").each(function() {
+       const productId = $(this).find(".btn-plus").data("target");
+       const price = parseFloat($(this).find(".price-input").val()) || 0;
+       cart[productId] = {
+           quantity: 0,
+           price: price
+       };
+   });
+
+   $(".btn-plus").on("click", function() {
+       const targetId = $(this).data("target");
+       if (!cart[targetId]) {
+           cart[targetId] = {
+               quantity: 0,
+               price: 0
+           };
+       }
+       if (cart[targetId].quantity < 5) {
+           cart[targetId].quantity++;
+           $("." + targetId).val(cart[targetId].quantity);
+           updateTotal();
+           console.log(updateTotal());
+       }
+   });
+   $(".btn-minus").on("click", function() {
+       const targetId = $(this).data("target");
+       if (cart[targetId].quantity > 0) {
+           cart[targetId].quantity--;
+           $("." + targetId).val(cart[targetId].quantity);
+           updateTotal();
+       }
+   });
+});

@@ -80,4 +80,36 @@ class landingController extends Controller
             'transaksi' => $cart
         ]);
     }
+
+    public function search($search = null)
+    {
+        // $search = $request->search;
+       
+        if ($search) {
+            $event = Event::where('event', 'LIKE', "%$search%")
+                ->orWhere('alamat', 'LIKE', "%$search%")->orWhere('slug', 'LIKE', "%$search%")
+                ->orWhereHas('talent', function ($query) use ($search) {
+                    $query->where('talent', 'LIKE', "%$search%");
+                })
+                ->get();
+                // return redirect('/search/'. $event);
+        } else {
+            $event = Event::all(['*']);
+        }
+        //  dd($event);
+        $harga = Harga::select('uid', 'harga')->orderBy('harga', 'asc')->get();
+        return view(
+            'frontend.page.post.post',
+            [
+                'title' => 'Search Event',
+                'event' => $event,
+                'harga' => $harga,
+                // 'search' =>$search
+            ]
+        );
+    }
+    public function cari(){
+        $cari = $_GET['cari'];
+        return redirect('/search/'.$cari)->withInput();
+    }
 }

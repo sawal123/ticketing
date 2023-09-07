@@ -9,9 +9,10 @@
                             style="border-radius: 6%" alt="...">
                     </div>
                     <div class="card-body fugu--card-data text-start">
-                        <h5 class="" style="color: white">{{ $events->events }}</h5>
-                        <p>Mulai Events : {{ date('Y-m-d H:i', strtotime($events->tanggal)) }}</p>
-                        <div class="fugu--card-footer">
+                        <h5 class="" style="color: white">{{ $events->event }}</h5>
+                        <a style="color: white; " class="mb-2" href="{{ $events->map }}">{{ $events->alamat }}</a>
+                        <p>{{ date('Y-m-d H:i', strtotime($events->tanggal)) }}</p>
+                        <div class="fugu--card-footer mt-1">
                             <div class="fugu--card-footer-data">
                                 <span>Start From:</span>
                                 @foreach ($harga as $hargas)
@@ -22,10 +23,10 @@
                                         <p>Ticket Belum Tersedia</p> --}}
                                     @endif
                                 
-                            @endforeach
-                        </div>
+                                @endforeach
+                            </div>
                         <a class="fugu--btn btn-sm bg-white" href="{{ url('/ticket/' . $events->slug) }}">Beli</a>
-                    </div>
+                        </div>
                 </div>
             </div>
         @endforeach
@@ -35,6 +36,6 @@
 </div>
 
 <div class="fugu--portfolio-btn">
-    <a class="fugu--outline-btn" href=""><span>View All NFTs</span></a>
+    <a class="fugu--outline-btn" href="{{url('/search')}}"><span>View All Events</span></a>
 </div>
 </div>

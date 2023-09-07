@@ -5,7 +5,7 @@
                 <div class="product-image6 p-5">
                     <ul class="icons">
                         <li>
-                            <a href="{{ url('admin/event/eventDetail/?id=' . $events->uid) }}" class="btn btn-primary"> <i
+                            <a href="{{ url('admin/event/eventDetail/' . $events->uid) }}" class="btn btn-primary"> <i
                                     class="fe fe-eye"> </i> </a>
                         </li>
                         {{-- <li><a href="javascript:void(0)" class="btn btn-danger"><i
@@ -19,7 +19,7 @@
                 <div class="card-body pt-0">
                     <div class="product-content text-center">
                         <h1 class="title fw-bold fs-20"><a
-                                href="{{ url('/admin/event/eventDetail/?id=' . $events->uid) }}">{{ $events->event }}</a></h1>
+                                href="{{ url('/admin/event/eventDetail/' . $events->uid) }}">{{ $events->event }}</a></h1>
                         
                     </div>
                 </div>

@@ -7,6 +7,7 @@ use App\Models\Talent;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use App\Models\Event;
+use App\Models\Slider;
 
 class editController extends Controller
 {
@@ -53,16 +54,37 @@ class editController extends Controller
         return redirect()->back();
     }
 
-    public function editHarga(Request $request){
+    public function editHarga(Request $request)
+    {
         $id = $request->id;
         $harga = Harga::where('id', $id)->first();
-// dd($request->kategori);
+        // dd($request->kategori);
         $harga->update([
-            'kategori'=> $request->kategori,
-            'qty'=> $request->qty,
-            'harga'=> $request->harga
+            'kategori' => $request->kategori,
+            'qty' => $request->qty,
+            'harga' => $request->harga
         ]);
 
         return redirect()->back()->with('editHarga', 'Harga Berhasil Di Ubah');
+    }
+
+    public function editSlide(Request $request)
+    {
+        $slide = Slider::where('uid', $request->uid)->first();
+        $slide->uid = $request->uid;
+        $slide->title = $request->title;
+        $slide->url = $request->url;
+        $slide->sort = $request->sort;
+
+        if ($request->hasFile('gambar')) {
+            $file = $request->file('gambar');
+            $fileName = $slide->uid . '_' . time() . '_' . $file->getClientOriginalName();
+            $file->storeAs('public/slide/', $fileName);
+            $slide->gambar = $fileName;
+        }
+
+
+        $slide->save();
+        return redirect()->back()->with('editSlide', 'Slide Berhasil Diubah');
     }
 }

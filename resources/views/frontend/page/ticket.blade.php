@@ -126,6 +126,7 @@
                                         </div>
                                     </div>
                                 </div>
+                                @csrf
                             </form>
                         @else
                             <p>Ticket Belum Tersedia...</p>

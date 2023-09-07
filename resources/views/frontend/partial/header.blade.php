@@ -4,7 +4,7 @@
             <!-- Brand Logo-->
             <div class="brand-logo">
                 <a href="{{ url('/') }}">
-                    <img src="{{ asset('landing/images/logo/logo-white.svg') }}" alt="" class="light-version-logo">
+                    <img src="{{ asset('storage/logo/logo.png') }}" style="width: 60%" alt="" class="light-version-logo">
 
                 </a>
             </div>
@@ -21,10 +21,12 @@
                     <ul class="site-menu-main">
                         <li class="nav-item nav-item-has-children p-2">
                             <div class="fugu--newsletter fugu--search " data-wow-delay=".30s">
-                                <input type="text" placeholder="Search...">
-                                <button type="submit" id="fugu--submit-btn">Search</button>
-                                <button id="fugu--search-btn"><img src="landing/images/svg2/search.svg"
-                                        alt=""></button>
+                                <form action="{{ url('/cari') }}" method="GET">
+                                    <input type="text" placeholder="Search..." name="cari" value="{{ old('cari') }}">
+                                    <button type="submit" id="fugu--submit-btn">Search</button>
+                                    <button type="submit" id="fugu--search-btn"><img
+                                            src="{{ asset('landing/images/svg2/search.svg') }}" alt=""></button>
+                                </form>
                             </div>
                         </li>
 

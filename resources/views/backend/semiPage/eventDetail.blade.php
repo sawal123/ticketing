@@ -14,9 +14,9 @@
                 </ol>
             </div>
         </div>
-        @if (session('success'))
+        @if (session('addEvent'))
             <div class="alert alert-success">
-                {{ session('success') }}
+                {{ session('addEvent') }}
             </div>
         @endif
         <!-- PAGE-HEADER END -->
