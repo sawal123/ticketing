@@ -50,11 +50,13 @@ Route::get('/cari',[landingController::class, 'cari']);
 
 
 Route::get('/confir/data/{data}', [Controller::class, 'confir']);
-Route::get('/generate-barcode/{data}', [BarcodeController::class, 'generateBarcode']);
+Route::post('/confir/success', [Controller::class, 'success']);
+Route::post('/generate-barcode', [BarcodeController::class, 'generateBarcode']);
 
 Route::middleware(['auth'])->group(function () {
     
 
+    Route::get('email/notif-email', [Controller::class, 'notif']);
     Route::get('/detail-ticket/{uid}/{user}', [BuyTicketController::class, 'index']);
     Route::post('/checkout', [BuyTicketController::class, 'checkout']);
     Route::get('/transaksi', [landingController::class, 'listTransaksi']);

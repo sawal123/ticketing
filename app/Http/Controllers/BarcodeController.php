@@ -13,9 +13,9 @@ class BarcodeController extends Controller
 {
 
 
-    public function generateBarcode($data)
+    public function generateBarcode(Request $request)
     {
-        $url = url('confir/data/'.$data);
+        $url = url('confir/data/'.$request->barcode);
         $barcodeData =  QrCode::size(200)->generate($url) ;
 
         // Menampilkan tampilan dengan barcode

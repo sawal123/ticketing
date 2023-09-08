@@ -1,3 +1,3 @@
 <div>
-    <button class="btn btn-{{$type}}">{{$text}}</button>
+    <button type="{{$type}}" class="btn btn-{{$color}}">{{$text}}</button>
 </div>

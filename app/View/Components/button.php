@@ -14,11 +14,13 @@ class button extends Component
 
      public $type;  
      public $text;  
-    public function __construct($type, $text)
+     public $color;  
+    public function __construct($type, $text, $color)
     {
         //
         $this->type = $type;
         $this->text = $text;
+        $this->color = $color;
     }
 
     /**
