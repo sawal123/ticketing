@@ -14,6 +14,7 @@ use App\Http\Controllers\Auth\UserLoginController;
 use App\Http\Controllers\Dashboard\editController;
 use App\Http\Controllers\Dashboard\DeleteController;
 use App\Http\Controllers\Auth\UserRegisterController;
+use App\Http\Controllers\BarcodeController;
 use App\Http\Controllers\Dashboard\DashboardController;
 
 /*
@@ -47,7 +48,13 @@ Route::post('/loginUser', [UserLoginController::class, 'loginUser']);
 Route::get('/search/{cari?}/',[landingController::class, 'search']);
 Route::get('/cari',[landingController::class, 'cari']);
 
+
+Route::get('/confir/data/{data}', [Controller::class, 'confir']);
+Route::get('/generate-barcode/{data}', [BarcodeController::class, 'generateBarcode']);
+
 Route::middleware(['auth'])->group(function () {
+    
+
     Route::get('/detail-ticket/{uid}/{user}', [BuyTicketController::class, 'index']);
     Route::post('/checkout', [BuyTicketController::class, 'checkout']);
     Route::get('/transaksi', [landingController::class, 'listTransaksi']);

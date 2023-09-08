@@ -25,3 +25,4 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 Route::get('/slide', [SlideController::class, 'slide']);
 Route::post('/callback', [TransactionController::class, 'callback']);
 Route::get('/finishMidtrans', [SlideController::class, 'finishMidtrans'])->middleware();
+

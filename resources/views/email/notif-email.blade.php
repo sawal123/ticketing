@@ -18,7 +18,9 @@
                 <br>
                 <p>Barcode dan kode ini bersifat privasi, jangan beritahu/berikan kepada orang lain.</p>
                 <p>Tunjukan barcode/kode kepada panitia untuk konfirmasi kehadiran</p>
-                <a href="#" class="btn btn-primary">Download Barcode</a>
+                <a href="{{url('/generate-barcode/'. $barcode)}}" class="btn btn-primary">Download Barcode</a>
+                <br>
+                {{-- {!!  QrCode::size(150)->generate($barcode) !!} --}}
                 <br>
                 <p>Kode Barcode</p>
                 <h4>{{$cart}}</h4>

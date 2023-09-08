@@ -6,6 +6,8 @@ use to;
 use Exception;
 use Midtrans\Snap;
 use App\Models\Cart;
+use App\Models\User;
+use App\Models\Event;
 use Midtrans\Notification;
 use App\Models\Transaction;
 use Illuminate\Support\Str;
@@ -15,7 +17,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\MidtransPaymentNotification;
-use App\Models\User;
+use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 class TransactionController extends Controller
 {
@@ -132,13 +134,14 @@ class TransactionController extends Controller
         $transaction->save();
         $carts->save();
 
+        // $barcode = QrCode::size(150)->generate($order_id);
+
         // Kirimkan email
         if ($transaction) {
             if ($status == 'capture' && $fraud == 'accept') {
                 //
             } else if ($status == 'settlement') {
-               
-                Mail::to($user->email)->send(new MidtransPaymentNotification($user, $carts));
+                Mail::to($user->email)->send(new MidtransPaymentNotification($user, $carts, $order_id));
             } else if ($status == 'success') {
                 //
             } else if ($status == 'capture' && $fraud == 'challenge') {

@@ -12,6 +12,7 @@ use Illuminate\Mail\Mailables\Content;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Mail\Mailables\Attachment;
 
 class MidtransPaymentNotification extends Mailable
 {
@@ -23,11 +24,12 @@ class MidtransPaymentNotification extends Mailable
      * @param \App\Models\User $user
      * @param Cart $cart
      */
-    public function __construct(protected User $user, protected Cart $cart,)
+    public function __construct(protected User $user, protected Cart $cart, protected $barcode)
     {
         //
         $this->user = $user;
         $this->cart = $cart;
+        $this->barcode = $barcode;
     }
 
     /**
@@ -52,6 +54,7 @@ class MidtransPaymentNotification extends Mailable
             with: [
                 'name' => $this->user->name,
                 'cart' => $this->cart->invoice,
+                'barcode' => $this->barcode,
             ],
         );
     }
@@ -63,6 +66,8 @@ class MidtransPaymentNotification extends Mailable
      */
     public function attachments(): array
     {
-        return [];
+        return [
+            // Attachment::fromPath(public_path('/pdf'))
+        ];
     }
 }
