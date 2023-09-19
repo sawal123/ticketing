@@ -11,9 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('carts', function (Blueprint $table) {
-            $table->string('konfirmasi')->nullable()->after('status');
-        });
+        if (!Schema::hasColumn('carts', 'konfirmasi')) {
+            Schema::table('carts', function (Blueprint $table) {
+                $table->string('konfirmasi', 255)->nullable()->after('status');
+            });
+        }
     }
 
     /**

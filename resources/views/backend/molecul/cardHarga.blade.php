@@ -11,17 +11,19 @@
                         </div>
                     </div>
                     <div class="col-4 ">
-                        
+
                         <button type="submit" data-bs-target="#updateHarga" data-bs-effect="effect-sign"
                             data-bs-toggle="modal" class="my-4 mx-auto d-flex btn btn-primary"
                             data-kategori="{{ $harga->kategori }}" data-qty="{{ $harga->qty }}"
-                            data-harga="{{ $harga->harga }}" data-id="{{$harga->id}}">
+                            data-harga="{{ $harga->harga }}" data-id="{{ $harga->id }}">
                             <i class="fa fa-edit fs-20 text-white "></i>
-                           
+
                         </button>
-                        <button type="submit" class="my-4 mx-auto d-flex btn btn-danger">
-                            <i class="fa fa-trash fs-20 text-white "></i>
-                        </button>
+                        <a href="{{ url('admin/hargas/delete/' . $harga->id) }}" class="delete">
+                            <button type="button" class=" my-4 mx-auto d-flex btn btn-danger">
+                                <i class="fa fa-trash fs-20 text-white "></i>
+                            </button>
+                        </a>
                     </div>
                 </div>
             </div>

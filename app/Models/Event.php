@@ -24,4 +24,7 @@ class Event extends Model
     {
         return $this->belongsTo(User::class, 'user_uid', 'uid');
     }
+    public function cart(){
+        return $this->belongsTo(Cart::class, 'event_uid', 'uid');
+    }
 }

@@ -28,6 +28,11 @@
                   @include('backend.molecul.cardEventSearch')
                 </div>
             </div>
+            @if (session('deleteEvent'))
+            <div class="alert alert-success">
+                {{ session('deleteEvent') }}
+            </div>
+        @endif
             <div class="tab-content">
                 <div class="tab-pane active" id="tab-11">
                     <div class="row">

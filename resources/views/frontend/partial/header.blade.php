@@ -40,7 +40,7 @@
                                         class="fas fa-angle-down"></i></a>
                                 <ul class="sub-menu" id="submenu-1">
                                     <li class="sub-menu--item">
-                                        <a href="{{ url('/edit-profile') }}">Edit Profile</a>
+                                        <a href="{{ url('/profile') }}">Profile</a>
                                     </li>
                                     <li class="sub-menu--item">
                                         <a href="{{ url('/logout') }}">Log Out</a>

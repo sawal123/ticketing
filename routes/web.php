@@ -1,20 +1,22 @@
 <?php
 
 use App\Http\Controllers\Controller;
+// use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
+
+
+use App\Http\Controllers\BarcodeController;
 use App\Http\Controllers\landingController;
-
-
 use App\Http\Controllers\Api\SlideController;
 use App\Http\Controllers\BuyTicketController;
+use App\Http\Controllers\Api\ConfirmController;
 use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\Dashboard\addController;
 use App\Http\Controllers\Auth\UserLoginController;
 use App\Http\Controllers\Dashboard\editController;
 use App\Http\Controllers\Dashboard\DeleteController;
 use App\Http\Controllers\Auth\UserRegisterController;
-use App\Http\Controllers\BarcodeController;
 use App\Http\Controllers\Dashboard\DashboardController;
 
 /*
@@ -45,23 +47,26 @@ Route::post('/registerUser', [UserRegisterController::class, 'create'])->name('r
 Route::get('/login', [UserLoginController::class, 'signIn'])->name('login');
 Route::post('/loginUser', [UserLoginController::class, 'loginUser']);
 // Route::get('/postEvent/{search?}', [landingController::class, 'cari']);
-Route::get('/search/{cari?}/',[landingController::class, 'search']);
-Route::get('/cari',[landingController::class, 'cari']);
+Route::get('/search/{cari?}/', [landingController::class, 'search']);
+Route::get('/cari', [landingController::class, 'cari']);
+
+
 
 
 Route::get('/confir/data/{data}', [Controller::class, 'confir']);
 Route::post('/confir/success', [Controller::class, 'success']);
-Route::post('/generate-barcode', [BarcodeController::class, 'generateBarcode']);
+// Route::post('/generate-barcode', [BarcodeController::class, 'generateBarcode']);
+Route::get('/generate-barcode/{data}', [BarcodeController::class, 'generateBarcode']);
 
 Route::middleware(['auth'])->group(function () {
-    
+
+    Route::get('/profile', [editController::class, 'profile']);
+    Route::post('/profile/update-profile', [editController::class, 'editProfile']);
 
     Route::get('email/notif-email', [Controller::class, 'notif']);
     Route::get('/detail-ticket/{uid}/{user}', [BuyTicketController::class, 'index']);
     Route::post('/checkout', [BuyTicketController::class, 'checkout']);
     Route::get('/transaksi', [landingController::class, 'listTransaksi']);
-    
-
     Route::post('/paynow', [TransactionController::class, 'paynow']);
 
     // Route::post('/paynow/callback', [TransactionController::class, 'callback'])->name('midtrans-callback');
@@ -100,7 +105,9 @@ Route::prefix('admin')
 
         // ROUTE DELETE
         Route::get('/delete/{id}', [DeleteController::class, 'deleteTalent']);
-        
+        Route::get('/landing/delete/{uid}', [DeleteController::class, 'deleteSlide']);
+        Route::get('/events/delete/{uid}', [DeleteController::class, 'deleteEvent']);
+        Route::get('/hargas/delete/{id}', [DeleteController::class, 'deleteHarga']);
     });
     
     

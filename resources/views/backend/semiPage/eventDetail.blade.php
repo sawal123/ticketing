@@ -108,6 +108,11 @@
                                                     {{ session('harga') }}
                                                 </div>
                                             @endif
+                                            @if (session('deleteHarga'))
+                                            <div class="alert alert-success">
+                                                {{ session('deleteHarga') }}
+                                            </div>
+                                        @endif
 
                                             @if (session('editHarga'))
                                                 <div class="alert alert-success">

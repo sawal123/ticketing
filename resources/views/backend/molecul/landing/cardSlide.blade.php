@@ -12,13 +12,13 @@
                                 <i class="fe fe-edit"> </i> </button>
                         </li>
                         <li>
-                            <a href="{{ url('admin/landing/' . $slides->uid) }}" class="btn btn-danger">
+                            <a href="{{ url('/admin/landing/delete/' . $slides->uid) }}" class="delete btn btn-danger">
                                 <i class="fe fe-trash"> </i> </a>
                         </li>
                         {{-- <li><a href="javascript:void(0)" class="btn btn-danger"><i
                             class="fe fe-x"></i></a></li> --}}
                     </ul>
-                    <a href="shop-description.html">
+                    <a href="#">
                         <img class="img-fluid br-7 w-100" style="object-fit: cover; width: 1920px"
                             src="{{ asset('storage/slide/' . $slides->gambar) }}" alt="img">
                     </a>

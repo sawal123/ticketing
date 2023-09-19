@@ -105,7 +105,7 @@
                         <div class="row mb-4">
                             <label class="col-md-3 form-label">Cover Thumbnail :</label>
                             <div class="col-md-9">
-                                <input type="file" name="cover" class="form-control" required>
+                                <input type="file" name="cover" class="form-control" >
                             </div>
                         </div>
 

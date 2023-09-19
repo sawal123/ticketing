@@ -8,10 +8,14 @@
                             <a href="{{ url('admin/event/eventDetail/' . $events->uid) }}" class="btn btn-primary"> <i
                                     class="fe fe-eye"> </i> </a>
                         </li>
+                        <li>
+                            <a href="{{ url('admin/events/delete/' . $events->uid) }}" class="delete btn btn-danger">
+                                <i class="fe fe-trash"> </i> </a>
+                        </li>
                         {{-- <li><a href="javascript:void(0)" class="btn btn-danger"><i
                             class="fe fe-x"></i></a></li> --}}
                     </ul>
-                    <a href="shop-description.html">
+                    <a href="{{ url('admin/event/eventDetail/' . $events->uid) }}">
                         <img class="img-fluid br-7 w-100" src="{{ asset('storage/cover/' . $events->cover) }}"
                             alt="img">
                     </a>
@@ -19,8 +23,9 @@
                 <div class="card-body pt-0">
                     <div class="product-content text-center">
                         <h1 class="title fw-bold fs-20"><a
-                                href="{{ url('/admin/event/eventDetail/' . $events->uid) }}">{{ $events->event }}</a></h1>
-                        
+                                href="{{ url('/admin/event/eventDetail/' . $events->uid) }}">{{ $events->event }}</a>
+                        </h1>
+
                     </div>
                 </div>
 

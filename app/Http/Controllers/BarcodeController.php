@@ -13,15 +13,18 @@ class BarcodeController extends Controller
 {
 
 
-    public function generateBarcode(Request $request)
+    public function generateBarcode($data)
     {
-        $url = url('confir/data/'.$request->barcode);
-        $barcodeData =  QrCode::size(200)->generate($url) ;
+        // $url = url('confir/data/'.$request->barcode);
+        // $url = $request->barcode;
+        $url = $data;
+        $barcodeData =  QrCode::size(400)->generate($url) ;
 
         // Menampilkan tampilan dengan barcode
         return view('barcode', 
         [
-            'barcodeData' => $barcodeData
+            'barcodeData' => $barcodeData,
+            'invoice' => $url
         ]);
     }
 }

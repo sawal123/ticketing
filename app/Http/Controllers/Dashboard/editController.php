@@ -4,10 +4,14 @@ namespace App\Http\Controllers\Dashboard;
 
 use App\Models\Harga;
 use App\Models\Talent;
+use App\Models\User;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use App\Models\Event;
 use App\Models\Slider;
+use Illuminate\Auth\Events\Validated;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Validator;
 
 class editController extends Controller
 {
@@ -33,7 +37,7 @@ class editController extends Controller
         }
 
         $event->save();
-        return redirect('/event/eventDetail?id=' . $request->uid)->with('success', 'Berhasil di Update');
+        return redirect('/admin/event/eventDetail/' . $request->uid)->with('success', 'Berhasil di Update');
     }
 
     public function editTalent(Request $request)
@@ -75,7 +79,6 @@ class editController extends Controller
         $slide->title = $request->title;
         $slide->url = $request->url;
         $slide->sort = $request->sort;
-
         if ($request->hasFile('gambar')) {
             $file = $request->file('gambar');
             $fileName = $slide->uid . '_' . time() . '_' . $file->getClientOriginalName();
@@ -86,5 +89,48 @@ class editController extends Controller
 
         $slide->save();
         return redirect()->back()->with('editSlide', 'Slide Berhasil Diubah');
+    }
+    public function profile()
+    {
+        //  dd($data);
+        $valueUser = [Auth::user()->name, Auth::user()->email, Auth::user()->nomor, Auth::user()->gambar];
+        $dataUser = User::where('uid', Auth::user()->uid)->first();
+        return view(
+            'frontend.page.editProfile',
+            [
+                'title' => 'Edit Profile',
+                'dataUser' => $dataUser
+            ]
+        );
+    }
+    public function editProfile(Request $request)
+    {
+        $validate = Validator::make($request->all(), [
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email',
+            'nomor' => 'required|numeric',
+        ]);
+        $validate->validate();
+        $user = User::where('uid', Auth::user()->uid)->first();
+        $user->name = $request->input('name');
+        $user->email = $request->input('email');
+        $user->nomor = $request->input('nomor');
+        if ($request->hasFile('gambar')) {
+            $file = $request->file('gambar');
+            $fileName = $user->uid . '_' . time() . '_' . $file->getClientOriginalName();
+            $file->storeAs('public/user/', $fileName);
+            $user->gambar = $fileName;
+        }
+        // dd($user->name);
+        if ($request->password === null) {
+            $user->save();
+            return redirect()->back()->with('editProfile', 'Profile Berhasil Diubah');
+        } else {
+            $user->password = bcrypt($request->password);
+            $user->save();
+            return redirect()->back()->with('editProfile', 'Profile & Password Berhasil Diubah');
+        }
+
+        // dd($request->password);
     }
 }

@@ -12,15 +12,25 @@ use Illuminate\Support\Facades\Auth;
 
 class SlideController extends Controller
 {
-    public function slide()
+    public function slide($data = null)
     {
-        $slide = Slider::orderBy('sort', 'asc')->get();
-        // dd($slide);
+        try {
+        $query = Slider::select(['id','url', 'gambar'])->orderBy('sort', 'asc');
+
+        if ($data !== null) {
+            $query->where('id', $data);
+        }
+
+        $slide = $query->get();
+
         return response()->json([
-            'title' => 'Landing',
             'slide' => $slide,
-            'slider' => $slide,
-        ]);
+        ], 200);
+    } catch (\Exception $e) {
+        return response()->json([
+            'error' => 'Terjadi kesalahan dalam mengambil data slide.'
+        ], 500); // 500 adalah kode status untuk kesalahan server.
+    }
     }
 
     public function finishMidtrans()

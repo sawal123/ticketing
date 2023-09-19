@@ -37,7 +37,7 @@
                             <tbody>
                                 @foreach ($cart as $key => $carts)
                                     <tr>
-                                        <td>{{$key++}}</td>
+                                        <td>{{$key +=1}}</td>
                                         <td>{{$carts->invoice}}</td>
                                         <td>{{$carts->created_at}}</td>
                                         <td>@foreach ($use as $users)

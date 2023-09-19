@@ -105,6 +105,9 @@
         <script src="{{asset('/assets/switcher/js/switcher.js')}}"></script>
 
 
+        <!-- SHOW PASSWORD JS -->
+    <script src="{{asset('/assets/js/show-password.min.js')}}"></script>
+
          <!-- DATA TABLE JS-->
     <script src="{{asset('/assets/plugins/datatable/js/jquery.dataTables.min.js')}}"></script>
     <script src="{{asset('/assets/plugins/datatable/js/dataTables.bootstrap5.js')}}"></script>

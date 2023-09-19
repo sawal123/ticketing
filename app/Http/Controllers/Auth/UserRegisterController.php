@@ -49,6 +49,8 @@ class UserRegisterController extends Controller
             'role' => User::USER_ROLE,
             'password' => Hash::make($validateUser['password'])
         ]);
+        $success['token'] = $user->createToken('auth_token')->plainTextToken;
+        $success['name'] = $user->name;
         // dd($user);
         return redirect('/login')->with('success', 'Registrasi Berhasil'); 
 
