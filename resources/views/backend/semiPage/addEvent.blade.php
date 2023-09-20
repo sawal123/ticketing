@@ -78,10 +78,10 @@
                                 <div class="col-md-9">
                                     <select class="form-select" aria-label="Default select example" name="status">
                                         {{-- <option selected>Pilih...</option> --}}
-                                        <option value="selesai" {{ $ubahEvent->status == 'selesai' ? 'selected' : '' }}>
-                                            selesai
+                                        <option value="close" {{ $ubahEvent->status == 'selesai' ? 'selected' : '' }}>
+                                            Close
                                         </option>
-                                        <option value="active" {{ $ubahEvent->status == 'active' ? 'selected' : '' }}>active
+                                        <option value="active" {{ $ubahEvent->status == 'active' ? 'selected' : '' }}>Active
                                         </option>
 
                                     </select>

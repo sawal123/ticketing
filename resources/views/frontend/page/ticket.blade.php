@@ -23,7 +23,9 @@
                             <div class="col">
                                 <div class="d-flex justify-content-between pe-lg-4">
                                     <h3>{{ $ticket->event }}</h3>
-                                    <div class="btn btn-secondary">{{ $ticket->status }}</div>
+                                    <div class="btn btn-secondary">@php
+                                        echo $ticket->status === 'active' ? 'Active' : 'Close';
+                                    @endphp</div>
                                 </div>
                                 <p>{{ date('Y-m-d H:i', strtotime($ticket->tanggal)) }}</p>
                                 <p>{{ $ticket->alamat }}</p>
@@ -70,7 +72,7 @@
                                 @csrf
                                 <div class="card-body" style="overflow-y: scroll ;max-height: 300px;">
                                     <input type="hidden" name="eventUid" value="{{ $ticket->uid }}">
-                                    @if (count($list) > 0)
+                                    @if (count($list) > 0 && $ticket->status === 'active')
                                         @foreach ($list as $list)
                                             <div class="card ps-3 my-2">
                                                 <div class="row d-flex align-items-center">

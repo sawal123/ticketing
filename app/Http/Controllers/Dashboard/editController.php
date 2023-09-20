@@ -11,6 +11,7 @@ use App\Models\Event;
 use App\Models\Slider;
 use Illuminate\Auth\Events\Validated;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Validator;
 
 class editController extends Controller
@@ -92,14 +93,27 @@ class editController extends Controller
     }
     public function profile()
     {
+        $final = [];
         //  dd($data);
         $valueUser = [Auth::user()->name, Auth::user()->email, Auth::user()->nomor, Auth::user()->gambar];
         $dataUser = User::where('uid', Auth::user()->uid)->first();
+        $http = Http::get('https://www.emsifa.com/api-wilayah-indonesia/api/provinces.json');
+       if($http->successful()){
+        $provinsi = $http->json();
+        // dd(compact('provinsi'));
+        $com = compact('provinsi');
+       }
+    //    foreach($provinsi as $pro){
+    //     $final[] = $provinsi;
+    //    }
+    //    dd($provinsi);
+
         return view(
             'frontend.page.editProfile',
             [
                 'title' => 'Edit Profile',
-                'dataUser' => $dataUser
+                'dataUser' => $dataUser,
+                'provinsi' => $provinsi
             ]
         );
     }
@@ -109,12 +123,18 @@ class editController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|string|email',
             'nomor' => 'required|numeric',
+            'gender' => 'required|string|max:10',
+            'birthday'=> 'required|string|max:255',
+            'kota'=> 'required|string|max:255'
         ]);
         $validate->validate();
         $user = User::where('uid', Auth::user()->uid)->first();
         $user->name = $request->input('name');
         $user->email = $request->input('email');
         $user->nomor = $request->input('nomor');
+        $user->gender = $request->input('gender');
+        $user->birthday = $request->input('birthday');
+        $user->kota = $request->input('kota');
         if ($request->hasFile('gambar')) {
             $file = $request->file('gambar');
             $fileName = $user->uid . '_' . time() . '_' . $file->getClientOriginalName();

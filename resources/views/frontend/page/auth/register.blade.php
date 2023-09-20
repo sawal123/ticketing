@@ -48,6 +48,18 @@
                             <input class="input100 border-start-0 ms-0 form-control" type="number" name="nomor"
                                 placeholder="No WhatsApp" required>
                         </div>
+                        <div class="wrap-input100 validate-input input-group"
+                            data-bs-validate="Valid email is required: ex@abc.xyz">
+                            <a href="javascript:void(0)" class="input-group-text bg-white text-muted">
+                                <i class="zmdi zmdi-local-wc" aria-hidden="true"></i>
+                            </a>
+                            <select class="form-select" aria-label="Default select example" required name="gender">
+                                <option selected disabled>Choose Gender..</option>
+                                <option value="wanita">Male</option>
+                                <option value="pria">Female</option>
+                                
+                              </select>
+                        </div>
                         <div class="wrap-input100 validate-input input-group" id="Password-toggle">
                             <a href="javascript:void(0)" class="input-group-text bg-white text-muted">
                                 <i class="zmdi zmdi-eye" aria-hidden="true"></i>

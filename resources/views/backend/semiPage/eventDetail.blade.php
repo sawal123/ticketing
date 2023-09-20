@@ -23,6 +23,12 @@
 
         <!-- ROW-1 OPEN -->
         <div class="row">
+
+            @if (session('success'))
+                <div class="alert alert-success">
+                    {{ session('success') }}
+                </div>
+            @endif
             <div class="col-xl-12">
                 <div class="card">
                     <div class="card-body">
@@ -109,10 +115,10 @@
                                                 </div>
                                             @endif
                                             @if (session('deleteHarga'))
-                                            <div class="alert alert-success">
-                                                {{ session('deleteHarga') }}
-                                            </div>
-                                        @endif
+                                                <div class="alert alert-success">
+                                                    {{ session('deleteHarga') }}
+                                                </div>
+                                            @endif
 
                                             @if (session('editHarga'))
                                                 <div class="alert alert-success">

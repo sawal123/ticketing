@@ -33,6 +33,7 @@ class UserRegisterController extends Controller
             'user' => 'required|max:255',
             'email' => 'required|email',
             'nomor' => 'required|numeric',
+            'gender' => 'required|max:10',
             'password' => 'required|min:8',
         ]);
         // dd($validateUser['user']);
@@ -45,6 +46,10 @@ class UserRegisterController extends Controller
             'name' => $validateUser['user'],
             'email' => $validateUser['email'],
             'nomor' => $validateUser['nomor'],
+            'birthday'=> '',
+            'alamat' => '',
+            'kota'=>'',
+            'gender' => $validateUser['gender'],
             'gambar' => '',
             'role' => User::USER_ROLE,
             'password' => Hash::make($validateUser['password'])

@@ -13,7 +13,7 @@ class BarcodeController extends Controller
 {
 
 
-    public function generateBarcode($data)
+    public function generateBarcode(Request $request, $data)
     {
         // $url = url('confir/data/'.$request->barcode);
         // $url = $request->barcode;

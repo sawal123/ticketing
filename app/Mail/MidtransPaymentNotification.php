@@ -39,7 +39,7 @@ class MidtransPaymentNotification extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Kode Barcode Evanto',
+            subject: 'Barcode Verifikasi GOTIK',
         );
     }
 

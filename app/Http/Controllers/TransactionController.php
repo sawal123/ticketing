@@ -101,7 +101,6 @@ class TransactionController extends Controller
         $transaction = Transaction::where('invoice', $order_id)->firstOrFail();
         $carts = Cart::where('invoice', $order_id)->firstOrFail();
         $user = User::where('uid', $carts->user_uid)->firstOrFail();
-        // $event = Event::where('uid', $carts->user_uid)->firstOrFail();
         // Handle notification status midtrans
         if ($status == 'capture') {
             if ($type == 'credit_card') {

@@ -37,7 +37,7 @@ return [
         'smtp' => [
             'transport' => 'smtp',
             'url' => env('MAIL_URL'),
-            'host' => env('MAIL_HOST', 'sandbox.smtp.mailtrap.io'),
+            'host' => env('MAIL_HOST', 'mail.smtp2go.com'),
             'port' => env('MAIL_PORT', 2525),
             'encryption' => env('MAIL_ENCRYPTION', 'null'),
             'username' => env('MAIL_USERNAME'),

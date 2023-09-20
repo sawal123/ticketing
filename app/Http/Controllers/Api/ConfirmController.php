@@ -48,7 +48,8 @@ class ConfirmController extends Controller
 
     public function upKonfirmasi(Request $request,  $data)
     {
-        $req = $request->invoice;
+        $req = $request->konfirmasi;
+        // dd($req);
         if ($data !== null) {
             $cart = Cart::where('invoice', $data)->first();
             if ($cart->konfirmasi === null) {
