@@ -23,7 +23,7 @@ class landingController extends Controller
         $harga = Harga::select('uid', 'harga')->orderBy('harga', 'asc')->get();
         $slide = Slider::all(['*']);
         return view('frontend.page.home', [
-            'title' => 'Home || Beli Tiket',
+            'title' => 'HOME',
             'event' => $event,
             'harga' => $harga,
             'slide' => $slide
@@ -112,4 +112,6 @@ class landingController extends Controller
         $cari = $_GET['cari'];
         return redirect('/search/'.$cari)->withInput();
     }
+
+    
 }

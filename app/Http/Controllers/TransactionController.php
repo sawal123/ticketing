@@ -117,6 +117,7 @@ class TransactionController extends Controller
             $carts->status = 'SUCCESS';
         } else if ($status == 'pending') {
             $transaction->status_transaksi = 'PENDING';
+            $transaction->payment_type = $type;
             $carts->status = 'PENDING';
         } else if ($status == 'deny') {
             $transaction->status_transaksi = 'CANCELLED';
@@ -128,6 +129,7 @@ class TransactionController extends Controller
             $transaction->status_transaksi = 'CANCELLED';
             $carts->status = 'CANCELLED';
         }
+    
 
         // Simpan transaksi
         $transaction->save();

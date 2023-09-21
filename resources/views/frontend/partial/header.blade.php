@@ -4,7 +4,7 @@
             <!-- Brand Logo-->
             <div class="brand-logo">
                 <a href="{{ url('/') }}">
-                    <img src="{{ asset('storage/logo/logo.png') }}" style="width: 60%" alt="" class="light-version-logo">
+                    <img src="{{ asset('storage/logo/'. $logo[0]->logo) }}" style="width: 100%" alt="" class="light-version-logo">
 
                 </a>
             </div>

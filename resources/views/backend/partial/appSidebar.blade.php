@@ -40,6 +40,18 @@
                     <a class="side-menu__item has-link" data-bs-toggle="slide" href="{{ url('/admin/landing') }}"><i
                             class=" side-menu__icon fa fa-windows"></i><span class="side-menu__label">Landing</span></a>
                 </li>
+                <li class="slide">
+                    <a class="side-menu__item has-link" data-bs-toggle="slide" href="{{ url('/admin/user') }}"><i
+                            class=" side-menu__icon fa fa-users"></i><span class="side-menu__label">User</span></a>
+                </li>
+                <li class="slide">
+                    <a class="side-menu__item has-link" data-bs-toggle="slide" href="{{ url('/') }}"><i
+                            class=" side-menu__icon fa fa-google"></i><span class="side-menu__label">Halaman Utama</span></a>
+                </li>
+                <li class="slide">
+                    <a class="side-menu__item has-link" data-bs-toggle="slide" href="{{ url('/logout') }}"><i
+                            class=" side-menu__icon fa fa-power-off"></i><span class="side-menu__label">Log Out</span></a>
+                </li>
             </ul>
             <div class="slide-right" id="slide-right"><svg xmlns="http://www.w3.org/2000/svg" fill="#7b8191"
                     width="24" height="24" viewBox="0 0 24 24">

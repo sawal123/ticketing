@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Dashboard;
 
 use App\Models\Harga;
+use App\Models\Landing;
 use App\Models\Talent;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -98,15 +99,15 @@ class editController extends Controller
         $valueUser = [Auth::user()->name, Auth::user()->email, Auth::user()->nomor, Auth::user()->gambar];
         $dataUser = User::where('uid', Auth::user()->uid)->first();
         $http = Http::get('https://www.emsifa.com/api-wilayah-indonesia/api/provinces.json');
-       if($http->successful()){
-        $provinsi = $http->json();
-        // dd(compact('provinsi'));
-        $com = compact('provinsi');
-       }
-    //    foreach($provinsi as $pro){
-    //     $final[] = $provinsi;
-    //    }
-    //    dd($provinsi);
+        if ($http->successful()) {
+            $provinsi = $http->json();
+            // dd(compact('provinsi'));
+            $com = compact('provinsi');
+        }
+        //    foreach($provinsi as $pro){
+        //     $final[] = $provinsi;
+        //    }
+        //    dd($provinsi);
 
         return view(
             'frontend.page.editProfile',
@@ -124,8 +125,8 @@ class editController extends Controller
             'email' => 'required|string|email',
             'nomor' => 'required|numeric',
             'gender' => 'required|string|max:10',
-            'birthday'=> 'required|string|max:255',
-            'kota'=> 'required|string|max:255'
+            'birthday' => 'required|string|max:255',
+            'kota' => 'required|string|max:255'
         ]);
         $validate->validate();
         $user = User::where('uid', Auth::user()->uid)->first();
@@ -152,5 +153,21 @@ class editController extends Controller
         }
 
         // dd($request->password);
+    }
+
+    public function editLogo(Request $request)
+    {
+        // dd($data);
+        $logo = Landing::where('id', $request->id)->first();
+        // dd($logo);
+        if ($request->hasFile('logo')) {
+            $file = $request->file('logo');
+            $fileName = $logo->id . '_' . time() . '_' . $file->getClientOriginalName();
+            $file->storeAs('public/logo/', $fileName);
+            $logo->logo = $fileName;
+        }
+        $logo->save();
+        return redirect()->back()->with('editLogo', 'Logo Berhasil Diubah');
+        //    $logo->logo = $request->logo;
     }
 }

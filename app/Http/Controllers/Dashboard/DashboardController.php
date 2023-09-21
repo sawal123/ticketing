@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Dashboard;
 use App\Models\Event;
 use App\Models\Harga;
 use App\Models\HargaCart;
+use App\Models\Landing;
 use App\Models\Talent;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
@@ -83,11 +84,13 @@ class DashboardController extends Controller
     public function landing(Request $request)
     {
         $slide = Slider::orderBy('sort', 'asc')->get();
-
+        $logo = Landing::all();
+// dd($logo[0]->logo);
         return view('backend.content.landing', [
             'title' => 'Landing',
             'slide' => $slide,
             'slider' => $slide,
+            'logo' => $logo
         ]);
     }
     public function transaksi()

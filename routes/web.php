@@ -98,10 +98,13 @@ Route::prefix('admin')
         Route::post('/addSlide', [addController::class, 'addSlide']);
 
         // ROUTE EDIT
+        // Route::get('/updateLogo/{data}', [editController::class, 'updateLogo']);
         Route::post('/editTalent', [editController::class, 'editTalent']);
         Route::post('/editEvent', [editController::class, 'editEvent']);
         Route::post('/editHarga', [editController::class, 'editHarga']);
         Route::post('/editSlide', [editController::class, 'editSlide']);
+        Route::post('/editLogo', [editController::class, 'editLogo']);
+        
 
         // ROUTE DELETE
         Route::get('/delete/{id}', [DeleteController::class, 'deleteTalent']);

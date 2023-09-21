@@ -18,7 +18,7 @@
                     </div>
                     <div class="col-12 col-lg-8">
                         @if (session('success'))
-                            <div class="alert alert-success">
+                            <div class="alert alert-primary">
                                 {{ session('success') }}
                             </div>
                         @endif
@@ -53,7 +53,7 @@
                             </div>
                         </div>
 
-                 
+
 
                         <div class="card mb-2">
                             <h5 class="card-header">Payment Detail</h5>
@@ -82,7 +82,7 @@
                                                 {{ number_format($total += $event->fee, 0, ',', '.') }}
                                             </h6>
                                         </div>
-                                        @if ($cart->status === 'UNPAID')
+                                        @if ($cart->status === 'UNPAID' || $cart->status === 'PENDING')
                                             <form action="{{ url('/paynow') }}" method="post"
                                                 enctype="multipart/form-data">
                                                 @csrf
@@ -90,8 +90,14 @@
                                                 <input type="hidden" name="person" value="{{ Auth::user()->uid }}">
                                                 <input type="hidden" name="event" value="{{ $uid }}">
                                                 <input type="hidden" value="{{ $total }}" name="amount">
-                                                <button type="submit" class="btn btn-primary w-100 mt-3">Bayar
-                                                    Sekarang</button>
+
+                                                @if ($cart->status === 'UNPAID')
+                                                    <button type="submit" class="btn btn-primary w-100 mt-3">Bayar
+                                                        Sekarang</button>
+                                                @else
+                                                    <button type="submit" class="btn btn-primary w-100 mt-3">Lanjutkan
+                                                        Pembayaran</button>
+                                                @endif
                                             </form>
                                         @else
                                             <button type="submit"

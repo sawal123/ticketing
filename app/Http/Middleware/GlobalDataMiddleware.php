@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\Landing;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -18,11 +19,15 @@ class GlobalDataMiddleware
     {
         $user = Auth::user();
         $csrfToken = csrf_token();
+        $logo = Landing::all();
+        // dd($logo);
+
         view()->share([
             
             'user'=> $user,
            'csrfToken' => $csrfToken,
-           'cari'=> null
+           'cari'=> null,
+           'logo' => $logo
         ]);
         return $next($request);
     }
