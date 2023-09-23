@@ -95,8 +95,8 @@
                                                     <button type="submit" class="btn btn-primary w-100 mt-3">Bayar
                                                         Sekarang</button>
                                                 @else
-                                                    <button type="submit" class="btn btn-primary w-100 mt-3">Lanjutkan
-                                                        Pembayaran</button>
+                                                    <a href="{{$cart->link}}" class="btn btn-primary w-100 mt-3">Lanjutkan
+                                                        Pembayaran</a>
                                                 @endif
                                             </form>
                                         @else

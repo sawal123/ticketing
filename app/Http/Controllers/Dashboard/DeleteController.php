@@ -10,6 +10,7 @@ use App\Models\Event;
 use App\Models\Harga;
 use App\Models\HargaCart;
 use App\Models\Slider;
+use App\Models\Term;
 
 class DeleteController extends Controller
 {
@@ -45,5 +46,11 @@ class DeleteController extends Controller
         $harga=Harga::where('id', $uid)->first();
         $harga->delete();
         return redirect()->back()->with('deleteHarga', 'Harga Berhasil Dihapus');
+    }
+
+    public function deleteTerm($uid){
+$term = Term::where('uid', $uid)->first();
+$term->delete();
+return redirect()->back()->with('deleteTerm', 'Term Berhasil Dihapus');
     }
 }

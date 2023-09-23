@@ -7,6 +7,8 @@ use App\Models\Event;
 use App\Models\Harga;
 use App\Models\Slider;
 use App\Models\Talent;
+use App\Models\Term;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -21,6 +23,17 @@ class addController extends Controller
 
     public function addEvent(Request $request): RedirectResponse
     {
+        $validate = Validator::make($request->all(), [
+            'event' => 'required|string|max:255',
+            'fee' => 'required|numeric',
+            'alamat' => 'required|string|max:255',
+            'tanggal' => 'required|string',
+            'map' => 'required|string|max:255',
+            'deskripsi' => 'required|string|max:255',
+           
+        ]);
+        $validate->validate();
+
         $uid = Str::random();
         // dd($uid);
 
@@ -31,6 +44,7 @@ class addController extends Controller
             'alamat' => $request->alamat,
             'tanggal' =>  $request->tanggal,
             'status' => 'active',
+            'fee' => $request->fee,
             'deskripsi' => $request->deskripsi,
             'map' => $request->map,
             'slug' => Str::slug($request->event)
@@ -41,18 +55,17 @@ class addController extends Controller
             $file->storeAs('public/cover/', $fileName); // Simpan di direktori 'public/outlet/'
             $event['cover'] = $fileName; // Simpan nama file gambar di kolom 'gambar' pada tabel
         }
+        // dd($event);
 
-        // try {
-            // DB::beginTransaction();
+        try {
+            DB::beginTransaction();
             $event->save();
-            // $talent->save();
-            // $harga->save();
-            // DB::commit();
+            DB::commit();
             return redirect('admin/event/eventDetail/'.$uid)->with('addEvent', 'Event Berhasil Disimpan..');
-        // } catch (\Exception $e) {
-        //     DB::rollback();
-        //     return redirect()->back()->with('error', 'Event Gagal. Silakan coba lagi.');
-        // }
+        } catch (\Exception $e) {
+            DB::rollback();
+            return redirect()->back()->with('error', 'Tambah Event Gagal. Silahkan coba lagi.');
+        }
     }
     public function addTalent(Request $request)
     {
@@ -86,16 +99,13 @@ class addController extends Controller
     public function addSlide(Request $request){
         
         $slide = Slider::orderBy('sort', 'desc')->first();
-        // dd($slide->sort);
         if($slide === null){
             $angka = 1;
         }
         else{
             $angka = $slide->sort + 1;
-            // dd($angka);
         }
        
-        
         $slider = new Slider([
             'uid' => Str::random(10),
             'sort' => $angka,
@@ -110,5 +120,19 @@ class addController extends Controller
         }
         $slider->save();
         return redirect()->back()->with('addSlide', 'Slide Berhasil Ditambah..');
+    }
+
+    public function addTerm(Request $request){
+        $uid = Str::random(10);
+        $title = $request->title;
+        $des = $request->term;
+        $term = new Term();
+        $term->uid = $uid;
+        $term->title = $title;
+        $term->term = $des;
+        $term->save();
+        return redirect()->back()->with('addTerm', 'Syarat dan Ketentuan Berhasil Ditambah..');
+
+
     }
 }

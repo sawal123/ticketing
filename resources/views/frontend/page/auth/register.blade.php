@@ -8,8 +8,8 @@
             <!-- CONTAINER OPEN -->
             <div class="col col-login mx-auto mt-7">
                 <div class="text-center">
-                    <a href="index.html"><img src="../assets/images/brand/logo-white.png" class="header-brand-img m-0"
-                            alt=""></a>
+                    <a href="{{url('/')}}"><img src="{{ asset('storage/logo/'. $logo[0]->logo) }}"  height="100"  class="header-brand-img"
+                        alt=""></a>
                 </div>
             </div>
             <div class="container-login100">
@@ -24,32 +24,35 @@
                                 {{ session('error') }}
                             </div>
                         @endif
-                        <div class="wrap-input100 validate-input input-group"
-                            data-bs-validate="Valid email is required: ex@abc.xyz">
+                        <div class="wrap-input100 validate-input input-group">
                             <a href="javascript:void(0)" class="input-group-text bg-white text-muted">
                                 <i class="mdi mdi-account" aria-hidden="true"></i>
                             </a>
                             <input class="input100 border-start-0 ms-0 form-control" type="text" name="user"
                                 placeholder="User name">
                         </div>
-                        <div class="wrap-input100 validate-input input-group"
-                            data-bs-validate="Valid email is required: ex@abc.xyz">
+                        <div class="wrap-input100 validate-input input-group">
                             <a href="javascript:void(0)" class="input-group-text bg-white text-muted">
                                 <i class="zmdi zmdi-email" aria-hidden="true"></i>
                             </a>
                             <input class="input100 border-start-0 ms-0 form-control" type="email" name="email"
                                 placeholder="Email" required>
                         </div>
-                        <div class="wrap-input100 validate-input input-group"
-                            data-bs-validate="Valid email is required: ex@abc.xyz">
+                        <div class="wrap-input100 validate-input input-group">
                             <a href="javascript:void(0)" class="input-group-text bg-white text-muted">
                                 <i class="zmdi zmdi-whatsapp" aria-hidden="true"></i>
                             </a>
                             <input class="input100 border-start-0 ms-0 form-control" type="number" name="nomor"
                                 placeholder="No WhatsApp" required>
                         </div>
-                        <div class="wrap-input100 validate-input input-group"
-                            data-bs-validate="Valid email is required: ex@abc.xyz">
+                        <div class="wrap-input100 validate-input input-group">
+                            <a href="javascript:void(0)" class="input-group-text bg-white text-muted">
+                                <i class="mdi mdi-calendar" aria-hidden="true"></i>
+                            </a>
+                            <input class="input100 border-start-0 ms-0 form-control" type="date" name="birthday"
+                                placeholder="birthday..">
+                        </div>
+                        <div class="wrap-input100 validate-input input-group">
                             <a href="javascript:void(0)" class="input-group-text bg-white text-muted">
                                 <i class="zmdi zmdi-local-wc" aria-hidden="true"></i>
                             </a>
@@ -57,8 +60,25 @@
                                 <option selected disabled>Choose Gender..</option>
                                 <option value="wanita">Male</option>
                                 <option value="pria">Female</option>
-                                
-                              </select>
+                            </select>
+                        </div>
+                        <div class="wrap-input100 validate-input input-group">
+                            <a href="javascript:void(0)" class="input-group-text bg-white text-muted">
+                                <i class="zmdi zmdi-city" aria-hidden="true"></i>
+                            </a>
+                            <select class="form-select" aria-label="Default select example" required name="kota">
+                                <option selected disabled>Choose City..</option>
+                                @foreach ($provinsi as $provinsi)
+                                    <option value="{{ $provinsi['name'] }}">{{ $provinsi['name'] }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="wrap-input100 validate-input input-group">
+                            <a href="javascript:void(0)" class="input-group-text bg-white text-muted">
+                                <i class="mdi mdi-city" aria-hidden="true"></i>
+                            </a>
+                            <input class="input100 border-start-0 ms-0 form-control" type="text" name="alamat"
+                                placeholder="Address..">
                         </div>
                         <div class="wrap-input100 validate-input input-group" id="Password-toggle">
                             <a href="javascript:void(0)" class="input-group-text bg-white text-muted">

@@ -69,7 +69,8 @@ class TransactionController extends Controller
         try {
             // Ambil halaman payment midtrans
             $paymentUrl = Snap::createTransaction($midtrans)->redirect_url;
-
+            $cart->link = $paymentUrl.'#';
+            $cart->save();
             // Redirect ke halaman midtrans
             return redirect($paymentUrl);
         } catch (Exception $e) {
@@ -118,6 +119,7 @@ class TransactionController extends Controller
         } else if ($status == 'pending') {
             $transaction->status_transaksi = 'PENDING';
             $transaction->payment_type = $type;
+            $carts->link = $carts->link.'/'.$type;
             $carts->status = 'PENDING';
         } else if ($status == 'deny') {
             $transaction->status_transaksi = 'CANCELLED';
@@ -129,7 +131,7 @@ class TransactionController extends Controller
             $transaction->status_transaksi = 'CANCELLED';
             $carts->status = 'CANCELLED';
         }
-    
+
 
         // Simpan transaksi
         $transaction->save();

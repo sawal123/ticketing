@@ -21,7 +21,6 @@
             width: 80px !important;
             height: 40px !important;
             border-radius: 0px !important;
-            /* padding: 15px 35px !important; */
         }
     </style>
 
@@ -41,7 +40,7 @@
     <link rel="stylesheet" href="{{ asset('landing/css/app.min.css') }}" />
 </head>
 
-<body class="light">
+<body class="dark" style="background-color:  @if(Request::is('/')) #13111A @endif">
 
 
 
@@ -49,6 +48,7 @@
     <!--End landex-header-section -->
 
     @yield('content')
+    
     <div class="fugu-preloader">
         <div class="fugu-spinner">
             <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
@@ -58,6 +58,10 @@
         <div class="fugu-title">loading...</div>
     </div>
 
+    
+
+
+    @include('frontend.partial.footer')
     <!-- scripts -->
     <script src="{{ asset('landing/js/jquery-3.6.0.min.js') }}"></script>
     {{-- <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" integrity="sha512-894YE6QWD5I59HgZOGReFYm4dnWc1Qt5NtvYSaNcOP+u1T9qYdvdihz0PPSiiqn/+/3e7Jo4EaG7TubfWGUrMQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script> --}}

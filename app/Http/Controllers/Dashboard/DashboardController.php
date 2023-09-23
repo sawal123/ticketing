@@ -7,6 +7,7 @@ use App\Models\Harga;
 use App\Models\HargaCart;
 use App\Models\Landing;
 use App\Models\Talent;
+use App\Models\Term;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use App\Models\Cart;
@@ -15,6 +16,8 @@ use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Pagination\Paginator;
+use Illuminate\View\View;
 
 class DashboardController extends Controller
 {
@@ -41,13 +44,14 @@ class DashboardController extends Controller
     public function event($addEvent = null, $uid = null)
     {
         error_reporting(0);
-        $event = Event::where('user_uid', Auth::user()->uid)->get();
-        // dd($event);
-        // dd($addEvent);
+        $event = Event::all();
         if ($addEvent === null) {
+            $pagination = Event::paginate(12);
+            // dd($pagination);
             return view('backend.content.event', [
                 'title' => 'Event',
-                'event' => $event
+                'event' => $event,
+                'paginate' =>$pagination
             ]);
         } elseif ($addEvent === 'addEvent') {
 
@@ -85,12 +89,14 @@ class DashboardController extends Controller
     {
         $slide = Slider::orderBy('sort', 'asc')->get();
         $logo = Landing::all();
+        $term = Term::all();
 // dd($logo[0]->logo);
         return view('backend.content.landing', [
             'title' => 'Landing',
             'slide' => $slide,
             'slider' => $slide,
-            'logo' => $logo
+            'logo' => $logo,
+            'term' => $term
         ]);
     }
     public function transaksi()

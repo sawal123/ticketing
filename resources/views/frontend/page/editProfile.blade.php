@@ -45,7 +45,8 @@
                                         <input class="form-control mb-2" type="number" name="nomor"
                                             value="{{ $dataUser->nomor }}" placeholder="Number ... "
                                             aria-label="default input example">
-                                        <select class="form-select mb-2" style="height: 40px !important ; padding-left: 30px"
+                                        <select class="form-select mb-2"
+                                            style="height: 40px !important ; padding-left: 30px"
                                             aria-label="Default select example" required name="gender">
                                             <option selected disabled>Choose Gender..</option>
                                             <option value="wanita" @if ($dataUser->gender === 'wanita') @selected(true) @endif>
@@ -62,9 +63,9 @@
                                                     @if ($dataUser->kota === $provinsis['name']) @selected(true) @endif>
                                                     {{ $provinsis['name'] }}</option>
                                             @endforeach
-
-
                                         </select>
+                                        <input class=" form-control mb-2" type="text" value="{{ $dataUser->alamat }}"
+                                            name="alamat" placeholder="Address..">
                                         <input class="form-control mb-2" type="date" name="birthday"
                                             value="{{ $dataUser->birthday }}" placeholder="birthday ... "
                                             aria-label="default input example">
@@ -74,9 +75,7 @@
                                             <button class="btn btn-primary w-100">
                                                 Edit
                                             </button>
-                                            {{-- <button class="btn btn-primary">
-                                                Edit
-                                            </button> --}}
+                                           
                                         </div>
 
                                     </div>

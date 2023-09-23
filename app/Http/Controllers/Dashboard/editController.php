@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use App\Models\Event;
 use App\Models\Slider;
+use App\Models\Term;
 use Illuminate\Auth\Events\Validated;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
@@ -101,13 +102,9 @@ class editController extends Controller
         $http = Http::get('https://www.emsifa.com/api-wilayah-indonesia/api/provinces.json');
         if ($http->successful()) {
             $provinsi = $http->json();
-            // dd(compact('provinsi'));
             $com = compact('provinsi');
         }
-        //    foreach($provinsi as $pro){
-        //     $final[] = $provinsi;
-        //    }
-        //    dd($provinsi);
+       
 
         return view(
             'frontend.page.editProfile',
@@ -126,7 +123,8 @@ class editController extends Controller
             'nomor' => 'required|numeric',
             'gender' => 'required|string|max:10',
             'birthday' => 'required|string|max:255',
-            'kota' => 'required|string|max:255'
+            'kota' => 'required|string|max:255',
+            'alamat' => 'required|string|max:255'
         ]);
         $validate->validate();
         $user = User::where('uid', Auth::user()->uid)->first();
@@ -136,6 +134,7 @@ class editController extends Controller
         $user->gender = $request->input('gender');
         $user->birthday = $request->input('birthday');
         $user->kota = $request->input('kota');
+        $user->alamat = $request->input('alamat');
         if ($request->hasFile('gambar')) {
             $file = $request->file('gambar');
             $fileName = $user->uid . '_' . time() . '_' . $file->getClientOriginalName();
@@ -169,5 +168,14 @@ class editController extends Controller
         $logo->save();
         return redirect()->back()->with('editLogo', 'Logo Berhasil Diubah');
         //    $logo->logo = $request->logo;
+    }
+    public function editTerm(Request $request){
+        $term = Term::where('uid', $request->uid)->first();
+
+        $term->title = $request->title;
+        $term->term = $request->term;
+        $term->save();
+
+        return redirect()->back()->with('editTerm', 'Term Berhasil Diubah');
     }
 }

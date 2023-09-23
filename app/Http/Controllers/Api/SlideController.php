@@ -42,7 +42,11 @@ class SlideController extends Controller
         $cart = Cart::where('invoice', $invoice)->first();
         // dd($cart);
         // dd(Auth::user()->email);
+        if($cart->user_uid === null){
+            return redirect()->back();
+        }
         $user = User::where('uid', $cart->user_uid)->first();
+        
 
         if ($cart == null) {
             return redirect('/');

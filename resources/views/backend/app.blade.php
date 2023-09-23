@@ -124,6 +124,16 @@
                 modal.find('#urlSlide').val(url)
                 $('#sortSelect').val(sort);
             })
+            $(document).on("show.bs.modal", "#updateTerm", function(e){
+                var tombol =$(e.relatedTarget);
+                var uid = tombol.data('uid');
+                var title = tombol.data('title');
+                var term = tombol.data('term');
+                var modal = $(this);
+                modal.find('#termUid').val(uid)
+                modal.find('#termTitle').val(title)
+                modal.find('#termTerm').text(term)
+            })
 
 
             $(document).ready(function() {
@@ -149,17 +159,7 @@
 
             
         </script>
-        {{-- @if ($msg = Session::get('success'))
-        <script>
-            Swal.fire({
-                icon: 'success',
-                title: 'Horeee!!!',
-                text: '{{ $msg }}',
-                timer: 3000,
-                showConfirmButton: false
-            })
-        </script> --}}
-    {{-- @endif --}}
+      
 </body>
 
 </html>

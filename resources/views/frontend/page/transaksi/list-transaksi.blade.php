@@ -87,8 +87,13 @@
                                     <p class="m-0">Status</p>
                                     <h6 class="m-0">{{ $transaksi->status }}</h6>
                                 </div>
-                                <div class="d-flex align-items-center">
-                                    <button class="btn btn-primary w-100 mt-2">Detail</button>
+                                <div class="align-items-center">
+                                    <a href="{{ url('/detail-ticket/' . $transaksi->uid . '/' . Auth::user()->uid) }}"
+                                        class="btn btn-primary w-100 mb-2 mt-1">Detail</a>
+                                    @if ($transaksi->status === 'UNPAID')
+                                        <a href="{{ url('/detail-ticket/delete/' . $transaksi->uid . '/' . Auth::user()->uid) }}"
+                                            class="btn btn-danger delete w-100">Delete</a>
+                                    @endif
                                 </div>
                             </div>
                         </div>

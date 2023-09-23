@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Cart;
+use App\Models\Term;
 use App\Models\User;
 use App\Models\Event;
 use App\Models\Harga;
@@ -84,7 +85,7 @@ class landingController extends Controller
     public function search($search = null)
     {
         // $search = $request->search;
-       
+
         if ($search) {
             $event = Event::where('event', 'LIKE', "%$search%")
                 ->orWhere('alamat', 'LIKE', "%$search%")->orWhere('slug', 'LIKE', "%$search%")
@@ -92,7 +93,7 @@ class landingController extends Controller
                     $query->where('talent', 'LIKE', "%$search%");
                 })
                 ->get();
-                // return redirect('/search/'. $event);
+            // return redirect('/search/'. $event);
         } else {
             $event = Event::all(['*']);
         }
@@ -108,10 +109,18 @@ class landingController extends Controller
             ]
         );
     }
-    public function cari(){
+    public function cari()
+    {
         $cari = $_GET['cari'];
-        return redirect('/search/'.$cari)->withInput();
+        return redirect('/search/' . $cari)->withInput();
     }
 
-    
+    public function term()
+    {
+        $term = Term::all();
+        return view('frontend.page.term', [
+            'title' => 'Term and Condition',
+            'term'=> $term
+        ]);
+    }
 }

@@ -5,7 +5,13 @@
 
         <!-- PAGE-HEADER -->
         <div class="page-header">
-            <a href="{{ url('/admin/event') }}" class="btn btn-primary"><i class="fa fa-arrow-left"></i> Kembali</a>
+            @if (request()->is('admin/event/addEvent'))
+                <a href="{{ url('/admin/event/' . $ubahEvent->uid) }}" class="btn btn-primary"><i class="fa fa-arrow-left"></i>
+                    Kembali</a>
+            @else
+                <a href="{{ url('/admin/event/eventDetail/' . $ubahEvent->uid) }}" class="btn btn-primary"><i
+                        class="fa fa-arrow-left"></i> Kembali</a>
+            @endif
 
             @if (request()->is('admin/event/addEvent') === true)
                 <h1 class="page-title">Tambah Event</h1>
@@ -15,13 +21,17 @@
             <div>
                 <ol class="breadcrumb">
                     <li class="breadcrumb-item"><a href="javascript:void(0)">Tiket / Event</a></li>
-                    <li class="breadcrumb-item active" aria-current="page">
-                        @if (request()->is('admin/event/addEvent') === true)
+
+                    @if (request()->is('admin/event/addEvent') === true)
+                        <li class="breadcrumb-item active" aria-current="page">
                             Add Event
-                        @else
-                            Ubah Event
-                        @endif
-                    </li>
+                        </li>
+                    @else
+                        <li class="breadcrumb-item active" aria-current="page">
+                            Edit Event
+                        </li>
+                    @endif
+
                 </ol>
             </div>
         </div>
@@ -43,7 +53,7 @@
             <div class="col-lg-12">
                 <div class="card">
                     <div class="card-header">
-                        @if (request()->is('/admin/event/addEvent'))
+                        @if (request()->is('admin/event/addEvent') === true)
                             <div class="card-title">Add New Event</div>
                         @else
                             <div class="card-title">Ubah Event</div>
@@ -67,9 +77,17 @@
                             </div>
                         </div>
                         <div class="row mb-4">
+                            <label class="col-md-3 form-label">Biaya Layanan :</label>
+                            <div class="col-md-9">
+                                <input type="number" value="{{ $ubahEvent->fee }}" name="fee" class="form-control"
+                                    required>
+                            </div>
+                        </div>
+                        <div class="row mb-4">
                             <label class="col-md-3 form-label">Alamat :</label>
                             <div class="col-md-9">
-                                <input type="text" value="{{ $ubahEvent->alamat }}" name="alamat" class="form-control" required>
+                                <input type="text" value="{{ $ubahEvent->alamat }}" name="alamat" class="form-control"
+                                    required>
                             </div>
                         </div>
                         @if (request()->is('admin/event/addEvent') === false)
@@ -81,7 +99,8 @@
                                         <option value="close" {{ $ubahEvent->status == 'selesai' ? 'selected' : '' }}>
                                             Close
                                         </option>
-                                        <option value="active" {{ $ubahEvent->status == 'active' ? 'selected' : '' }}>Active
+                                        <option value="active" {{ $ubahEvent->status == 'active' ? 'selected' : '' }}>
+                                            Active
                                         </option>
 
                                     </select>
@@ -99,13 +118,14 @@
                         <div class="row mb-4">
                             <label class="col-md-3 form-label">Link Map :</label>
                             <div class="col-md-9">
-                                <input type="text" value="{{ $ubahEvent->map }}" name="map" class="form-control" required>
+                                <input type="text" value="{{ $ubahEvent->map }}" name="map" class="form-control"
+                                    required>
                             </div>
                         </div>
                         <div class="row mb-4">
                             <label class="col-md-3 form-label">Cover Thumbnail :</label>
                             <div class="col-md-9">
-                                <input type="file" name="cover" class="form-control" >
+                                <input type="file" name="cover" class="form-control">
                             </div>
                         </div>
 
@@ -117,9 +137,7 @@
                                     <textarea id="summernote" name="deskripsi" required>
                                         {{ $ubahEvent->deskripsi }}
                                         </textarea>
-                                    {{-- <textarea class="form-control" name="deskripsi" placeholder="Leave a comment here" id="floatingTextarea2"
-                                        style="height: 100px">{{ $ubahEvent->deskripsi }}</textarea>
-                                    <label for="floatingTextarea2">Deskripsi</label> --}}
+
                                 </div>
                             </div>
                         </div>

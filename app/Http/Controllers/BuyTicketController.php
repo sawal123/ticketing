@@ -62,22 +62,17 @@ class BuyTicketController extends Controller
             $kategoriValue[] = $request->input('kategori' . $i);
             $orderByInput[] = $request->input('orderBy' . $i);
         }
-        
         $ticketValue = array_filter($ticketValue);
         $hargaValue = array_filter($hargaValue);
         $kategoriValue = array_filter($kategoriValue);
         $orderByInput = array_filter($orderByInput);
-
-
         if ($ticketValue == [] || $hargaValue == [] ||  $kategoriValue == []) {
             return redirect()->back()->with('error', 'Harap pilih ticket anda!');
         } else {
-
             $event = Event::where('uid', $request->eventUid)->first();
             $carts = Cart::where('event_uid', $event->uid)->where('user_uid', Auth::user()->uid)->first();
         }
 
-// dd($carts->status);
         if ($carts->status === 'UNPAID') {
             $hargaCart = HargaCart::where('uid', $carts->uid)->orderBy('orderBy')->get();
             $hargaArray = [];

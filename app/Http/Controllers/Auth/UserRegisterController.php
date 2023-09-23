@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Models\User;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
@@ -18,8 +19,13 @@ class UserRegisterController extends Controller
         return redirect('/');
        }
        else{
+        $http = Http::get('https://www.emsifa.com/api-wilayah-indonesia/api/provinces.json');
+        if ($http->successful()) {
+            $provinsi = $http->json();
+        }
         return view('frontend.page.auth.register', [
             'title' => 'Register',
+            'provinsi' =>$provinsi
         ]);
     }
        }
@@ -33,7 +39,10 @@ class UserRegisterController extends Controller
             'user' => 'required|max:255',
             'email' => 'required|email',
             'nomor' => 'required|numeric',
+            'birthday'=> 'required|max:255',
             'gender' => 'required|max:10',
+            'kota'=> 'required|max:100',
+            'alamat'=> 'required|max:255',
             'password' => 'required|min:8',
         ]);
         // dd($validateUser['user']);
@@ -46,9 +55,9 @@ class UserRegisterController extends Controller
             'name' => $validateUser['user'],
             'email' => $validateUser['email'],
             'nomor' => $validateUser['nomor'],
-            'birthday'=> '',
-            'alamat' => '',
-            'kota'=>'',
+            'birthday'=> $validateUser['birthday'],
+            'alamat' => $validateUser['alamat'],
+            'kota'=>$validateUser['kota'],
             'gender' => $validateUser['gender'],
             'gambar' => '',
             'role' => User::USER_ROLE,

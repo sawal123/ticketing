@@ -8,8 +8,8 @@
             <!-- CONTAINER OPEN -->
             <div class="col col-login mx-auto mt-7">
                 <div class="text-center">
-                    <a href="index.html"><img src="../assets/images/brand/logo-white.png" class="header-brand-img"
-                            alt=""></a>
+                    <a href="{{url('/')}}"><img src="{{ asset('storage/logo/'. $logo[0]->logo) }}"  height="100"  class="header-brand-img"
+                        alt=""></a>
                 </div>
             </div>
 

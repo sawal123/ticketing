@@ -49,6 +49,7 @@ Route::post('/loginUser', [UserLoginController::class, 'loginUser']);
 // Route::get('/postEvent/{search?}', [landingController::class, 'cari']);
 Route::get('/search/{cari?}/', [landingController::class, 'search']);
 Route::get('/cari', [landingController::class, 'cari']);
+Route::get('/term', [landingController::class, 'term']);
 
 
 
@@ -87,6 +88,7 @@ Route::prefix('admin')
         Route::get('/landing', [DashboardController::class, 'landing']);
         Route::get('/transaksi', [DashboardController::class, 'transaksi']);
         Route::get('/ubahEvents/{uid}', [DashboardController::class, 'ubahEvents']);
+        
 
         Route::get('/event', [DashboardController::class, 'event']);
         Route::get('/event/{addEvent?}/{uid?}', [DashboardController::class, 'event']);
@@ -96,6 +98,7 @@ Route::prefix('admin')
         Route::post('/addTalent', [addController::class, 'addTalent']);
         Route::post('/addHarga', [addController::class, 'addHarga']);
         Route::post('/addSlide', [addController::class, 'addSlide']);
+        Route::post('/addTerm', [addController::class, 'addTerm']);
 
         // ROUTE EDIT
         // Route::get('/updateLogo/{data}', [editController::class, 'updateLogo']);
@@ -104,6 +107,7 @@ Route::prefix('admin')
         Route::post('/editHarga', [editController::class, 'editHarga']);
         Route::post('/editSlide', [editController::class, 'editSlide']);
         Route::post('/editLogo', [editController::class, 'editLogo']);
+        Route::post('/editTerm', [editController::class, 'editTerm']);
         
 
         // ROUTE DELETE
@@ -111,6 +115,7 @@ Route::prefix('admin')
         Route::get('/landing/delete/{uid}', [DeleteController::class, 'deleteSlide']);
         Route::get('/events/delete/{uid}', [DeleteController::class, 'deleteEvent']);
         Route::get('/hargas/delete/{id}', [DeleteController::class, 'deleteHarga']);
+        Route::get('/term/delete/{id}', [DeleteController::class, 'deleteTerm']);
     });
     
     
