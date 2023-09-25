@@ -31,6 +31,9 @@
                                     <p class="m-0">Qty</p>
                                     <p class="m-0">Total</p>
                                 </div>
+                                @php
+                                    $fee = 0;
+                                @endphp
                                 @foreach ($harga as $harga)
                                     <div class="row">
                                         <div class="col d-flex justify-content-between align-items-center">
@@ -38,6 +41,9 @@
                                                 <p class="m-0" style="font-size: 11px">{{ $harga->kategori_harga }}</p>
                                                 <h6>Rp {{ number_format($harga->harga_ticket, 0, ',', '.') }} x
                                                     {{ $harga->quantity }}</h6>
+                                                    @php
+                                                        $fee  += $harga->quantity;
+                                                    @endphp
                                             </div>
                                             <h6>
                                                 @php
@@ -50,6 +56,9 @@
                                     </div>
                                     <hr>
                                 @endforeach
+                                @php
+                                    echo $fee;
+                                @endphp
                             </div>
                         </div>
 
@@ -72,7 +81,7 @@
                                             <p class="text-start m-0" style="font-size: 14px; font-weight: bold">Layanan
                                                 Fee</p>
                                             <h6 class="text-end m-0" style="font-size: 16px; font-weight: bold">
-                                                Rp {{ number_format($event->fee, 0, ',', '.') }}
+                                                Rp {{ number_format($event->fee * $fee  , 0, ',', '.') }}
                                             </h6>
                                         </div>
                                         <hr>

@@ -6,6 +6,8 @@ use DNS2D;
 use Milon\Barcode\DNS1D;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
+use App\Models\Cart;
+use App\Models\Event;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 
@@ -18,13 +20,16 @@ class BarcodeController extends Controller
         // $url = url('confir/data/'.$request->barcode);
         // $url = $request->barcode;
         $url = $data;
-        $barcodeData =  QrCode::size(400)->generate($url) ;
+        $cart = Cart::where('invoice', $url)->first();
+        $event = Event::where('uid', $cart->event_uid)->first();
+        $barcodeData =  QrCode::size(250)->generate($url) ;
 
         // Menampilkan tampilan dengan barcode
         return view('barcode', 
         [
             'barcodeData' => $barcodeData,
-            'invoice' => $url
+            'invoice' => $url,
+            'event'=> $event
         ]);
     }
 }

@@ -18,6 +18,7 @@ use App\Http\Controllers\Dashboard\editController;
 use App\Http\Controllers\Dashboard\DeleteController;
 use App\Http\Controllers\Auth\UserRegisterController;
 use App\Http\Controllers\Dashboard\DashboardController;
+use App\Http\Controllers\Penyewa\PenyewaController;
 
 /*
 |--------------------------------------------------------------------------
@@ -80,6 +81,15 @@ Route::middleware(['auth'])->group(function () {
     });
 });
 
+Route::get('/dashboard/login', [PenyewaController::class, 'login']);
+Route::get('/dashboard/login/cekLogin', [PenyewaController::class, 'login']);
+
+Route::prefix('penyewa')
+->middleware(['auth', 'penyewa'])
+->group(function(){
+    Route::get('/', [PenyewaController::class, 'indx']);
+});
+
 Route::prefix('admin')
     ->namespace('Dashboard')
     ->middleware(['auth', 'admin'])
@@ -87,6 +97,8 @@ Route::prefix('admin')
         Route::get('/', [DashboardController::class, 'dashboard']);
         Route::get('/landing', [DashboardController::class, 'landing']);
         Route::get('/transaksi', [DashboardController::class, 'transaksi']);
+        Route::get('/user/{data?}', [DashboardController::class, 'user']);
+
         Route::get('/ubahEvents/{uid}', [DashboardController::class, 'ubahEvents']);
         
 
@@ -99,6 +111,7 @@ Route::prefix('admin')
         Route::post('/addHarga', [addController::class, 'addHarga']);
         Route::post('/addSlide', [addController::class, 'addSlide']);
         Route::post('/addTerm', [addController::class, 'addTerm']);
+        Route::post('/addAdmin', [addController::class, 'addAdmin']);
 
         // ROUTE EDIT
         // Route::get('/updateLogo/{data}', [editController::class, 'updateLogo']);
@@ -108,6 +121,7 @@ Route::prefix('admin')
         Route::post('/editSlide', [editController::class, 'editSlide']);
         Route::post('/editLogo', [editController::class, 'editLogo']);
         Route::post('/editTerm', [editController::class, 'editTerm']);
+        Route::post('/user/editUser', [editController::class, 'editUser']);
         
 
         // ROUTE DELETE
@@ -116,6 +130,7 @@ Route::prefix('admin')
         Route::get('/events/delete/{uid}', [DeleteController::class, 'deleteEvent']);
         Route::get('/hargas/delete/{id}', [DeleteController::class, 'deleteHarga']);
         Route::get('/term/delete/{id}', [DeleteController::class, 'deleteTerm']);
+        Route::get('/user/delete/{id}', [DeleteController::class, 'deleteUser']);
     });
     
     

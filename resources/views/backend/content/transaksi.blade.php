@@ -11,38 +11,38 @@
         </div>
     </div>
     <!-- PAGE-HEADER END -->
-<div class="row row-sm">
-    <div class="col-lg-6 col-md-6 col-sm-12 col-xl-3">
-        <div class="card overflow-hidden">
-            <div class="card-body">
-                <div class="d-flex">
-                    <div class="mt-2">
-                        <h6 class="">Total Uang Ticket Yang Terjual</h6>
-                        <h2 class="mb-0 number-font">Rp {{number_format($totalHargaCart, 0, ',', '.')}}</h2>
+    <div class="row row-sm">
+        <div class="col-lg-6 col-md-6 col-sm-12 col-xl-3">
+            <div class="card overflow-hidden">
+                <div class="card-body">
+                    <div class="d-flex">
+                        <div class="mt-2">
+                            <h6 class="">Total Uang Ticket Yang Terjual</h6>
+                            <h2 class="mb-0 number-font">Rp {{ number_format($totalHargaCart, 0, ',', '.') }}</h2>
+                        </div>
                     </div>
+                    <span class="text-muted fs-12"><span class="text-secondary"><i
+                                class="fe fe-arrow-up-circle  text-secondary"></i> 5%</span>
+                        Last week</span>
                 </div>
-                <span class="text-muted fs-12"><span class="text-secondary"><i
-                            class="fe fe-arrow-up-circle  text-secondary"></i> 5%</span>
-                    Last week</span>
+            </div>
+        </div>
+        <div class="col-lg-6 col-md-6 col-sm-12 col-xl-3">
+            <div class="card overflow-hidden">
+                <div class="card-body">
+                    <div class="d-flex">
+                        <div class="mt-2">
+                            <h6 class="">Total Uang Fee Yang SUCCESS</h6>
+                            <h2 class="mb-0 number-font">Rp {{ number_format($totalFee, 0, ',', '.') }}</h2>
+                        </div>
+                    </div>
+                    <span class="text-muted fs-12"><span class="text-secondary"><i
+                                class="fe fe-arrow-up-circle  text-secondary"></i> 5%</span>
+                        Last week</span>
+                </div>
             </div>
         </div>
     </div>
-    <div class="col-lg-6 col-md-6 col-sm-12 col-xl-3">
-        <div class="card overflow-hidden">
-            <div class="card-body">
-                <div class="d-flex">
-                    <div class="mt-2">
-                        <h6 class="">Total Uang Fee Yang SUCCESS</h6>
-                        <h2 class="mb-0 number-font">Rp {{number_format($totalFee, 0, ',', '.')}}</h2>
-                    </div>
-                </div>
-                <span class="text-muted fs-12"><span class="text-secondary"><i
-                            class="fe fe-arrow-up-circle  text-secondary"></i> 5%</span>
-                    Last week</span>
-            </div>
-        </div>
-    </div>
-</div>
     <!-- ROW-1 OPEN -->
     <div class="row row-sm">
         <div class="col-lg-12">
@@ -70,22 +70,25 @@
                             <tbody>
                                 @foreach ($cart as $key => $carts)
                                     <tr>
-                                        <td>{{$key +=1}}</td>
-                                        <td>{{$carts->invoice}}</td>
-                                        <td>{{strlen($carts->event >10)? substr($carts->event, 0, 15). '...' : $carts->event}}</td>
-                                        <td>{{$carts->created_at}}</td>
-                                        <td>@foreach ($use as $users)
-                                            @if($users->uid == $carts->user_uid)
-                                                {{$users->name}}
-                                            @endif
-                                        @endforeach</td>
-                                        <td>{{$carts->total_quantity}}</td>
-                                        <td>{{$carts->total_harga}}</td>
-                                        <td>{{$carts->fee}}</td>
+                                        <td>{{ $key += 1 }}</td>
+                                        <td>{{ $carts->invoice }}</td>
+                                        <td>{{ strlen($carts->event > 10) ? substr($carts->event, 0, 15) . '...' : $carts->event }}
+                                        </td>
+                                        <td>{{ $carts->created_at }}</td>
+                                        <td>
+                                            @foreach ($use as $users)
+                                                @if ($users->uid == $carts->user_uid)
+                                                    {{ $users->name }}
+                                                @endif
+                                            @endforeach
+                                        </td>
+                                        <td>{{ $carts->total_quantity }}</td>
+                                        <td>{{ $carts->total_harga }}</td>
+                                        <td>{{ $carts->fee }}</td>
                                         <td>
                                             <div class="mt-sm-1 d-block">
                                                 <span
-                                                    class="badge bg-success-transparent rounded-pill text-success p-2 px-3">{{$carts->status}}</span>
+                                                    class="badge bg-success-transparent rounded-pill text-success p-2 px-3">{{ $carts->status }}</span>
                                             </div>
                                         </td>
                                         <td>

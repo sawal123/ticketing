@@ -15,3 +15,4 @@
 <link href="{{asset('/assets/switcher/demo.css')}}" rel="stylesheet">
 
 <link rel="stylesheet" href="{{asset('assets/plugins/sweetalert2/dist/sweetalert2.min.css')}}">
+

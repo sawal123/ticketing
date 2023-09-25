@@ -162,7 +162,7 @@
 
                         <div class="card-body">
                             <div class="table-responsive">
-                                <table id="file-datatable"
+                                <table id="allTable"
                                     class="table table-bordered text-nowrap key-buttons border-bottom">
                                     <thead>
                                         <tr>

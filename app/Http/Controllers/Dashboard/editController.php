@@ -29,6 +29,7 @@ class editController extends Controller
         $event->alamat = $request->alamat;
         $event->tanggal = $tanggal;
         $event->status = $request->status;
+        $event->fee = $request->fee;
         $event->deskripsi = $request->deskripsi;
         $event->map = $request->map;
 
@@ -58,7 +59,7 @@ class editController extends Controller
             $talents->gambar = $fileName;
         }
         $talents->save();
-        return redirect()->back();
+        return redirect()->back()->with('success', 'Berhasil di Update');
     }
 
     public function editHarga(Request $request)
@@ -88,8 +89,6 @@ class editController extends Controller
             $file->storeAs('public/slide/', $fileName);
             $slide->gambar = $fileName;
         }
-
-
         $slide->save();
         return redirect()->back()->with('editSlide', 'Slide Berhasil Diubah');
     }
@@ -104,7 +103,6 @@ class editController extends Controller
             $provinsi = $http->json();
             $com = compact('provinsi');
         }
-       
 
         return view(
             'frontend.page.editProfile',
@@ -169,7 +167,8 @@ class editController extends Controller
         return redirect()->back()->with('editLogo', 'Logo Berhasil Diubah');
         //    $logo->logo = $request->logo;
     }
-    public function editTerm(Request $request){
+    public function editTerm(Request $request)
+    {
         $term = Term::where('uid', $request->uid)->first();
 
         $term->title = $request->title;
@@ -177,5 +176,42 @@ class editController extends Controller
         $term->save();
 
         return redirect()->back()->with('editTerm', 'Term Berhasil Diubah');
+    }
+
+    public function editUser(Request $request)
+    {
+        $validate = Validator::make($request->all(), [
+            'nama' => 'required|string|max:255',
+            'email' => 'required|string|email',
+            'tanggal' => 'date',
+            'kota' => 'string|max:50',
+            'alamat' => 'required|string|max:255',
+            'nomor' => 'required|numeric',
+            'gender' => 'required|string|max:20'
+        ]);
+        $validate->validate();
+
+        $user = User::where('uid', $request->uid)->first();
+        $user->name = $request->nama;
+        $user->email = $request->email;
+        $user->birthday = $request->tanggal;
+        $user->kota = $request->kota;
+        $user->alamat = $request->alamat;
+        $user->nomor = $request->nomor;
+        $user->gender = $request->gender;
+
+        if ($request->hasFile('poto')) {
+            $file = $request->file('poto');
+            $fileName = $user->uid . '_' . time() . '_' . $file->getClientOriginalName();
+            $file->storeAs('public/user/', $fileName);
+            $user->gambar = $fileName;
+        }
+        
+        if ($request->password !== null) {
+            $user->password = bcrypt($request->password);
+        }
+        $user->save();
+        // dd($request->poto);
+        return redirect()->back()->with('editUser', 'User Berhasil Diubah');
     }
 }

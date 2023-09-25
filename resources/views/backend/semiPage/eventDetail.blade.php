@@ -45,7 +45,7 @@
                                             class="font-weight-bold">{{ $eventDetail->status }}</span></p>
                                     <p>{{ $eventDetail->alamat }} <a href="{{ $eventDetail->map }}" target="blank"
                                             class="btn btn-primary">Kunjungi</a></p>
-
+                                    <p>Biaya Layanan : Rp {{ $eventDetail->fee }}</p>
                                     <p class="text-muted float-start me-3">
                                         <span class="fa fa-star text-warning"></span>
                                         <span class="fa fa-star text-warning"></span>

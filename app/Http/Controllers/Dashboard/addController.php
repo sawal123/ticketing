@@ -13,6 +13,7 @@ use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
+use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use \Illuminate\Http\RedirectResponse;
 
@@ -30,7 +31,7 @@ class addController extends Controller
             'tanggal' => 'required|string',
             'map' => 'required|string|max:255',
             'deskripsi' => 'required|string|max:255',
-           
+
         ]);
         $validate->validate();
 
@@ -61,7 +62,7 @@ class addController extends Controller
             DB::beginTransaction();
             $event->save();
             DB::commit();
-            return redirect('admin/event/eventDetail/'.$uid)->with('addEvent', 'Event Berhasil Disimpan..');
+            return redirect('admin/event/eventDetail/' . $uid)->with('addEvent', 'Event Berhasil Disimpan..');
         } catch (\Exception $e) {
             DB::rollback();
             return redirect()->back()->with('error', 'Tambah Event Gagal. Silahkan coba lagi.');
@@ -96,20 +97,20 @@ class addController extends Controller
         return redirect()->back()->with('harga', 'Harga berhasil disimpan');
     }
 
-    public function addSlide(Request $request){
-        
+    public function addSlide(Request $request)
+    {
+
         $slide = Slider::orderBy('sort', 'desc')->first();
-        if($slide === null){
+        if ($slide === null) {
             $angka = 1;
-        }
-        else{
+        } else {
             $angka = $slide->sort + 1;
         }
-       
+
         $slider = new Slider([
             'uid' => Str::random(10),
             'sort' => $angka,
-            'title'=> $request->title,
+            'title' => $request->title,
             'url' => $request->url,
         ]);
         if ($request->hasFile('gambar')) {
@@ -122,7 +123,8 @@ class addController extends Controller
         return redirect()->back()->with('addSlide', 'Slide Berhasil Ditambah..');
     }
 
-    public function addTerm(Request $request){
+    public function addTerm(Request $request)
+    {
         $uid = Str::random(10);
         $title = $request->title;
         $des = $request->term;
@@ -132,7 +134,45 @@ class addController extends Controller
         $term->term = $des;
         $term->save();
         return redirect()->back()->with('addTerm', 'Syarat dan Ketentuan Berhasil Ditambah..');
+    }
+    public function addAdmin(Request $request)
+    {
+        $validate = Validator::make($request->all(), [
+            'nama' => 'required|string|max:255',
+            'email' => 'required|string|email',
+            'tanggal' => 'date',
+            'kota' => 'string|max:50',
+            'alamat' => 'required|string|max:255',
+            'nomor' => 'required|numeric',
+            'gender' => 'required|string|max:20'
+        ]);
+        $validate->validate();
 
+        // $user = User::where('uid', $request->uid)->first();
+        $uid = Str::random(10);
+        $user = new User();
+        $user->uid = $uid;
+        $user->name = $request->nama;
+        $user->email = $request->email;
+        $user->birthday = $request->tanggal;
+        $user->kota = $request->kota;
+        $user->alamat = $request->alamat;
+        $user->nomor = $request->nomor;
+        $user->gender = $request->gender;
+        $user->role = $request->role;
 
+        if ($request->hasFile('gambar')) {
+            $file = $request->file('gambar');
+            $fileName = $user->uid . '_' . time() . '_' . $file->getClientOriginalName();
+            $file->storeAs('public/user/', $fileName);
+            $user->gambar = $fileName;
+        }
+
+        if ($request->password !== null) {
+            $user->password = bcrypt($request->password);
+        }
+        $user->save();
+        // dd($request->poto);
+        return redirect()->back()->with('addUser', 'User Berhasil Di Tambah');
     }
 }

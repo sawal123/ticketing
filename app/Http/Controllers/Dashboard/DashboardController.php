@@ -17,6 +17,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Pagination\Paginator;
+use Illuminate\Support\Facades\Http;
 use Illuminate\View\View;
 
 class DashboardController extends Controller
@@ -25,7 +26,7 @@ class DashboardController extends Controller
     {
         $user = User::where('role', 'user')->count();
         $transaksi = Transaction::select(['amount'])->where('status_transaksi', 'SUCCESS')->get();
-        
+
         $tra = 0;
         foreach ($transaksi as $key => $tr) {
             $tra += $transaksi[$key]->amount;
@@ -51,7 +52,7 @@ class DashboardController extends Controller
             return view('backend.content.event', [
                 'title' => 'Event',
                 'event' => $event,
-                'paginate' =>$pagination
+                'paginate' => $pagination
             ]);
         } elseif ($addEvent === 'addEvent') {
 
@@ -90,7 +91,7 @@ class DashboardController extends Controller
         $slide = Slider::orderBy('sort', 'asc')->get();
         $logo = Landing::all();
         $term = Term::all();
-// dd($logo[0]->logo);
+        // dd($logo[0]->logo);
         return view('backend.content.landing', [
             'title' => 'Landing',
             'slide' => $slide,
@@ -156,5 +157,32 @@ class DashboardController extends Controller
                 'totalFee' => $fe
             ]
         );
+    }
+
+    public function user($data = null)
+    {
+        $http = Http::get('https://www.emsifa.com/api-wilayah-indonesia/api/provinces.json');
+        if ($http->successful()) {
+            $provinsi = $http->json();
+        }
+        $datas = [];
+        if ($data === 'admin') {
+            foreach($provinsi as $provinsis){
+                $datas[] = $provinsis['name'];
+            }
+            // dd($datas[0]);
+            $admin = User::where('role', 'admin')->get();
+            return view('backend.content.user.admin', ['title' => 'User', 'users' => $admin, 'provinsi'=>$provinsi, 'datas'=> $datas] );
+        }
+
+        if ($data === 'penyewa') {
+            $penyewa = User::where('role', 'penyewa')->get();
+            return view('backend.content.user.penyewa', ['title' => 'User', 'users' => $penyewa, 'provinsi'=>$provinsi]);
+        }
+
+        if ($data === null) {
+            $users = User::where('role', 'user')->get();
+            return view('backend.content.user.user', ['title' => 'User', 'users' => $users , 'provinsi'=>$provinsi]);
+        }
     }
 }

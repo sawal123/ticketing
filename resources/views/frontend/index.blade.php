@@ -9,7 +9,7 @@
 
     {{-- <link rel="shortcut icon" href="landing/images/favicon.ico" type="image/x-icon"> --}}
     <link rel="shortcut icon" href="{{asset('storage/logo/'. $logo[0]->logo)}}" type="image/x-icon">
-    <link rel="icon" href="{{asset('storage/logo/logo.png')}}" type="image/x-icon">
+    {{-- <link rel="icon" href="{{asset('storage/logo/logo.png')}}" type="image/x-icon"> --}}
     <!--- End favicon-->
 
     <link
