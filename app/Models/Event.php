@@ -9,7 +9,7 @@ class Event extends Model
 {
     use HasFactory;
     protected $fillable = [
-        'uid', 'user_uid', 'event', 'alamat', 'tanggal', 'status', 'fee','deskripsi', 'map', 'slug'
+        'uid', 'user_uid', 'event', 'alamat', 'tanggal', 'status', 'fee','deskripsi', 'map', 'slug', 'konfirmasi'
     ];
     public function harga()
     {

@@ -18,6 +18,7 @@ use App\Http\Controllers\Dashboard\editController;
 use App\Http\Controllers\Dashboard\DeleteController;
 use App\Http\Controllers\Auth\UserRegisterController;
 use App\Http\Controllers\Dashboard\DashboardController;
+use App\Http\Controllers\Penyewa\Auth\LoginController;
 use App\Http\Controllers\Penyewa\PenyewaController;
 
 /*
@@ -82,12 +83,15 @@ Route::middleware(['auth'])->group(function () {
 });
 
 Route::get('/dashboard/login', [PenyewaController::class, 'login']);
-Route::get('/dashboard/login/cekLogin', [PenyewaController::class, 'login']);
+Route::post('/dashboard/login/cekLogin', [LoginController::class, 'index']);
 
-Route::prefix('penyewa')
+Route::prefix('dashboard')
 ->middleware(['auth', 'penyewa'])
 ->group(function(){
-    Route::get('/', [PenyewaController::class, 'indx']);
+    Route::get('/', [PenyewaController::class, 'index']);
+    Route::get('/event/{addEvent?}/{uid?}', [PenyewaController::class, 'event']);
+    Route::get('/ubahEvents/{uid}', [PenyewaController::class, 'ubahEvents']);
+    // Route::get('/event', [DashboardController::class, 'event']);
 });
 
 Route::prefix('admin')
@@ -98,12 +102,12 @@ Route::prefix('admin')
         Route::get('/landing', [DashboardController::class, 'landing']);
         Route::get('/transaksi', [DashboardController::class, 'transaksi']);
         Route::get('/user/{data?}', [DashboardController::class, 'user']);
-
+        Route::get('/event/{addEvent?}/{uid?}', [DashboardController::class, 'event']);
         Route::get('/ubahEvents/{uid}', [DashboardController::class, 'ubahEvents']);
         
 
-        Route::get('/event', [DashboardController::class, 'event']);
-        Route::get('/event/{addEvent?}/{uid?}', [DashboardController::class, 'event']);
+        // Route::get('/event', [DashboardController::class, 'event']);
+        
 
         // ROUTE ADD
         Route::post('/addEvents', [addController::class, 'addEvent']);

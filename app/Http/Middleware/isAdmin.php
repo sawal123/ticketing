@@ -20,6 +20,6 @@ class isAdmin
         {
             return $next($request);
         }
-        return redirect('/');
+        return redirect()->back();
     }
 }

@@ -25,7 +25,7 @@
                 </li>
                 <li class="slide ">
                     <a class="side-menu__item has-link {{request()->is('admin') ? 'active': ''}}" data-bs-toggle="slide" href="{{ url('/admin') }}"><i
-                            class="side-menu__icon fe fe-home"></i><span class="side-menu__label">Dashboard</span></a>
+                            class="side-menu__icon fe fe-home"></i><span class="side-menu__label">Admin Dashboard</span></a>
                 </li>
                 <li class="slide ">
                     <a class="side-menu__item has-link {{request()->is('admin/event') ? 'active': ''}}" data-bs-toggle="slide" href="{{ url('/admin/event') }}"><i

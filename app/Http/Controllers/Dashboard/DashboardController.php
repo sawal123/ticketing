@@ -36,7 +36,7 @@ class DashboardController extends Controller
         // dd($tr);
         // dd($user);
         return view('backend.content.dashboard', [
-            'title' => 'Dashboard',
+            'title' => 'Admin',
             'countUser' => $user,
             'transaction' => $tra,
             'totalTransaksi' => $totalTransaksi
