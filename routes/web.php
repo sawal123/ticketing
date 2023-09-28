@@ -91,6 +91,7 @@ Route::prefix('dashboard')
         Route::get('/ubahEvents/{uid}', [PenyewaController::class, 'ubahEvents']);
 
         Route::post('/addEvents', [PenyewaAddController::class, 'addEvent'])->name('dashboard.addEvent');
+        Route::post('/addHarga', [PenyewaAddController::class, 'addHarga']);
 
 
         Route::post('/editTalent', [PenyewaEditController::class, 'editTalent']);

@@ -20,7 +20,7 @@ class landingController extends Controller
 {
     public function home()
     {
-        $event = Event::all(['*']);
+        $event = Event::where('konfirmasi', '1')->take(9)->get();
         $harga = Harga::select('uid', 'harga')->orderBy('harga', 'asc')->get();
         $slide = Slider::all(['*']);
         return view('frontend.page.home', [
@@ -53,8 +53,6 @@ class landingController extends Controller
             'tickets' => $tickets,
             'list' => $list,
             'lists' => $list
-            // 'harga1'=> $harga1
-
         ]);
     }
 
@@ -95,7 +93,7 @@ class landingController extends Controller
                 ->get();
             // return redirect('/search/'. $event);
         } else {
-            $event = Event::all(['*']);
+            $event = Event::where('konfirmasi', '1')->get();
         }
         //  dd($event);
         $harga = Harga::select('uid', 'harga')->orderBy('harga', 'asc')->get();

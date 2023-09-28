@@ -3,12 +3,14 @@
 namespace App\Http\Controllers\Penyewa;
 
 use App\Models\Event;
-use Illuminate\Http\RedirectResponse;
+use App\Models\Harga;
+use App\Models\Talent;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Validator;
 
 class AddController extends Controller
@@ -59,5 +61,34 @@ class AddController extends Controller
             DB::rollback();
             return redirect()->back()->with('error', 'Tambah Event Gagal. Silahkan coba lagi.');
         }
+    }
+
+    public function addTalent(Request $request)
+    {
+
+        $talent = new Talent([
+            'uid' => $request->uid,
+            'talent' => $request->talent,
+        ]);
+        if ($request->hasFile('gambar')) {
+            $file = $request->file('gambar');
+            $fileName = $talent['uid_outlet'] . '_' . time() . '_' . $file->getClientOriginalName();
+            $file->storeAs('public/talent/', $fileName); // Simpan di direktori 'public/outlet/'
+            $talent['gambar'] = $fileName; // Simpan nama file gambar di kolom 'gambar' pada tabel
+        }
+        $talent->save();
+        return redirect()->back()->with('talent', 'Talent Berhasil disimpan');
+    }
+    public function addHarga(Request $request)
+    {
+        // dd($request->qty);
+        $harga = new Harga([
+            'uid' => $request->uid,
+            'kategori' => $request->kategori,
+            'qty' => $request->qty,
+            'harga' => $request->harga,
+        ]);
+        $harga->save();
+        return redirect()->back()->with('harga', 'Harga berhasil disimpan');
     }
 }

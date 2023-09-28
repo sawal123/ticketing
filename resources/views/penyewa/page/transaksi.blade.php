@@ -32,8 +32,8 @@
                 <div class="card-body">
                     <div class="d-flex">
                         <div class="mt-2">
-                            <h6 class="">Total Uang Fee Yang SUCCESS</h6>
-                            <h2 class="mb-0 number-font">Rp {{ number_format($totalFee, 0, ',', '.') }}</h2>
+                            <h6 class="">Total Ticket Yang Terjual</h6>
+                            <h2 class="mb-0 number-font">{{ number_format($totalFee, 0, ',', '.') }} Ticket</h2>
                         </div>
                     </div>
                     <span class="text-muted fs-12"><span class="text-secondary"><i
@@ -52,7 +52,7 @@
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
-                        <table id="file-datatable" class="table table-bordered text-nowrap key-buttons border-bottom">
+                        <table id="tablePenyewa" class="table table-bordered text-nowrap key-buttons border-bottom">
                             <thead>
                                 <tr>
                                     <th class="border-bottom-0">No</th>
@@ -62,7 +62,7 @@
                                     <th class="border-bottom-0">Name</th>
                                     <th class="border-bottom-0">Qty</th>
                                     <th class="border-bottom-0">Total</th>
-                                    <th class="border-bottom-0">Fee</th>
+                                    {{-- <th class="border-bottom-0">Fee</th> --}}
                                     <th class="border-bottom-0">Status</th>
                                     <th class="border-bottom-0">Action</th>
                                 </tr>
@@ -84,7 +84,7 @@
                                         </td>
                                         <td>{{ $carts->total_quantity }}</td>
                                         <td>{{ $carts->total_harga }}</td>
-                                        <td>{{ $carts->fee }}</td>
+                                        {{-- <td>{{ $carts->fee }}</td> --}}
                                         <td>
                                             <div class="mt-sm-1 d-block">
                                                 <span

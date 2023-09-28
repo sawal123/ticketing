@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Penyewa;
 use App\Models\Event;
 use App\Models\Harga;
 use App\Models\Talent;
+use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
@@ -23,6 +24,7 @@ class EditController extends Controller
         $event->fee = $request->fee;
         $event->deskripsi = $request->deskripsi;
         $event->map = $request->map;
+        $event->slug= Str::slug($request->event);
 
         if ($request->hasFile('cover')) {
             $file = $request->file('cover');

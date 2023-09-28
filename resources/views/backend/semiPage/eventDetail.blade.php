@@ -61,13 +61,20 @@
                                         <a href="{{ url('/admin/ubahEvents/' . $eventDetail->uid) }}"
                                             class="btn ripple btn-primary me-2"><i class="fe fe-edit"> </i>
                                             Edit</a>
-                                            <a href="{{url('/admin/setujuiEvent/'. $eventDetail->uid)}}" class="notice btn btn-{{$eventDetail->konfirmasi === null ? 'primary': 'success'}}"><i class="fe fe-{{$eventDetail->konfirmasi === null ? 'clock' : 'check'}}"> </i>
-                                            @if($eventDetail->konfirmasi === null)
+                                        <a href="
+                                            @if ($eventDetail->konfirmasi === null) {{ url('/admin/setujuiEvent/' . $eventDetail->uid) }}
+                                            @else
+                                            # @endif
+                                            "
+                                            class="notice btn btn-{{ $eventDetail->konfirmasi === null ? 'primary' : 'success' }}"><i
+                                                class="fe fe-{{ $eventDetail->konfirmasi === null ? 'clock' : 'check' }}">
+                                            </i>
+                                            @if ($eventDetail->konfirmasi === null)
                                                 Setujui
-                                                @else
+                                            @else
                                                 DiSetujui
                                             @endif
-                                            </a>
+                                        </a>
 
                                     </div>
                                 </div>
@@ -108,11 +115,8 @@
                                                 {{ session('hapus') }}
                                             </div>
                                         @endif
-
                                         @include('backend.molecul.cardTalent')
                                     </div>
-
-
                                     <div class="tab-pane " id="tab6">
                                         <div class="row">
                                             @include('backend.molecul.modalHarga')
