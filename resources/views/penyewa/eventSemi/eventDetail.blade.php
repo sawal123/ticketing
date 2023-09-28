@@ -62,8 +62,8 @@
                                             class="btn ripple btn-primary me-2"><i class="fe fe-edit"> </i>
                                             Edit</a>
                                         <button disabled="disabled" class="btn btn-success">
-                                            @if ($eventDetail === null)
-                                                Non Active
+                                            @if ($eventDetail->konfirmasi === null)
+                                                Menunggu Persetujuan
                                             @else
                                                 Di Setujui
                                             @endif

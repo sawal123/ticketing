@@ -16,10 +16,13 @@ class isPenyewa
      */
     public function handle(Request $request, Closure $next): Response
     {
-        if(Auth::user() && Auth::user()->role == 'penyewa')
+        if(Auth::user() && Auth::user()->role === 'penyewa')
         {
             return $next($request);
         }
-        return redirect()->back();
+        else{
+            return redirect('signin');
+        }
+        
     }
 }

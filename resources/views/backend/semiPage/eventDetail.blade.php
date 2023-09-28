@@ -61,6 +61,13 @@
                                         <a href="{{ url('/admin/ubahEvents/' . $eventDetail->uid) }}"
                                             class="btn ripple btn-primary me-2"><i class="fe fe-edit"> </i>
                                             Edit</a>
+                                            <a href="{{url('/admin/setujuiEvent/'. $eventDetail->uid)}}" class="notice btn btn-{{$eventDetail->konfirmasi === null ? 'primary': 'success'}}"><i class="fe fe-{{$eventDetail->konfirmasi === null ? 'clock' : 'check'}}"> </i>
+                                            @if($eventDetail->konfirmasi === null)
+                                                Setujui
+                                                @else
+                                                DiSetujui
+                                            @endif
+                                            </a>
 
                                     </div>
                                 </div>

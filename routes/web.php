@@ -18,7 +18,9 @@ use App\Http\Controllers\Dashboard\editController;
 use App\Http\Controllers\Dashboard\DeleteController;
 use App\Http\Controllers\Auth\UserRegisterController;
 use App\Http\Controllers\Dashboard\DashboardController;
+use App\Http\Controllers\Penyewa\AddController as PenyewaAddController;
 use App\Http\Controllers\Penyewa\Auth\LoginController;
+use App\Http\Controllers\Penyewa\EditController as PenyewaEditController;
 use App\Http\Controllers\Penyewa\PenyewaController;
 
 /*
@@ -40,7 +42,7 @@ use App\Http\Controllers\Penyewa\PenyewaController;
 // ============================================================================
 // ============================================================================
 
-Route::get('/', [landingController::class, 'home']);
+Route::get('/', [landingController::class, 'home'])->name('home');
 Route::get('/ticket/{event}', [landingController::class, 'ticket']);
 
 Route::get('/register', [UserRegisterController::class, 'index']);
@@ -62,37 +64,39 @@ Route::post('/confir/success', [Controller::class, 'success']);
 Route::get('/generate-barcode/{data}', [BarcodeController::class, 'generateBarcode']);
 
 Route::middleware(['auth'])->group(function () {
-
     Route::get('/profile', [editController::class, 'profile']);
     Route::post('/profile/update-profile', [editController::class, 'editProfile']);
-
     Route::get('email/notif-email', [Controller::class, 'notif']);
     Route::get('/detail-ticket/{uid}/{user}', [BuyTicketController::class, 'index']);
     Route::post('/checkout', [BuyTicketController::class, 'checkout']);
     Route::get('/transaksi', [landingController::class, 'listTransaksi']);
     Route::post('/paynow', [TransactionController::class, 'paynow']);
-
-    // Route::post('/paynow/callback', [TransactionController::class, 'callback'])->name('midtrans-callback');
-
     Route::get('/detail-ticket/delete/{uid}/{user_uid}', [DeleteController::class, 'deteleListTransaksi']);
-
     Route::get('/logout', function () {
         Auth::logout();
         return redirect('/');
     });
 });
 
-Route::get('/dashboard/login', [PenyewaController::class, 'login']);
-Route::post('/dashboard/login/cekLogin', [LoginController::class, 'index']);
+Route::get('/signin', [PenyewaController::class, 'login'])->name('signIn');
+Route::post('/signin/cekLogin', [LoginController::class, 'index'])->name('cekLogin');
 
 Route::prefix('dashboard')
-->middleware(['auth', 'penyewa'])
-->group(function(){
-    Route::get('/', [PenyewaController::class, 'index']);
-    Route::get('/event/{addEvent?}/{uid?}', [PenyewaController::class, 'event']);
-    Route::get('/ubahEvents/{uid}', [PenyewaController::class, 'ubahEvents']);
-    // Route::get('/event', [DashboardController::class, 'event']);
-});
+    ->namespace('Penyewa')
+    ->middleware(['auth', 'penyewa'])
+    ->group(function () {
+        Route::get('/', [PenyewaController::class, 'index'])->name('dashboard');
+        Route::get('/transaksi', [PenyewaController::class, 'transaksi'])->name('dashboard.transaksi');
+        Route::get('/event/{addEvent?}/{uid?}', [PenyewaController::class, 'event']);
+        Route::get('/ubahEvents/{uid}', [PenyewaController::class, 'ubahEvents']);
+
+        Route::post('/addEvents', [PenyewaAddController::class, 'addEvent'])->name('dashboard.addEvent');
+
+
+        Route::post('/editTalent', [PenyewaEditController::class, 'editTalent']);
+        Route::post('/editEvent', [PenyewaEditController::class, 'editEvent']);
+        Route::post('/editHarga', [PenyewaEditController::class, 'editHarga']);
+    });
 
 Route::prefix('admin')
     ->namespace('Dashboard')
@@ -104,11 +108,8 @@ Route::prefix('admin')
         Route::get('/user/{data?}', [DashboardController::class, 'user']);
         Route::get('/event/{addEvent?}/{uid?}', [DashboardController::class, 'event']);
         Route::get('/ubahEvents/{uid}', [DashboardController::class, 'ubahEvents']);
-        
 
         // Route::get('/event', [DashboardController::class, 'event']);
-        
-
         // ROUTE ADD
         Route::post('/addEvents', [addController::class, 'addEvent']);
         Route::post('/addTalent', [addController::class, 'addTalent']);
@@ -126,7 +127,8 @@ Route::prefix('admin')
         Route::post('/editLogo', [editController::class, 'editLogo']);
         Route::post('/editTerm', [editController::class, 'editTerm']);
         Route::post('/user/editUser', [editController::class, 'editUser']);
-        
+        Route::get('/setujuiEvent/{data}', [editController::class, 'setujuiEvent']);
+
 
         // ROUTE DELETE
         Route::get('/delete/{id}', [DeleteController::class, 'deleteTalent']);

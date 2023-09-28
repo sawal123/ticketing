@@ -214,4 +214,12 @@ class editController extends Controller
         // dd($request->poto);
         return redirect()->back()->with('editUser', 'User Berhasil Diubah');
     }
+
+
+    public function setujuiEvent($data){
+        $event = Event::where('uid', $data)->first();
+        $event->konfirmasi = '1';
+        $event->save();
+        return redirect()->back()->with('konfirmasi', 'Event Berhasil di Setujui dan di publish');
+    }
 }

@@ -32,7 +32,6 @@ class UserLoginController extends Controller
                 return redirect('/');
             }
         } else {
-
             return redirect('/login')->with('success', 'Email atau password salah.');
         }
     }
