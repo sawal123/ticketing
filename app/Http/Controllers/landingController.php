@@ -11,6 +11,7 @@ use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
+use App\Models\HargaCart;
 use App\Models\Slider;
 use Illuminate\Support\Facades\Auth;
 // use \Illuminate\Database\Eloquent\Collection;
@@ -36,8 +37,10 @@ class landingController extends Controller
 
         $ticket = Event::where('slug', $event)->first();
         $tickets = Event::select('events.*', 'talent.*')->join('talent', 'events.uid', '=', 'talent.uid')->where('slug', $event)->get();
-        $harga = Event::select('events.*', 'hargas.*')->join('hargas', 'events.uid', '=', 'hargas.uid')->where('slug', $event)->get();
-        // dd($harga);
+
+        $harga = Event::select('events.*', 'hargas.*')
+            ->join('hargas', 'events.uid', '=', 'hargas.uid')
+            ->where('slug', $event)->get();
         $list = [];
         foreach ($harga as $harga) {
             $list[] = [
@@ -47,12 +50,39 @@ class landingController extends Controller
                 'harga' => $harga->harga,
             ];
         }
+        $hc = HargaCart::select(['harga_carts.*'])
+            ->where('harga_carts.event_uid', $ticket->uid)->where('carts.status', 'SUCCESS')
+            ->join('carts', 'carts.uid', 'harga_carts.uid')
+            ->get();
+        $jml = 0;
+        $dataList = [];
+        foreach ($hc as $hcs) {
+            $dataList[] =
+                [
+                    'quantity' => $hcs->quantity,
+                    'kategori' => $hcs->kategori_harga,
+                ];
+        }
+
+        $jmlByCategory = [];
+
+        foreach ($dataList as $item) {
+            $kategori = $item['kategori'];
+            $quantity = $item['quantity'];
+            if (!isset($jmlByCategory[$kategori])) {
+                $jmlByCategory[$kategori] = 0;
+            }
+            $jmlByCategory[$kategori] += $quantity;
+        }
+
+
         return view('frontend.page.ticket', [
             'title' => 'Ticket',
             'ticket' => $ticket,
             'tickets' => $tickets,
             'list' => $list,
-            'lists' => $list
+            'lists' => $list,
+            'jmlhQty' =>$jmlByCategory
         ]);
     }
 
@@ -118,7 +148,7 @@ class landingController extends Controller
         $term = Term::all();
         return view('frontend.page.term', [
             'title' => 'Term and Condition',
-            'term'=> $term
+            'term' => $term
         ]);
     }
 }

@@ -31,4 +31,9 @@ class Event extends Model
     public function cart(){
         return $this->belongsTo(Cart::class, 'event_uid', 'uid');
     }
+    public function harga_carts(){
+        return $this->belongsTo(HargaCart::class, 'event_uid', 'uid');
+    }
+
+
 }

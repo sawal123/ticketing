@@ -73,7 +73,7 @@
                                 <div class="card-body" style="overflow-y: scroll ;max-height: 300px;">
                                     <input type="hidden" name="eventUid" value="{{ $ticket->uid }}">
                                     @if (count($list) > 0 && $ticket->status === 'active')
-                                        @foreach ($list as $list)
+                                        @foreach ($list as $key => $list)
                                             <div class="card ps-3 my-2">
                                                 <div class="row d-flex align-items-center">
                                                     <div class="col-4" style="float: right">
@@ -83,36 +83,49 @@
 
                                                             {{ number_format($list['harga'], 0, ',', '.') }}</p>
                                                     </div>
+                                                    @php
+                                                        $kategori = $list['kategori'];
+                                                        $qty = $list['qty'];
+                                                        // echo $jmlhQty[$kategori];
+                                                        // echo $qty;
+                                                    @endphp
                                                     <div class="col-8 d-flex justify-content-end align-content-end">
                                                         <div class="input-wrapper container d-flex ">
-                                                            <input type="hidden" class="price-input" placeholder="Price"
-                                                                name="harga{{ $loop->index }}"
-                                                                value="{{ $list['harga'] }}">
+                                                            @if ($jmlhQty[$kategori] < $list['qty'])
+                                                                <input type="hidden" class="price-input"
+                                                                    placeholder="Price" name="harga{{ $loop->index }}"
+                                                                    value="{{ $list['harga'] }}">
 
-                                                            <input type="hidden" class="price-input" placeholder="Price"
-                                                                name="kategori{{ $loop->index }}"
-                                                                value="{{ $list['kategori'] }}">
+                                                                <input type="hidden" class="price-input"
+                                                                    placeholder="Price" name="kategori{{ $loop->index }}"
+                                                                    value="{{ $list['kategori'] }}">
 
+                                                                <button type="button" class="btn btn-minus btn-primary"
+                                                                    style="min-width: 40px; height: 40px;"
+                                                                    data-target="quantity{{ $loop->index }}">-</button>
 
-                                                            <button type="button" class="btn btn-minus btn-primary"
-                                                                style="min-width: 40px; height: 40px;"
-                                                                data-target="quantity{{ $loop->index }}">-</button>
+                                                                <input type="text"
+                                                                    class="form-control input quantity{{ $loop->index }}"
+                                                                    min="0" max="5" step="1"
+                                                                    value="0" name="ticket{{ $loop->index }}"
+                                                                    id="" readonly>
 
-                                                            <input type="text"
-                                                                class="form-control input quantity{{ $loop->index }}"
-                                                                min="0" max="5" step="1" value="0"
-                                                                name="ticket{{ $loop->index }}" id="" readonly>
+                                                                <input type="hidden" name="orderBy{{ $loop->index }}"
+                                                                    value="{{ $loop->index + 1 }}">
 
-                                                            <input type="hidden" name="orderBy{{ $loop->index }}"
-                                                                value="{{ $loop->index + 1 }}">
-
-                                                            <button type="button" class="btn btn-plus btn btn-primary"
-                                                                style="min-width: 40px; height: 40px;"
-                                                                data-target="quantity{{ $loop->index }}">+</button>
-
+                                                                <button type="button" class="btn btn-plus btn btn-primary"
+                                                                    style="min-width: 40px; height: 40px;"
+                                                                    data-target="quantity{{ $loop->index }}">+</button>
+                                                            @else
+                                                                <button disabled="disabled" class="btn btn-success w-100">Sold
+                                                                    Out</button>
+                                                            @endif
 
                                                         </div>
+
                                                     </div>
+
+
                                                 </div>
                                             </div>
                                         @endforeach

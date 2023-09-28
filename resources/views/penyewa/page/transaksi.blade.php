@@ -102,7 +102,21 @@
                                         </td>
                                     </tr>
                                 @endforeach
+                               
                             </tbody>
+                            {{-- <tfoot>
+                                <tr>
+                                    <td style=";"></td>
+                                    <td style=";"></td>
+                                    <td style=";"></td>
+                                    <td style=";"></td>
+                                    <td style=";"></td>
+                                    <td style=";">Total</td>
+                                    <td style=";">Rp {{ number_format($totalHargaCart, 0, ',', '.') }}</td>
+                                    <td style=";"></td>
+                                    <td style=";"></td>
+                                </tr>
+                            </tfoot> --}}
                         </table>
                     </div>
                 </div>
