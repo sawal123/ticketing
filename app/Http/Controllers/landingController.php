@@ -38,7 +38,7 @@ class landingController extends Controller
         $ticket = Event::where('slug', $event)->first();
         $tickets = Event::select('events.*', 'talent.*')->join('talent', 'events.uid', '=', 'talent.uid')->where('slug', $event)->get();
 
-        $harga = Event::select('events.*', 'hargas.*')
+        $harga = Event::select('events.*', 'hargas.*')      
             ->join('hargas', 'events.uid', '=', 'hargas.uid')
             ->where('slug', $event)->get();
         $list = [];

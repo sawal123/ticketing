@@ -25,10 +25,11 @@ class Authenticate extends Middleware
         elseif(strpos($requestedUrl, '/dashboard') !== false){
             return route('signIn');
         }
+        elseif(strpos($requestedUrl, '/checkout') !== false){
+            return route('login');
+        }
         else{
             return route('home');
         }
-
-
     }
 }

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Penyewa;
 use App\Models\Event;
 use App\Models\Harga;
 use App\Models\Talent;
+use App\Models\Voucher;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -90,5 +91,36 @@ class AddController extends Controller
         ]);
         $harga->save();
         return redirect()->back()->with('harga', 'Harga berhasil disimpan');
+    }
+
+    public function addVoucher(Request $request)
+    {
+        $validate = Validator::make($request->all(), [
+            'code' => 'string|required|max:50',
+            'unit' => 'string|required|max:255',
+            'nominal' => 'numeric|required',
+            'min' => 'required|numeric',
+            'max' => 'required|numeric',
+            'maxUse' => 'required|numeric'
+        ]);
+        $validate->validate();
+
+        $uid = Str::random('10');
+
+        $voucher = new Voucher([
+            'uid' => $uid,
+            'user_uid' => Auth::user()->uid,
+            'event_uid' => 'null',
+            'code' => $request->code,
+            'unit' => $request->unit,
+            'nominal' => $request->nominal,
+            'min_beli' => $request->min,
+            'max_disc' => $request->max,
+            'digunakan' => 0,
+            'limit' => $request->maxUse,
+            'status' => 'active'
+        ]);
+        $voucher->save();
+        return redirect()->back()->with('voucher', 'Voucher berhasil disimpan');
     }
 }

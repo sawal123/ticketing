@@ -68,6 +68,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/profile/update-profile', [editController::class, 'editProfile']);
     Route::get('email/notif-email', [Controller::class, 'notif']);
     Route::get('/detail-ticket/{uid}/{user}', [BuyTicketController::class, 'index']);
+    Route::post('/checkVoucer', [BuyTicketController::class, 'checkVoucher']);
     Route::post('/checkout', [BuyTicketController::class, 'checkout']);
     Route::get('/transaksi', [landingController::class, 'listTransaksi']);
     Route::post('/paynow', [TransactionController::class, 'paynow']);
@@ -89,9 +90,11 @@ Route::prefix('dashboard')
         Route::get('/transaksi', [PenyewaController::class, 'transaksi'])->name('dashboard.transaksi');
         Route::get('/event/{addEvent?}/{uid?}', [PenyewaController::class, 'event']);
         Route::get('/ubahEvents/{uid}', [PenyewaController::class, 'ubahEvents']);
+        Route::get('/voucher', [PenyewaController::class, 'voucher']);
 
         Route::post('/addEvents', [PenyewaAddController::class, 'addEvent'])->name('dashboard.addEvent');
         Route::post('/addHarga', [PenyewaAddController::class, 'addHarga']);
+        Route::post('/addVoucher', [PenyewaAddController::class, 'addVoucher']);
 
 
         Route::post('/editTalent', [PenyewaEditController::class, 'editTalent']);

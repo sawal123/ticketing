@@ -7,6 +7,7 @@ use App\Models\HargaCart;
 use App\Models\User;
 use App\Models\Event;
 use App\Models\Harga;
+use App\Models\Voucher;
 use App\Models\Talent;
 use App\Models\Transaction;
 use Illuminate\Http\Request;
@@ -14,6 +15,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 // use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
+use App\Models\CartVoucher;
 
 class PenyewaController extends Controller
 {
@@ -160,5 +162,17 @@ class PenyewaController extends Controller
             ]
         );
         // return view('penyewa.page.transaksi', ['title', 'Transaksi']);
+    }
+
+
+    public function voucher()
+    {
+        $voucher = Voucher::where('vouchers.user_uid', Auth::user()->uid)
+        ->get();
+        return view('penyewa.page.voucher', [
+            'title' => 'Voucher',
+            'voucher' => $voucher,
+            
+        ]);
     }
 }

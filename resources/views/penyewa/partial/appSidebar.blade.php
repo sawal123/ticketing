@@ -37,14 +37,11 @@
                             class=" side-menu__icon fa fa-database"></i><span class="side-menu__label">Transaksi</span></a>
                 </li>
                 <li class="slide ">
-                    <a class="side-menu__item has-link {{request()->is('dashboard/landing') ? 'active': ''}}" data-bs-toggle="slide" href="{{ url('/dashboard/landing') }}"><i
-                            class=" side-menu__icon fa fa-windows"></i><span class="side-menu__label">Landing</span></a>
+                    <a class="side-menu__item has-link {{request()->is('dashboard/voucher') ? 'active': ''}}" data-bs-toggle="slide" href="{{ url('/dashboard/voucher') }}"><i
+                            class=" side-menu__icon fa fa-gift"></i><span class="side-menu__label">Voucher</span></a>
                 </li>
-                {{-- <li class="slide">
-                    <a class="side-menu__item has-link" data-bs-toggle="slide" href="{{ url('/dashboard/user') }}"><i
-                            class=" side-menu__icon fa fa-users"></i><span class="side-menu__label">User</span></a>
-                </li> --}}
-                <li class="slide ">
+              
+                {{-- <li class="slide ">
                     <a class="side-menu__item {{request()->is('dashboard/user') ? 'active': ''}}" data-bs-toggle="slide" href="javascript:void(0)"><i
                             class="side-menu__icon fe fe-users "></i><span
                             class="side-menu__label">User</span><i
@@ -75,7 +72,7 @@
                             </div>
                         </li>
                     </ul>
-                </li>
+                </li> --}}
                 <li class="slide {{request()->is('dashboard/user') ? 'active': ''}}">
                     <a class="side-menu__item has-link" data-bs-toggle="slide" href="{{ url('/') }}"><i
                             class=" side-menu__icon fa fa-google"></i><span class="side-menu__label">Halaman Utama</span></a>

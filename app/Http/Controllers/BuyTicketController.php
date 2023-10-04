@@ -3,12 +3,16 @@
 namespace App\Http\Controllers;
 
 use App\Models\Cart;
+use App\Models\CartVoucher;
+use Illuminate\Contracts\Validation\Rule;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use App\Models\Event;
 use App\Models\Harga;
 use App\Models\HargaCart;
+use App\Models\Voucher;
 use Illuminate\Support\Facades\Auth;
 
 class BuyTicketController extends Controller
@@ -26,6 +30,7 @@ class BuyTicketController extends Controller
         }
         $event = Event::where('uid', $cart->event_uid)->first();
         $harga = HargaCart::where('uid', $cart->uid)->get();
+        $cartV = CartVoucher::where('uid', $cart->uid)->first();
         // dd($harga);
         $counts = [];
         foreach ($harga as $count) {
@@ -40,8 +45,39 @@ class BuyTicketController extends Controller
             'cart' => $cart,
             'total' => $jumlah,
             'fee' => $fee,
-            'uid' => $uid
+            'uid' => $uid,
+            'cartV'=>$cartV
         ]);
+    }
+
+    public function checkVoucher(Request $request){
+
+       $vali =  Validator::make($request->all(), [
+            'code' =>  'required|alpha_num',
+        ]);
+        $code = $request->code;
+
+
+        
+        $voucher = Voucher::where('code', $code)->first();
+        if($voucher){
+            $cartV = new CartVoucher([
+                'uid'=> $request->cart,
+                'user_uid'=> Auth::user()->uid,
+                'event_uid' => $request->event,
+                'code'=> $code
+            ]);
+            $cartV->save();
+            return redirect()->back()->with('voucher', 'Harga berhasil ditambah');
+        
+            // dd($cartV);
+        }
+        else{
+            dd('Tidak Ada Voucher');
+        }
+
+       
+       
     }
 
 

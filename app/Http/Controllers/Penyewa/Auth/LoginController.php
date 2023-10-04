@@ -9,7 +9,6 @@ use Illuminate\Support\Facades\Auth;
 class LoginController extends Controller
 {
     public function index(Request $request){
-    
         $user = $request->only('email', 'password');
         if (Auth::attempt($user)) {
             if(Auth::user()->role === 'penyewa'){

@@ -41,9 +41,9 @@
                                                 <p class="m-0" style="font-size: 11px">{{ $harga->kategori_harga }}</p>
                                                 <h6>Rp {{ number_format($harga->harga_ticket, 0, ',', '.') }} x
                                                     {{ $harga->quantity }}</h6>
-                                                    @php
-                                                        $fee  += $harga->quantity;
-                                                    @endphp
+                                                @php
+                                                    $fee += $harga->quantity;
+                                                @endphp
                                             </div>
                                             <h6>
                                                 @php
@@ -62,7 +62,16 @@
                             </div>
                         </div>
 
-
+                        <div class="form-group">
+                            <form class="input-group d-flex align-items-center" action="{{url('/checkVoucer')}}" method="post">
+                                @csrf
+                                <input type="hidden" name="event" value="{{$event->uid}}">
+                                <input type="hidden" name="cart" value="{{$cart->uid}}">
+                                <input type="text" class="form-control my-2" name="code" placeholder="Masukan Code Voucher.." value=""
+                                    aria-label="Example text with button addon" aria-describedby="button-addon1">
+                                <button type="submit" class="btn btn-primary" style="height: auto" id="button-addon1">Button</button>
+                            </form>
+                        </div>
 
                         <div class="card mb-2">
                             <h5 class="card-header">Payment Detail</h5>
@@ -81,7 +90,7 @@
                                             <p class="text-start m-0" style="font-size: 14px; font-weight: bold">Layanan
                                                 Fee</p>
                                             <h6 class="text-end m-0" style="font-size: 16px; font-weight: bold">
-                                                Rp {{ number_format($event->fee * $fee  , 0, ',', '.') }}
+                                                Rp {{ number_format($event->fee * $fee, 0, ',', '.') }}
                                             </h6>
                                         </div>
                                         <hr>
@@ -104,7 +113,8 @@
                                                     <button type="submit" class="btn btn-primary w-100 mt-3">Bayar
                                                         Sekarang</button>
                                                 @else
-                                                    <a href="{{$cart->link}}" class="btn btn-primary w-100 mt-3">Lanjutkan
+                                                    <a href="{{ $cart->link }}"
+                                                        class="btn btn-primary w-100 mt-3">Lanjutkan
                                                         Pembayaran</a>
                                                 @endif
                                             </form>
