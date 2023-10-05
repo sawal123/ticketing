@@ -17,13 +17,23 @@
                 <h3 class="card-title">List Voucher</h3>
                 @include('penyewa.molecul.modalVoucher')
             </div>
-            <div class="card-body">
+            <div                 <di                @if (session('vError'))
+                    <div class="alert alert-danger">
+                        {{session('vError')}}
+                    </div>
+                @endif
+                @if (session('voucher'))
+                    <div class="alert alert-success">
+                        {{session('voucher')}}
+                    </div>
+                @endif
                 <div class="table-responsive">
                     <table id="tablePenyewa" class="table table-bordered text-nowrap key-buttons border-bottom">
                         <thead>
                             <tr>
                                 <th class="border-bottom-0">No</th>
                                 <th class="border-bottom-0">Code</th>
+                                <th class="border-bottom-0">Unit</th>
                                 <th class="border-bottom-0" style="width: 10%">Nominal</th>
                                 <th class="border-bottom-0">Min Beli</th>
                                 <th class="border-bottom-0">Max Disc</th>
@@ -38,11 +48,19 @@
                                 <tr>
                                     <td>{{ $key += 1 }}</td>
                                     <td>{{ $v->code }}</td>
-                                    <td> {{$v->nominal}}
-                                    </td>
-                                    <td>{{ $v->min_beli }}</td>
+                                    <td>{{ $v->unit }}</td>
                                     <td>
-                                       {{$v->max_disc}}
+                                        @if($v->unit === 'rupiah')
+                                         Rp {{ number_format($v->nominal, 0, ',', '.') }}
+                                        @else
+                                       {{ number_format($v->nominal, 0, ',', '.') }}%
+                                        @endif
+
+                                    </td>
+                                    <td>Rp {{  number_format($v->min_beli, 0, ',', '.') }}</td>
+                                    <td>
+                                       Rp {{  number_format($v->max_disc, 0, ',', '.') }}
+
                                     </td>
                                     <td>{{$v->digunakan}}</td>
                                     <td>{{ $v->limit }}</td>
@@ -59,11 +77,12 @@
                                                 data-bs-original-title="Edit"><span class="fe fe-edit fs-14"></span></a>
                                             <a class="btn text-danger btn-sm" data-bs-toggle="tooltip"
                                                 data-bs-original-title="Delete"><span
-                                                    class="fe fe-trash-2 fs-14"></span></a>
-                                        </div>
+                                                    class="fe fe-trash-2 fs-14"></span>
+                                            </div>
                                     </td>
                                 </tr>
                             @endforeach
+                           
                         </tbody>
                     
                     </table>

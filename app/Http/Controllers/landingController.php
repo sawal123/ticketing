@@ -35,6 +35,7 @@ class landingController extends Controller
     public function ticket($event)
     {
 
+        error_reporting(0);
         $ticket = Event::where('slug', $event)->first();
         $tickets = Event::select('events.*', 'talent.*')->join('talent', 'events.uid', '=', 'talent.uid')->where('slug', $event)->get();
 

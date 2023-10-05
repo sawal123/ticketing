@@ -16,6 +16,10 @@
         </div>
         <!--- End container -->
     </div>
+
+
+    
+
     <div class="fugu-go-top">
         <img src="{{asset('landing/images/svg/arrow-black-right.svg')}}" alt="">
     </div>

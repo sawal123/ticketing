@@ -11,6 +11,7 @@ class Voucher extends Model
     protected $fillable = [
         'uid', 'user_uid', 'event_uid', 'code', 'unit', 'nominal', 'min_beli', 'max_disc','digunakan', 'limit', 'status'
     ];
+
     public function cartVoucher()
     {
         return $this->hasMany(CartVoucher::class, 'code', 'code');

@@ -54,8 +54,10 @@
                                     </div>
                                 </div>
                             @endforeach
+
                         </div>
                     </div>
+
                     <div class="col-lg-4  d-none d-lg-block">
                         <div class="card ">
                             <div class="card-header">
@@ -68,9 +70,9 @@
                             </div>
                             <form action="{{ url('/checkout') }}" method="post">
                                 @csrf
+                                <input type="hidden" name="eventUid" value="{{ $ticket->uid }}">
                                 <div class="card-body" style="overflow-y: scroll ;max-height: 300px;">
-                                    <input type="hidden" name="eventUid" value="{{ $ticket->uid }}">
-                                    @if (count($list) > 0 && $ticket->status === 'active')
+                                    @if (count($list) > 0)
                                         @foreach ($list as $key => $list)
                                             <div class="card ps-3 my-2">
                                                 <div class="row d-flex align-items-center">
@@ -78,6 +80,7 @@
                                                         <p style="font-size: 12px; font-weight: 800" class="m-0">
                                                             {{ $list['kategori'] }}</p>
                                                         <p style="font-weight: bold" class="harga">
+
                                                             {{ number_format($list['harga'], 0, ',', '.') }}</p>
                                                     </div>
                                                     @php
@@ -88,7 +91,7 @@
                                                     @endphp
                                                     <div class="col-8 d-flex justify-content-end align-content-end">
                                                         <div class="input-wrapper container d-flex ">
-                                                            @if ($jmlhQty[$kategori] < $list['qty'])
+                                                            @if ($jmlhQty[$kategori] < $list['qty'] && $ticket->status === 'active')
                                                                 <input type="hidden" class="price-input"
                                                                     placeholder="Price" name="harga{{ $loop->index }}"
                                                                     value="{{ $list['harga'] }}">
@@ -114,15 +117,11 @@
                                                                     style="min-width: 40px; height: 40px;"
                                                                     data-target="quantity{{ $loop->index }}">+</button>
                                                             @else
-                                                                <button disabled="disabled" class="btn btn-success w-100">Sold
-                                                                    Out</button>
+                                                                <button disabled="disabled"class="btn btn-success w-100">
+                                                                    Sold Out</button>
                                                             @endif
-
                                                         </div>
-
                                                     </div>
-
-
                                                 </div>
                                             </div>
                                         @endforeach
@@ -162,6 +161,7 @@
                                     <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas"
                                         aria-label="Close"></button>
                                 </div>
+
                                 <div class="offcanvas-body small text-start">
                                     <form action="{{ url('/checkout') }}" method="post">
                                         <input type="hidden" name="eventUid" value="{{ $ticket->uid }}">

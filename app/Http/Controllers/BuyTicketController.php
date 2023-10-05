@@ -19,6 +19,7 @@ class BuyTicketController extends Controller
 {
     public function index($uid, $user)
     {
+        error_reporting(0);
         // ?order_id=INV-05484&status_code=200&transaction_status=settlement
         $cart = Cart::where('uid', $uid)->where('user_uid', $user)->first();
         // dd($cart);
@@ -31,7 +32,8 @@ class BuyTicketController extends Controller
         $event = Event::where('uid', $cart->event_uid)->first();
         $harga = HargaCart::where('uid', $cart->uid)->get();
         $cartV = CartVoucher::where('uid', $cart->uid)->first();
-        // dd($harga);
+        $voucher = Voucher::where('code', $cartV->code)->first();
+        // dd($cartV);
         $counts = [];
         foreach ($harga as $count) {
             $counts[] = $count->harga_ticket * $count->quantity;
@@ -46,38 +48,46 @@ class BuyTicketController extends Controller
             'total' => $jumlah,
             'fee' => $fee,
             'uid' => $uid,
-            'cartV'=>$cartV
+            'cartV' => $voucher
         ]);
     }
 
-    public function checkVoucher(Request $request){
+    public function checkVoucher(Request $request)
+    {
 
-       $vali =  Validator::make($request->all(), [
+        $vali =  Validator::make($request->all(), [
             'code' =>  'required|alpha_num',
         ]);
         $code = $request->code;
+        $cart = $request->cartUid;
 
-
-        
+        $cVoucher = CartVoucher::where('uid', $cart)->first();
         $voucher = Voucher::where('code', $code)->first();
-        if($voucher){
-            $cartV = new CartVoucher([
-                'uid'=> $request->cart,
-                'user_uid'=> Auth::user()->uid,
-                'event_uid' => $request->event,
-                'code'=> $code
-            ]);
-            $cartV->save();
-            return redirect()->back()->with('voucher', 'Harga berhasil ditambah');
-        
-            // dd($cartV);
+        // dd($cVoucher->co);
+        // dd($voucher->digunakan);
+        if ($voucher) {
+            if ($cVoucher) {
+                $cVoucher->code = $code;
+                $cVoucher->save();
+                return redirect()->back()->with('voucher', 'Voucher berhasil digunakan');
+            }
+            // dd($voucher->digunakan);
+            if ($voucher->digunakan < $voucher->limit) {
+                $cartV = new CartVoucher([
+                    'uid' => $cart,
+                    'user_uid' => Auth::user()->uid,
+                    'event_uid' => $request->event,
+                    'code' => $code
+                ]);
+                $cartV->save();
+                return redirect()->back()->with('voucher', 'Harga berhasil ditambah');
+            } else {
+                // dd('Tidak Ada Voucher');
+                return redirect()->back()->with('vError', 'Voucher Expired');
+            }
+        } else {
+            return redirect()->back()->with('vError', 'Voucher Invalid');
         }
-        else{
-            dd('Tidak Ada Voucher');
-        }
-
-       
-       
     }
     public function checkout(Request $request)
     {

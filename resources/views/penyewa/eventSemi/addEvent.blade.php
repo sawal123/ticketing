@@ -76,13 +76,13 @@
                                     placeholder="Nama Event" required>
                             </div>
                         </div>
-                        <div class="row mb-4">
+                        {{-- <div class="row mb-4">
                             <label class="col-md-3 form-label">Biaya Layanan :</label>
                             <div class="col-md-9">
                                 <input type="number" value="{{ $ubahEvent->fee }}" name="fee" class="form-control"
                                     required>
                             </div>
-                        </div>
+                        </div> --}}
                         <div class="row mb-4">
                             <label class="col-md-3 form-label">Alamat :</label>
                             <div class="col-md-9">
@@ -90,22 +90,23 @@
                                     required>
                             </div>
                         </div>
-                        @if (request()->is('dashboard/event/addEvent') === false)
+                        {{-- @if (request()->is('dashboard/event/addEvent') === false)
                             <div class="row mb-4">
                                 <label class="col-md-3 form-label">Status Event :</label>
                                 <div class="col-md-9">
                                     <select class="form-select" aria-label="Default select example" name="status">
-                                        {{-- <option selected>Pilih...</option> --}}
                                         <option value="close" {{ $ubahEvent->status == 'selesai' ? 'selected' : '' }}>
                                             Close
                                         </option>
                                         <option value="active" {{ $ubahEvent->status == 'active' ? 'selected' : '' }}>
                                             Active
                                         </option>
+
                                     </select>
                                 </div>
                             </div>
-                        @endif
+                        @endif --}}
+
                         <div class="row mb-4">
                             <label class="col-md-3 form-label">Tanggal Event :</label>
                             <div class="col-md-9">

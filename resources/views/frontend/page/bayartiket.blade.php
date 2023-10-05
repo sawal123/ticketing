@@ -63,14 +63,23 @@
                         </div>
 
                         <div class="form-group">
-                            <form class="input-group d-flex align-items-center" action="{{url('/checkVoucer')}}" method="post">
+                            <form class="input-group d-flex align-items-center" action="{{ url('/checkVoucer') }}"
+                                method="post">
                                 @csrf
-                                <input type="hidden" name="event" value="{{$event->uid}}">
-                                <input type="hidden" name="cart" value="{{$cart->uid}}">
-                                <input type="text" class="form-control my-2" name="code" placeholder="Masukan Code Voucher.." value=""
+                                <input type="hidden" name="total" value="{{ $total }}">
+                                <input type="hidden" name="event" value="{{ $event->uid }}">
+                                <input type="hidden" name="cartUid" value="{{ $cart->uid }}">
+                                <input type="text" class="form-control my-2" name="code"
+                                    placeholder="Masukan Code Voucher.." value="{{ $cartV->code }}"
                                     aria-label="Example text with button addon" aria-describedby="button-addon1">
-                                <button type="submit" class="btn btn-primary" style="height: auto" id="button-addon1">Button</button>
+                                <button type="submit" class="btn btn-primary" style="height: auto"
+                                    id="button-addon1">Submit</button>
                             </form>
+                            @if (session('vError'))
+                                <span class="badge rounded-pill text-danger mb-3" style="margin-top: -10px">
+                                    {{ session('vError') }}
+                                </span>
+                            @endif
                         </div>
 
                         <div class="card mb-2">
@@ -93,11 +102,38 @@
                                                 Rp {{ number_format($event->fee * $fee, 0, ',', '.') }}
                                             </h6>
                                         </div>
+                                        @php
+                                            $persen = 0;
+                                            // $total += $event->fee * $fee;
+                                            if ($cartV->unit === 'rupiah') {
+                                                $total += (($event->fee * $fee) - $cartV->nominal);
+                                            } elseif ($cartV->unit === 'persen') {
+                                                $total += $event->fee * $fee;
+                                                $persen = ($cartV->nominal / 100) * $total;
+                                                $total = $total - $persen;
+                                            }
+                                            else {
+                                                $total += $event->fee * $fee;
+                                            }
+                                        @endphp
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <p class="text-start m-0" style="font-size: 14px; font-weight: bold">Discount
+                                            </p>
+                                            <h6 class="text-end m-0" style="font-size: 16px; font-weight: bold">
+                                                {{-- {{$cartV->unit}} --}}
+                                                @if ($cartV->unit === 'rupiah')
+                                                    - Rp {{ number_format($cartV->nominal, 0, ',', '.') }}
+                                                @else
+                                                    - Rp {{ number_format($persen, 0, ',', '.') }}
+                                                @endif
+                                            </h6>
+                                        </div>
                                         <hr>
+
                                         <div class="d-flex justify-content-between align-items-center">
                                             <p class="text-start m-0" style="font-size: 16px; font-weight: bold">Total</p>
                                             <h6 class="text-end m-0" style="font-size: 18px; font-weight: 900">Rp
-                                                {{ number_format($total += $event->fee, 0, ',', '.') }}
+                                                {{ number_format($total, 0, ',', '.') }}
                                             </h6>
                                         </div>
                                         @if ($cart->status === 'UNPAID' || $cart->status === 'PENDING')
@@ -108,6 +144,7 @@
                                                 <input type="hidden" name="person" value="{{ Auth::user()->uid }}">
                                                 <input type="hidden" name="event" value="{{ $uid }}">
                                                 <input type="hidden" value="{{ $total }}" name="amount">
+
                                                 @if ($cart->status === 'UNPAID')
                                                     <button type="submit" class="btn btn-primary w-100 mt-3">Bayar
                                                         Sekarang</button>
@@ -121,6 +158,8 @@
                                             <button type="submit"
                                                 class="btn btn-success w-100 mt-3">{{ $cart->status }}</button>
                                         @endif
+
+
                                     </div>
                                 </div>
                             </div>

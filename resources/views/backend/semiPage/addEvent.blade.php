@@ -65,6 +65,7 @@
                         @else
                             <form action="{{ url('/admin/editEvent') }}" method="post" enctype="multipart/form-data">
                     @endif
+
                     @csrf
                     <div class="card-body">
                         <div class="row mb-4">
@@ -95,12 +96,13 @@
                                 <div class="col-md-9">
                                     <select class="form-select" aria-label="Default select example" name="status">
                                         {{-- <option selected>Pilih...</option> --}}
-                                        <option value="close" {{ $ubahEvent->status == 'selesai' ? 'selected' : '' }}>
-                                            Close
-                                        </option>
                                         <option value="active" {{ $ubahEvent->status == 'active' ? 'selected' : '' }}>
                                             Active
                                         </option>
+                                        <option value="close" {{ $ubahEvent->status == 'selesai' ? 'selected' : '' }}>
+                                            Close
+                                        </option>
+                                        
 
                                     </select>
                                 </div>
