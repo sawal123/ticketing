@@ -22,7 +22,6 @@
                                     {{-- @else
                                         <p>Ticket Belum Tersedia</p> --}}
                                     @endif
-                                
                                 @endforeach
                             </div>
                         <a class="fugu--btn btn-sm bg-white" href="{{ url('/ticket/' . $events->slug) }}">Beli</a>

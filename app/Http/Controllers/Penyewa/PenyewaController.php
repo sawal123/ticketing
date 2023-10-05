@@ -61,10 +61,8 @@ class PenyewaController extends Controller
                 'paginate' => $pagination
             ]);
         } elseif ($addEvent === 'addEvent') {
-
             return view('penyewa.eventSemi.addEvent', [
                 'title' => 'Add Event',
-
             ]);
         } elseif ($addEvent === 'eventDetail') {
             // $id = $_GET['id'];

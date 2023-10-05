@@ -5,7 +5,6 @@
                 <div class="card w-100">
                     <div class="product-grid6">
                         <div class="product-image6 p-2">
-
                             <img class="img-fluid br-7 " style="height: 150px; object-fit: cover"
                                 src="{{ asset('storage/talent/' . $talents->gambar) }}" alt="img">
                         </div>

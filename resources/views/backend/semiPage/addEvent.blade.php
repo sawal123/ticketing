@@ -65,7 +65,6 @@
                         @else
                             <form action="{{ url('/admin/editEvent') }}" method="post" enctype="multipart/form-data">
                     @endif
-
                     @csrf
                     <div class="card-body">
                         <div class="row mb-4">

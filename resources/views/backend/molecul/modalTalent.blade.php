@@ -20,7 +20,6 @@
                                 required>
                         </div>
                     </div>
-
                     <div class="row">
                         <div class="col col-sm-12 mb-4 mb-lg-0">
                             <input type="file" class="dropify" name="gambar" data-bs-height="180">

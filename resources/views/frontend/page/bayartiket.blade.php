@@ -108,7 +108,6 @@
                                                 <input type="hidden" name="person" value="{{ Auth::user()->uid }}">
                                                 <input type="hidden" name="event" value="{{ $uid }}">
                                                 <input type="hidden" value="{{ $total }}" name="amount">
-
                                                 @if ($cart->status === 'UNPAID')
                                                     <button type="submit" class="btn btn-primary w-100 mt-3">Bayar
                                                         Sekarang</button>
@@ -122,8 +121,6 @@
                                             <button type="submit"
                                                 class="btn btn-success w-100 mt-3">{{ $cart->status }}</button>
                                         @endif
-
-
                                     </div>
                                 </div>
                             </div>

@@ -79,8 +79,6 @@ class BuyTicketController extends Controller
        
        
     }
-
-
     public function checkout(Request $request)
     {
         error_reporting(0);

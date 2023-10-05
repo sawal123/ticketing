@@ -102,12 +102,10 @@
                                         <option value="active" {{ $ubahEvent->status == 'active' ? 'selected' : '' }}>
                                             Active
                                         </option>
-
                                     </select>
                                 </div>
                             </div>
                         @endif
-
                         <div class="row mb-4">
                             <label class="col-md-3 form-label">Tanggal Event :</label>
                             <div class="col-md-9">

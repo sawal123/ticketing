@@ -54,10 +54,8 @@
                                     </div>
                                 </div>
                             @endforeach
-
                         </div>
                     </div>
-
                     <div class="col-lg-4  d-none d-lg-block">
                         <div class="card ">
                             <div class="card-header">
@@ -80,7 +78,6 @@
                                                         <p style="font-size: 12px; font-weight: 800" class="m-0">
                                                             {{ $list['kategori'] }}</p>
                                                         <p style="font-weight: bold" class="harga">
-
                                                             {{ number_format($list['harga'], 0, ',', '.') }}</p>
                                                     </div>
                                                     @php

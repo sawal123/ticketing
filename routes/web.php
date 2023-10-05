@@ -95,13 +95,10 @@ Route::prefix('dashboard')
         Route::post('/addEvents', [PenyewaAddController::class, 'addEvent'])->name('dashboard.addEvent');
         Route::post('/addHarga', [PenyewaAddController::class, 'addHarga']);
         Route::post('/addVoucher', [PenyewaAddController::class, 'addVoucher']);
-
-
         Route::post('/editTalent', [PenyewaEditController::class, 'editTalent']);
         Route::post('/editEvent', [PenyewaEditController::class, 'editEvent']);
         Route::post('/editHarga', [PenyewaEditController::class, 'editHarga']);
     });
-
 Route::prefix('admin')
     ->namespace('Dashboard')
     ->middleware(['auth', 'admin'])

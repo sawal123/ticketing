@@ -17,7 +17,6 @@
                             data-kategori="{{ $harga->kategori }}" data-qty="{{ $harga->qty }}"
                             data-harga="{{ $harga->harga }}" data-id="{{ $harga->id }}">
                             <i class="fa fa-edit fs-20 text-white "></i>
-
                         </button>
                         <a href="{{ url('admin/hargas/delete/' . $harga->id) }}" class="delete">
                             <button type="button" class=" my-4 mx-auto d-flex btn btn-danger">

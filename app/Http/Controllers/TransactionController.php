@@ -162,7 +162,6 @@ class TransactionController extends Controller
                     ]
                 ]);
             }
-
             return response()->json([
                 'meta' => [
                     'code' => 200,

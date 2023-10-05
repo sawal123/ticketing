@@ -25,7 +25,6 @@ class AddController extends Controller
             'tanggal' => 'required|string',
             'map' => 'required|string|max:255',
             'deskripsi' => 'string|max:255',
-
         ]);
         $validate->validate();
 

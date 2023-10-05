@@ -97,7 +97,6 @@
 
                                         <!-- PAGE-HEADER END -->
                                         @include('backend.molecul.modalTalent')
-
                                         @if (session('talent'))
                                             <div class="alert alert-success">
                                                 {{ session('talent') }}
