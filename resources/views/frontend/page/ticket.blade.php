@@ -148,7 +148,7 @@
                     </div>
                     <div class="mt-2"></div>
 
-
+                    {{-- ======================MOBILE============================= --}}
                     <div class="row  mt-5 d-lg-none">
                         <div class="col fixed-bottom text-center shadow-lg" style="background-color: white; height: 80px;">
                             <button class="btn btn-primary mt-4" type="button" data-bs-toggle="offcanvas"
@@ -177,36 +177,43 @@
                                                         <div class="col-8 d-flex justify-content-end align-content-end">
                                                             <div class="input-wrapper container d-flex ">
                                                                 <div class="input-wrapper container d-flex ">
-                                                                    <input type="hidden" class="price-input"
-                                                                        placeholder="Price"
-                                                                        name="harga{{ $loop->index }}"
-                                                                        value="{{ $lists['harga'] }}">
+                                                                    @if ($jmlhQty[$kategori] < $list['qty'] && $ticket->status === 'active')
+                                                                        <input type="hidden" class="price-input"
+                                                                            placeholder="Price"
+                                                                            name="harga{{ $loop->index }}"
+                                                                            value="{{ $lists['harga'] }}">
 
-                                                                    <input type="hidden" class="price-input"
-                                                                        placeholder="Price"
-                                                                        name="kategori{{ $loop->index }}"
-                                                                        value="{{ $lists['kategori'] }}">
+                                                                        <input type="hidden" class="price-input"
+                                                                            placeholder="Price"
+                                                                            name="kategori{{ $loop->index }}"
+                                                                            value="{{ $lists['kategori'] }}">
 
 
-                                                                    <button type="button"
-                                                                        class="btn btn-minus btn-primary"
-                                                                        style="min-width: 40px; height: 40px;"
-                                                                        data-target="quantity{{ $loop->index }}">-</button>
+                                                                        <button type="button"
+                                                                            class="btn btn-minus btn-primary"
+                                                                            style="min-width: 40px; height: 40px;"
+                                                                            data-target="quantity{{ $loop->index }}">-</button>
 
-                                                                    <input type="text"
-                                                                        class="form-control input quantity{{ $loop->index }}"
-                                                                        min="0" max="5" step="1"
-                                                                        value="0" name="ticket{{ $loop->index }}"
-                                                                        id="" readonly>
+                                                                        <input type="text"
+                                                                            class="form-control input quantity{{ $loop->index }}"
+                                                                            min="0" max="5" step="1"
+                                                                            value="0"
+                                                                            name="ticket{{ $loop->index }}"
+                                                                            id="" readonly>
 
-                                                                    <input type="hidden"
-                                                                        name="orderBy{{ $loop->index }}"
-                                                                        value="{{ $loop->index + 1 }}">
+                                                                        <input type="hidden"
+                                                                            name="orderBy{{ $loop->index }}"
+                                                                            value="{{ $loop->index + 1 }}">
 
-                                                                    <button type="button"
-                                                                        class="btn btn-plus btn btn-primary"
-                                                                        style="min-width: 40px; height: 40px;"
-                                                                        data-target="quantity{{ $loop->index }}">+</button>
+                                                                        <button type="button"
+                                                                            class="btn btn-plus btn btn-primary"
+                                                                            style="min-width: 40px; height: 40px;"
+                                                                            data-target="quantity{{ $loop->index }}">+</button>
+                                                                    @else
+                                                                        <button
+                                                                            disabled="disabled"class="btn btn-success w-100">
+                                                                            Sold Out</button>
+                                                                    @endif
                                                                 </div>
                                                             </div>
                                                         </div>

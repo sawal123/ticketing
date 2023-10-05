@@ -18,7 +18,7 @@
                                 <button type="submit" class="btn ripple btn-primary me-2" data-bs-target="#updateTalent"
                                     data-bs-effect="effect-sign" data-bs-toggle="modal" data-uid="{{$talents->uid}}" data-talent="{{$talents->talent}}"><i class="fe fe-edit"> </i>
                                 </button>
-                                <a href="{{url('admin/delete/'.$talents->uid)}}" class="delete btn ripple btn-danger"><i class="fe fe-trash"> </i></a>
+                                <a href="{{url('dashboard/delete/'.$talents->uid)}}" class="delete btn ripple btn-danger"><i class="fe fe-trash"> </i></a>
                             </div>
                         </div>
 

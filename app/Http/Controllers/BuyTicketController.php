@@ -63,8 +63,13 @@ class BuyTicketController extends Controller
 
         $cVoucher = CartVoucher::where('uid', $cart)->first();
         $voucher = Voucher::where('code', $code)->first();
-        // dd($cVoucher->co);
+        // dd($code);
         // dd($voucher->digunakan);
+        if ($code === null) {
+            $cVoucher->code = '';
+            $cVoucher->save();
+            return redirect()->back()->with('voucher', 'Voucher berhasil digunakan');
+        }
         if ($voucher) {
             if ($cVoucher) {
                 $cVoucher->code = $code;
@@ -80,7 +85,7 @@ class BuyTicketController extends Controller
                     'code' => $code
                 ]);
                 $cartV->save();
-                return redirect()->back()->with('voucher', 'Harga berhasil ditambah');
+                return redirect()->back()->with('voucher', 'Voucher berhasil digunakan');
             } else {
                 // dd('Tidak Ada Voucher');
                 return redirect()->back()->with('vError', 'Voucher Expired');

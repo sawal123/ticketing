@@ -80,6 +80,11 @@
                                     {{ session('vError') }}
                                 </span>
                             @endif
+                            @if (session('voucher'))
+                                <span class="badge rounded-pill text-primary mb-3" style="margin-top: -10px">
+                                    {{ session('voucher') }}
+                                </span>
+                            @endif
                         </div>
 
                         <div class="card mb-2">

@@ -99,6 +99,10 @@ Route::prefix('dashboard')
         Route::post('/editTalent', [PenyewaEditController::class, 'editTalent']);
         Route::post('/editEvent', [PenyewaEditController::class, 'editEvent']);
         Route::post('/editHarga', [PenyewaEditController::class, 'editHarga']);
+
+
+        Route::get('/delete/{id}', [DeleteController::class, 'deleteTalent']);
+        Route::get('/hargas/delete/{id}', [DeleteController::class, 'deleteHarga']);
     });
 Route::prefix('admin')
     ->namespace('Dashboard')
