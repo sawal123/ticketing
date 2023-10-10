@@ -17,6 +17,7 @@ class GlobalDataMiddleware
      */
     public function handle(Request $request, Closure $next): Response
     {
+        error_reporting(0);
         $user = Auth::user();
         $csrfToken = csrf_token();
         $logo = Landing::all();

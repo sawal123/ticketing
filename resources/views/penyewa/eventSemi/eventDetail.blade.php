@@ -96,7 +96,7 @@
                                     <div class="tab-pane active" id="tab5">
 
                                         <!-- PAGE-HEADER END -->
-                                        @include('backend.molecul.modalTalent')
+                                        @include('penyewa.molecul.modalTalent')
                                         @if (session('talent'))
                                             <div class="alert alert-success">
                                                 {{ session('talent') }}
@@ -108,13 +108,13 @@
                                             </div>
                                         @endif
 
-                                        @include('backend.molecul.cardTalent')
+                                        @include('penyewa.molecul.cardTalent')
                                     </div>
 
 
                                     <div class="tab-pane " id="tab6">
                                         <div class="row">
-                                            @include('backend.molecul.modalHarga')
+                                            @include('penyewa.molecul.modalHarga')
                                             @if (session('harga'))
                                                 <div class="alert alert-success">
                                                     {{ session('harga') }}
@@ -131,7 +131,7 @@
                                                     {{ session('editHarga') }}
                                                 </div>
                                             @endif
-                                            @include('backend.molecul.cardHarga')
+                                            @include('penyewa.molecul.cardHarga')
                                         </div>
                                     </div>
 

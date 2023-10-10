@@ -4,8 +4,8 @@
             <a aria-label="Hide Sidebar" class="app-sidebar__toggle" data-bs-toggle="sidebar" href="javascript:void(0)"></a>
             <!-- sidebar-toggle-->
             <a class="logo-horizontal " href="index.html">
-                <img src="../assets/images/brand/logo-white.png" class="header-brand-img desktop-logo" alt="logo">
-                <img src="../assets/images/brand/logo-dark.png" class="header-brand-img light-logo1"
+                <img src="{{asset('/assets/images/brand/logo-white.png')}}" class="header-brand-img desktop-logo" alt="logo">
+                <img src="{{asset('/assets/images/brand/logo-dark.png')}}" class="header-brand-img light-logo1"
                     alt="logo">
             </a>
             <!-- LOGO -->
@@ -79,82 +79,7 @@
                                                 </a>
                                             </div>
                                         </div>
-                                        <div class="dropdown-item d-flex p-4">
-                                            <a href="cart.html" class="open-file"></a>
-                                            <span
-                                                class="avatar avatar-xl br-5 me-3 align-self-center cover-image"
-                                                data-bs-image-src="../assets/images/products/5.jpg"></span>
-                                            <div class="wd-50p">
-                                                <h5 class="mb-1">Black Digital Camera</h5>
-                                                <span>Status: <span class="text-danger">Out Stock</span></span>
-                                                <p class="fs-13 text-muted mb-0">Quantity: 06</p>
-                                            </div>
-                                            <div class="ms-auto text-end d-flex">
-                                                <span class="fs-16 text-dark d-none d-sm-block px-4">
-                                                    $867
-                                                </span>
-                                                <a href="javascript:void(0)" class="fs-16 btn p-0 cart-trash">
-                                                    <i class="fe fe-trash-2 border text-danger brround d-block p-2"></i>
-                                                </a>
-                                            </div>
-                                        </div>
-                                        <div class="dropdown-item d-flex p-4">
-                                            <a href="cart.html" class="open-file"></a>
-                                            <span
-                                                class="avatar avatar-xl br-5 me-3 align-self-center cover-image"
-                                                data-bs-image-src="../assets/images/products/7.jpg"></span>
-                                            <div class="wd-50p">
-                                                <h5 class="mb-1">Stylish Rockerz 255 Ear Pods</h5>
-                                                <span>Status: <span class="text-success">In Stock</span></span>
-                                                <p class="fs-13 text-muted mb-0">Quantity: 05</p>
-                                            </div>
-                                            <div class="ms-auto text-end d-flex">
-                                                <span class="fs-16 text-dark d-none d-sm-block px-4">
-                                                    $323
-                                                </span>
-                                                <a href="javascript:void(0)" class="fs-16 btn p-0 cart-trash">
-                                                    <i class="fe fe-trash-2 border text-danger brround d-block p-2"></i>
-                                                </a>
-                                            </div>
-                                        </div>
-                                        <div class="dropdown-item d-flex p-4">
-                                            <a href="cart.html" class="open-file"></a>
-                                            <span
-                                                class="avatar avatar-xl br-5 me-3 align-self-center cover-image"
-                                                data-bs-image-src="../assets/images/products/1.jpg"></span>
-                                            <div class="wd-50p">
-                                                <h5 class="mb-1">Women Party Wear Dress</h5>
-                                                <span>Status: <span class="text-success">In Stock</span></span>
-                                                <p class="fs-13 text-muted mb-0">Quantity: 05</p>
-                                            </div>
-                                            <div class="ms-auto text-end d-flex">
-                                                <span class="fs-16 text-dark d-none d-sm-block px-4">
-                                                    $867
-                                                </span>
-                                                <a href="javascript:void(0)" class="fs-16 btn p-0 cart-trash">
-                                                    <i class="fe fe-trash-2 border text-danger brround d-block p-2"></i>
-                                                </a>
-                                            </div>
-                                        </div>
-                                        <div class="dropdown-item d-flex p-4">
-                                            <a href="cart.html" class="open-file"></a>
-                                            <span
-                                                class="avatar avatar-xl br-5 me-3 align-self-center cover-image"
-                                                data-bs-image-src="../assets/images/products/2.jpg"></span>
-                                            <div class="wd-50p">
-                                                <h5 class="mb-1">Running Shoes for men</h5>
-                                                <span>Status: <span class="text-success">In Stock</span></span>
-                                                <p class="fs-13 text-muted mb-0">Quantity: 05</p>
-                                            </div>
-                                            <div class="ms-auto text-end d-flex">
-                                                <span class="fs-16 text-dark d-none d-sm-block px-4">
-                                                    $456
-                                                </span>
-                                                <a href="javascript:void(0)" class="fs-16 btn p-0 cart-trash">
-                                                    <i class="fe fe-trash-2 border text-danger brround d-block p-2"></i>
-                                                </a>
-                                            </div>
-                                        </div>
+                                        
                                     </div>
                                     <div class="dropdown-divider m-0"></div>
                                     <div class="dropdown-footer">
@@ -192,35 +117,7 @@
                                                 <span class="notification-subtext">3 days ago</span>
                                             </div>
                                         </a>
-                                        <a class="dropdown-item d-flex" href="notify-list.html">
-                                            <div class="me-3 notifyimg  bg-secondary brround box-shadow-secondary">
-                                                <i class="fe fe-check-circle"></i>
-                                            </div>
-                                            <div class="mt-1 wd-80p">
-                                                <h5 class="notification-label mb-1">Project has been
-                                                    approved</h5>
-                                                <span class="notification-subtext">2 hours ago</span>
-                                            </div>
-                                        </a>
-                                        <a class="dropdown-item d-flex" href="notify-list.html">
-                                            <div class="me-3 notifyimg  bg-success brround box-shadow-success">
-                                                <i class="fe fe-shopping-cart"></i>
-                                            </div>
-                                            <div class="mt-1 wd-80p">
-                                                <h5 class="notification-label mb-1">Your Product Delivered
-                                                </h5>
-                                                <span class="notification-subtext">30 min ago</span>
-                                            </div>
-                                        </a>
-                                        <a class="dropdown-item d-flex" href="notify-list.html">
-                                            <div class="me-3 notifyimg bg-pink brround box-shadow-pink">
-                                                <i class="fe fe-user-plus"></i>
-                                            </div>
-                                            <div class="mt-1 wd-80p">
-                                                <h5 class="notification-label mb-1">Friend Requests</h5>
-                                                <span class="notification-subtext">1 day ago</span>
-                                            </div>
-                                        </a>
+                      
                                     </div>
                                     <div class="dropdown-divider m-0"></div>
                                     <a href="notify-list.html"
@@ -258,62 +155,7 @@
                                                 <span>Commented on file Guest list....</span>
                                             </div>
                                         </a>
-                                        <a class="dropdown-item d-flex" href="chat.html">
-                                            <span
-                                                class="avatar avatar-md brround me-3 align-self-center cover-image"
-                                                data-bs-image-src="../assets/images/users/15.jpg"></span>
-                                            <div class="wd-90p">
-                                                <div class="d-flex">
-                                                    <h5 class="mb-1">Abagael Luth</h5>
-                                                    <small class="text-muted ms-auto text-end">
-                                                        10:35 am
-                                                    </small>
-                                                </div>
-                                                <span>New Meetup Started......</span>
-                                            </div>
-                                        </a>
-                                        <a class="dropdown-item d-flex" href="chat.html">
-                                            <span
-                                                class="avatar avatar-md brround me-3 align-self-center cover-image"
-                                                data-bs-image-src="../assets/images/users/12.jpg"></span>
-                                            <div class="wd-90p">
-                                                <div class="d-flex">
-                                                    <h5 class="mb-1">Brizid Dawson</h5>
-                                                    <small class="text-muted ms-auto text-end">
-                                                        2:17 pm
-                                                    </small>
-                                                </div>
-                                                <span>Brizid is in the Warehouse...</span>
-                                            </div>
-                                        </a>
-                                        <a class="dropdown-item d-flex" href="chat.html">
-                                            <span
-                                                class="avatar avatar-md brround me-3 align-self-center cover-image"
-                                                data-bs-image-src="../assets/images/users/4.jpg"></span>
-                                            <div class="wd-90p">
-                                                <div class="d-flex">
-                                                    <h5 class="mb-1">Shannon Shaw</h5>
-                                                    <small class="text-muted ms-auto text-end">
-                                                        7:55 pm
-                                                    </small>
-                                                </div>
-                                                <span>New Product Realease......</span>
-                                            </div>
-                                        </a>
-                                        <a class="dropdown-item d-flex" href="chat.html">
-                                            <span
-                                                class="avatar avatar-md brround me-3 align-self-center cover-image"
-                                                data-bs-image-src="../assets/images/users/3.jpg"></span>
-                                            <div class="wd-90p">
-                                                <div class="d-flex">
-                                                    <h5 class="mb-1">Cherry Blossom</h5>
-                                                    <small class="text-muted ms-auto text-end">
-                                                        7:55 pm
-                                                    </small>
-                                                </div>
-                                                <span>You have appointment on......</span>
-                                            </div>
-                                        </a>
+                                      
 
                                     </div>
                                     <div class="dropdown-divider m-0"></div>
@@ -331,7 +173,7 @@
                             <!-- SIDE-MENU -->
                             <div class="dropdown d-flex profile-1">
                                 <a href="javascript:void(0)" data-bs-toggle="dropdown" class="nav-link leading-none d-flex">
-                                    <img src="https://cdn-icons-png.flaticon.com/512/3177/3177440.png" alt="profile-user"
+                                    <img src="{{asset('storage/user/'.Auth::user()->gambar)}}" alt="profile-user"
                                         class="avatar  profile-user brround cover-image">
                                 </a>
                                 <div class="dropdown-menu dropdown-menu-end dropdown-menu-arrow">
@@ -345,14 +187,8 @@
                                     <a class="dropdown-item" href="profile.html">
                                         <i class="dropdown-icon fe fe-user"></i> Profile
                                     </a>
-                                    <a class="dropdown-item" href="email-inbox.html">
-                                        <i class="dropdown-icon fe fe-mail"></i> Inbox
-                                        <span class="badge bg-danger rounded-pill float-end">5</span>
-                                    </a>
-                                    <a class="dropdown-item" href="lockscreen.html">
-                                        <i class="dropdown-icon fe fe-lock"></i> Lockscreen
-                                    </a>
-                                    <a class="dropdown-item" href="login.html">
+                                   
+                                    <a class="dropdown-item" href="{{url('/logout')}}">
                                         <i class="dropdown-icon fe fe-alert-circle"></i> Sign out
                                     </a>
                                 </div>

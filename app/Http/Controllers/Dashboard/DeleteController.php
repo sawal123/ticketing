@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Dashboard;
 
 use App\Models\Cart;
 use App\Models\Talent;
+use App\Models\Voucher;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use App\Models\Event;
@@ -65,5 +66,10 @@ class DeleteController extends Controller
         // dd($user);
         $user->delete();
         return redirect()->back()->with('deleteUser', 'User Berhasil Dihapus');
+    }
+    public function deleteVoucher($uid){
+        $voucher = Voucher::where('uid', $uid)->first();
+        $voucher->delete();
+        return redirect()->back()->with('deleteVoucher', 'Voucher Berhasil Dihapus');
     }
 }

@@ -42,7 +42,7 @@ class EditController extends Controller
         $uid = $request->uid;
         $talent = $request->talent;
 
-        $talents = Talent::where('uid', $uid)->where('user_uid', Auth::user()->uid)->first();
+        $talents = Talent::where('uid', $uid)->first();
         $talents->talent = $talent;
 
         if ($request->hasFile('gambar')) {
@@ -58,7 +58,7 @@ class EditController extends Controller
     public function editHarga(Request $request)
     {
         $id = $request->id;
-        $harga = Harga::where('id', $id)->where('user_uid', Auth::user()->uid)->first();
+        $harga = Harga::where('id', $id)->first();
         // dd($request->kategori);
         $harga->update([
             'kategori' => $request->kategori,

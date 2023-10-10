@@ -5,11 +5,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class Harga extends Model
+class Penarikan extends Model
 {
-
     use HasFactory;
-    protected $fillable = [
-        'uid', 'kategori', 'qty', 'harga',
-    ];
+    protected $fillable=['uid', 'uid_user', 'amount', 'note', 'kwitansi', 'status'];
 }

@@ -9,7 +9,7 @@
             <div class="modal-header">
                 <h6 class="modal-title">Tambah Harga</h6><button aria-label="Close" class="btn-close" data-bs-dismiss="modal"><span aria-hidden="true">&times;</span></button>
             </div>
-            <form action="{{url('admin/addHarga')}}" method="post" enctype="multipart/form-data">
+            <form action="{{url('dashboard/addHarga')}}" method="post" enctype="multipart/form-data">
                 @csrf
                 <div class="modal-body">
                     <input type="hidden" name="uid" value="{{$eventDetail->uid}}">
@@ -50,7 +50,7 @@
             <div class="modal-header">
                 <h6 class="modal-title">Ubah Harga</h6><button aria-label="Close" class="btn-close" data-bs-dismiss="modal"><span aria-hidden="true">&times;</span></button>
             </div>
-            <form action="{{url('admin/editHarga')}}" method="post" enctype="multipart/form-data">
+            <form action="{{url('dashboard/editHarga')}}" method="post" enctype="multipart/form-data">
                 @csrf
                 <div class="modal-body">
                     <input type="hidden" name="id" id="idHarga">

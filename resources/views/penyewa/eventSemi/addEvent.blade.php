@@ -6,7 +6,8 @@
         <!-- PAGE-HEADER -->
         <div class="page-header">
             @if (request()->is('dashboard/event/addEvent'))
-                <a href="{{ url('/dashboard/event/' . $ubahEvent->uid) }}" class="btn btn-primary"><i class="fa fa-arrow-left"></i>
+                <a href="{{ url('/dashboard/event/' . $ubahEvent->uid) }}" class="btn btn-primary"><i
+                        class="fa fa-arrow-left"></i>
                     Kembali</a>
             @else
                 <a href="{{ url('/dashboard/event/eventDetail/' . $ubahEvent->uid) }}" class="btn btn-primary"><i
@@ -107,13 +108,35 @@
                             </div>
                         @endif --}}
 
-                        <div class="row mb-4">
+                        {{-- <div class="row mb-4">
                             <label class="col-md-3 form-label">Tanggal Event :</label>
                             <div class="col-md-9">
                                 <input type="datetime-local" value="{{ $ubahEvent->tanggal }}" name="tanggal"
                                     class="form-control" required>
                             </div>
+                        </div> --}}
+
+                        <div class="row mb-4">
+                            <div class="col-3">
+                                <div class="row mb-4">
+                                </div>
+                            </div>
+                            <div class="col-lg-9">
+                                <div class="row mb-4">
+                                    <div class="col-6">
+                                        <label class="form-label">Start Event :</label>
+                                        <input type="datetime-local" value="{{ $ubahEvent->start }}" name="start"
+                                            class="form-control" required>
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label">End Event :</label>
+                                        <input type="datetime-local" value="{{ $ubahEvent->end }}" name="end"
+                                            class="form-control" required>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
+
                         <div class="row mb-4">
                             <label class="col-md-3 form-label">Link Map :</label>
                             <div class="col-md-9">

@@ -110,30 +110,43 @@ class TransactionController extends Controller
         if ($status == 'capture') {
             if ($type == 'credit_card') {
                 if ($fraud == 'challenge') {
+                    $transaction->payment_type = $type;
+                    $carts->payment_type = $type;
                     $transaction->status_transaksi = 'PENDING';
                     $carts->status = 'PENDING';
                 } else {
                     $transaction->status_transaksi = 'SUCCESS';
+                    $transaction->payment_type = $type;
+                    $carts->payment_type = $type;
                     $carts->status = 'SUCCESS';
                     $voucher +=1;
                 }
             }
         } else if ($status == 'settlement') {
             $transaction->status_transaksi = 'SUCCESS';
+            $transaction->payment_type = $type;
+            $carts->payment_type = $type;
             $carts->status = 'SUCCESS';
             $voucher +=1;
         } else if ($status == 'pending') {
             $transaction->status_transaksi = 'PENDING';
             $transaction->payment_type = $type;
+            $carts->payment_type = $type;
             $carts->link = $carts->link.'/'.$type;
             $carts->status = 'PENDING';
         } else if ($status == 'deny') {
+            $transaction->payment_type = $type;
+            $carts->payment_type = $type;
             $transaction->status_transaksi = 'CANCELLED';
             $carts->status = 'CANCELLED';
         } else if ($status == 'expire') {
+            $transaction->payment_type = $type;
+            $carts->payment_type = $type;
             $transaction->status_transaksi = 'CANCELLED';
             $carts->status = 'CANCELLED';
         } else if ($status == 'cancel') {
+            $transaction->payment_type = $type;
+            $carts->payment_type = $type;
             $transaction->status_transaksi = 'CANCELLED';
             $carts->status = 'CANCELLED';
         }

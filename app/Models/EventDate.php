@@ -5,11 +5,10 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class Harga extends Model
+class EventDate extends Model
 {
-
     use HasFactory;
     protected $fillable = [
-        'uid', 'kategori', 'qty', 'harga',
+        'uid', 'start', 'end',
     ];
 }

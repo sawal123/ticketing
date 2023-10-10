@@ -20,7 +20,7 @@
             </div>
             <div class="col-xl-3 col-lg-12">
                 <a href="{{url('/dashboard/event/addEvent')}}" class="btn btn-primary btn-block float-end my-2"><i
-                        class="fa fa-plus-square me-2"></i>New Product</a>
+                        class="fa fa-plus-square me-2"></i>New Event</a>
             </div>
         </div>
     </div>

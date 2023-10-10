@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Penyewa;
 
 use App\Models\Event;
+use App\Models\EventDate;
 use App\Models\Harga;
+use App\Models\Penarikan;
 use App\Models\Talent;
 use App\Models\Voucher;
 use Illuminate\Support\Str;
@@ -13,6 +15,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Validator;
+use Ramsey\Uuid\Type\Time;
 
 class AddController extends Controller
 {
@@ -20,25 +23,33 @@ class AddController extends Controller
     {
         $validate = Validator::make($request->all(), [
             'event' => 'required|string|max:255',
-            'fee' => 'required|numeric',
+            // 'fee' => 'required|numeric',
             'alamat' => 'required|string|max:255',
-            'tanggal' => 'required|string',
+            'start' => 'required|string',
+            'end' => 'required|string',
             'map' => 'required|string|max:255',
-            'deskripsi' => 'string|max:255',
+            'deskripsi' => 'required|string|max:255',
+
         ]);
         $validate->validate();
 
         $uid = Str::random();
         // dd($uid);
 
+        $startEvent = new EventDate([
+            'uid'=> $uid,
+            'start'=> $request->start,
+            'end'=> $request->end
+        ]);
+
         $event = new Event([
             'uid' => $uid,
             'user_uid' => Auth::user()->uid,
             'event' => $request->event,
             'alamat' => $request->alamat,
-            'tanggal' =>  $request->tanggal,
+            'tanggal' =>  $request->start,
             'status' => 'active',
-            'fee' => $request->fee,
+            'fee' => 10000,
             'deskripsi' => $request->deskripsi,
             'map' => $request->map,
             'slug' => Str::slug($request->event),
@@ -50,11 +61,11 @@ class AddController extends Controller
             $file->storeAs('public/cover/', $fileName); // Simpan di direktori 'public/outlet/'
             $event['cover'] = $fileName; // Simpan nama file gambar di kolom 'gambar' pada tabel
         }
-        // dd($event);
-
+       
         try {
             DB::beginTransaction();
             $event->save();
+            $startEvent->save();
             DB::commit();
             return redirect('dashboard/event/eventDetail/' . $uid)->with('addEvent', 'Event Berhasil Disimpan..');
         } catch (\Exception $e) {
@@ -121,5 +132,33 @@ class AddController extends Controller
         ]);
         $voucher->save();
         return redirect()->back()->with('voucher', 'Voucher berhasil disimpan');
+    }
+
+    public function addPenarikan(Request $request){
+        $validate = Validator::make($request->all(),[
+            'amount'=> 'required|numeric'
+        ]);
+
+        $validate->validate();
+        
+
+        $uid = Str::random('10');
+
+
+        $penarikan = new Penarikan([
+            'uid' => $uid,
+            'uid_user'=> Auth::user()->uid,
+            'amount'=> $request->amount,
+            'note'=> 'Penarikan',
+            'kwitansi'=> '',
+            'status'=> 'PENDING'
+        ]);
+        // dd($penarikan);
+
+        $penarikan->save();
+        return redirect()->back()->with('penarikan', 'Penarikan berhasil diajukan');
+
+
+
     }
 }

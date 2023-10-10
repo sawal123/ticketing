@@ -91,10 +91,13 @@ Route::prefix('dashboard')
         Route::get('/event/{addEvent?}/{uid?}', [PenyewaController::class, 'event']);
         Route::get('/ubahEvents/{uid}', [PenyewaController::class, 'ubahEvents']);
         Route::get('/voucher', [PenyewaController::class, 'voucher']);
+        Route::get('/money', [PenyewaController::class, 'money']);
 
         Route::post('/addEvents', [PenyewaAddController::class, 'addEvent'])->name('dashboard.addEvent');
+        Route::post('/addTalent', [PenyewaAddController::class, 'addTalent']);
         Route::post('/addHarga', [PenyewaAddController::class, 'addHarga']);
         Route::post('/addVoucher', [PenyewaAddController::class, 'addVoucher']);
+        Route::post('/addPenarikan', [PenyewaAddController::class, 'addPenarikan']);
 
         Route::post('/editTalent', [PenyewaEditController::class, 'editTalent']);
         Route::post('/editEvent', [PenyewaEditController::class, 'editEvent']);
@@ -103,6 +106,7 @@ Route::prefix('dashboard')
 
         Route::get('/delete/{id}', [DeleteController::class, 'deleteTalent']);
         Route::get('/hargas/delete/{id}', [DeleteController::class, 'deleteHarga']);
+        Route::get('/delete/voucher/{id}', [DeleteController::class, 'deleteVoucher']);
     });
 Route::prefix('admin')
     ->namespace('Dashboard')

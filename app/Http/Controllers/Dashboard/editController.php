@@ -157,15 +157,29 @@ class editController extends Controller
         // dd($data);
         $logo = Landing::where('id', $request->id)->first();
         // dd($logo);
-        if ($request->hasFile('logo')) {
-            $file = $request->file('logo');
-            $fileName = $logo->id . '_' . time() . '_' . $file->getClientOriginalName();
-            $file->storeAs('public/logo/', $fileName);
-            $logo->logo = $fileName;
+        if($logo === null){
+            $save = new Landing();
+            $save->description = '';
+            $save->keyword = '';
+            if ($request->hasFile('logo')) {
+                $file = $request->file('logo');
+                $fileName = $save->id . '_' . time() . '_' . $file->getClientOriginalName();
+                $file->storeAs('public/logo/', $fileName);
+                $save->logo = $fileName;
+            }
+            $save->save();
         }
-        $logo->save();
+        else{
+            if ($request->hasFile('logo')) {
+                $file = $request->file('logo');
+                $fileName = $logo->id . '_' . time() . '_' . $file->getClientOriginalName();
+                $file->storeAs('public/logo/', $fileName);
+                $logo->logo = $fileName;
+            }  $logo->save();
+        }
+       
+      
         return redirect()->back()->with('editLogo', 'Logo Berhasil Diubah');
-        //    $logo->logo = $request->logo;
     }
     public function editTerm(Request $request)
     {

@@ -19,7 +19,7 @@
                             <i class="fa fa-edit fs-20 text-white "></i>
 
                         </button>
-                        <a href="{{ url('admin/hargas/delete/' . $harga->id) }}" class="delete">
+                        <a href="{{ url('dashboard/hargas/delete/' . $harga->id) }}" class="delete">
                             <button type="button" class=" my-4 mx-auto d-flex btn btn-danger">
                                 <i class="fa fa-trash fs-20 text-white "></i>
                             </button>

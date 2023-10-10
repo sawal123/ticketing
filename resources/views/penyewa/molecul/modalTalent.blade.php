@@ -9,7 +9,7 @@
                 <h6 class="modal-title">Tambah Talent</h6><button aria-label="Close" class="btn-close"
                     data-bs-dismiss="modal"><span aria-hidden="true">&times;</span></button>
             </div>
-            <form action="{{ url('admin/addTalent') }}" method="post" enctype="multipart/form-data">
+            <form action="{{ url('dashboard/addTalent') }}" method="post" enctype="multipart/form-data">
                 @csrf
                 <div class="modal-body">
                     <input type="hidden" name="uid" value="{{ $eventDetail->uid }}">
@@ -43,7 +43,7 @@
                 <h6 class="modal-title">Ubah Talent</h6><button aria-label="Close" class="btn-close"
                     data-bs-dismiss="modal"><span aria-hidden="true">&times;</span></button>
             </div>
-            <form action="{{ url('admin/editTalent') }}" method="post" enctype="multipart/form-data">
+            <form action="{{ url('dashboard/editTalent') }}" method="post" enctype="multipart/form-data">
                 @csrf
                 <div class="modal-body">
                     <input type="hidden" name="uid" id="uidTalent">

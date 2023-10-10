@@ -75,6 +75,7 @@ class landingController extends Controller
             }
             $jmlByCategory[$kategori] += $quantity;
         }
+        // dd($jmlByCategory);
 
 
         return view('frontend.page.ticket', [
