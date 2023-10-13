@@ -80,7 +80,7 @@
                 </li> --}}
                 <li class="slide {{request()->is('dashboard/profile') ? 'active': ''}}">
                     <a class="side-menu__item has-link" data-bs-toggle="slide" href="{{ url('/dashboard/profile') }}"><i
-                            class=" side-menu__icon fa fa-google"></i><span class="side-menu__label">Profile</span></a>
+                            class=" side-menu__icon fa fa-user"></i><span class="side-menu__label">Profile</span></a>
                 </li>
                 <li class="slide {{request()->is('dashboard/user') ? 'active': ''}}">
                     <a class="side-menu__item has-link" data-bs-toggle="slide" href="{{ url('/') }}"><i

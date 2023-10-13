@@ -2,23 +2,24 @@
 
 namespace App\Http\Controllers\Dashboard;
 
+use App\Models\Cart;
+use App\Models\Term;
+use App\Models\User;
 use App\Models\Event;
 use App\Models\Harga;
-use App\Models\HargaCart;
-use App\Models\Landing;
-use App\Models\Talent;
-use App\Models\Term;
-use Illuminate\Http\Request;
-use App\Http\Controllers\Controller;
-use App\Models\Cart;
 use App\Models\Slider;
-use App\Models\Transaction;
-use App\Models\User;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Pagination\Paginator;
-use Illuminate\Support\Facades\Http;
+use App\Models\Talent;
+use App\Models\Landing;
+use App\Models\HargaCart;
+use App\Models\Penarikan;
 use Illuminate\View\View;
+use App\Models\Transaction;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use App\Http\Controllers\Controller;
+use Illuminate\Pagination\Paginator;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Http;
 
 class DashboardController extends Controller
 {
@@ -167,22 +168,44 @@ class DashboardController extends Controller
         }
         $datas = [];
         if ($data === 'admin') {
-            foreach($provinsi as $provinsis){
+            foreach ($provinsi as $provinsis) {
                 $datas[] = $provinsis['name'];
             }
             // dd($datas[0]);
             $admin = User::where('role', 'admin')->get();
-            return view('backend.content.user.admin', ['title' => 'User', 'users' => $admin, 'provinsi'=>$provinsi, 'datas'=> $datas] );
+            return view('backend.content.user.admin', ['title' => 'User', 'users' => $admin, 'provinsi' => $provinsi, 'datas' => $datas]);
         }
 
         if ($data === 'penyewa') {
             $penyewa = User::where('role', 'penyewa')->get();
-            return view('backend.content.user.penyewa', ['title' => 'User', 'users' => $penyewa, 'provinsi'=>$provinsi]);
+            return view('backend.content.user.penyewa', ['title' => 'User', 'users' => $penyewa, 'provinsi' => $provinsi]);
         }
 
         if ($data === null) {
             $users = User::where('role', 'user')->get();
-            return view('backend.content.user.user', ['title' => 'User', 'users' => $users , 'provinsi'=>$provinsi]);
+            return view('backend.content.user.user', ['title' => 'User', 'users' => $users, 'provinsi' => $provinsi]);
         }
+    }
+
+    public function penarikan()
+    {
+        $penarikan = Penarikan::join('users', 'users.uid', '=', 'penarikans.uid_user')
+            ->select(
+                'penarikans.uid_user',
+                'penarikans.amount',
+                'penarikans.kwitansi',
+                'penarikans.status',
+                'penarikans.created_at',
+                'penarikans.updated_at',
+                'users.name',
+                'users.email',
+                'users.gambar'
+            )
+            ->get();
+        // dd($penarikan);
+        return view('backend.content.penarikan', [
+            'title' => 'Penarikan',
+            'penarikan' => $penarikan
+        ]);
     }
 }

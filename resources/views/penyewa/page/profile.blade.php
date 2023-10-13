@@ -37,11 +37,15 @@
                                         class="brround avatar-xxl" style="object-fit: cover;border: white 5px solid" >
                                 </div>
                                 <div class="main-chat-msg-name">
-                                    <a href="profile.html">
+                                    <a href="#">
                                         <h5 class="mb-1 text-dark fw-semibold">{{ $profile->name }}</h5>
                                     </a>
                                     <p class="text-muted mt-0 mb-0 pt-0 fs-13">{{ strtoupper($profile->role) }}</p>
                                 </div>
+                            </div>
+                            <hr>
+                            <div class="text-start">
+                                <p>Harap Isi Data Rekening Anda Dengan Benar!</p>
                             </div>
                             <div class="form-group">
                                 <label class="form-label">Nama</label>

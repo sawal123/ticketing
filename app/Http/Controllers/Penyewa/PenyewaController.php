@@ -125,6 +125,7 @@ class PenyewaController extends Controller
             'carts.user_uid',
             'carts.invoice',
             'carts.status',
+            'carts.payment_type',
             'events.event',
             'events.fee',
             'events.cover',
@@ -136,7 +137,7 @@ class PenyewaController extends Controller
             ->join('events', 'events.uid', '=', 'carts.event_uid')
             ->where('carts.status', 'SUCCESS')
             ->where('events.user_uid', Auth::user()->uid)
-            ->groupBy('carts.user_uid', 'carts.invoice', 'carts.status', 'events.event', 'events.fee', 'carts.created_at', 'events.cover');
+            ->groupBy('carts.user_uid', 'carts.invoice', 'carts.status','carts.payment_type', 'events.event', 'events.fee', 'carts.created_at', 'events.cover');
 
         $cart = $cartQuery->get();
         // dd($cart);
@@ -203,7 +204,7 @@ class PenyewaController extends Controller
         foreach ($totalHargaCart as $key => $tHC) {
             $ar += ($totalHargaCart[$key]->harga_ticket * $totalHargaCart[$key]->quantity);
         }
-
+        // dd($ar);
         $totalHargaCarts = Cart::select(['harga_carts.harga_ticket', 'harga_carts.quantity'])
             ->join('harga_carts', 'harga_carts.uid', '=', 'carts.uid')
             ->join('events', 'events.uid', '=', 'carts.event_uid')

@@ -37,6 +37,12 @@
                             class=" side-menu__icon fa fa-database"></i><span class="side-menu__label">Transaksi</span></a>
                 </li>
                 <li class="slide ">
+                    <a class="side-menu__item has-link {{request()->is('admin/penarikan') ? 'active': ''}}" data-bs-toggle="slide" href="{{ url('/admin/penarikan') }}"><i
+                            class=" side-menu__icon fa fa-paper-plane"></i><span class="side-menu__label">Penarikan</span></a>
+                </li>
+
+                <hr>
+                <li class="slide ">
                     <a class="side-menu__item has-link {{request()->is('admin/landing') ? 'active': ''}}" data-bs-toggle="slide" href="{{ url('/admin/landing') }}"><i
                             class=" side-menu__icon fa fa-windows"></i><span class="side-menu__label">Landing</span></a>
                 </li>

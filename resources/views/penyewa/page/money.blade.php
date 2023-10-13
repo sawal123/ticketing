@@ -76,6 +76,11 @@
                             {{ session('penarikan') }}
                         </div>
                     @endif
+                    @if (session('error'))
+                        <div class="alert alert-primary">
+                            {{ session('error') }}
+                        </div>
+                    @endif
                     <div class="row">
                         <div class="col">
                             <div class="d-flex justify-content-between align-items-center w-full">

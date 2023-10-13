@@ -57,6 +57,7 @@ Route::get('/term', [landingController::class, 'term']);
 
 
 
+Route::get('/invoice/{uid}', [DashboardController::class, 'invoice']);
 
 Route::get('/confir/data/{data}', [Controller::class, 'confir']);
 Route::post('/confir/success', [Controller::class, 'success']);
@@ -125,6 +126,8 @@ Route::prefix('admin')
         Route::get('/user/{data?}', [DashboardController::class, 'user']);
         Route::get('/event/{addEvent?}/{uid?}', [DashboardController::class, 'event']);
         Route::get('/ubahEvents/{uid}', [DashboardController::class, 'ubahEvents']);
+        Route::get('/penarikan', [DashboardController::class, 'penarikan']);
+        
 
         // Route::get('/event', [DashboardController::class, 'event']);
         // ROUTE ADD

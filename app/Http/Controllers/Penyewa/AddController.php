@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Penyewa;
 
+use App\Models\Cart;
 use App\Models\Event;
 use App\Models\EventDate;
 use App\Models\Harga;
@@ -138,23 +139,43 @@ class AddController extends Controller
         $validate = Validator::make($request->all(),[
             'amount'=> 'required|numeric'
         ]);
-
         $validate->validate();
-        $uid = Str::random('10');
-        $penarikan = new Penarikan([
-            'uid' => $uid,
-            'uid_user'=> Auth::user()->uid,
-            'amount'=> $request->amount,
-            'note'=> 'Penarikan',
-            'kwitansi'=> '',
-            'status'=> 'PENDING'
-        ]);
+
+        $totalHargaCart = Cart::select(['harga_carts.harga_ticket', 'harga_carts.quantity'])
+            ->join('harga_carts', 'harga_carts.uid', '=', 'carts.uid')
+            ->join('events', 'events.uid', '=', 'carts.event_uid')
+            ->where('carts.payment_type', '!=', 'cash')
+            ->where('carts.status', 'SUCCESS')
+            ->where('events.user_uid', Auth::user()->uid)
+            ->get();
+        $ar = 0;
+        foreach ($totalHargaCart as $key => $tHC) {
+            $ar += ($totalHargaCart[$key]->harga_ticket * $totalHargaCart[$key]->quantity);
+        }
+        if($ar < $request->amount){
+            return redirect()->back()->with('error', 'Saldo Anda tidak mencukupi!');
+        }        
+        else{
+            $uid = Str::random('10');
+            $penarikan = new Penarikan([
+                'uid' => $uid,
+                'uid_user'=> Auth::user()->uid,
+                'amount'=> $request->amount,
+                'note'=> 'Penarikan',
+                'kwitansi'=> $ar,
+                'status'=> 'PENDING'
+            ]);
+        }
+       
         // dd($penarikan);
+        try{
+            $penarikan->save();
+            return redirect()->back()->with('penarikan', 'Penarikan berhasil diajukan');
+        }catch(\Exception $e){
+            return redirect()->back()->with('error', 'Pengajuan Gagal!');
+        }
 
-        $penarikan->save();
-        return redirect()->back()->with('penarikan', 'Penarikan berhasil diajukan');
-
-
+        
 
     }
 }

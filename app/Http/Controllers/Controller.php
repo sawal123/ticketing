@@ -3,13 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Models\Cart;
-use App\Models\HargaCart;
 use App\Models\User;
+use App\Models\HargaCart;
+use App\Models\Penarikan;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Routing\Controller as BaseController;
 use Illuminate\Foundation\Validation\ValidatesRequests;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
-use Illuminate\Http\Request;
 
 class Controller extends BaseController
 {
@@ -51,5 +52,33 @@ class Controller extends BaseController
 
     public function notif(){
         return view('email.notif-email');
+    }
+
+
+    public function invoice($uid = null){
+       
+        if($uid === null){
+            return redirect()->back();
+        }
+        // dd($uid);
+        $penarikan = Penarikan::join('users', 'users.uid', '=', 'penarikans.uid_user')
+        ->select(
+            'penarikans.uid',
+            'penarikans.uid_user',
+            'penarikans.amount',
+            'penarikans.kwitansi',
+            'penarikans.status',
+            'penarikans.created_at',
+            'penarikans.updated_at',
+            'users.name',
+            'users.email',
+            'users.gambar'
+        )
+        ->where('penarikans.uid', $uid)
+        ->get();
+        dd($penarikan);
+        return view('invoice',[
+            'title'=>'Invoice'
+        ]);
     }
 }
