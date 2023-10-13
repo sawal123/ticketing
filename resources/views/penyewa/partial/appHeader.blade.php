@@ -184,11 +184,11 @@
                                         </div>
                                     </div>
                                     <div class="dropdown-divider m-0"></div>
-                                    <a class="dropdown-item" href="profile.html">
+                                    <a class="dropdown-item" href="{{url('dashboard/profile')}}">
                                         <i class="dropdown-icon fe fe-user"></i> Profile
                                     </a>
                                    
-                                    <a class="dropdown-item" href="{{url('/logout')}}">
+                                    <a class="dropdown-item" href="{{url('/out')}}">
                                         <i class="dropdown-icon fe fe-alert-circle"></i> Sign out
                                     </a>
                                 </div>

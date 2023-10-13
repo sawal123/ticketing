@@ -5,8 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class Bank extends Model
+class BankIndonesia extends Model
 {
     use HasFactory;
-    protected $fillable =['uid', 'uid_user', 'nama', 'bank', 'norek'];
 }

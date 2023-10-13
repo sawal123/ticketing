@@ -13,6 +13,7 @@ use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
+use App\Models\Bank;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use \Illuminate\Http\RedirectResponse;
@@ -147,9 +148,18 @@ class addController extends Controller
             'gender' => 'required|string|max:20'
         ]);
         $validate->validate();
-
-        // $user = User::where('uid', $request->uid)->first();
         $uid = Str::random(10);
+        if ($request->role === 'penyewa') {
+            $bank = new Bank([
+                'uid' =>  $uid,
+                'uid_user' => '',
+                'nama' => '',
+                'bank' => '',
+                'norek' => ''
+            ]);
+            $bank->save();
+        }
+
         $user = new User();
         $user->uid = $uid;
         $user->name = $request->nama;
@@ -172,6 +182,7 @@ class addController extends Controller
             $user->password = bcrypt($request->password);
         }
         $user->save();
+
         // dd($request->poto);
         return redirect()->back()->with('addUser', 'User Berhasil Di Tambah');
     }

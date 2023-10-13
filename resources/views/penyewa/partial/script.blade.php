@@ -43,6 +43,10 @@
 <!-- INTERNAL SELECT2 JS -->
 <script src="{{ asset('/assets/plugins/select2/select2.full.min.js') }}"></script>
 
+<!-- SELECT2 JS -->
+{{-- <script src="../assets/plugins/select2/select2.full.min.js"></script> --}}
+<script src="{{asset('/assets/js/select2.js')}}"></script>
+
 <!-- INTERNAL Data tables js-->
 <script src="{{ asset('/assets/plugins/datatable/js/jquery.dataTables.min.js') }}"></script>
 <script src="{{ asset('/assets/plugins/datatable/js/dataTables.bootstrap5.js') }}"></script>
@@ -83,6 +87,9 @@
 <!-- TypeHead js -->
 <script src="{{ asset('/assets/plugins/bootstrap5-typehead/autocomplete.js') }}"></script>
 <script src="{{ asset('/assets/js/typehead.js') }}"></script>
+
+
+
 
 
 <script src="{{ asset('/assets/plugins/summernote/summernote1.js') }}"></script>

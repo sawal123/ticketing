@@ -2,12 +2,17 @@
 
 namespace App\Http\Controllers\Penyewa;
 
+use App\Models\Bank;
+use App\Models\User;
 use App\Models\Event;
 use App\Models\Harga;
 use App\Models\Talent;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
+// use Dotenv\Validator;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Auth;
 
 class EditController extends Controller
@@ -67,5 +72,66 @@ class EditController extends Controller
         ]);
 
         return redirect()->back()->with('editHarga', 'Harga Berhasil Di Ubah');
+    }
+
+    public function editRekening(Request $request){
+        
+        $rek = Bank::where('uid', Auth::user()->uid)->first();
+        if($rek){
+            $rek->nama = $request->nama;
+            $rek->bank = $request->bank;
+            $rek->norek = $request->norek;
+            // $rek->save();
+        }
+        try{
+            $rek->save();
+            return redirect()->back()->with('editRek', 'Rekening Berhasil Di Update');
+        }
+        catch(\Exception $e){
+            DB::rollback();
+            return redirect()->back()->with('error', 'Gagal Update. Silahkan coba lagi.');
+        }
+
+    }
+
+    public function editProfile(Request $request){
+       
+        $validate = Validator::make($request->all(),[
+            'nama'=> 'required|string',
+            'nomor'=> 'required|numeric',
+            'email'=> 'required|email',
+            'date'=> 'required|string',
+            'gender'=> 'required|string',
+            'provinsi'=> 'required|string',
+            'alamat'=> 'required|string',
+        ]);
+
+        $validate->validate();
+        $user = User::where('uid', Auth::user()->uid)->first();
+// dd($user);
+        $user->name = $request->nama;
+        $user->nomor = $request->nomor;
+        $user->email = $request->email;
+        $user->birthday = $request->date;
+        $user->gender = $request->gender;
+        $user->kota = $request->provinsi;
+        $user->alamat = $request->alamat;
+
+        if ($request->hasFile('img')) {
+            $file = $request->file('img');
+            $fileName = $user->uid . '_' . time() . '_' . $file->getClientOriginalName();
+            $file->storeAs('public/user/', $fileName);
+            $user->gambar = $fileName;
+        }
+
+        try{
+            $user->save();
+            return redirect()->back()->with('editProfile', 'Informasi Berhasil Di Update');
+        }catch(\Exception $e){
+            DB::rollback();
+            return redirect()->back()->with('error', 'Gagal Update. Silahkan coba lagi.');
+        }
+
+
     }
 }

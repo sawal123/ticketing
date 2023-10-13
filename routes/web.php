@@ -77,6 +77,10 @@ Route::middleware(['auth'])->group(function () {
         Auth::logout();
         return redirect('/');
     });
+    Route::get('/out', function () {
+        Auth::logout();
+        return redirect('/signin');
+    });
 });
 
 Route::get('/signin', [PenyewaController::class, 'login'])->name('signIn');
@@ -92,6 +96,7 @@ Route::prefix('dashboard')
         Route::get('/ubahEvents/{uid}', [PenyewaController::class, 'ubahEvents']);
         Route::get('/voucher', [PenyewaController::class, 'voucher']);
         Route::get('/money', [PenyewaController::class, 'money']);
+        Route::get('/profile', [PenyewaController::class, 'profile']);
 
         Route::post('/addEvents', [PenyewaAddController::class, 'addEvent'])->name('dashboard.addEvent');
         Route::post('/addTalent', [PenyewaAddController::class, 'addTalent']);
@@ -102,6 +107,8 @@ Route::prefix('dashboard')
         Route::post('/editTalent', [PenyewaEditController::class, 'editTalent']);
         Route::post('/editEvent', [PenyewaEditController::class, 'editEvent']);
         Route::post('/editHarga', [PenyewaEditController::class, 'editHarga']);
+        Route::post('/editRekening', [PenyewaEditController::class, 'editRekening']);
+        Route::post('/editProfile', [PenyewaEditController::class, 'editProfile']);
 
 
         Route::get('/delete/{id}', [DeleteController::class, 'deleteTalent']);

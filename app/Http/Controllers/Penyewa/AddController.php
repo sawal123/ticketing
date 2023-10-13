@@ -140,11 +140,7 @@ class AddController extends Controller
         ]);
 
         $validate->validate();
-        
-
         $uid = Str::random('10');
-
-
         $penarikan = new Penarikan([
             'uid' => $uid,
             'uid_user'=> Auth::user()->uid,

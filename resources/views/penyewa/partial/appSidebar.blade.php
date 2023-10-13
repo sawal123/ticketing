@@ -78,12 +78,16 @@
                         </li>
                     </ul>
                 </li> --}}
+                <li class="slide {{request()->is('dashboard/profile') ? 'active': ''}}">
+                    <a class="side-menu__item has-link" data-bs-toggle="slide" href="{{ url('/dashboard/profile') }}"><i
+                            class=" side-menu__icon fa fa-google"></i><span class="side-menu__label">Profile</span></a>
+                </li>
                 <li class="slide {{request()->is('dashboard/user') ? 'active': ''}}">
                     <a class="side-menu__item has-link" data-bs-toggle="slide" href="{{ url('/') }}"><i
                             class=" side-menu__icon fa fa-google"></i><span class="side-menu__label">Halaman Utama</span></a>
                 </li>
                 <li class="slide {{request()->is('dashboard/user') ? 'active': ''}}">
-                    <a class="side-menu__item has-link" data-bs-toggle="slide" href="{{ url('/logout') }}"><i
+                    <a class="side-menu__item has-link" data-bs-toggle="slide" href="{{ url('/out') }}"><i
                             class=" side-menu__icon fa fa-power-off"></i><span class="side-menu__label">Log Out</span></a>
                 </li>
             </ul>

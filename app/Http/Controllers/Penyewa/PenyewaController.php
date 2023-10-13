@@ -3,20 +3,22 @@
 namespace App\Http\Controllers\Penyewa;
 
 use App\Models\Cart;
-use App\Models\HargaCart;
-use App\Models\Penarikan;
 use App\Models\User;
 use App\Models\Event;
 use App\Models\Harga;
-use App\Models\Voucher;
 use App\Models\Talent;
+use App\Models\Voucher;
+use App\Models\HargaCart;
+use App\Models\Penarikan;
+use App\Models\CartVoucher;
 use App\Models\Transaction;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
+use App\Models\BankIndonesia;
 // use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
-use App\Models\CartVoucher;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Http;
 
 class PenyewaController extends Controller
 {
@@ -33,7 +35,9 @@ class PenyewaController extends Controller
         }
 
         $gr = HargaCart::join('carts', 'carts.uid', '=', 'harga_carts.uid',)
+        ->join('events','events.uid', '=', 'carts.event_uid')
             ->where('carts.status', 'SUCCESS')
+            ->where('events.user_uid', Auth::user()->uid )
             ->select(DB::raw('DATE(carts.created_at) as hargadate'), DB::raw('SUM(harga_carts.quantity) as total_qty'), DB::raw('SUM(harga_carts.quantity * harga_carts.harga_ticket) as total_amount'))
             ->groupBy(DB::raw('DATE(carts.created_at)'))
             ->get();
@@ -234,5 +238,31 @@ class PenyewaController extends Controller
             'pending' => $arss,
             'paid' => $sc
         ]);
+    }
+
+    public function profile()
+    {
+
+        $data = User::where('users.uid', Auth::user()->uid)
+        ->join('banks', 'banks.uid', '=', 'users.uid')
+        ->first();
+        // dd($data);
+        $http = Http::get('https://www.emsifa.com/api-wilayah-indonesia/api/provinces.json');
+        if ($http->successful()) {
+            $provinsi = $http->json();
+        }
+        // dd($provinsi);
+
+        $bi = BankIndonesia::all();
+        // dd($bi);
+
+        return view('penyewa.page.profile',
+            [
+                'title' => 'profile',
+                'profile' => $data,
+                'bi' => $bi,
+                'pr'=> $provinsi
+            ]
+        );
     }
 }
