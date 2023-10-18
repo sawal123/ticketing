@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Bank;
 use App\Models\Cart;
 use App\Models\User;
 use App\Models\HargaCart;
@@ -75,10 +76,31 @@ class Controller extends BaseController
             'users.gambar'
         )
         ->where('penarikans.uid', $uid)
-        ->get();
-        // dd($penarikan);
+        ->first();
+
+        $bank = Bank::where('uid', $penarikan->uid_user)->first();
+        $cekBank = Bank::all();
+
+        $user =User::all();
+        $sbank =[];
+        foreach ($user as $key => $value) {
+            if($value->role ==='admin'){
+                // dd($value);
+                foreach ($cekBank as $key2 => $value2) {
+                    // dd($value);
+                    if($value->uid === $value2->uid){
+                        $sbank[] = Bank::where('uid', $value2->uid)->first();
+                        // exit;
+                    }
+                }
+            }
+        }
+        // dd($sbank);
         return view('invoice',[
-            'title'=>'Invoice'
+            'title'=>'Invoice',
+            'penarikan'=>$penarikan,
+            'bankPenyewa'=> $bank,
+            'bankPengirim'=> $sbank
         ]);
     }
 }
