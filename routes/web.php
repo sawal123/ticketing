@@ -48,8 +48,13 @@ Route::get('/ticket/{event}', [landingController::class, 'ticket']);
 Route::get('/register', [UserRegisterController::class, 'index']);
 Route::post('/registerUser', [UserRegisterController::class, 'create'])->name('register-user');
 
+Route::get('/forgot-password', [UserLoginController::class, 'forgot'])->name('forgot');
+Route::post('/email', [UserLoginController::class, 'email'])->name('email');
+Route::get('/reset-password/{data}', [UserLoginController::class, 'resetPassword']);
+Route::post('/new-password', [UserLoginController::class, 'newPassword']);
 Route::get('/login', [UserLoginController::class, 'signIn'])->name('login');
 Route::post('/loginUser', [UserLoginController::class, 'loginUser']);
+
 // Route::get('/postEvent/{search?}', [landingController::class, 'cari']);
 Route::get('/search/{cari?}/', [landingController::class, 'search']);
 Route::get('/cari', [landingController::class, 'cari']);
@@ -57,7 +62,7 @@ Route::get('/term', [landingController::class, 'term']);
 
 
 
-Route::get('/invoice/{uid}', [DashboardController::class, 'invoice']);
+Route::get('/invoice/{uid}', [Controller::class, 'invoice']);
 
 Route::get('/confir/data/{data}', [Controller::class, 'confir']);
 Route::post('/confir/success', [Controller::class, 'success']);

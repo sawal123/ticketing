@@ -202,10 +202,26 @@ class DashboardController extends Controller
                 'users.gambar'
             )
             ->get();
-        // dd($penarikan);
+        $t = 0;
+        $pending = 0;
+        $success = 0;
+        foreach ($penarikan as $p) {
+            $t += $p->amount;
+            if($p->status === 'PENDING'){
+                $pending += $p->amount;
+            }
+            else{
+                $success += $p->amount;
+            }
+        }
+    //    dd(count($penarikan));
         return view('backend.content.penarikan', [
             'title' => 'Penarikan',
-            'penarikan' => $penarikan
+            'penarikan' => $penarikan,
+            'totalPenarikan' => $t,
+            'pending' => $pending,
+            'success' => $success,
+            'count' => count($penarikan),
         ]);
     }
 }

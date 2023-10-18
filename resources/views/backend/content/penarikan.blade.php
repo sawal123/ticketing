@@ -17,8 +17,8 @@
                 <div class="card-body">
                     <div class="d-flex">
                         <div class="mt-2">
-                            <h6 class="">Total Uang Ticket Yang Terjual</h6>
-                            <h2 class="mb-0 number-font">Rp {{ number_format($totalHargapenarikan, 0, ',', '.') }}</h2>
+                            <h6 class="">Total Penarikan User</h6>
+                            <h2 class="mb-0 number-font">Rp {{ number_format($totalPenarikan, 0, ',', '.') }}</h2>
                         </div>
                     </div>
                     <span class="text-muted fs-12"><span class="text-secondary"><i
@@ -32,8 +32,38 @@
                 <div class="card-body">
                     <div class="d-flex">
                         <div class="mt-2">
-                            <h6 class="">Total Uang Fee Yang SUCCESS</h6>
-                            <h2 class="mb-0 number-font">Rp {{ number_format($totalFee, 0, ',', '.') }}</h2>
+                            <h6 class="">Total User</h6>
+                            <h2 class="mb-0 number-font">{{$count}}</h2>
+                        </div>
+                    </div>
+                    <span class="text-muted fs-12"><span class="text-secondary"><i
+                                class="fe fe-arrow-up-circle  text-secondary"></i> 5%</span>
+                        Last week</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6 col-md-6 col-sm-12 col-xl-3">
+            <div class="card overflow-hidden">
+                <div class="card-body">
+                    <div class="d-flex">
+                        <div class="mt-2">
+                            <h6 class="">Pending</h6>
+                            <h2 class="mb-0 number-font">Rp {{ number_format($pending, 0, ',', '.') }}</h2>
+                        </div>
+                    </div>
+                    <span class="text-muted fs-12"><span class="text-secondary"><i
+                                class="fe fe-arrow-up-circle  text-secondary"></i> 5%</span>
+                        Last week</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6 col-md-6 col-sm-12 col-xl-3">
+            <div class="card overflow-hidden">
+                <div class="card-body">
+                    <div class="d-flex">
+                        <div class="mt-2">
+                            <h6 class="">Success</h6>
+                            <h2 class="mb-0 number-font">Rp {{ number_format($success, 0, ',', '.') }}</h2>
                         </div>
                     </div>
                     <span class="text-muted fs-12"><span class="text-secondary"><i

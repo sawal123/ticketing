@@ -76,7 +76,7 @@ class Controller extends BaseController
         )
         ->where('penarikans.uid', $uid)
         ->get();
-        dd($penarikan);
+        // dd($penarikan);
         return view('invoice',[
             'title'=>'Invoice'
         ]);

@@ -14,12 +14,17 @@
         <div class="row d-flex justify-content-center">
             <div class="col-lg-4 col-md-12 mt-5">
                 <div class="card w-lg-50">
-                    <div class="card-header">
-                      Invoice
+                    <div class="card-header d-flex justify-content-between">
+                      <h5>Invoice</h5>
+                      <h5>INV-347839745</h5>
                     </div>
                     <div class="card-body">
-                      <h5 class="card-title">Special title treatment</h5>
-                      <p class="card-text">With supporting text below as a natural lead-in to additional content.</p>
+                      <h5 class="card-title">Penarikan</h5>
+                      <div class="d-flex justify-content-between">
+                        <p>Nama :</p>
+                        <p>Sawal</p>
+                      </div>
+                    
                       <a href="#" class="btn btn-primary">Print</a>
                     </div>
                   </div>
