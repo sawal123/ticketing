@@ -77,6 +77,9 @@ class Controller extends BaseController
         )
         ->where('penarikans.uid', $uid)
         ->first();
+        if(!$penarikan){
+            return redirect()->back();
+        }
 
         $bank = Bank::where('uid', $penarikan->uid_user)->first();
         $cekBank = Bank::all();
