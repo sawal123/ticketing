@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Dashboard;
 
 use App\Models\Cart;
+use App\Models\Penarikan;
 use App\Models\Talent;
 use App\Models\Voucher;
 use Illuminate\Http\Request;
@@ -71,5 +72,11 @@ class DeleteController extends Controller
         $voucher = Voucher::where('uid', $uid)->first();
         $voucher->delete();
         return redirect()->back()->with('deleteVoucher', 'Voucher Berhasil Dihapus');
+    }
+    public function deletePenarikan($uid){
+        // dd($uid);
+        $penarikan = Penarikan::where('uid', $uid)->first();
+        $penarikan->delete();
+        return redirect()->back()->with('delete', 'Data berhasil dihapus');  
     }
 }

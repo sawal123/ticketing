@@ -106,7 +106,7 @@
                                     <th class="border-bottom-0" style="width: 10%">Note</th>
                                     <th class="border-bottom-0">Pengajuan</th>
                                     <th class="border-bottom-0">Disetujui</th>
-                                    <th class="border-bottom-0">Kwitansi</th>
+                                    <th class="border-bottom-0">Invoice</th>
                                     <th class="border-bottom-0">Status</th>
                                 </tr>
                             </thead>
@@ -117,9 +117,14 @@
                                         <td>Rp{{ number_format ($moneys->amount, 0, ',', '.') }}</td>
                                         <td>{{ $moneys->note }}
                                         </td>
-                                        <td>{{ $moneys->created_at }}</td>
-                                        <td>{{ $moneys->updated_at == $moneys->created_at ? '-' : $moneys->updated_at }}</td>
-                                        <td>{{ $moneys->kwitansi }}</td>
+                                        <td>{{ date('d M Y', strtotime($moneys->created_at))}}</td>
+                                        <td>{{  $moneys->created_at == $moneys->updated_at ? '-' : date('d M Y', strtotime($moneys->updated_at))}}</td>
+                                        <td>
+                                            <a href="{{ $moneys->created_at == $moneys->updated_at ? '#' : url('/invoice/' . $moneys->uid) }}"
+                                                class="btn btn-sm btn-success">
+                                                {{ $moneys->created_at == $moneys->updated_at ? 'Belum Tersedia' : 'Tersedia' }}
+                                            </a>
+                                        </td>
                                         <td>
                                             <div class="mt-sm-1 d-block">
                                                 <span

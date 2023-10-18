@@ -38,9 +38,9 @@ class AddController extends Controller
         // dd($uid);
 
         $startEvent = new EventDate([
-            'uid'=> $uid,
-            'start'=> $request->start,
-            'end'=> $request->end
+            'uid' => $uid,
+            'start' => $request->start,
+            'end' => $request->end
         ]);
 
         $event = new Event([
@@ -62,7 +62,7 @@ class AddController extends Controller
             $file->storeAs('public/cover/', $fileName); // Simpan di direktori 'public/outlet/'
             $event['cover'] = $fileName; // Simpan nama file gambar di kolom 'gambar' pada tabel
         }
-       
+
         try {
             DB::beginTransaction();
             $event->save();
@@ -135,11 +135,13 @@ class AddController extends Controller
         return redirect()->back()->with('voucher', 'Voucher berhasil disimpan');
     }
 
-    public function addPenarikan(Request $request){
-        $validate = Validator::make($request->all(),[
-            'amount'=> 'required|numeric'
+    public function addPenarikan(Request $request)
+    {
+        $validate = Validator::make($request->all(), [
+            'amount' => 'required|numeric'
         ]);
         $validate->validate();
+        $amount = (int)$request->amount;
 
         $totalHargaCart = Cart::select(['harga_carts.harga_ticket', 'harga_carts.quantity'])
             ->join('harga_carts', 'harga_carts.uid', '=', 'carts.uid')
@@ -148,34 +150,45 @@ class AddController extends Controller
             ->where('carts.status', 'SUCCESS')
             ->where('events.user_uid', Auth::user()->uid)
             ->get();
-        $ar = 0;
-        foreach ($totalHargaCart as $key => $tHC) {
-            $ar += ($totalHargaCart[$key]->harga_ticket * $totalHargaCart[$key]->quantity);
+        $totalSaldo = 0;
+
+        $success = Penarikan::where('status', 'SUCCESS')
+            ->where('uid_user', Auth::user()->uid)
+            ->get();
+        $paid = 0;
+        foreach ($success as $key => $paids) {
+            $paid += (int) $success[$key]->amount;
         }
-        if($ar < $request->amount){
+
+        foreach ($totalHargaCart as $key => $tHC) {
+            $totalSaldo += ($totalHargaCart[$key]->harga_ticket * $totalHargaCart[$key]->quantity);
+        }
+        $totali = 0;
+        $totali = $totalSaldo - $paid;
+        if ($totali < 1) {
             return redirect()->back()->with('error', 'Saldo Anda tidak mencukupi!');
-        }        
-        else{
+        }
+        // dd($totali);
+        if ($totali < $amount) {
+            return redirect()->back()->with('error', 'Saldo Anda tidak mencukupi!');
+        } else {
             $uid = Str::random('10');
             $penarikan = new Penarikan([
                 'uid' => $uid,
-                'uid_user'=> Auth::user()->uid,
-                'amount'=> $request->amount,
-                'note'=> 'Penarikan',
-                'kwitansi'=> $ar,
-                'status'=> 'PENDING'
+                'uid_user' => Auth::user()->uid,
+                'amount' => $request->amount,
+                'note' => 'Penarikan',
+                'kwitansi' => $totalSaldo,
+                'status' => 'PENDING'
             ]);
         }
-       
+
         // dd($penarikan);
-        try{
+        try {
             $penarikan->save();
             return redirect()->back()->with('penarikan', 'Penarikan berhasil diajukan');
-        }catch(\Exception $e){
+        } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Pengajuan Gagal!');
         }
-
-        
-
     }
 }

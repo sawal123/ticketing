@@ -221,15 +221,17 @@ class PenyewaController extends Controller
         $pending = Penarikan::where('status', 'PENDING')->get();
         $arss = 0;
         foreach ($pending as $key => $pendings) {
+           
             $arss += $pending[$key]->amount;
         }
 
-        $success = Penarikan::where('status', 'SUCCESS')->get();
+        $success = Penarikan::where('status', 'SUCCESS')
+        ->where('uid_user', Auth::user()->uid)
+        ->get();
         $sc = 0;
-        foreach ($success as $key => $sc) {
-            $sc += $success[$key]->amount;
+        foreach ($success as $key => $scs) {
+            $sc += (int) $success[$key]->amount;
         }
-        // dd($arss);
 
         return view('penyewa.page.money', [
             'title' => 'Money',

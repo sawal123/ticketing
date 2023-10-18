@@ -9,6 +9,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use App\Models\Event;
+use App\Models\Penarikan;
 use App\Models\Slider;
 use App\Models\Term;
 use Illuminate\Auth\Events\Validated;
@@ -157,7 +158,7 @@ class editController extends Controller
         // dd($data);
         $logo = Landing::where('id', $request->id)->first();
         // dd($logo);
-        if($logo === null){
+        if ($logo === null) {
             $save = new Landing();
             $save->description = '';
             $save->keyword = '';
@@ -168,17 +169,17 @@ class editController extends Controller
                 $save->logo = $fileName;
             }
             $save->save();
-        }
-        else{
+        } else {
             if ($request->hasFile('logo')) {
                 $file = $request->file('logo');
                 $fileName = $logo->id . '_' . time() . '_' . $file->getClientOriginalName();
                 $file->storeAs('public/logo/', $fileName);
                 $logo->logo = $fileName;
-            }  $logo->save();
+            }
+            $logo->save();
         }
-       
-      
+
+
         return redirect()->back()->with('editLogo', 'Logo Berhasil Diubah');
     }
     public function editTerm(Request $request)
@@ -220,7 +221,7 @@ class editController extends Controller
             $file->storeAs('public/user/', $fileName);
             $user->gambar = $fileName;
         }
-        
+
         if ($request->password !== null) {
             $user->password = bcrypt($request->password);
         }
@@ -230,10 +231,22 @@ class editController extends Controller
     }
 
 
-    public function setujuiEvent($data){
+    public function setujuiEvent($data)
+    {
         $event = Event::where('uid', $data)->first();
         $event->konfirmasi = '1';
         $event->save();
         return redirect()->back()->with('konfirmasi', 'Event Berhasil di Setujui dan di publish');
+    }
+
+    public function editStatusInvoice(Request $request)
+    {
+        $status = $request->uid;
+        // dd($status);
+        $penarikan = Penarikan::where('uid', $request->uid)->first();
+        // dd($penarikan);
+        $penarikan->status = "SUCCESS";
+        $penarikan->save();
+        return redirect()->back()->with("success", "Konfirmasi Berhasil");
     }
 }

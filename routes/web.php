@@ -153,6 +153,7 @@ Route::prefix('admin')
         Route::post('/editTerm', [editController::class, 'editTerm']);
         Route::post('/user/editUser', [editController::class, 'editUser']);
         Route::get('/setujuiEvent/{data}', [editController::class, 'setujuiEvent']);
+        Route::post('/editPenarikan', [editController::class, 'editStatusInvoice']);
 
 
         // ROUTE DELETE
@@ -162,6 +163,7 @@ Route::prefix('admin')
         Route::get('/hargas/delete/{id}', [DeleteController::class, 'deleteHarga']);
         Route::get('/term/delete/{id}', [DeleteController::class, 'deleteTerm']);
         Route::get('/user/delete/{id}', [DeleteController::class, 'deleteUser']);
+        Route::get('/deletePen/{data}', [DeleteController::class, 'deletePenarikan']);
     });
     
     

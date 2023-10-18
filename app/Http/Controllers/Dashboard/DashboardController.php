@@ -191,6 +191,7 @@ class DashboardController extends Controller
     {
         $penarikan = Penarikan::join('users', 'users.uid', '=', 'penarikans.uid_user')
             ->select(
+                'penarikans.uid',
                 'penarikans.uid_user',
                 'penarikans.amount',
                 'penarikans.kwitansi',
@@ -214,7 +215,7 @@ class DashboardController extends Controller
                 $success += $p->amount;
             }
         }
-    //    dd(count($penarikan));
+    //    dd($penarikan);
         return view('backend.content.penarikan', [
             'title' => 'Penarikan',
             'penarikan' => $penarikan,

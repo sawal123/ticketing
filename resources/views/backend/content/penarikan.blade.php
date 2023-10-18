@@ -33,7 +33,7 @@
                     <div class="d-flex">
                         <div class="mt-2">
                             <h6 class="">Total User</h6>
-                            <h2 class="mb-0 number-font">{{$count}}</h2>
+                            <h2 class="mb-0 number-font">{{ $count }}</h2>
                         </div>
                     </div>
                     <span class="text-muted fs-12"><span class="text-secondary"><i
@@ -81,17 +81,22 @@
                     <h3 class="card-title">File Export</h3>
                 </div>
                 <div class="card-body">
+                    @if (session('success'))
+                        <div class="alert alert-primary">
+                            {{ session('success') }}
+                        </div>
+                    @endif
                     <div class="table-responsive">
                         <table id="file-datatable" class="table table-bordered text-nowrap key-buttons border-bottom">
                             <thead>
                                 <tr>
                                     <th class="border-bottom-0">No</th>
                                     <th class="border-bottom-0">Nama</th>
-                                    <th class="border-bottom-0">Saldo</th>
                                     <th class="border-bottom-0" style="width: 10%">Penarikan</th>
-                                    <th class="border-bottom-0">Tanggal</th>
-                                    <th class="border-bottom-0">Konfirmasi</th>
+                                    <th class="border-bottom-0">Pengajuan</th>
+                                    <th class="border-bottom-0">Disetujui</th>
                                     <th class="border-bottom-0">Invoice</th>
+                                    <th class="border-bottom-0">Saldo</th>
                                     <th class="border-bottom-0">Status</th>
                                     <th class="border-bottom-0">Action</th>
                                 </tr>
@@ -101,13 +106,19 @@
                                     <tr>
                                         <td>{{ $key += 1 }}</td>
                                         <td>{{ $penarikans->name }}</td>
-                                        <td>Rp{{ number_format($penarikans->kwitansi, 0, ',', '.') }}
+
+                                        <td>Rp{{ number_format($penarikans->amount, 0, ',', '.') }}
+                                        </td>
+                                        <td>{{ date('d M Y', strtotime($penarikans->created_at)) }}</td>
+                                        <td>{{ $penarikans->created_at == $penarikans->updated_at ? '-' : date('d M Y', strtotime($penarikans->updated_at)) }}
+                                        </td>
+                                        <td>
+                                            <a href="{{ $penarikans->created_at == $penarikans->updated_at ? '#' : url('/invoice/' . $penarikans->uid) }}"
+                                                class="btn btn-sm btn-success">
+                                                {{ $penarikans->created_at == $penarikans->updated_at ? 'Belum Tersedia' : 'Tersedia' }}
+                                            </a>
                                         </td>
                                         <td>Rp{{ number_format($penarikans->amount, 0, ',', '.') }}</td>
-                                        <td>{{ $penarikans->created_at }}</td>
-                                        <td>{{ $penarikans->created_at == $penarikans->updated_at ? '-' : $penarikans->updated_at }}
-                                        </td>
-                                        <td>{{ $penarikans->kwitansi }}</td>
                                         <td>
                                             <div class="mt-sm-1 d-block">
                                                 <span
@@ -116,12 +127,22 @@
                                         </td>
                                         <td>
                                             <div class="g-2">
-                                                <form action="" method="post">
-                                                    <button type="submit" class="btn btn-primary btn-sm">Konfirmasi</button>
-                                                </form>
-                                                <a class="btn text-danger btn-sm delete" data-bs-toggle="tooltip"
-                                                    data-bs-original-title="Delete"><span
-                                                        class="fe fe-trash-2 fs-14"></span></a>
+                                                @if ($penarikans->created_at == $penarikans->updated_at)
+                                                    <form action="{{ url('/admin/editPenarikan') }}" method="post">
+                                                        @csrf
+                                                        <input type="hidden" name="uid"
+                                                            value="{{ $penarikans->uid }}">
+                                                        <button type="submit"
+                                                            class="btn btn-primary btn-sm">Konfirmasi</button>
+                                                    </form>
+                                                @endif
+
+                                           
+                                                
+                                                    <a href="{{ url('/admin/deletePen/'. $penarikans->uid) }}" class="btn text-danger btn-sm delete" data-bs-toggle="tooltip"
+                                                        data-bs-original-title="Delete"><span
+                                                            class="fe fe-trash-2 fs-14"></span></a>
+                                              
                                             </div>
                                         </td>
                                     </tr>
