@@ -35,9 +35,9 @@ class PenyewaController extends Controller
         }
 
         $gr = HargaCart::join('carts', 'carts.uid', '=', 'harga_carts.uid',)
-        ->join('events','events.uid', '=', 'carts.event_uid')
+            ->join('events', 'events.uid', '=', 'carts.event_uid')
             ->where('carts.status', 'SUCCESS')
-            ->where('events.user_uid', Auth::user()->uid )
+            ->where('events.user_uid', Auth::user()->uid)
             ->select(DB::raw('DATE(carts.created_at) as hargadate'), DB::raw('SUM(harga_carts.quantity) as total_qty'), DB::raw('SUM(harga_carts.quantity * harga_carts.harga_ticket) as total_amount'))
             ->groupBy(DB::raw('DATE(carts.created_at)'))
             ->get();
@@ -54,8 +54,48 @@ class PenyewaController extends Controller
         foreach ($gr as $grs) {
             $amount[] = $grs->total_amount;
         }
-
         $totalTransaksi = Transaction::where('status_transaksi', 'SUCCESS')->count();
+
+        $e = Event::join('hargas', 'hargas.uid', '=', 'events.uid')
+            ->select('events.event', 'events.fee', 'hargas.kategori', 'hargas.harga')
+            ->where('events.user_uid', '=', Auth::user()->uid)->get();
+
+        $transformedEvents = [];
+        $ubahStruktur = [];
+
+        foreach ($e as $key => $eventss) {
+            $eventName = $eventss->event;
+            $eventFee = $eventss->fee;
+            $kategori = $eventss->kategori;
+            $harga = $eventss->harga;
+
+            // Mencari indeks event yang sudah ada dalam $transformedEvents
+            $existingEventIndex = array_search($eventName, array_column($transformedEvents, 'event'));
+
+            // Jika event sudah ada dalam $transformedEvents, tambahkan tiket ke kategori yang ada
+            if ($existingEventIndex !== false) {
+                $transformedEvents[$existingEventIndex]['kategori'][] = $kategori;
+                $transformedEvents[$existingEventIndex]['harga'][] = $harga;
+            } else {
+                // Jika event belum ada dalam $transformedEvents, buat elemen baru
+                $ubahStruktur = [
+                    'event' => $eventName,
+                    'eventFee' => $eventFee,
+                    'kategori' => [$kategori],
+                    'harga' => [$harga],
+                ];
+                $transformedEvents[] = $ubahStruktur;
+            }
+        }
+        // dd($transformedEvents);
+        $i =[];
+        foreach ($transformedEvents as $key=>$eventz) {
+          dd($transformedEvents[$key]['kategori']);
+        }
+
+        // dd($i);
+
+        // dd($e);
         return view(
             'penyewa.page.dashboard',
             [
@@ -67,6 +107,7 @@ class PenyewaController extends Controller
                 'qty' => $qty,
                 'amount' => $amount,
                 'eventCount' => $event,
+                'event' => $transformedEvents,
             ]
         );
     }
@@ -137,7 +178,7 @@ class PenyewaController extends Controller
             ->join('events', 'events.uid', '=', 'carts.event_uid')
             ->where('carts.status', 'SUCCESS')
             ->where('events.user_uid', Auth::user()->uid)
-            ->groupBy('carts.user_uid', 'carts.invoice', 'carts.status','carts.payment_type', 'events.event', 'events.fee', 'carts.created_at', 'events.cover');
+            ->groupBy('carts.user_uid', 'carts.invoice', 'carts.status', 'carts.payment_type', 'events.event', 'events.fee', 'carts.created_at', 'events.cover');
 
         $cart = $cartQuery->get();
         // dd($cart);
@@ -177,6 +218,16 @@ class PenyewaController extends Controller
         );
         // return view('penyewa.page.transaksi', ['title', 'Transaksi']);
     }
+
+    public function cash()
+    {
+
+        return view('penyewa.page.cash', [
+            'title' => 'Cash',
+            // 'event'=> $event
+        ]);
+    }
+
 
 
     public function voucher()
@@ -221,13 +272,13 @@ class PenyewaController extends Controller
         $pending = Penarikan::where('status', 'PENDING')->get();
         $arss = 0;
         foreach ($pending as $key => $pendings) {
-           
+
             $arss += $pending[$key]->amount;
         }
 
         $success = Penarikan::where('status', 'SUCCESS')
-        ->where('uid_user', Auth::user()->uid)
-        ->get();
+            ->where('uid_user', Auth::user()->uid)
+            ->get();
         $sc = 0;
         foreach ($success as $key => $scs) {
             $sc += (int) $success[$key]->amount;
@@ -247,8 +298,8 @@ class PenyewaController extends Controller
     {
 
         $data = User::where('users.uid', Auth::user()->uid)
-        ->join('banks', 'banks.uid', '=', 'users.uid')
-        ->first();
+            ->join('banks', 'banks.uid', '=', 'users.uid')
+            ->first();
         // dd($data);
         $http = Http::get('https://www.emsifa.com/api-wilayah-indonesia/api/provinces.json');
         if ($http->successful()) {
@@ -259,12 +310,13 @@ class PenyewaController extends Controller
         $bi = BankIndonesia::all();
         // dd($bi);
 
-        return view('penyewa.page.profile',
+        return view(
+            'penyewa.page.profile',
             [
                 'title' => 'profile',
                 'profile' => $data,
                 'bi' => $bi,
-                'pr'=> $provinsi
+                'pr' => $provinsi
             ]
         );
     }

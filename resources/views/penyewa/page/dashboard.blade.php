@@ -4,14 +4,13 @@
     <div class="main-container container-fluid">
 
         <!-- PAGE-HEADER -->
-        <div class="page-header">
+        <div class="page-header d-flex justify-content-between">
             <h1 class="page-title">Dashboard</h1>
-            <div>
-                <ol class="breadcrumb">
-                    <li class="breadcrumb-item"><a href="javascript:void(0)">Admin</a></li>
-                    {{-- <li class="breadcrumb-item active" aria-current="page">Dashboard</li> --}}
-                </ol>
-            </div>
+            <button class="btn btn-primary" data-bs-target="#modalCash"  data-bs-effect="effect-sign"
+            data-bs-toggle="modal">
+                Jual Ticket
+            </button>
+            @include('penyewa.molecul.modalCash')
         </div>
         <!-- PAGE-HEADER END -->
 
@@ -25,7 +24,7 @@
                                 <div class="d-flex">
                                     <div class="mt-2">
                                         <h6 class="">Total Users</h6>
-                                        <h2 class="mb-0 number-font">{{$countUser}}</h2>
+                                        <h2 class="mb-0 number-font">{{ $countUser }}</h2>
                                     </div>
                                     <div class="ms-auto">
                                         <div class="chart-wrapper mt-1">
@@ -45,7 +44,7 @@
                                 <div class="d-flex">
                                     <div class="mt-2">
                                         <h6 class="">Total Omset</h6>
-                                        <h2 class="mb-0 number-font">Rp {{number_format($transaction, 0, ',', '.')}}</h2>
+                                        <h2 class="mb-0 number-font">Rp {{ number_format($transaction, 0, ',', '.') }}</h2>
                                     </div>
                                     <div class="ms-auto">
                                         <div class="chart-wrapper mt-1">
@@ -65,7 +64,7 @@
                                 <div class="d-flex">
                                     <div class="mt-2">
                                         <h6 class="">Total Transaction</h6>
-                                        <h2 class="mb-0 number-font">{{$totalTransaksi}}</h2>
+                                        <h2 class="mb-0 number-font">{{ $totalTransaksi }}</h2>
                                     </div>
                                     <div class="ms-auto">
                                         <div class="chart-wrapper mt-1">
@@ -85,7 +84,7 @@
                                 <div class="d-flex">
                                     <div class="mt-2">
                                         <h6 class="">Total Event</h6>
-                                        <h2 class="mb-0 number-font">{{$eventCount}}</h2>
+                                        <h2 class="mb-0 number-font">{{ $eventCount }}</h2>
                                     </div>
                                     <div class="ms-auto">
                                         <div class="chart-wrapper mt-1">
@@ -105,7 +104,8 @@
         <!-- ROW-1 END -->
 
         <!-- ROW-2 -->
-        
+
+        <div class="row">
             <div class="col-sm-12 col-md-12 col-lg-12 col-xl-12">
                 <div class="card">
                     <div class="card-header">
@@ -125,5 +125,6 @@
                 </div>
             </div>
         </div>
+    </div>
     </div>
 @endsection

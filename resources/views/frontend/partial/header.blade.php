@@ -29,13 +29,17 @@
                                 </form>
                             </div>
                         </li>
-
+                        <style>
+                            .fa-cart-plus{
+                                transform: rotate(0deg) !important;
+                            }
+                        </style>
                         @if ($user)
-                            <li class="nav-item nav-item-has-children">
+                            <li class="nav-link nav-item-has-children">
                                 <a href="{{ url('/transaksi') }}" class="nav-link-item drop-trigger">Transaksi <i
                                         class="fas fa-cart-plus"></i></a>
                             </li>
-                            <li class="nav-item nav-item-has-children">
+                            <li class="nav-item nav-link nav-item-has-children">
                                 <a href="#" class="nav-link-item drop-trigger">{{ $user->name }} <i
                                         class="fas fa-angle-down"></i></a>
                                 <ul class="sub-menu" id="submenu-1">

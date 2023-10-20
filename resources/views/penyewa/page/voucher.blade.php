@@ -34,7 +34,7 @@
                         </div>
                     @endif
                     <div class="table-responsive">
-                        <table id="tablePenyewa" class="table table-hover table-bordered text-nowrap key-buttons border-bottom">
+                        <table id="tableVoucher" class="table table-hover table-bordered text-nowrap key-buttons border-bottom">
                             <thead>
                                 <tr>
                                     <th class="border-bottom-0">No</th>

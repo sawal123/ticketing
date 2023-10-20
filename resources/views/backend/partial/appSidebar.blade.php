@@ -46,10 +46,7 @@
                     <a class="side-menu__item has-link {{request()->is('admin/landing') ? 'active': ''}}" data-bs-toggle="slide" href="{{ url('/admin/landing') }}"><i
                             class=" side-menu__icon fa fa-windows"></i><span class="side-menu__label">Landing</span></a>
                 </li>
-                {{-- <li class="slide">
-                    <a class="side-menu__item has-link" data-bs-toggle="slide" href="{{ url('/admin/user') }}"><i
-                            class=" side-menu__icon fa fa-users"></i><span class="side-menu__label">User</span></a>
-                </li> --}}
+                
                 <li class="slide ">
                     <a class="side-menu__item {{request()->is('admin/user') ? 'active': ''}}" data-bs-toggle="slide" href="javascript:void(0)"><i
                             class="side-menu__icon fe fe-users "></i><span

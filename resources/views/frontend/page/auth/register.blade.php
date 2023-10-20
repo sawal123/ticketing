@@ -89,7 +89,7 @@
                         </div>
                         <label class="custom-control custom-checkbox mt-4">
                             <input type="checkbox" class="custom-control-input" required>
-                            <span class="custom-control-label">Agree the <a href="#">terms and policy</a></span>
+                            <span class="custom-control-label">Agree the <a href="{{url('/term')}}">terms and policy</a></span>
                         </label>
                         <div class="container-login100-form-btn">
                             <button type="submit" class="login100-form-btn btn-primary">

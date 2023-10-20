@@ -5,12 +5,7 @@
         <div class="">
             <!-- Theme-Layout -->
             <!-- CONTAINER OPEN -->
-            <div class="col col-login mx-auto">
-                <div class="text-center">
-                    <a href="index.html"><img src="../assets/images/brand/logo-white.png" class="header-brand-img m-0"
-                            alt=""></a>
-                </div>
-            </div>
+           
 
             <!-- CONTAINER OPEN -->
             <div class="container-login100">
@@ -44,12 +39,6 @@
                         <div class="submit w-100">
                             <button class="btn btn-primary w-100" type="submit">Submit</button>
                         </div>
-
-                        <div class="text-center mt-4">
-                            <p class="text-dark mb-0 d-inline-flex">Forgot It ?<a class="text-primary ms-1"
-                                    href="#">Send me Back</a></p>
-                        </div>
-
                     </form>
                 </div>
             </div>

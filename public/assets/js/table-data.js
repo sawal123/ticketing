@@ -77,6 +77,61 @@ $(document).ready(function () {
     },
   });
 
+  var table = $("#tableMoney").DataTable({
+    buttons: [
+      {
+        extend: "print",
+        exportOptions: {
+          columns: [0, 1, 2, 3, 4, 5,6],
+        },
+      },
+      {
+        extend: "excel",
+        exportOptions: {
+          columns: [0, 1, 2, 3, 4, 5,6],
+        },
+      },
+      {
+        extend: "pdf",
+        exportOptions: {
+          columns: [0, 1, 2, 3, 4, 5,6],
+        },
+      },
+    ],
+    language: {
+      searchPlaceholder: "Search...",
+      scrollX: "100%",
+      sSearch: "",
+    },
+  });
+  var table = $("#tableVoucher").DataTable({
+    buttons: [
+      {
+        extend: "print",
+        exportOptions: {
+          columns: [0, 1, 2, 3, 4, 5, 6, 7,8],
+        },
+      },
+      {
+        extend: "excel",
+        exportOptions: {
+          columns: [0, 1, 2, 3, 4, 5, 6, 7,8],
+        },
+      },
+      {
+        extend: "pdf",
+        exportOptions: {
+          columns: [0, 1, 2, 3, 4, 5, 6, 7,8],
+        },
+      },
+    ],
+    language: {
+      searchPlaceholder: "Search...",
+      scrollX: "100%",
+      sSearch: "",
+    },
+  });
+
   table
     .buttons()
     .container()
@@ -85,6 +140,14 @@ $(document).ready(function () {
     .buttons()
     .container()
     .appendTo("#tablePenyewa_wrapper .col-md-6:eq(0)");
+  table
+    .buttons()
+    .container()
+    .appendTo("#tableMoney_wrapper .col-md-6:eq(0)");
+  table
+    .buttons()
+    .container()
+    .appendTo("#tableVoucher_wrapper .col-md-6:eq(0)");
 
   tableUser.buttons().container().appendTo("#myTable_wrapper .col-md-6:eq(0)");
 

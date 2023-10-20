@@ -33,14 +33,36 @@ class DashboardController extends Controller
             $tra += $transaksi[$key]->amount;
         }
 
-        $totalTransaksi = Transaction::where('status_transaksi', 'SUCCESS')->count();
-        // dd($tr);
-        // dd($user);
+        $totalTransaksi = Cart::where('status', 'SUCCESS')->get();
+        $gr = HargaCart::join('carts', 'carts.uid', '=', 'harga_carts.uid',)
+            ->join('events', 'events.uid', '=', 'carts.event_uid')
+            ->where('carts.status', 'SUCCESS')
+            ->select(DB::raw('DATE(carts.created_at) as hargadate'), DB::raw('SUM(harga_carts.quantity) as total_qty'), DB::raw('SUM(harga_carts.quantity * harga_carts.harga_ticket) as total_amount'))
+            ->groupBy(DB::raw('DATE(carts.created_at)'))
+            ->get();
+        // dd($totalTransaksi);  
+
+        $date = [];
+        $qty = [];
+        $amount = [];
+        foreach ($gr as $grs) {
+            $date[] = $grs->hargadate;
+        }
+        foreach ($gr as $grs) {
+            $qty[] = $grs->total_qty;
+        }
+        foreach ($gr as $grs) {
+            $amount[] = $grs->total_amount;
+        }
+
         return view('backend.content.dashboard', [
             'title' => 'Admin',
             'countUser' => $user,
             'transaction' => $tra,
-            'totalTransaksi' => $totalTransaksi
+            'totalTransaksi' => $totalTransaksi,
+            'date'=> $date,
+            'qty'=> $qty,
+            'amount'=> $amount,
         ]);
     }
     public function event($addEvent = null, $uid = null)
@@ -110,7 +132,7 @@ class DashboardController extends Controller
             'carts.invoice',
             'carts.status',
             'events.event',
-            'events.fee',
+            DB::raw('SUM(events.fee * harga_carts.quantity) as fee'),
             'events.cover',
             'carts.created_at',
             DB::raw('SUM(harga_carts.quantity * harga_carts.harga_ticket) as total_harga'),
@@ -120,34 +142,26 @@ class DashboardController extends Controller
             ->join('events', 'events.uid', '=', 'carts.event_uid')
             // Menggunakan LEFT JOIN
             ->groupBy('carts.user_uid', 'carts.invoice', 'carts.status', 'events.event', 'events.fee', 'carts.created_at', 'events.cover');
-
         $cart = $cartQuery->get();
+// dd($cart);
         $totalHargaCart = Cart::select(['harga_carts.harga_ticket'])->where('carts.status', 'SUCCESS')
             ->join('harga_carts', 'harga_carts.uid', '=', 'carts.uid')
             ->get();
         $ar = 0;
-        // dd($totalHargaCart);
         foreach ($totalHargaCart as $key => $tHC) {
             $ar += $totalHargaCart[$key]->harga_ticket;
         }
-
         $totalFee = Event::select(['fee'])->where('carts.status', 'SUCCESS')
             ->join('carts', 'carts.event_uid', '=', 'events.uid')
             ->get();
         $fe = 0;
-        // dd($totalHargaCart);
         foreach ($totalFee as $key => $tfe) {
             $fe += $totalFee[$key]->fee;
         }
-
-
-
         $user = [];
         foreach ($use as $users) {
             $user[] = $users;
         }
-
-
         return view(
             'backend.content.transaksi',
             [
@@ -208,14 +222,13 @@ class DashboardController extends Controller
         $success = 0;
         foreach ($penarikan as $p) {
             $t += $p->amount;
-            if($p->status === 'PENDING'){
+            if ($p->status === 'PENDING') {
                 $pending += $p->amount;
-            }
-            else{
+            } else {
                 $success += $p->amount;
             }
         }
-    //    dd($penarikan);
+        //    dd($penarikan);
         return view('backend.content.penarikan', [
             'title' => 'Penarikan',
             'penarikan' => $penarikan,

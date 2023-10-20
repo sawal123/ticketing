@@ -87,7 +87,7 @@
     // ==================================================================================
 </script>
 
-<h1>tes</h1>
+
 @if (request()->is('dashboard'))
     <script>
         var ctx = document.getElementById("chart");
