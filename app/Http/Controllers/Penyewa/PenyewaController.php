@@ -111,7 +111,7 @@ class PenyewaController extends Controller
             foreach ($values as $value) {
                 $options[] = $value;
             }
-            $hargaOption[$key+1 ] = $options;
+            $hargaOption[$key + 1 ] = $options;
         }
 
         return view('penyewa.page.dashboard',

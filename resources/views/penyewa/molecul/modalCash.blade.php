@@ -102,12 +102,13 @@
 
             if (selectedEventId in ticketOptions) {
                 const ticketOptionsForEvent = ticketOptions[selectedEventId];
-
+                console.log(ticketOptionsForEvent);
                 // Cari kunci tiket yang sesuai dengan nama tiket yang dipilih
                 let selectedTicketKey = null;
                 for (const key in ticketOptionsForEvent) {
                     if (ticketOptionsForEvent[key] === selectedTicketName) {
-                        selectedTicketKey = key;
+                        selectedTicketKey = parseInt(key) + 1;
+                        console.log(selectedTicketKey);
                         break;
                     }
                 }
