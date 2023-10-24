@@ -87,17 +87,34 @@ class PenyewaController extends Controller
                 $transformedEvents[] = $ubahStruktur;
             }
         }
-        // dd($transformedEvents);
         $i =[];
+        $j =[];
         foreach ($transformedEvents as $key=>$eventz) {
-          dd($transformedEvents[$key]['kategori']);
+          $i[] = $transformedEvents[$key]['kategori'];
+        }
+        foreach ($transformedEvents as $key=>$eventz) {
+          $j[] = $transformedEvents[$key]['harga'];
+        }
+        // dd($j);
+        
+        $ticketOptions = [];
+        $hargaOption = [];
+        foreach ($i as $key => $values) {
+            $options = [];
+            foreach ($values as $value) {
+                $options[] = $value;
+            }
+            $ticketOptions[$key + 1] = $options;
+        }
+        foreach ($j as $key => $values) {
+            $options = [];
+            foreach ($values as $value) {
+                $options[] = $value;
+            }
+            $hargaOption[$key+1 ] = $options;
         }
 
-        // dd($i);
-
-        // dd($e);
-        return view(
-            'penyewa.page.dashboard',
+        return view('penyewa.page.dashboard',
             [
                 'title' => 'Dashboard',
                 'countUser' => $user,
@@ -108,6 +125,8 @@ class PenyewaController extends Controller
                 'amount' => $amount,
                 'eventCount' => $event,
                 'event' => $transformedEvents,
+                'ticketEvent' => $ticketOptions ,
+                'hargaTicket' => $hargaOption ,
             ]
         );
     }

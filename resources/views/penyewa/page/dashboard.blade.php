@@ -6,8 +6,7 @@
         <!-- PAGE-HEADER -->
         <div class="page-header d-flex justify-content-between">
             <h1 class="page-title">Dashboard</h1>
-            <button class="btn btn-primary" data-bs-target="#modalCash"  data-bs-effect="effect-sign"
-            data-bs-toggle="modal">
+            <button class="btn btn-primary" data-bs-target="#modalCash" data-bs-effect="effect-sign" data-bs-toggle="modal">
                 Jual Ticket
             </button>
             @include('penyewa.molecul.modalCash')
@@ -16,6 +15,7 @@
 
         <!-- ROW-1 -->
         <div class="row">
+
             <div class="col-lg-12 col-md-12 col-sm-12 col-xl-12">
                 <div class="row">
                     <div class="col-lg-6 col-md-6 col-sm-12 col-xl-3">
@@ -106,6 +106,7 @@
         <!-- ROW-2 -->
 
         <div class="row">
+
             <div class="col-sm-12 col-md-12 col-lg-12 col-xl-12">
                 <div class="card">
                     <div class="card-header">
@@ -125,6 +126,9 @@
                 </div>
             </div>
         </div>
+
+       
     </div>
-    </div>
+
+   
 @endsection
