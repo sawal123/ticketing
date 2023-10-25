@@ -3,16 +3,19 @@
 namespace App\Http\Controllers\Penyewa;
 
 use App\Models\Cart;
+use App\Models\Cash;
 use App\Models\Event;
 use App\Models\EventDate;
 use App\Models\Harga;
 use App\Models\Penarikan;
 use App\Models\Talent;
 use App\Models\Voucher;
+use Exception;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
+use App\Models\HargaCart;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Validator;
@@ -94,14 +97,24 @@ class AddController extends Controller
     public function addHarga(Request $request)
     {
         // dd($request->qty);
-        $harga = new Harga([
-            'uid' => $request->uid,
-            'kategori' => $request->kategori,
-            'qty' => $request->qty,
-            'harga' => $request->harga,
-        ]);
-        $harga->save();
-        return redirect()->back()->with('harga', 'Harga berhasil disimpan');
+        $event = Harga::where('kategori', $request->kategori)->where('uid', $request->uid)->first();
+        // dd($event);
+        if ($event === null) {
+            $harga = new Harga([
+                'uid' => $request->uid,
+                'kategori' => $request->kategori,
+                'qty' => $request->qty,
+                'harga' => $request->harga,
+            ]);
+            try {
+                $harga->save();
+                return redirect()->back()->with('harga', 'Harga berhasil disimpan');
+            } catch (Exception $e) {
+                return redirect()->back()->with('deleteHarga', $e->getMessage());
+            }
+        } else {
+            return redirect()->back()->with('deleteHarga', 'Nama Ticket Tidak Boleh Sama!');
+        }
     }
 
     public function addVoucher(Request $request)
@@ -189,6 +202,75 @@ class AddController extends Controller
             return redirect()->back()->with('penarikan', 'Penarikan berhasil diajukan');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Pengajuan Gagal!');
+        }
+    }
+
+    public function addCash(Request $request)
+    {
+        $validate = Validator::make($request->all(), [
+            'uid' => 'string|required|max:50',
+            'event' => 'string|required|max:255',
+            'ticket' => 'string|required',
+            'qty' => 'numeric|required',
+            'name' => 'required|string',
+            'alamat' => 'required|string',
+            'ttl' => 'required|string',
+            'total' => 'required|numeric'
+        ]);
+        $validate->validate();
+        $number = mt_rand(1000, 9999999999);
+        $invoice = str_pad($number, 10, '0', STR_PAD_LEFT);
+        $str = Str::random('10');
+
+        $uid =  $request->uid;
+        $event =  $request->event;
+        $ticket =  $request->ticket;
+        $qty =  $request->qty;
+        $nama =  $request->name;
+        $alamat =  $request->alamat;
+        $ttl =  $request->ttl;
+        $total =  $request->total;
+
+
+        $events = Event::where('event', $event)->first();
+        $kategoriTicket = Harga::where('uid', $events->uid)->where('kategori', $ticket)->first();
+
+        $cart = new Cart([
+            'uid' => $str,
+            'user_uid' => $uid,
+            'event_uid' => $events->uid,
+            'invoice' => 'INV-' . $invoice,
+            'status' => 'SUCCESS',
+            'konfirmasi' => '1',
+            'link' => null,
+            'payment_type' => 'cash',
+        ]);
+
+        $hargaCart = new HargaCart([
+            'orderBy' => '1',
+            'uid' => $str,
+            'event_uid' => $events->uid,
+            'quantity' => $qty,
+            'harga_ticket' => $kategoriTicket->harga,
+            'kategori_harga' => $kategoriTicket->kategori ,
+        ]);
+        // dd($hargaCart);
+        $cash = new Cash([
+            'uid' => $str,
+            'uid_user' => $uid,
+            'uid_event' => $events->uid,
+            'name' => $nama,
+            'alamat' => $alamat,
+            'lahir' => $ttl,
+        ]);
+
+        try {
+            $cart->save();
+            $hargaCart->save();
+            $cash->save();
+            return redirect()->back()->with('success', 'Pembelian Cash Berhasil');
+        } catch (\Exception $e) {
+            return back()->with('error', $e->getMessage());
         }
     }
 }

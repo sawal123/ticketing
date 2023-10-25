@@ -110,6 +110,7 @@ Route::prefix('dashboard')
         Route::post('/addHarga', [PenyewaAddController::class, 'addHarga']);
         Route::post('/addVoucher', [PenyewaAddController::class, 'addVoucher']);
         Route::post('/addPenarikan', [PenyewaAddController::class, 'addPenarikan']);
+        Route::post('/addCash', [PenyewaAddController::class, 'addCash']);
 
         Route::post('/editTalent', [PenyewaEditController::class, 'editTalent']);
         Route::post('/editEvent', [PenyewaEditController::class, 'editEvent']);

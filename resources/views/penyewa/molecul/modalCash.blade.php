@@ -13,10 +13,12 @@
                     <div class="row mb-4">
                         <label class="col-md-3 	d-none d-lg-block form-label">Event</label>
                         <div class="col-md-9">
-                            <select id="select-event" class="form-select" aria-label="Default select example">
+                            <select id="select-event" class="form-select" name="event"
+                                aria-label="Default select example">
                                 <option selected>Pilih Event</option>
                                 @foreach ($event as $key => $events)
-                                    <option value="{{ $key + 1 }}">{{ $event[$key]['event'] }}</option>
+                                    <option value="{{ $event[$key]['event'] }}" class="{{ $key + 1 }}">
+                                        {{ $event[$key]['event'] }}</option>
                                 @endforeach
                             </select>
                         </div>
@@ -25,7 +27,8 @@
                     <div class="row mb-4 d-flex" id="ticket-select-container" style="display: none;">
                         <label class="col-md-3 	d-none d-lg-block form-label">Ticket</label>
                         <div class="col-md-9">
-                            <select id="select-ticket" class="form-select" aria-label="Default select example">
+                            <select id="select-ticket" class="form-select" name="ticket"
+                                aria-label="Default select example">
                                 <option selected>Pilih Ticket</option>
                                 <!-- Opsi tiket akan ditambahkan di sini melalui JavaScript -->
                             </select>
@@ -35,8 +38,9 @@
                     <div class="row mb-4">
                         <label class="col-md-3 	d-none d-lg-block form-label">Qty</label>
                         <div class="col-md-9">
-                            <select id="select-jumlah" class="form-select" aria-label="Default select example">
-                                <option selected>Isi Qty</option>
+                            <select id="select-jumlah" class="form-select" name="qty"
+                                aria-label="Default select example">
+                                <option selected disabled>Isi Qty</option>
                                 <option value="1">1</option>
                                 <option value="2">2</option>
                                 <option value="3">3</option>
@@ -68,6 +72,8 @@
                 </div>
                 <div class="modal-footer d-flex justify-content-between">
                     <div class="d-flex align-items-center">
+                        <input type="hidden" value="{{ Auth::user()->uid }}" name="uid" readonly>
+                        <input type="hidden" value="" id="total" name="total" readonly>
                         <h5>Total : </h5>
                         <h6 id="total-harga"></h6>
                     </div>
@@ -90,6 +96,8 @@
         const ticketSelect = document.getElementById("select-ticket");
         const jumlahTiket = document.getElementById("select-jumlah");
         const totalHarga = document.getElementById("total-harga");
+        const totali = document.getElementById("total");
+
 
         const ticketOptions = {!! html_entity_decode(json_encode($ticketEvent, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT)) !!};
         const hargaTicket = {!! html_entity_decode(json_encode($hargaTicket, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT)) !!};
@@ -100,15 +108,19 @@
             const selectedTicketName = ticketSelect.value;
             const selectedJumlah = parseInt(jumlahTiket.value);
 
-            if (selectedEventId in ticketOptions) {
-                const ticketOptionsForEvent = ticketOptions[selectedEventId];
-                console.log(ticketOptionsForEvent);
+            const selectedOption = eventSelect.options[eventSelect.selectedIndex];
+            const selectEventClass = selectedOption.className;
+            
+
+
+            if (selectEventClass in ticketOptions) {
+                const ticketOptionsForEvent = ticketOptions[selectEventClass];
+                console.log(ticketOptionsForEvent)
                 // Cari kunci tiket yang sesuai dengan nama tiket yang dipilih
                 let selectedTicketKey = null;
                 for (const key in ticketOptionsForEvent) {
                     if (ticketOptionsForEvent[key] === selectedTicketName) {
                         selectedTicketKey = parseInt(key) + 1;
-                        console.log(selectedTicketKey);
                         break;
                     }
                 }
@@ -120,9 +132,15 @@
                     const formattedTotal = new Intl.NumberFormat('en-US', {
                         style: 'currency',
                         currency: 'IDR',
+
                     }).format(total);
 
-                    totalHarga.textContent = formattedTotal;
+                    if (formattedTotal === "IDRNaN") {
+                        totalHarga.textContent = "IDR 0";
+                    } else {
+                        totalHarga.textContent = formattedTotal;
+                        totali.value = total;
+                    }
                 }
             }
         }
@@ -130,12 +148,16 @@
         // Ketika event select berubah
         eventSelect.addEventListener("change", function() {
             const selectedEventId = eventSelect.value;
-            console.log(selectedEventId);
+
+            const selectedOption = eventSelect.options[eventSelect.selectedIndex];
+            const selectEventClass = selectedOption.className;
+            
+
             // Hapus opsi tiket yang ada
             ticketSelect.innerHTML = "";
             // Tambahkan opsi tiket yang sesuai dengan event yang dipilih
-            if (selectedEventId in ticketOptions) {
-                const tickets = ticketOptions[selectedEventId];
+            if (selectEventClass in ticketOptions) {
+                const tickets = ticketOptions[selectEventClass];
                 for (const ticket of tickets) {
                     const option = document.createElement("option");
                     option.value = ticket;
