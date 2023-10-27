@@ -63,9 +63,7 @@
                                     <th class="border-bottom-0">Qty</th>
                                     <th class="border-bottom-0">Total</th>
                                     <th class="border-bottom-0">Payment</th>
-                                    {{-- <th class="border-bottom-0">Fee</th> --}}
                                     <th class="border-bottom-0">Status</th>
-                                    <th class="border-bottom-0">Action</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -92,32 +90,12 @@
                                                     class="badge bg-success-transparent rounded-pill text-success p-2 px-3">{{ $carts->status }}</span>
                                             </div>
                                         </td>
-                                        <td>
-                                            <div class="g-2">
-                                                <a class="btn text-primary btn-sm" data-bs-toggle="tooltip"
-                                                    data-bs-original-title="Edit"><span class="fe fe-edit fs-14"></span></a>
-                                                <a class="btn text-danger btn-sm" data-bs-toggle="tooltip"
-                                                    data-bs-original-title="Delete"><span
-                                                        class="fe fe-trash-2 fs-14"></span></a>
-                                            </div>
-                                        </td>
+                                       
                                     </tr>
                                 @endforeach
                                
                             </tbody>
-                            {{-- <tfoot>
-                                <tr>
-                                    <td style=";"></td>
-                                    <td style=";"></td>
-                                    <td style=";"></td>
-                                    <td style=";"></td>
-                                    <td style=";"></td>
-                                    <td style=";">Total</td>
-                                    <td style=";">Rp {{ number_format($totalHargaCart, 0, ',', '.') }}</td>
-                                    <td style=";"></td>
-                                    <td style=";"></td>
-                                </tr>
-                            </tfoot> --}}
+                            
                         </table>
                     </div>
                 </div>

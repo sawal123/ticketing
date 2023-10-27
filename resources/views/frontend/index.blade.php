@@ -5,12 +5,13 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="keywords" content="HTML, contoh, metadata">
+    <meta name="description" content="Ini adalah contoh dokumen HTML">
     <title>GOTIK | {{ $title }}</title>
 
-    {{-- <link rel="shortcut icon" href="landing/images/favicon.ico" type="image/x-icon"> --}}
-    <link rel="shortcut icon" href="{{asset('storage/logo/'. $logo[0]->logo)}}" type="image/x-icon">
-    {{-- <link rel="icon" href="{{asset('storage/logo/logo.png')}}" type="image/x-icon"> --}}
-    <!--- End favicon-->
+
+    <link rel="shortcut icon" href="{{asset('storage/logo/'. $logo[0]->icon)}}" type="image/x-icon">
+
 
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Public+Sans:wght@500;600;700;800&display=swap"

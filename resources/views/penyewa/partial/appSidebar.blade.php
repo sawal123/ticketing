@@ -3,13 +3,13 @@
     <div class="app-sidebar">
         <div class="side-header">
             <a class="header-brand1" href="index.html">
-                <img src="{{ asset('/assets/images/brand/logo-white.png') }}" class="header-brand-img desktop-logo"
+                <img src="{{ asset('storage/logo/' . $logo[0]->logo) }}" height="60"  class="header-brand-img desktop-logo"
                     alt="logo">
-                <img src="{{ asset('/assets/images/brand/icon-white.png') }}" class="header-brand-img toggle-logo"
+                <img src="{{ asset('storage/logo/' . $logo[0]->logo) }}" height="60"  class="header-brand-img toggle-logo"
                     alt="logo">
-                <img src="{{ asset('/assets/images/brand/icon-dark.png') }}" class="header-brand-img light-logo"
+                <img src="{{ asset('storage/logo/' . $logo[0]->logo) }}" height="60"  class="header-brand-img light-logo"
                     alt="logo">
-                <img src="{{ asset('/assets/images/brand/logo-dark.png') }}" class="header-brand-img light-logo1"
+                <img src="{{ asset('storage/logo/' . $logo[0]->logo) }}" height="60"  class="header-brand-img light-logo1"
                     alt="logo">
             </a>
             <!-- LOGO -->

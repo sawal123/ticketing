@@ -178,10 +178,57 @@ class editController extends Controller
             }
             $logo->save();
         }
-
-
         return redirect()->back()->with('editLogo', 'Logo Berhasil Diubah');
     }
+
+    public function editIcon(Request $request)
+    {
+        // dd($data);
+        $logo = Landing::where('id', $request->id)->first();
+        // dd($logo);
+        if ($logo === null) {
+            $save = new Landing();
+            $save->description = '';
+            $save->keyword = '';
+            if ($request->hasFile('icon')) {
+                $file = $request->file('icon');
+                $fileName = $save->id . '_' . time() . '_' . $file->getClientOriginalName();
+                $file->storeAs('public/logo/', $fileName);
+                $save->icon = $fileName;
+            }
+            $save->save();
+        } else {
+            if ($request->hasFile('icon')) {
+                $file = $request->file('icon');
+                $fileName = $logo->id . '_' . time() . '_' . $file->getClientOriginalName();
+                $file->storeAs('public/logo/', $fileName);
+                $logo->icon = $fileName;
+            }
+            $logo->save();
+        }
+        return redirect()->back()->with('editLogo', 'Logo Berhasil Diubah');
+    }
+
+    public function editDeskripis(Request $request){
+        $id = $request->id;
+        $des = $request->description;
+        $deskripis = Landing::where('id', $id)->first();
+
+        $deskripis->description = $des;
+        $deskripis->save();
+        return redirect()->back()->with('success','Deskripsi Meta Berhasil di Ubah');
+    }
+    public function editKeyword(Request $request){
+        $id = $request->id;
+        $key = $request->keyword;
+        $keyword = Landing::where('id', $id)->first();
+
+        $keyword->keyword = $key;
+        $keyword->save();
+        return redirect()->back()->with('success','Keyword Meta Berhasil di Ubah');
+    }
+
+
     public function editTerm(Request $request)
     {
         $term = Term::where('uid', $request->uid)->first();

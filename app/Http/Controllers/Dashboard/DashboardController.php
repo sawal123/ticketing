@@ -123,6 +123,18 @@ class DashboardController extends Controller
             'term' => $term
         ]);
     }
+
+    public function seo(Request $request)
+    {
+        $logo = Landing::all();
+        $term = Term::all();
+        // dd($logo[0]->logo);
+        return view('backend.content.seo', [
+            'title' => 'Seo',
+            'logo' => $logo,
+            'term' => $term
+        ]);
+    }
     public function transaksi()
     {
         $use = User::all();

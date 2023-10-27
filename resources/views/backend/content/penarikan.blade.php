@@ -87,7 +87,7 @@
                         </div>
                     @endif
                     <div class="table-responsive">
-                        <table id="file-datatable" class="table table-bordered text-nowrap key-buttons border-bottom">
+                        <table id="penarikan" class="table table-bordered text-nowrap key-buttons border-bottom">
                             <thead>
                                 <tr>
                                     <th class="border-bottom-0">No</th>

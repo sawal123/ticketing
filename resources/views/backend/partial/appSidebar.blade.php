@@ -2,14 +2,14 @@
     <div class="app-sidebar__overlay" data-bs-toggle="sidebar"></div>
     <div class="app-sidebar">
         <div class="side-header">
-            <a class="header-brand1" href="index.html">
-                <img src="{{ asset('/assets/images/brand/logo-white.png') }}" class="header-brand-img desktop-logo"
+            <a class="header-brand1" href="#">
+                <img src="{{ asset('storage/logo/' . $logo[0]->logo) }}" height="60"  class="header-brand-img desktop-logo"
                     alt="logo">
-                <img src="{{ asset('/assets/images/brand/icon-white.png') }}" class="header-brand-img toggle-logo"
+                <img src="{{ asset('storage/logo/' . $logo[0]->logo) }}" height="60"  class="header-brand-img toggle-logo"
                     alt="logo">
-                <img src="{{ asset('/assets/images/brand/icon-dark.png') }}" class="header-brand-img light-logo"
+                <img src="{{ asset('storage/logo/' . $logo[0]->logo) }}" height="60"  class="header-brand-img light-logo"
                     alt="logo">
-                <img src="{{ asset('/assets/images/brand/logo-dark.png') }}" class="header-brand-img light-logo1"
+                <img src="{{ asset('storage/logo/' . $logo[0]->logo) }}" height="60"  class="header-brand-img light-logo1"
                     alt="logo">
             </a>
             <!-- LOGO -->
@@ -42,10 +42,41 @@
                 </li>
 
                 <hr>
+
                 <li class="slide ">
-                    <a class="side-menu__item has-link {{request()->is('admin/landing') ? 'active': ''}}" data-bs-toggle="slide" href="{{ url('/admin/landing') }}"><i
-                            class=" side-menu__icon fa fa-windows"></i><span class="side-menu__label">Landing</span></a>
+                    <a class="side-menu__item {{request()->is('admin/user') ? 'active': ''}}" data-bs-toggle="slide" href="javascript:void(0)"><i
+                            class="side-menu__icon fa fa-cog"></i><span
+                            class="side-menu__label">Setting</span><i
+                            class="angle fe fe-chevron-right"></i>
+                    </a>
+                    <ul class="slide-menu">
+                        <li class="panel sidetab-menu">
+                            <div class="tab-menu-heading p-0 pb-2 border-0">
+                                <div class="tabs-menu ">
+                                    <!-- Tabs -->
+                                    <ul class="nav panel-tabs">
+                                        <li><a href="#side13" class="d-flex active" data-bs-toggle="tab"><i class="fe fe-monitor me-2"></i><p>Home</p></a></li>
+                                        <li><a href="#side14" data-bs-toggle="tab" class="d-flex"><i class="fe fe-message-square me-2"></i><p>Chat</p></a></li>
+                                    </ul>
+                                </div>
+                            </div>
+                            <div class="panel-body tabs-menu-body p-0 border-0">
+                                <div class="tab-content">
+                                    <div class="tab-pane active" id="side13">
+                                        <ul class="sidemenu-list">
+                                            <li class="side-menu-label1"><a href="javascript:void(0)">Setting</a></li>
+                                            <li> <a class="slide-item {{request()->is('admin/setting/slide') ? 'active': ''}}" data-bs-toggle="slide" href="{{ url('/admin/setting/slide') }}"><span class="side-menu__label">Slide</span></a></li>
+                                            <li><a href="{{ url('admin/setting/seo') }}"" class="slide-item {{request()->is('/admin/setting/seo') ? 'active': ''}}">SEO</a></li>
+                                            <li><a href="{{ url('admin/setting/term') }}"" class="slide-item {{request()->is('/admin/setting/term') ? 'active': ''}}">Term and Condition</a></li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </li>
+                    </ul>
                 </li>
+
+              
                 
                 <li class="slide ">
                     <a class="side-menu__item {{request()->is('admin/user') ? 'active': ''}}" data-bs-toggle="slide" href="javascript:void(0)"><i

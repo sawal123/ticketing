@@ -128,12 +128,16 @@ Route::prefix('admin')
     ->middleware(['auth', 'admin'])
     ->group(function () {
         Route::get('/', [DashboardController::class, 'dashboard']);
-        Route::get('/landing', [DashboardController::class, 'landing']);
+    
         Route::get('/transaksi', [DashboardController::class, 'transaksi']);
         Route::get('/user/{data?}', [DashboardController::class, 'user']);
         Route::get('/event/{addEvent?}/{uid?}', [DashboardController::class, 'event']);
         Route::get('/ubahEvents/{uid}', [DashboardController::class, 'ubahEvents']);
         Route::get('/penarikan', [DashboardController::class, 'penarikan']);
+
+        Route::get('/setting/slide', [DashboardController::class, 'landing']);
+        Route::get('/setting/seo', [DashboardController::class, 'seo']);
+        Route::get('/setting/term', [DashboardController::class, 'term']);
         
 
         // Route::get('/event', [DashboardController::class, 'event']);
@@ -151,11 +155,15 @@ Route::prefix('admin')
         Route::post('/editEvent', [editController::class, 'editEvent']);
         Route::post('/editHarga', [editController::class, 'editHarga']);
         Route::post('/editSlide', [editController::class, 'editSlide']);
-        Route::post('/editLogo', [editController::class, 'editLogo']);
         Route::post('/editTerm', [editController::class, 'editTerm']);
         Route::post('/user/editUser', [editController::class, 'editUser']);
         Route::get('/setujuiEvent/{data}', [editController::class, 'setujuiEvent']);
         Route::post('/editPenarikan', [editController::class, 'editStatusInvoice']);
+
+        Route::post('/editLogo', [editController::class, 'editLogo']);
+        Route::post('/editIcon', [editController::class, 'editIcon']);
+        Route::post('/edit/seoDeskripsi', [editController::class, 'editDeskripis']);
+        Route::post('/edit/seoKeyword', [editController::class, 'editKeyword']);
 
 
         // ROUTE DELETE
