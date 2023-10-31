@@ -164,6 +164,7 @@ Route::prefix('admin')
         Route::post('/editIcon', [editController::class, 'editIcon']);
         Route::post('/edit/seoDeskripsi', [editController::class, 'editDeskripis']);
         Route::post('/edit/seoKeyword', [editController::class, 'editKeyword']);
+        Route::post('/editTransaksi', [editController::class, 'editTransaksi']);
 
 
         // ROUTE DELETE

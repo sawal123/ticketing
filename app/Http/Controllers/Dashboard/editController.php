@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Dashboard;
 
+use App\Models\Cart;
 use App\Models\Harga;
 use App\Models\Landing;
 use App\Models\Talent;
@@ -12,6 +13,7 @@ use App\Models\Event;
 use App\Models\Penarikan;
 use App\Models\Slider;
 use App\Models\Term;
+use App\Models\Transaction;
 use Illuminate\Auth\Events\Validated;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
@@ -295,5 +297,17 @@ class editController extends Controller
         $penarikan->status = "SUCCESS";
         $penarikan->save();
         return redirect()->back()->with("success", "Konfirmasi Berhasil");
+    }
+
+    public function editTransaksi(Request $request)   {
+        $uid = $request->uid; 
+        $transaksis = Transaction::where("uid", $request->uid)->first();
+        $cart = Cart::where("uid", $request->uid)->first();
+        // dd($cart);
+
+        $cart->status = $request->status;
+        $cart->save();
+        return redirect()->back()->with("success", "Transaksi Berhasil di Ubah");
+
     }
 }

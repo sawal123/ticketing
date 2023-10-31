@@ -83,6 +83,15 @@
 
     })
 
+    $(document).on("show.bs.modal", "#editTransaksi", function(e){
+        var b = $(e.relatedTarget)
+        var uid = b.data('uid')
+        var status = b.data('status')
+        var m = $(this)
+        m.find("#uid").val(uid)
+        m.find("#status").val(status)
+    })
+
 
     $(document).ready(function() {
         $(document).on('click', '.delete', function() {

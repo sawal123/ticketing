@@ -105,7 +105,7 @@ class BuyTicketController extends Controller
         $kategoriValue = [];
         $orderByInput = [];
         $req = [];
-        for ($i = 0; $i < 5; $i++) {
+        for ($i = 0; $i < 10; $i++) {
             $ticketValue[] = $request->input('ticket' . $i);
             $hargaValue[] = $request->input('harga' . $i);
             $kategoriValue[] = $request->input('kategori' . $i);

@@ -49,7 +49,13 @@
             <div class="card">
                 <div class="card-header">
                     <h3 class="card-title">File Export</h3>
+                    @if (session('success'))
+                    <div class="alert alert-primary">
+                        {{ session('success') }}
+                    </div>
+                @endif
                 </div>
+                
                 <div class="card-body">
                     <div class="table-responsive">
                         <table id="file-datatable" class="table table-bordered text-nowrap key-buttons border-bottom">
@@ -93,15 +99,22 @@
                                         </td>
                                         <td>
                                             <div class="g-2">
-                                                <a class="btn text-primary btn-sm" data-bs-toggle="tooltip"
-                                                    data-bs-original-title="Edit"><span class="fe fe-edit fs-14"></span></a>
-                                                <a class="btn text-danger btn-sm" data-bs-toggle="tooltip"
+
+                                                <button type="submit" class="btn text-primary btn-sm"
+                                                    data-bs-original-title="Edit" data-bs-target="#editTransaksi"
+                                                    data-bs-effect="effect-sign" data-bs-toggle="modal"
+                                                    data-uid="{{ $carts->uid }}"
+                                                    data-status="{{ $carts->status }}"><span
+                                                        class="fe fe-edit fs-14"></span></button>
+
+                                                <a href="{{url('admin/deleteTransksi')}}" class="btn text-danger btn-sm delete" data-bs-toggle="tooltip"
                                                     data-bs-original-title="Delete"><span
                                                         class="fe fe-trash-2 fs-14"></span></a>
                                             </div>
                                         </td>
                                     </tr>
                                 @endforeach
+                                @include('backend.molecul.modalTransaksi')
                             </tbody>
                         </table>
                     </div>

@@ -113,26 +113,32 @@ class DashboardController extends Controller
     {
         $slide = Slider::orderBy('sort', 'asc')->get();
         $logo = Landing::all();
-        $term = Term::all();
+       
         // dd($logo[0]->logo);
         return view('backend.content.landing', [
             'title' => 'Landing',
             'slide' => $slide,
             'slider' => $slide,
             'logo' => $logo,
-            'term' => $term
+           
         ]);
     }
 
     public function seo(Request $request)
     {
         $logo = Landing::all();
-        $term = Term::all();
-        // dd($logo[0]->logo);
         return view('backend.content.seo', [
             'title' => 'Seo',
             'logo' => $logo,
-            'term' => $term
+           
+        ]);
+    }
+
+    public function term(){
+        $term = Term::all();
+        return view('backend.content.term',[
+            'title'=> 'Term And Condition',
+            'term' => $term,
         ]);
     }
     public function transaksi()
@@ -140,6 +146,7 @@ class DashboardController extends Controller
         $use = User::all();
         $cartQuery = Cart::select(
             // 'users.name',
+            'carts.uid',
             'carts.user_uid',
             'carts.invoice',
             'carts.status',
@@ -153,7 +160,7 @@ class DashboardController extends Controller
             ->join('harga_carts', 'harga_carts.uid', '=', 'carts.uid')
             ->join('events', 'events.uid', '=', 'carts.event_uid')
             // Menggunakan LEFT JOIN
-            ->groupBy('carts.user_uid', 'carts.invoice', 'carts.status', 'events.event', 'events.fee', 'carts.created_at', 'events.cover');
+            ->groupBy('carts.uid','carts.user_uid', 'carts.invoice', 'carts.status', 'events.event', 'events.fee', 'carts.created_at', 'events.cover');
         $cart = $cartQuery->get();
 // dd($cart);
         $totalHargaCart = Cart::select(['harga_carts.harga_ticket'])->where('carts.status', 'SUCCESS')
@@ -174,6 +181,7 @@ class DashboardController extends Controller
         foreach ($use as $users) {
             $user[] = $users;
         }
+        // dd($cart);
         return view(
             'backend.content.transaksi',
             [
