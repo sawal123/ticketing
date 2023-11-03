@@ -18,12 +18,14 @@
                             alt="img">
                     </a>
                 </div>
-                <div class="card-body pt-0">
+                <div class="card-body py-0">
                     <div class="product-content text-center">
                         <h1 class="title fw-bold fs-20"><a
                                 href="{{ url('/admin/event/eventDetail/' . $events->uid) }}">{{ $events->event }}</a>
                         </h1>
-
+                       <div class=" mb-2 btn-sm {{$events->konfirmasi != null ? 'btn-primary': 'btn-danger'}}">
+                        {{$events->konfirmasi != null ? 'Disetujui': 'Belum disetujui'}}
+                       </div>
                     </div>
                 </div>
 
@@ -33,7 +35,7 @@
 @endforeach
 <div class="mb-5">
     <div class="float-end">
-        <ul class="pagination ">
+        <ul class="pagination {{$paginate->total() === 0 ? 'd-none' : ''}} ">
             @if ($paginate->currentPage() === 1)
                 <li class="page-item disabled">
                     <a class="page-link" href="#" tabindex="-1">Prev</a>
