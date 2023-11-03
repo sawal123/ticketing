@@ -42,10 +42,23 @@ class DeleteController extends Controller
 
     public function deleteEvent($uid)
     {
-        $event = Event::with(['harga', 'talent'])->where('uid', $uid)->first();
-        $event->delete();
-        $event->harga->delete();
-        $event->talent->delete();
+        $event = Event::where('uid', $uid)->first();
+        if ($event) {
+            $event->delete();
+            $talent = Talent::where('uid', $event->uid)->get();
+            if ($talent) {
+                foreach ($talent as $talentItem) {
+                    $talentItem->delete();
+                }
+            }
+            $harga = Talent::where('uid', $event->uid)->get();
+            if ($harga) {
+                foreach ($harga as $hargaItem) {
+                    $hargaItem->delete();
+                }
+            }
+        }
+
         return redirect()->back()->with('deleteEvent', 'Event Berhasil Dihapus');
     }
 
@@ -62,21 +75,24 @@ class DeleteController extends Controller
         $term->delete();
         return redirect()->back()->with('deleteTerm', 'Term Berhasil Dihapus');
     }
-    public function deleteUser($uid){
+    public function deleteUser($uid)
+    {
         $user = User::where('uid', $uid)->first();
         // dd($user);
         $user->delete();
         return redirect()->back()->with('deleteUser', 'User Berhasil Dihapus');
     }
-    public function deleteVoucher($uid){
+    public function deleteVoucher($uid)
+    {
         $voucher = Voucher::where('uid', $uid)->first();
         $voucher->delete();
         return redirect()->back()->with('deleteVoucher', 'Voucher Berhasil Dihapus');
     }
-    public function deletePenarikan($uid){
+    public function deletePenarikan($uid)
+    {
         // dd($uid);
         $penarikan = Penarikan::where('uid', $uid)->first();
         $penarikan->delete();
-        return redirect()->back()->with('delete', 'Data berhasil dihapus');  
+        return redirect()->back()->with('delete', 'Data berhasil dihapus');
     }
 }

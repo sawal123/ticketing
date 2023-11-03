@@ -90,12 +90,9 @@
                                                     class="badge bg-success-transparent rounded-pill text-success p-2 px-3">{{ $carts->status }}</span>
                                             </div>
                                         </td>
-                                       
                                     </tr>
                                 @endforeach
-                               
                             </tbody>
-                            
                         </table>
                     </div>
                 </div>

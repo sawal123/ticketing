@@ -32,7 +32,7 @@ class AddController extends Controller
             'start' => 'required|string',
             'end' => 'required|string',
             'map' => 'required|string|max:255',
-            'deskripsi' => 'required|string|max:255',
+            'deskripsi' => 'required|string',
 
         ]);
         $validate->validate();

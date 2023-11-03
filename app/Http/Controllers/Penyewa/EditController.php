@@ -47,7 +47,7 @@ class EditController extends Controller
         $uid = $request->uid;
         $talent = $request->talent;
 
-        $talents = Talent::where('uid', $uid)->first();
+        $talents = Talent::where('id', $uid)->first();
         $talents->talent = $talent;
 
         if ($request->hasFile('gambar')) {

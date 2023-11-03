@@ -115,18 +115,20 @@
 
             if (selectEventClass in ticketOptions) {
                 const ticketOptionsForEvent = ticketOptions[selectEventClass];
+                const hargaTicketForEvent = hargaTicket[selectEventClass]
                 console.log(ticketOptionsForEvent)
+                console.log(hargaTicketForEvent)
                 // Cari kunci tiket yang sesuai dengan nama tiket yang dipilih
                 let selectedTicketKey = null;
                 for (const key in ticketOptionsForEvent) {
                     if (ticketOptionsForEvent[key] === selectedTicketName) {
-                        selectedTicketKey = parseInt(key) + 1;
+                        selectedTicketKey = parseInt(key);
                         break;
                     }
                 }
-
+                // console.log(selectedTicketKey)
                 if (selectedTicketKey !== null) {
-                    const hargaPerTiket = parseFloat(hargaTicket[selectedTicketKey]);
+                    const hargaPerTiket = parseFloat(hargaTicketForEvent[selectedTicketKey]);
                     const total = selectedJumlah * hargaPerTiket;
 
                     const formattedTotal = new Intl.NumberFormat('en-US', {

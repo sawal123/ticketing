@@ -159,6 +159,7 @@ class PenyewaController extends Controller
             if ($eventDetail === null) {
                 abort('403');
             }
+            // dd($talent);
             return view('penyewa.eventSemi.eventDetail', [
                 'title' => 'Event Detail',
                 'eventDetail' => $eventDetail,
