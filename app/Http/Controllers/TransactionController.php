@@ -82,6 +82,7 @@ class TransactionController extends Controller
 
     public function callback(Request $request)
     {
+        error_reporting(0);
         // Set konfigurasi midtrans
         konfig::$clientKey = config('services.midtrans.clientKey');
         konfig::$serverKey = config('services.midtrans.serverKey');
@@ -98,13 +99,16 @@ class TransactionController extends Controller
         $type = $notification->payment_type;
         $fraud = $notification->fraud_status;
         $order_id = $notification->order_id;
+        // $trid = $notification->transaction_id;
+
+        // dd($trid);
 
         // Cari transaksi berdasarkan ID
         // $transaction = Transaction::findOrFail($order_id);
         $transaction = Transaction::where('invoice', $order_id)->firstOrFail();
         $carts = Cart::where('invoice', $order_id)->firstOrFail();
-        $cVouvher = CartVoucher::where('uid', $carts->uid)->firstOrFail();
-        $voucher = Voucher::where('code', $cVouvher->code)->firstOrFail();
+        // $cVouvher = CartVoucher::where('uid', $carts->uid)->firstOrFail();
+        // $voucher = Voucher::where('code', $cVouvher->code)->firstOrFail();
         $user = User::where('uid', $carts->user_uid)->firstOrFail();
         // Handle notification status midtrans
         if ($status == 'capture') {
@@ -119,7 +123,7 @@ class TransactionController extends Controller
                     $transaction->payment_type = $type;
                     $carts->payment_type = $type;
                     $carts->status = 'SUCCESS';
-                    $voucher +=1;
+                    // $voucher +=1;
                 }
             }
         } else if ($status == 'settlement') {
@@ -127,7 +131,7 @@ class TransactionController extends Controller
             $transaction->payment_type = $type;
             $carts->payment_type = $type;
             $carts->status = 'SUCCESS';
-            $voucher +=1;
+            // $voucher +=1;
         } else if ($status == 'pending') {
             $transaction->status_transaksi = 'PENDING';
             $transaction->payment_type = $type;
@@ -155,7 +159,7 @@ class TransactionController extends Controller
         // Simpan transaksi
         $transaction->save();
         $carts->save();
-        $voucher->save();
+        // $voucher->save();
 
         // $barcode = QrCode::size(150)->generate($order_id);
 

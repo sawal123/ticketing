@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Dashboard;
 
+use App\Models\BankIndonesia;
 use App\Models\Cart;
 use App\Models\Term;
 use App\Models\User;
@@ -257,5 +258,32 @@ class DashboardController extends Controller
             'success' => $success,
             'count' => count($penarikan),
         ]);
+    }
+
+
+    public function profile()
+    {
+
+        $data = User::where('users.uid', Auth::user()->uid)
+            ->join('banks', 'banks.uid', '=', 'users.uid')
+            ->first();
+        // dd($data);
+        $http = Http::get('https://www.emsifa.com/api-wilayah-indonesia/api/provinces.json');
+        if ($http->successful()) {
+            $provinsi = $http->json();
+        }
+        // dd($provinsi);
+
+        $bi = BankIndonesia::all();
+        // dd($bi);
+
+        return view('backend.content.profile',
+            [
+                'title' => 'profile',
+                'profile' => $data,
+                'bi' => $bi,
+                'pr' => $provinsi
+            ]
+        );
     }
 }

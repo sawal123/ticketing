@@ -138,6 +138,8 @@ Route::prefix('admin')
         Route::get('/setting/slide', [DashboardController::class, 'landing']);
         Route::get('/setting/seo', [DashboardController::class, 'seo']);
         Route::get('/setting/term', [DashboardController::class, 'term']);
+
+        Route::get('/profile', [DashboardController::class, 'profile']);
         
 
         // Route::get('/event', [DashboardController::class, 'event']);
@@ -165,6 +167,8 @@ Route::prefix('admin')
         Route::post('/edit/seoDeskripsi', [editController::class, 'editDeskripis']);
         Route::post('/edit/seoKeyword', [editController::class, 'editKeyword']);
         Route::post('/editTransaksi', [editController::class, 'editTransaksi']);
+        Route::post('/editPro', [editController::class, 'editPro']);
+        Route::post('/editRekening', [editController::class, 'editRekening']);
 
 
         // ROUTE DELETE

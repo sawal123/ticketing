@@ -386,8 +386,7 @@ class PenyewaController extends Controller
         $bi = BankIndonesia::all();
         // dd($bi);
 
-        return view(
-            'penyewa.page.profile',
+        return view('penyewa.page.profile',
             [
                 'title' => 'profile',
                 'profile' => $data,

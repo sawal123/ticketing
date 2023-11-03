@@ -29,7 +29,7 @@ class EditController extends Controller
         $event->fee = $request->fee;
         $event->deskripsi = $request->deskripsi;
         $event->map = $request->map;
-        $event->slug= Str::slug($request->event);
+        $event->slug = Str::slug($request->event);
 
         if ($request->hasFile('cover')) {
             $file = $request->file('cover');
@@ -74,41 +74,41 @@ class EditController extends Controller
         return redirect()->back()->with('editHarga', 'Harga Berhasil Di Ubah');
     }
 
-    public function editRekening(Request $request){
-        
+    public function editRekening(Request $request)
+    {
+
         $rek = Bank::where('uid', Auth::user()->uid)->first();
-        if($rek){
+        if ($rek) {
             $rek->nama = $request->nama;
             $rek->bank = $request->bank;
             $rek->norek = $request->norek;
             // $rek->save();
         }
-        try{
+        try {
             $rek->save();
             return redirect()->back()->with('editRek', 'Rekening Berhasil Di Update');
-        }
-        catch(\Exception $e){
+        } catch (\Exception $e) {
             DB::rollback();
             return redirect()->back()->with('error', 'Gagal Update. Silahkan coba lagi.');
         }
-
     }
 
-    public function editProfile(Request $request){
-       
-        $validate = Validator::make($request->all(),[
-            'nama'=> 'required|string',
-            'nomor'=> 'required|numeric',
-            'email'=> 'required|email',
-            'date'=> 'required|string',
-            'gender'=> 'required|string',
-            'provinsi'=> 'required|string',
-            'alamat'=> 'required|string',
+    public function editProfile(Request $request)
+    {
+
+        $validate = Validator::make($request->all(), [
+            'nama' => 'required|string',
+            'nomor' => 'required|numeric',
+            'email' => 'required|email',
+            'date' => 'required|string',
+            'gender' => 'required|string',
+            'provinsi' => 'required|string',
+            'alamat' => 'required|string',
         ]);
 
         $validate->validate();
         $user = User::where('uid', Auth::user()->uid)->first();
-// dd($user);
+        // dd($user);
         $user->name = $request->nama;
         $user->nomor = $request->nomor;
         $user->email = $request->email;
@@ -124,14 +124,12 @@ class EditController extends Controller
             $user->gambar = $fileName;
         }
 
-        try{
+        try {
             $user->save();
             return redirect()->back()->with('editProfile', 'Informasi Berhasil Di Update');
-        }catch(\Exception $e){
+        } catch (\Exception $e) {
             DB::rollback();
             return redirect()->back()->with('error', 'Gagal Update. Silahkan coba lagi.');
         }
-
-
     }
 }

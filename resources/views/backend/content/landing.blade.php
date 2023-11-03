@@ -61,7 +61,6 @@
                     </div>
                 </div>
             </div>
-            <!-- COL-END -->
         </div>
         <!-- ROW-1 CLOSED -->
         

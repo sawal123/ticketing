@@ -1,4 +1,4 @@
-@extends('penyewa.app')
+@extends('backend.app')
 
 @section('content')
     <!-- CONTAINER -->
@@ -28,7 +28,7 @@
                     <div class="card-header">
                         <div class="card-title">Edit Rekening</div>
                     </div>
-                    <form action="{{ url('dashboard/editRekening') }}" method="post">
+                    <form action="{{ url('admin/editRekening') }}" method="post">
                         @csrf
                         <div class="card-body">
                             <div class="text-center chat-image mb-5">
@@ -94,7 +94,7 @@
                     <div class="card-header">
                         <h3 class="card-title">Edit Profile</h3>
                     </div>
-                    <form action="{{ url('dashboard/editProfile') }}" method="post" method="post"
+                    <form action="{{ url('admin/editPro') }}" method="post" method="post"
                         enctype="multipart/form-data">
                         @csrf
                         <div class="card-body">

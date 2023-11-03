@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Dashboard;
 
+use App\Models\Bank;
 use App\Models\Cart;
 use App\Models\Harga;
 use App\Models\Landing;
@@ -16,6 +17,7 @@ use App\Models\Term;
 use App\Models\Transaction;
 use Illuminate\Auth\Events\Validated;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Validator;
 
@@ -211,23 +213,25 @@ class editController extends Controller
         return redirect()->back()->with('editLogo', 'Logo Berhasil Diubah');
     }
 
-    public function editDeskripis(Request $request){
+    public function editDeskripis(Request $request)
+    {
         $id = $request->id;
         $des = $request->description;
         $deskripis = Landing::where('id', $id)->first();
 
         $deskripis->description = $des;
         $deskripis->save();
-        return redirect()->back()->with('success','Deskripsi Meta Berhasil di Ubah');
+        return redirect()->back()->with('success', 'Deskripsi Meta Berhasil di Ubah');
     }
-    public function editKeyword(Request $request){
+    public function editKeyword(Request $request)
+    {
         $id = $request->id;
         $key = $request->keyword;
         $keyword = Landing::where('id', $id)->first();
 
         $keyword->keyword = $key;
         $keyword->save();
-        return redirect()->back()->with('success','Keyword Meta Berhasil di Ubah');
+        return redirect()->back()->with('success', 'Keyword Meta Berhasil di Ubah');
     }
 
 
@@ -299,8 +303,9 @@ class editController extends Controller
         return redirect()->back()->with("success", "Konfirmasi Berhasil");
     }
 
-    public function editTransaksi(Request $request)   {
-        $uid = $request->uid; 
+    public function editTransaksi(Request $request)
+    {
+        $uid = $request->uid;
         $transaksis = Transaction::where("uid", $request->uid)->first();
         $cart = Cart::where("uid", $request->uid)->first();
         // dd($cart);
@@ -308,6 +313,65 @@ class editController extends Controller
         $cart->status = $request->status;
         $cart->save();
         return redirect()->back()->with("success", "Transaksi Berhasil di Ubah");
+    }
 
+
+    public function editPro(Request $request)
+    {
+
+        $validate = Validator::make($request->all(), [
+            'nama' => 'required|string',
+            'nomor' => 'required|numeric',
+            'email' => 'required|email',
+            'date' => 'required|string',
+            'gender' => 'required|string',
+            'provinsi' => 'required|string',
+            'alamat' => 'required|string',
+        ]);
+
+        $validate->validate();
+        $user = User::where('uid', Auth::user()->uid)->first();
+        // dd($user);
+        $user->name = $request->nama;
+        $user->nomor = $request->nomor;
+        $user->email = $request->email;
+        $user->birthday = $request->date;
+        $user->gender = $request->gender;
+        $user->kota = $request->provinsi;
+        $user->alamat = $request->alamat;
+
+        if ($request->hasFile('img')) {
+            $file = $request->file('img');
+            $fileName = $user->uid . '_' . time() . '_' . $file->getClientOriginalName();
+            $file->storeAs('public/user/', $fileName);
+            $user->gambar = $fileName;
+        }
+
+        try {
+            $user->save();
+            return redirect()->back()->with('editProfile', 'Informasi Berhasil Di Update');
+        } catch (\Exception $e) {
+            DB::rollback();
+            return redirect()->back()->with('error', 'Gagal Update. Silahkan coba lagi.');
+        }
+    }
+
+    public function editRekening(Request $request)
+    {
+
+        $rek = Bank::where('uid', Auth::user()->uid)->first();
+        if ($rek) {
+            $rek->nama = $request->nama;
+            $rek->bank = $request->bank;
+            $rek->norek = $request->norek;
+            // $rek->save();
+        }
+        try {
+            $rek->save();
+            return redirect()->back()->with('editRek', 'Rekening Berhasil Di Update');
+        } catch (\Exception $e) {
+            DB::rollback();
+            return redirect()->back()->with('error', 'Gagal Update. Silahkan coba lagi.');
+        }
     }
 }
