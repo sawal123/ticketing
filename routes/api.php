@@ -34,6 +34,7 @@ Route::put('/status/{data}', [ConfirmController::class, 'upKonfirmasi']);
 
 
 Route::post('/callback', [TransactionController::class, 'callback']);
+
+
 Route::get('/finishMidtrans', [SlideController::class, 'finishMidtrans']);
-// Route::get('/finishMidtrans', [SlideController::class, 'finishMidtrans'])->middleware();
 

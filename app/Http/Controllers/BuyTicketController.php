@@ -80,6 +80,7 @@ class BuyTicketController extends Controller
             if ($voucher->digunakan < $voucher->limit) {
                 $cartV = new CartVoucher([
                     'uid' => $cart,
+                    'uid_vouchers'=> $voucher->uid,
                     'user_uid' => Auth::user()->uid,
                     'event_uid' => $request->event,
                     'code' => $code

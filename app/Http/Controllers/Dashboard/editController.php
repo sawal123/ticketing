@@ -4,21 +4,23 @@ namespace App\Http\Controllers\Dashboard;
 
 use App\Models\Bank;
 use App\Models\Cart;
-use App\Models\Harga;
-use App\Models\Landing;
-use App\Models\Talent;
-use App\Models\User;
-use Illuminate\Http\Request;
-use App\Http\Controllers\Controller;
-use App\Models\Event;
-use App\Models\Penarikan;
-use App\Models\Slider;
 use App\Models\Term;
+use App\Models\User;
+use App\Models\Event;
+use App\Models\Harga;
+use App\Models\Slider;
+use App\Models\Talent;
+use App\Models\Landing;
+use App\Models\Penarikan;
 use App\Models\Transaction;
-use Illuminate\Auth\Events\Validated;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Auth\Events\Validated;
+use App\Mail\MidtransPaymentNotification;
 use Illuminate\Support\Facades\Validator;
 
 class editController extends Controller
@@ -306,12 +308,20 @@ class editController extends Controller
     public function editTransaksi(Request $request)
     {
         $uid = $request->uid;
+        $name = $request->name;
+        $barcode = $request->inv;
+        // dd($name);
+        $user = User::where("name", $name)->first();
         $transaksis = Transaction::where("uid", $request->uid)->first();
-        $cart = Cart::where("uid", $request->uid)->first();
-        // dd($cart);
+        $carts = Cart::where("uid", $request->uid)->first();
+        // dd($user);
 
-        $cart->status = $request->status;
-        $cart->save();
+        if($request->status === "SUCCESS"){
+            Mail::to($user->email)->send(new MidtransPaymentNotification($user, $carts, $barcode));
+        }
+
+        $carts->status = $request->status;
+        $carts->save();
         return redirect()->back()->with("success", "Transaksi Berhasil di Ubah");
     }
 

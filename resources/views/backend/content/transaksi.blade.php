@@ -50,12 +50,12 @@
                 <div class="card-header">
                     <h3 class="card-title">File Export</h3>
                     @if (session('success'))
-                    <div class="alert alert-primary">
-                        {{ session('success') }}
-                    </div>
-                @endif
+                        <div class="alert alert-primary">
+                            {{ session('success') }}
+                        </div>
+                    @endif
                 </div>
-                
+
                 <div class="card-body">
                     <div class="table-responsive">
                         <table id="file-datatable" class="table table-bordered text-nowrap key-buttons border-bottom">
@@ -104,10 +104,16 @@
                                                     data-bs-original-title="Edit" data-bs-target="#editTransaksi"
                                                     data-bs-effect="effect-sign" data-bs-toggle="modal"
                                                     data-uid="{{ $carts->uid }}"
+                                                    data-inv="{{ $carts->invoice }}"
+                                                    data-name="@foreach ($use as $users)
+                                                    @if ($users->uid == $carts->user_uid)
+                                                        {{ $users->name }}
+                                                    @endif @endforeach"
                                                     data-status="{{ $carts->status }}"><span
                                                         class="fe fe-edit fs-14"></span></button>
 
-                                                <a href="{{url('admin/deleteTransksi')}}" class="btn text-danger btn-sm delete" data-bs-toggle="tooltip"
+                                                <a href="{{ url('admin/deleteTransksi') }}"
+                                                    class="btn text-danger btn-sm delete" data-bs-toggle="tooltip"
                                                     data-bs-original-title="Delete"><span
                                                         class="fe fe-trash-2 fs-14"></span></a>
                                             </div>

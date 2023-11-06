@@ -8,6 +8,8 @@
                 @csrf
                 <div class="modal-body">
                     <input type="hidden" name="uid" id="uid" value="">
+                    <input type="hidden" name="name" id="name" value="">
+                    <input type="hidden" name="inv" id="inv" value="">
                     <div class="row mb-4">
                         <label class="col-md-3 	d-none d-lg-block form-label">Status</label>
                         <div class="col-md-9">
@@ -23,7 +25,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="submit" class="btn btn-primary">Edit</button>
-                    <button class="btn btn-light" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Close</button>
                 </div>
             </form>
         </div>

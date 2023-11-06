@@ -183,8 +183,7 @@ class DashboardController extends Controller
             $user[] = $users;
         }
         // dd($cart);
-        return view(
-            'backend.content.transaksi',
+        return view('backend.content.transaksi',
             [
                 'title' => 'Transaksi Dashboard',
                 'cart' => $cart,

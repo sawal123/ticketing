@@ -86,9 +86,13 @@
     $(document).on("show.bs.modal", "#editTransaksi", function(e){
         var b = $(e.relatedTarget)
         var uid = b.data('uid')
+        var name = b.data('name')
+        var inv = b.data('inv')
         var status = b.data('status')
         var m = $(this)
         m.find("#uid").val(uid)
+        m.find("#name").val(name)
+        m.find("#inv").val(inv)
         m.find("#status").val(status)
     })
 
