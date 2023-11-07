@@ -2,24 +2,25 @@
 
 namespace App\Http\Controllers\Penyewa;
 
+use Exception;
 use App\Models\Cart;
 use App\Models\Cash;
 use App\Models\Event;
-use App\Models\EventDate;
 use App\Models\Harga;
-use App\Models\Penarikan;
 use App\Models\Talent;
+use App\Models\Partner;
 use App\Models\Voucher;
-use Exception;
+use App\Models\EventDate;
+use App\Models\HargaCart;
+use App\Models\Penarikan;
+use Ramsey\Uuid\Type\Time;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
-use App\Models\HargaCart;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Validator;
-use Ramsey\Uuid\Type\Time;
 
 class AddController extends Controller
 {
@@ -272,5 +273,35 @@ class AddController extends Controller
         } catch (\Exception $e) {
             return back()->with('error', $e->getMessage());
         }
+    }
+
+    public function addPartner(Request $request){
+        $validator = Validator::make($request->all(), [
+            'referensi'=> 'string|max:255',
+            'name'=> 'string|required',
+            'email'=> 'string|email',
+            'city'=>'string|required',
+            'alamat'=> 'string|required',
+            'nomor'=> 'numeric|required',
+        ]);
+        $validator->validate();
+        // dd(Str::uuid());
+        $partner = new Partner();
+        $partner->uid = Str::uuid();
+        $partner->referensi = $request->input('referensi');
+        $partner->name = $request->input('name');
+        $partner->email = $request->input('email');
+        $partner->hp = $request->input('nomor');
+        $partner->city = $request->input('city');
+        $partner->alamat = $request->input('alamat');
+        $partner->status = 'null';
+
+        try {
+            $partner->save();
+            return redirect()->back()->with('success','Partner Berhasil Ditambah');
+        } catch (\Exception $e) {
+            return back()->with('error', $e->getMessage());
+        }
+        
     }
 }

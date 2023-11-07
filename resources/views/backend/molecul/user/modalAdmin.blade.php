@@ -2,7 +2,7 @@
     <div class="modal-dialog modal-dialog-centered text-start" role="document">
         <div class="modal-content modal-content-demo">
             <div class="modal-header">
-                <h6 class="modal-title">Ubah User</h6><button aria-label="Close" class="btn-close"
+                <h6 class="modal-title">Tambah Admin</h6><button aria-label="Close" class="btn-close"
                     data-bs-dismiss="modal"><span aria-hidden="true">&times;</span></button>
             </div>
             <form action="{{ url('admin/addAdmin') }}" method="post" enctype="multipart/form-data">

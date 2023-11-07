@@ -102,6 +102,7 @@ Route::prefix('dashboard')
         Route::get('/event/{addEvent?}/{uid?}', [PenyewaController::class, 'event']);
         Route::get('/ubahEvents/{uid}', [PenyewaController::class, 'ubahEvents']);
         Route::get('/voucher', [PenyewaController::class, 'voucher']);
+        Route::get('/partner', [PenyewaController::class, 'partner']);
         Route::get('/money', [PenyewaController::class, 'money']);
         Route::get('/profile', [PenyewaController::class, 'profile']);
 
@@ -111,6 +112,7 @@ Route::prefix('dashboard')
         Route::post('/addVoucher', [PenyewaAddController::class, 'addVoucher']);
         Route::post('/addPenarikan', [PenyewaAddController::class, 'addPenarikan']);
         Route::post('/addCash', [PenyewaAddController::class, 'addCash']);
+        Route::post('/addPartner', [PenyewaAddController::class, 'addPartner']);
 
         Route::post('/editTalent', [PenyewaEditController::class, 'editTalent']);
         Route::post('/editEvent', [PenyewaEditController::class, 'editEvent']);

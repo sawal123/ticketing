@@ -91,111 +91,109 @@ class TransactionController extends Controller
         konfig::$isSanitized = config('services.midtrans.isSanitized');
         konfig::$is3ds = config('services.midtrans.is3ds');
 
-            $notificationData = new Notification();
-            // $notificationData = $notif->getResponse();
+        $notificationData = new Notification();
+        // $notificationData = $notif->getResponse();
 
-            $status = $notificationData->transaction_status;
-            $type = $notificationData->payment_type;
-            $fraud = $notificationData->fraud_status;
-            $order_id = $notificationData->order_id;
-            
+        $status = $notificationData->transaction_status;
+        $type = $notificationData->payment_type;
+        $fraud = $notificationData->fraud_status;
+        $order_id = $notificationData->order_id;
 
-            $transaction = Transaction::where('invoice', $order_id)->first();
-            $carts = Cart::where('invoice', $order_id)->first();
-            $cVoucher = CartVoucher::where('uid', $carts->uid)->first();
-            $voucher = null;
-            if ($cVoucher) {
-                $voucher = Voucher::where('code', $cVoucher->code)->first();
-            }
-            $user = User::where('uid', $carts->user_uid)->first();
 
-            // Handle notification status midtrans
-            if ($status === 'capture') {
-                if ($type === 'credit_card') {
-                    if ($fraud === 'challenge') {
-                        $transaction->payment_type = $type;
-                        $carts->payment_type = $type;
-                        $transaction->status_transaksi = 'PENDING';
-                        $carts->status = 'PENDING';
-                    } else {
-                        $transaction->status_transaksi = 'SUCCESS';
-                        $transaction->payment_type = $type;
-                        $carts->payment_type = $type;
-                        $carts->status = 'SUCCESS';
-                        if ($voucher !== null) {
-                            $voucher->digunakan += 1;
-                              $voucher->save();
-                        }
+        $transaction = Transaction::where('invoice', $order_id)->first();
+        $carts = Cart::where('invoice', $order_id)->first();
+        $cVoucher = CartVoucher::where('uid', $carts->uid)->first();
+        $voucher = null;
+        if ($cVoucher) {
+            $voucher = Voucher::where('code', $cVoucher->code)->first();
+        }
+        $user = User::where('uid', $carts->user_uid)->first();
+
+        // Handle notification status midtrans
+        if ($status === 'capture') {
+            if ($type === 'credit_card') {
+                if ($fraud === 'challenge') {
+                    $transaction->payment_type = $type;
+                    $carts->payment_type = $type;
+                    $transaction->status_transaksi = 'PENDING';
+                    $carts->status = 'PENDING';
+                } else {
+                    $transaction->status_transaksi = 'SUCCESS';
+                    $transaction->payment_type = $type;
+                    $carts->payment_type = $type;
+                    $carts->status = 'SUCCESS';
+                    if ($voucher !== null) {
+                        $voucher->digunakan += 1;
+                        $voucher->save();
                     }
                 }
-            } else if ($status === 'settlement') {
-                $transaction->status_transaksi = 'SUCCESS';
-                $transaction->payment_type = $type;
-                $carts->payment_type = $type;
-                $carts->status = 'SUCCESS';
-
-                if ($voucher !== null) {
-                    $voucher->digunakan += 1;
-                      $voucher->save();
-                }
-                
-            } else if ($status === 'pending') {
-                $transaction->status_transaksi = 'PENDING';
-                $transaction->payment_type = $type;
-                $carts->payment_type = $type;
-                $carts->link = $carts->link . '/' . $type;
-                $carts->status = 'PENDING';
-            } else if ($status === 'deny') {
-                $transaction->payment_type = $type;
-                $carts->payment_type = $type;
-                $transaction->status_transaksi = 'CANCELLED';
-                $carts->status = 'CANCELLED';
-            } else if ($status === 'expire') {
-                $transaction->payment_type = $type;
-                $carts->payment_type = $type;
-                $transaction->status_transaksi = 'CANCELLED';
-                $carts->status = 'CANCELLED';
-            } else if ($status === 'cancel') {
-                $transaction->payment_type = $type;
-                $carts->payment_type = $type;
-                $transaction->status_transaksi = 'CANCELLED';
-                $carts->status = 'CANCELLED';
             }
+        } else if ($status === 'settlement') {
+            $transaction->status_transaksi = 'SUCCESS';
+            $transaction->payment_type = $type;
+            $carts->payment_type = $type;
+            $carts->status = 'SUCCESS';
 
-            $carts->save();
-            $transaction->save();
+            if ($voucher !== null) {
+                $voucher->digunakan += 1;
+                $voucher->save();
+            }
+        } else if ($status === 'pending') {
+            $transaction->status_transaksi = 'PENDING';
+            $transaction->payment_type = $type;
+            $carts->payment_type = $type;
+            $carts->link = $carts->link . '/' . $type;
+            $carts->status = 'PENDING';
+        } else if ($status === 'deny') {
+            $transaction->payment_type = $type;
+            $carts->payment_type = $type;
+            $transaction->status_transaksi = 'CANCELLED';
+            $carts->status = 'CANCELLED';
+        } else if ($status === 'expire') {
+            $transaction->payment_type = $type;
+            $carts->payment_type = $type;
+            $transaction->status_transaksi = 'CANCELLED';
+            $carts->status = 'CANCELLED';
+        } else if ($status === 'cancel') {
+            $transaction->payment_type = $type;
+            $carts->payment_type = $type;
+            $transaction->status_transaksi = 'CANCELLED';
+            $carts->status = 'CANCELLED';
+        }
+
+        $carts->save();
+        $transaction->save();
 
 
-            // Kirimkan email
-            if ($transaction) {
-                if ($status === 'capture' && $fraud == 'accept') {
-                    Mail::to($user->email)->send(new MidtransPaymentNotification($user, $carts, $order_id));
-                    //
-                } else if ($status === 'settlement') {
-                    Mail::to($user->email)->send(new MidtransPaymentNotification($user, $carts, $order_id));
-                } else if ($status === 'capture' && $fraud == 'challenge') {
-                    return response()->json([
-                        'meta' => [
-                            'code' => 200,
-                            'message' => 'Midtrans Payment Challenge'
-                        ]
-                    ]);
-                } else {
-                    return response()->json([
-                        'meta' => [
-                            'code' => 200,
-                            'message' => 'Midtrans Payment not Settlement'
-                        ]
-                    ]);
-                }
-
+        // Kirimkan email
+        if ($transaction) {
+            if ($status === 'capture' && $fraud == 'accept') {
+                Mail::to($user->email)->send(new MidtransPaymentNotification($user, $carts, $order_id));
+                //
+            } else if ($status === 'settlement') {
+                Mail::to($user->email)->send(new MidtransPaymentNotification($user, $carts, $order_id));
+            } else if ($status === 'capture' && $fraud == 'challenge') {
                 return response()->json([
                     'meta' => [
                         'code' => 200,
-                        'message' => 'Midtrans Notification Success'
+                        'message' => 'Midtrans Payment Challenge'
+                    ]
+                ]);
+            } else {
+                return response()->json([
+                    'meta' => [
+                        'code' => 200,
+                        'message' => 'Midtrans Payment not Settlement'
                     ]
                 ]);
             }
 
+            return response()->json([
+                'meta' => [
+                    'code' => 200,
+                    'message' => 'Midtrans Notification Success'
+                ]
+            ]);
+        }
     }
 }

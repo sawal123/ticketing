@@ -76,6 +76,10 @@
                     <a class="side-menu__item has-link {{request()->is('dashboard/voucher') ? 'active': ''}}" data-bs-toggle="slide" href="{{ url('/dashboard/voucher') }}"><i
                             class=" side-menu__icon fa fa-gift"></i><span class="side-menu__label">Voucher</span></a>
                 </li>
+                <li class="slide ">
+                    <a class="side-menu__item has-link {{request()->is('dashboard/partner') ? 'active': ''}}" data-bs-toggle="slide" href="{{ url('/dashboard/partner') }}"><i
+                            class=" side-menu__icon fa fa-users"></i><span class="side-menu__label">Partner</span></a>
+                </li>
                 <hr>
                 <li class="slide ">
                     <a class="side-menu__item has-link {{request()->is('dashboard/money') ? 'active': ''}}" data-bs-toggle="slide" href="{{ url('/dashboard/money') }}"><i

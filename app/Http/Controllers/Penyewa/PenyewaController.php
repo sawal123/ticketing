@@ -7,14 +7,15 @@ use App\Models\User;
 use App\Models\Event;
 use App\Models\Harga;
 use App\Models\Talent;
+use App\Models\Partner;
 use App\Models\Voucher;
 use App\Models\HargaCart;
 use App\Models\Penarikan;
 use App\Models\CartVoucher;
 use App\Models\Transaction;
 use Illuminate\Http\Request;
-use App\Models\BankIndonesia;
 // use Illuminate\Support\Facades\DB;
+use App\Models\BankIndonesia;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
@@ -87,16 +88,16 @@ class PenyewaController extends Controller
                 $transformedEvents[] = $ubahStruktur;
             }
         }
-        $i =[];
-        $j =[];
-        foreach ($transformedEvents as $key=>$eventz) {
-          $i[] = $transformedEvents[$key]['kategori'];
+        $i = [];
+        $j = [];
+        foreach ($transformedEvents as $key => $eventz) {
+            $i[] = $transformedEvents[$key]['kategori'];
         }
-        foreach ($transformedEvents as $key=>$eventz) {
-          $j[] = $transformedEvents[$key]['harga'];
+        foreach ($transformedEvents as $key => $eventz) {
+            $j[] = $transformedEvents[$key]['harga'];
         }
         // dd($j);
-        
+
         $ticketOptions = [];
         $hargaOption = [];
         foreach ($i as $key => $values) {
@@ -111,10 +112,11 @@ class PenyewaController extends Controller
             foreach ($values as $value) {
                 $options[] = $value;
             }
-            $hargaOption[$key + 1 ] = $options;
+            $hargaOption[$key + 1] = $options;
         }
 
-        return view('penyewa.page.dashboard',
+        return view(
+            'penyewa.page.dashboard',
             [
                 'title' => 'Dashboard',
                 'countUser' => $user,
@@ -125,8 +127,8 @@ class PenyewaController extends Controller
                 'amount' => $amount,
                 'eventCount' => $event,
                 'event' => $transformedEvents,
-                'ticketEvent' => $ticketOptions ,
-                'hargaTicket' => $hargaOption ,
+                'ticketEvent' => $ticketOptions,
+                'hargaTicket' => $hargaOption,
             ]
         );
     }
@@ -292,7 +294,7 @@ class PenyewaController extends Controller
             $jml += (int)$hs->quantity;
         }
 
-     
+
 
         return view('penyewa.page.cash', [
             'title' => 'Cash',
@@ -319,7 +321,6 @@ class PenyewaController extends Controller
 
     public function money()
     {
-
         $totalHargaCart = Cart::select(['harga_carts.harga_ticket', 'harga_carts.quantity'])
             ->join('harga_carts', 'harga_carts.uid', '=', 'carts.uid')
             ->join('events', 'events.uid', '=', 'carts.event_uid')
@@ -331,7 +332,6 @@ class PenyewaController extends Controller
         foreach ($totalHargaCart as $key => $tHC) {
             $ar += ($totalHargaCart[$key]->harga_ticket * $totalHargaCart[$key]->quantity);
         }
-        // dd($ar);
         $totalHargaCarts = Cart::select(['harga_carts.harga_ticket', 'harga_carts.quantity'])
             ->join('harga_carts', 'harga_carts.uid', '=', 'carts.uid')
             ->join('events', 'events.uid', '=', 'carts.event_uid')
@@ -343,7 +343,6 @@ class PenyewaController extends Controller
         foreach ($totalHargaCarts as $key => $tHCs) {
             $ars += ($totalHargaCarts[$key]->harga_ticket * $totalHargaCarts[$key]->quantity);
         }
-        // dd($ars);
         $penarikan = Penarikan::where('uid_user', Auth::user()->uid)->get();
         $pending = Penarikan::where('status', 'PENDING')->get();
         $arss = 0;
@@ -370,23 +369,44 @@ class PenyewaController extends Controller
         ]);
     }
 
+    public function partner()
+    {
+        $http = Http::get('https://www.emsifa.com/api-wilayah-indonesia/api/provinces.json');
+        if ($http->successful()) {
+            $provinsi = $http->json();
+        }
+
+
+        $partner = Partner::where('referensi', Auth::user()->uid)->get();
+        // dd($partner);
+        return view('penyewa.page.partner',
+            [
+                'title' => 'Partner',
+                'partner'=> $partner,
+                'provinsi'=> $provinsi,
+            ]);
+    }
+
     public function profile()
     {
 
         $data = User::where('users.uid', Auth::user()->uid)
             ->join('banks', 'banks.uid', '=', 'users.uid')
             ->first();
+        if ($data === null) {
+            $data = User::where('uid', Auth::user()->uid)->first();
+        }
         // dd($data);
         $http = Http::get('https://www.emsifa.com/api-wilayah-indonesia/api/provinces.json');
         if ($http->successful()) {
             $provinsi = $http->json();
         }
         // dd($provinsi);
-
         $bi = BankIndonesia::all();
-        // dd($bi);
+        // dd($data);
 
-        return view('penyewa.page.profile',
+        return view(
+            'penyewa.page.profile',
             [
                 'title' => 'profile',
                 'profile' => $data,

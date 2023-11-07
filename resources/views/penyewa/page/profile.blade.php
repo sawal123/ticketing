@@ -76,7 +76,7 @@
                                     <a href="javascript:void(0)" class="input-group-text bg-white text-mute">
                                         <i class="zmdi zmdi-collection-text text-mute" aria-hidden="true"></i>
                                     </a>
-                                    <input class="input100 form-control" type="text" value="{{ $profile->norek }}"
+                                    <input class="input100 form-control" type="number" value="{{ $profile->norek }}"
                                         placeholder="No Rekening .." name="norek">
                                 </div>
                             </div>
