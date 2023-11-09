@@ -378,12 +378,13 @@ class PenyewaController extends Controller
 
 
         $partner = Partner::where('referensi', Auth::user()->uid)->get();
-        // dd($partner);
+        // dd($provinsi[]);
         return view('penyewa.page.partner',
             [
                 'title' => 'Partner',
                 'partner'=> $partner,
                 'provinsi'=> $provinsi,
+                'prop'=> $provinsi,
             ]);
     }
 

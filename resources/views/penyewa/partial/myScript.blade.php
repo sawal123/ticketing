@@ -59,6 +59,22 @@
         modal.find('#termTitle').val(title)
         modal.find('#termTerm').text(term)
     })
+    $(document).on("show.bs.modal", "#upPartner",function(e){
+        var tombol = $(e.relatedTarget);
+        var uid = tombol.data('uid')
+        var name = tombol.data('name')
+        var email = tombol.data('email')
+        var city = tombol.data('city')
+        var alamat = tombol.data('alamat')
+        var nomor = tombol.data('nomor')
+        var modal = $(this);
+        modal.find('#uid').val(uid)
+        modal.find('#name').val(name)
+        modal.find('#email').val(email)
+        modal.find('#kota').val(city)
+        modal.find('#alamat').val(alamat)
+        modal.find('#nomor').val(nomor)
+    })
 
 
     $(document).ready(function() {

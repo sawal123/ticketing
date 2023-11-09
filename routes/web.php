@@ -119,6 +119,7 @@ Route::prefix('dashboard')
         Route::post('/editHarga', [PenyewaEditController::class, 'editHarga']);
         Route::post('/editRekening', [PenyewaEditController::class, 'editRekening']);
         Route::post('/editProfile', [PenyewaEditController::class, 'editProfile']);
+        Route::post('/editPartner', [PenyewaEditController::class, 'editPartner']);
 
 
         Route::get('/delete/{id}', [DeleteController::class, 'deleteTalent']);

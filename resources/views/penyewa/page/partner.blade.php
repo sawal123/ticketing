@@ -12,58 +12,7 @@
     </div>
     <!-- PAGE-HEADER END -->
     <div class="row row-sm">
-        {{-- <div class="col-lg-6 col-md-6 col-sm-12 col-xl-3">
-            <div class="card overflow-hidden">
-                <div class="card-body">
-                    <div class="d-flex">
-                        <div class="mt-2">
-                            <h6 class="">Total Saldo</h6>
-                            <h2 class="mb-0 number-font">Rp {{ number_format($totalMoney, 0, ',', '.') }}</h2>
-                        </div>
-                    </div>
 
-                </div>
-            </div>
-        </div>
-        <div class="col-lg-6 col-md-6 col-sm-12 col-xl-3">
-            <div class="card overflow-hidden">
-                <div class="card-body">
-                    <div class="d-flex">
-                        <div class="mt-2">
-                            <h6 class="">Total Cash</h6>
-                            <h2 class="mb-0 number-font">Rp {{ number_format($cash, 0, ',', '.') }}</h2>
-                        </div>
-                    </div>
-
-                </div>
-            </div>
-        </div>
-        <div class="col-lg-6 col-md-6 col-sm-12 col-xl-3">
-            <div class="card overflow-hidden">
-                <div class="card-body">
-                    <div class="d-flex">
-                        <div class="mt-2">
-                            <h6 class="">Pending</h6>
-                            <h2 class="mb-0 number-font">Rp {{ number_format($pending, 0, ',', '.') }}</h2>
-                        </div>
-                    </div>
-
-                </div>
-            </div>
-        </div>
-        <div class="col-lg-6 col-md-6 col-sm-12 col-xl-3">
-            <div class="card overflow-hidden">
-                <div class="card-body">
-                    <div class="d-flex">
-                        <div class="mt-2">
-                            <h6 class="">Paid</h6>
-                            <h2 class="mb-0 number-font">Rp {{ number_format($paid, 0, ',', '.') }}</h2>
-                        </div>
-                    </div>
-
-                </div>
-            </div>
-        </div> --}}
 
     </div>
     <!-- ROW-1 OPEN -->
@@ -113,23 +62,30 @@
                             <tbody>
                                 @foreach ($partner as $key => $ps)
                                     <tr>
-                                        <td>{{ $key +=1 }}</td>
+                                        <td>{{ $key += 1 }}</td>
                                         <td>{{ $ps->name }}</td>
                                         <td>{{ $ps->email }}
                                         <td>{{ $ps->city }}
                                         <td>{{ $ps->alamat }}
                                         </td>
-                                        <td>{{$ps->hp}}</td>
+                                        <td>{{ $ps->hp }}</td>
                                         <td>
                                             <div class="g-2">
-                                                <a class="btn text-primary btn-sm" data-bs-toggle="tooltip"
-                                                    data-bs-original-title="Edit"><span class="fe fe-edit fs-14"></span></a>
-                                                <a class="btn text-danger btn-sm" data-bs-toggle="tooltip"
-                                                    data-bs-original-title="Delete"><span
-                                                        class="fe fe-trash-2 fs-14"></span></a>
+                                                <button type="submit" class="btn text-primary btn-sm"
+                                                    data-bs-toggle="modal" data-bs-target="#upPartner"
+                                                    data-bs-original-title="Edit" data-uid="{{$ps->uid}}" data-name="{{ $ps->name }}"
+                                                    data-email="{{ $ps->email }}" data-city="{{ $ps->city }}"
+                                                    data-alamat="{{ $ps->alamat }}"
+                                                    data-nomor="{{ $ps->hp }}"><span
+                                                        class="fe fe-edit fs-14"></span></button>
+
+                                                <a class="btn text-danger btn-sm delete"
+                                                    href="{{ url('dashboard/delete/voucher/' . $v->uid) }}"
+                                                    data-bs-toggle="tooltip" data-bs-original-title="Delete"><span
+                                                        class="fe fe-trash-2 fs-14"></span>
                                             </div>
                                         </td>
-                                      
+
 
                                     </tr>
                                 @endforeach

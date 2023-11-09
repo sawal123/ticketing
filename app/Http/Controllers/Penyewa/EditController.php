@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Penyewa;
 
 use App\Models\Bank;
+use App\Models\Partner;
 use App\Models\User;
 use App\Models\Event;
 use App\Models\Harga;
@@ -131,5 +132,25 @@ class EditController extends Controller
             DB::rollback();
             return redirect()->back()->with('error', 'Gagal Update. Silahkan coba lagi.');
         }
+    }
+
+    public function editPartner(Request $request){
+        $validate = Validator::make($request->all(), [
+            'name'=> 'string|required',
+            'email'=> 'string|required',
+            'kota'=> 'string|required',
+            'alamat'=> 'string|required',
+            'nomor' => 'numeric|required',
+        ]);
+
+        $validate->validate();
+        $partner = Partner::where('uid', $request->uid)->first(); 
+        dd($partner);
+
+        $
+
+
+
+
     }
 }
