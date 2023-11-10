@@ -80,7 +80,7 @@
                                                         class="fe fe-edit fs-14"></span></button>
 
                                                 <a class="btn text-danger btn-sm delete"
-                                                    href="{{ url('dashboard/delete/voucher/' . $v->uid) }}"
+                                                    href="{{ url('dashboard/delete/partner/' . $ps->uid) }}"
                                                     data-bs-toggle="tooltip" data-bs-original-title="Delete"><span
                                                         class="fe fe-trash-2 fs-14"></span>
                                             </div>

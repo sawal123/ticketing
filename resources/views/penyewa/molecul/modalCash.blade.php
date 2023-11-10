@@ -57,6 +57,13 @@
                         </div>
                     </div>
                     <div class="row mb-4">
+                        <label class="col-md-3 	d-none d-lg-block form-label">Name</label>
+                        <div class="col-md-9">
+                            <input type="email" class="form-control" name="email" placeholder="Masukan Email.."
+                                autocomplete="off" required>
+                        </div>
+                    </div>
+                    <div class="row mb-4">
                         <label class="col-md-3 	d-none d-lg-block form-label">Alamat</label>
                         <div class="col-md-9">
                             <input type="text" class="form-control" name="alamat" placeholder="Masukan Alamat.."
@@ -69,6 +76,16 @@
                             <input type="date" class="form-control" name="ttl" autocomplete="off" required>
                         </div>
                     </div>
+
+                    <div class="form-check d-flex justify-content-start">
+                        <input class="form-check-input" type="checkbox" value="" id="defaultCheck1" required
+                            name="check">
+                        <label class="form-check-label" for="defaultCheck1">
+                            Sudah Bayar Cash?
+                        </label>
+                    </div>
+
+
                 </div>
                 <div class="modal-footer d-flex justify-content-between">
                     <div class="d-flex align-items-center">
@@ -110,7 +127,7 @@
 
             const selectedOption = eventSelect.options[eventSelect.selectedIndex];
             const selectEventClass = selectedOption.className;
-            
+
 
 
             if (selectEventClass in ticketOptions) {
@@ -118,7 +135,6 @@
                 const hargaTicketForEvent = hargaTicket[selectEventClass]
                 console.log(ticketOptionsForEvent)
                 console.log(hargaTicketForEvent)
-                // Cari kunci tiket yang sesuai dengan nama tiket yang dipilih
                 let selectedTicketKey = null;
                 for (const key in ticketOptionsForEvent) {
                     if (ticketOptionsForEvent[key] === selectedTicketName) {
@@ -126,7 +142,6 @@
                         break;
                     }
                 }
-                // console.log(selectedTicketKey)
                 if (selectedTicketKey !== null) {
                     const hargaPerTiket = parseFloat(hargaTicketForEvent[selectedTicketKey]);
                     const total = selectedJumlah * hargaPerTiket;
@@ -136,7 +151,6 @@
                         currency: 'IDR',
 
                     }).format(total);
-
                     if (formattedTotal === "IDRNaN") {
                         totalHarga.textContent = "IDR 0";
                     } else {
@@ -146,18 +160,12 @@
                 }
             }
         }
-
-        // Ketika event select berubah
         eventSelect.addEventListener("change", function() {
             const selectedEventId = eventSelect.value;
 
             const selectedOption = eventSelect.options[eventSelect.selectedIndex];
             const selectEventClass = selectedOption.className;
-            
-
-            // Hapus opsi tiket yang ada
             ticketSelect.innerHTML = "";
-            // Tambahkan opsi tiket yang sesuai dengan event yang dipilih
             if (selectEventClass in ticketOptions) {
                 const tickets = ticketOptions[selectEventClass];
                 for (const ticket of tickets) {
@@ -166,7 +174,6 @@
                     option.textContent = ticket;
                     ticketSelect.appendChild(option);
                 }
-                // Tampilkan elemen select tiket
                 ticketSelectContainer.style.display = "block";
 
             } else {

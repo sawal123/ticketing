@@ -21,6 +21,7 @@ use App\Http\Controllers\Dashboard\DashboardController;
 use App\Http\Controllers\Penyewa\AddController as PenyewaAddController;
 use App\Http\Controllers\Penyewa\Auth\LoginController;
 use App\Http\Controllers\Penyewa\EditController as PenyewaEditController;
+use App\Http\Controllers\Penyewa\DeleteController as PenyewaDelete;
 use App\Http\Controllers\Penyewa\PenyewaController;
 
 /*
@@ -121,10 +122,10 @@ Route::prefix('dashboard')
         Route::post('/editProfile', [PenyewaEditController::class, 'editProfile']);
         Route::post('/editPartner', [PenyewaEditController::class, 'editPartner']);
 
-
-        Route::get('/delete/{id}', [DeleteController::class, 'deleteTalent']);
-        Route::get('/hargas/delete/{id}', [DeleteController::class, 'deleteHarga']);
-        Route::get('/delete/voucher/{id}', [DeleteController::class, 'deleteVoucher']);
+        Route::get('/delete/{id}', [PenyewaDelete::class, 'deleteTalent']);
+        Route::get('/hargas/delete/{id}', [PenyewaDelete::class, 'deleteHarga']);
+        Route::get('/delete/voucher/{id}', [PenyewaDelete::class, 'deleteVoucher']);
+        Route::get('/delete/partner/{id}', [PenyewaDelete::class, 'deletePartner']);
     });
 Route::prefix('admin')
     ->namespace('Dashboard')

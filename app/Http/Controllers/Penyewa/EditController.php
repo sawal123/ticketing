@@ -138,16 +138,29 @@ class EditController extends Controller
         $validate = Validator::make($request->all(), [
             'name'=> 'string|required',
             'email'=> 'string|required',
-            'kota'=> 'string|required',
+            'city'=> 'string|required',
             'alamat'=> 'string|required',
             'nomor' => 'numeric|required',
         ]);
 
         $validate->validate();
         $partner = Partner::where('uid', $request->uid)->first(); 
-        dd($partner);
+        // dd($partner);
 
-        $
+        $partner->name = $request->name;
+        $partner->email = $request->email;
+        $partner->city = $request->city;
+        $partner->alamat = $request->alamat;
+        $partner->hp = $request->nomor;
+
+        try{
+            $partner->save();
+            return redirect()->back()->with('success', 'Partner Berhasil Diubah');
+        }catch(\Exception $e){
+            return redirect()->back()->with('error', 'Gagal Diubah');
+        }
+
+        
 
 
 
