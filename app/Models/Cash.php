@@ -9,6 +9,6 @@ class Cash extends Model
 {
     use HasFactory;
     protected $fillable = [
-        'uid', 'uid_user', 'uid_event','name', 'alamat', 'lahir'
+        'uid','uid_partner', 'uid_user', 'uid_event','name', 'email', 'alamat', 'lahir'
     ];
 }

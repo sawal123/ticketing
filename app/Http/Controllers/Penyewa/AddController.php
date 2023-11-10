@@ -18,6 +18,7 @@ use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
+use DateTime;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Validator;
@@ -201,7 +202,7 @@ class AddController extends Controller
         try {
             $penarikan->save();
             return redirect()->back()->with('penarikan', 'Penarikan berhasil diajukan');
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return redirect()->back()->with('error', 'Pengajuan Gagal!');
         }
     }
@@ -209,25 +210,31 @@ class AddController extends Controller
     public function addCash(Request $request)
     {
         $validate = Validator::make($request->all(), [
-            'uid' => 'string|required|max:50',
+            'uid' => 'string|required',
             'event' => 'string|required|max:255',
             'ticket' => 'string|required',
             'qty' => 'numeric|required',
             'name' => 'required|string',
+            'email' => 'required|email',
             'alamat' => 'required|string',
             'ttl' => 'required|string',
             'total' => 'required|numeric'
         ]);
         $validate->validate();
-        $number = mt_rand(1000, 9999999999);
-        $invoice = str_pad($number, 10, '0', STR_PAD_LEFT);
-        $str = Str::random('10');
 
+        $string = Str::random(3);
+        $number = mt_rand(1000, 9999999999);
+        $invoice = str_pad($string . $number, 10, '0', STR_PAD_LEFT);
+        $str = Str::uuid();
+        
+// dd($str);
         $uid =  $request->uid;
+        $partner =  $request->partner;
         $event =  $request->event;
         $ticket =  $request->ticket;
         $qty =  $request->qty;
         $nama =  $request->name;
+        $email =  $request->email;
         $alamat =  $request->alamat;
         $ttl =  $request->ttl;
         $total =  $request->total;
@@ -242,7 +249,7 @@ class AddController extends Controller
             'event_uid' => $events->uid,
             'invoice' => 'INV-' . $invoice,
             'status' => 'SUCCESS',
-            'konfirmasi' => '1',
+            'konfirmasi' => null,
             'link' => null,
             'payment_type' => 'cash',
         ]);
@@ -258,9 +265,11 @@ class AddController extends Controller
         // dd($hargaCart);
         $cash = new Cash([
             'uid' => $str,
+            'uid_partner' => $partner,
             'uid_user' => $uid,
             'uid_event' => $events->uid,
             'name' => $nama,
+            'email' => $email,
             'alamat' => $alamat,
             'lahir' => $ttl,
         ]);
@@ -270,7 +279,7 @@ class AddController extends Controller
             $hargaCart->save();
             $cash->save();
             return redirect()->back()->with('success', 'Pembelian Cash Berhasil');
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return back()->with('error', $e->getMessage());
         }
     }
@@ -299,7 +308,7 @@ class AddController extends Controller
         try {
             $partner->save();
             return redirect()->back()->with('success','Partner Berhasil Ditambah');
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return back()->with('error', $e->getMessage());
         }
         

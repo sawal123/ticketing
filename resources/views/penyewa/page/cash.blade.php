@@ -75,11 +75,7 @@
                                         </td>
                                         <td>{{ $carts->created_at }}</td>
                                         <td>
-                                            @foreach ($use as $users)
-                                                @if ($users->uid == $carts->user_uid)
-                                                    {{ $users->name }}
-                                                @endif
-                                            @endforeach
+                                            {{ $carts->name }}
                                         </td>
                                         <td>{{ $carts->total_quantity }}</td>
                                         <td>{{ $carts->total_harga }}</td>

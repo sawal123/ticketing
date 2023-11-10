@@ -11,6 +11,19 @@
 
                     <input type="hidden" name="user" value="{{ Auth::user()->uid }}">
                     <div class="row mb-4">
+                        <label class="col-md-3 	d-none d-lg-block form-label">Partner</label>
+                        <div class="col-md-9">
+                            <select  class="form-select" name="partner"
+                                aria-label="Default select example">
+                                <option selected>Pilih Partner</option>
+                                @foreach ($partner as $key => $partners)
+                                    <option value="{{ $partners->uid }}" class="{{ $key + 1 }}">
+                                        {{ $partners->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row mb-4">
                         <label class="col-md-3 	d-none d-lg-block form-label">Event</label>
                         <div class="col-md-9">
                             <select id="select-event" class="form-select" name="event"
@@ -57,7 +70,7 @@
                         </div>
                     </div>
                     <div class="row mb-4">
-                        <label class="col-md-3 	d-none d-lg-block form-label">Name</label>
+                        <label class="col-md-3 	d-none d-lg-block form-label">Email</label>
                         <div class="col-md-9">
                             <input type="email" class="form-control" name="email" placeholder="Masukan Email.."
                                 autocomplete="off" required>
