@@ -69,11 +69,14 @@
                                 <input type="hidden" name="total" value="{{ $total }}">
                                 <input type="hidden" name="event" value="{{ $event->uid }}">
                                 <input type="hidden" name="cartUid" value="{{ $cart->uid }}">
-                                <input type="text" class="form-control my-2" name="code"
-                                    placeholder="Masukan Code Voucher.." value="{{ $cartV->code }}"
-                                    aria-label="Example text with button addon" aria-describedby="button-addon1">
-                                <button type="submit" class="btn btn-primary" style="height: auto"
-                                    id="button-addon1">Submit</button>
+                                @if ($cart->status !== 'SUCCESS')
+                                    <input type="text" class="form-control my-2" name="code"
+                                        placeholder="Masukan Code Voucher.." value="{{ $cartV->code }}"
+                                        aria-label="Example text with button addon" aria-describedby="button-addon1">
+                                    <button type="submit" class="btn btn-primary" style="height: auto"
+                                        id="button-addon1">Submit</button>
+                                @endif
+
                             </form>
                             @if (session('vError'))
                                 <span class="badge rounded-pill text-danger mb-3" style="margin-top: -10px">
@@ -111,13 +114,12 @@
                                             $persen = 0;
                                             // $total += $event->fee * $fee;
                                             if ($cartV->unit === 'rupiah') {
-                                                $total += (($event->fee * $fee) - $cartV->nominal);
+                                                $total += $event->fee * $fee - $cartV->nominal;
                                             } elseif ($cartV->unit === 'persen') {
                                                 $total += $event->fee * $fee;
                                                 $persen = ($cartV->nominal / 100) * $total;
                                                 $total = $total - $persen;
-                                            }
-                                            else {
+                                            } else {
                                                 $total += $event->fee * $fee;
                                             }
                                         @endphp
