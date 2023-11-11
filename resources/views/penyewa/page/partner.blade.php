@@ -56,6 +56,7 @@
                                     <th class="border-bottom-0" style="width: 10%">City</th>
                                     <th class="border-bottom-0" style="width: 10%">Alamat</th>
                                     <th class="border-bottom-0">No Hp</th>
+                                    <th class="border-bottom-0">Status</th>
                                     <th class="border-bottom-0">Aksi</th>
                                 </tr>
                             </thead>
@@ -69,6 +70,7 @@
                                         <td>{{ $ps->alamat }}
                                         </td>
                                         <td>{{ $ps->hp }}</td>
+                                        <td>{{ $ps->status }}</td>
                                         <td>
                                             <div class="g-2">
                                                 <button type="submit" class="btn text-primary btn-sm"

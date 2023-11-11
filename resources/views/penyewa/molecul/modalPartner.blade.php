@@ -53,7 +53,7 @@
                     <div class="row mb-4">
                         <label class="col-md-3 form-label  d-flex justify-content-start">Nomor :</label>
                         <div class="col-md-9">
-                            <input type="text" class="form-control" name="nomor" placeholder="Masukan nomor.."
+                            <input type="number" class="form-control" name="nomor" placeholder="Masukan nomor.."
                                 required>
                         </div>
                     </div>

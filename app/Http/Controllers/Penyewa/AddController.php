@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Penyewa;
 
+use DateTime;
 use Exception;
 use App\Models\Cart;
 use App\Models\Cash;
@@ -14,13 +15,16 @@ use App\Models\EventDate;
 use App\Models\HargaCart;
 use App\Models\Penarikan;
 use Ramsey\Uuid\Type\Time;
+use App\Models\Transaction;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
+use App\Mail\CashNotifikasiMail;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
-use DateTime;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Http\RedirectResponse;
+use App\Mail\MidtransPaymentNotification;
 use Illuminate\Support\Facades\Validator;
 
 class AddController extends Controller
@@ -226,6 +230,7 @@ class AddController extends Controller
         $number = mt_rand(1000, 9999999999);
         $invoice = str_pad($string . $number, 10, '0', STR_PAD_LEFT);
         $str = Str::uuid();
+        $order_id = 'INV-' . $invoice;
         
 // dd($str);
         $uid =  $request->uid;
@@ -263,6 +268,16 @@ class AddController extends Controller
             'kategori_harga' => $kategoriTicket->kategori ,
         ]);
         // dd($hargaCart);
+        $transaksi = new Transaction([
+            'uid'=> $str,
+            'user_uid' => $uid,
+            'event_uid'=> $events->uid,
+            'amount' => $total,
+            'invoice'=> 'INV-' . $invoice,
+            'payment_type' => 'cash',
+            'status_transaksi' => 'SUCCESS'
+        ]);
+
         $cash = new Cash([
             'uid' => $str,
             'uid_partner' => $partner,
@@ -275,9 +290,11 @@ class AddController extends Controller
         ]);
 
         try {
+            Mail::to($email)->send(new CashNotifikasiMail($nama, $order_id));
             $cart->save();
             $hargaCart->save();
             $cash->save();
+            $transaksi->save();
             return redirect()->back()->with('success', 'Pembelian Cash Berhasil');
         } catch (Exception $e) {
             return back()->with('error', $e->getMessage());
@@ -303,7 +320,7 @@ class AddController extends Controller
         $partner->hp = $request->input('nomor');
         $partner->city = $request->input('city');
         $partner->alamat = $request->input('alamat');
-        $partner->status = 'null';
+        $partner->status = 'active';
 
         try {
             $partner->save();

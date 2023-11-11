@@ -60,9 +60,9 @@
                                     <th class="border-bottom-0" style="width: 10%">Event</th>
                                     <th class="border-bottom-0">Tanggal</th>
                                     <th class="border-bottom-0">Name</th>
+                                    <th class="border-bottom-0">Email</th>
                                     <th class="border-bottom-0">Qty</th>
                                     <th class="border-bottom-0">Total</th>
-                                    <th class="border-bottom-0">Payment</th>
                                     <th class="border-bottom-0">Status</th>
                                 </tr>
                             </thead>
@@ -73,13 +73,16 @@
                                         <td>{{ $carts->invoice }}</td>
                                         <td>{{ strlen($carts->event > 10) ? substr($carts->event, 0, 15) . '...' : $carts->event }}
                                         </td>
-                                        <td>{{ $carts->created_at }}</td>
+                                        <td>{{ date('d-M-Y', strtotime($carts->created_at)) }}</td>
                                         <td>
                                             {{ $carts->name }}
                                         </td>
+                                        <td>
+                                            {{ $carts->email }}
+                                        </td>
                                         <td>{{ $carts->total_quantity }}</td>
                                         <td>{{ $carts->total_harga }}</td>
-                                        <td>{{ $carts->payment_type }}</td>
+
                                         <td>
                                             <div class="mt-sm-1 d-block">
                                                 <span

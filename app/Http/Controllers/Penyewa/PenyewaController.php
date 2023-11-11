@@ -57,9 +57,7 @@ class PenyewaController extends Controller
         }
         $totalTransaksi = Transaction::where('status_transaksi', 'SUCCESS')->count();
 
-        $partner = Partner::where('referensi', Auth::user()->uid)->get();
-        // dd($partner);
-
+        $partner = Partner::where('referensi', Auth::user()->uid)->where('status', 'active')->get();
 
         $e = Event::join('hargas', 'hargas.uid', '=', 'events.uid')
             ->select('events.event', 'events.fee', 'hargas.kategori', 'hargas.harga')
@@ -119,7 +117,8 @@ class PenyewaController extends Controller
             $hargaOption[$key + 1] = $options;
         }
 
-        return view('penyewa.page.dashboard',
+        return view(
+            'penyewa.page.dashboard',
             [
                 'title' => 'Dashboard',
                 'countUser' => $user,
@@ -258,6 +257,7 @@ class PenyewaController extends Controller
             'carts.user_uid',
             'carts.invoice',
             'cashes.name',
+            'cashes.email',
             'carts.status',
             'carts.payment_type',
             'events.event',
@@ -269,11 +269,11 @@ class PenyewaController extends Controller
         )
             ->join('harga_carts', 'harga_carts.uid', '=', 'carts.uid')
             ->join('events', 'events.uid', '=', 'carts.event_uid')
-            ->join('cashes', 'cashes.uid', '=','carts.uid')
+            ->join('cashes', 'cashes.uid', '=', 'carts.uid')
             ->where('carts.status', 'SUCCESS')
             ->where('carts.payment_type', 'cash')
             ->where('events.user_uid', Auth::user()->uid)
-            ->groupBy('carts.uid','carts.user_uid', 'carts.invoice','cashes.name', 'carts.status', 'carts.payment_type', 'events.event', 'events.fee', 'carts.created_at', 'events.cover');
+            ->groupBy('carts.uid', 'carts.user_uid', 'carts.invoice', 'cashes.name', 'cashes.email', 'carts.status', 'carts.payment_type', 'events.event', 'events.fee', 'carts.created_at', 'events.cover');
 
         $cart = $cartQuery->get();
         // dd($cart);
@@ -303,7 +303,7 @@ class PenyewaController extends Controller
             $jml += (int)$hs->quantity;
         }
 
-        // dd($cart);
+        // dd($harga_cart);
 
 
 
@@ -382,21 +382,26 @@ class PenyewaController extends Controller
 
     public function partner()
     {
+        error_reporting(0);
         $http = Http::get('https://www.emsifa.com/api-wilayah-indonesia/api/provinces.json');
         if ($http->successful()) {
             $provinsi = $http->json();
+        } else {
+            $provinsi = ['null', 'data'];
         }
 
 
         $partner = Partner::where('referensi', Auth::user()->uid)->get();
         // dd($provinsi[]);
-        return view('penyewa.page.partner',
+        return view(
+            'penyewa.page.partner',
             [
                 'title' => 'Partner',
-                'partner'=> $partner,
-                'provinsi'=> $provinsi,
-                'prop'=> $provinsi,
-            ]);
+                'partner' => $partner,
+                'provinsi' => $provinsi,
+                'prop' => $provinsi,
+            ]
+        );
     }
 
     public function profile()

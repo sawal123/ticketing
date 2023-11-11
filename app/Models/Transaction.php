@@ -13,7 +13,8 @@ class Transaction extends Model
         'user_uid',
         'event_uid',
         'amount',
+        'invoice',
+        'payment_type',
         'status_transaksi',
-        'invoice'
     ];
 }
