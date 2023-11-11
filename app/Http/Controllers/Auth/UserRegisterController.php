@@ -32,7 +32,7 @@ class UserRegisterController extends Controller
 
     public function create(Request $request)
     {
-        $uid = Str::random(10);
+        $uid = Str::uuid();
         
         // dd(User::USER_ROLE);
         $validateUser = $request->validate([

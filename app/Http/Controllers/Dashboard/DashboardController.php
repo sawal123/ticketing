@@ -89,15 +89,18 @@ class DashboardController extends Controller
             $eventDetail = Event::where('uid', $uid)->first();
             $talent = Talent::where('uid', $uid)->get();
             $harga = Harga::where('uid', $uid)->get();
+            $user = User::where('uid', $eventDetail->user_uid)->first();
             // dd($eventDetail);
             if ($eventDetail === null) {
                 abort('403');
             }
+            // dd($eventDetail);
             return view('backend.semiPage.eventDetail', [
                 'title' => 'Event Detail',
                 'eventDetail' => $eventDetail,
                 'talent' => $talent,
-                'harga' => $harga
+                'harga' => $harga,
+                'us' => $user
             ]);
         }
     }

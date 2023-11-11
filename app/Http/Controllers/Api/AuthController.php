@@ -12,18 +12,16 @@ class AuthController extends Controller
      public function login(Request $request){
         if (Auth::attempt(['email' => $request->email, 'password' => $request->password])) {
             $user = Auth::user();
-            if($user->role === 'admin'){
+            if($user->role === 'penyewa'){
                 $success['token'] = $user->createToken($request->email)->plainTextToken;
                 $success['name'] = $user->name; 
-                return response()->json(['success' => true, 'data' => $success], 200);
+                $success['uid'] = $user->uid; 
+                $success['email'] = $user->email; 
+                return response()->json(['success' => true, 'data' => $success,], 200);
             }
             else{
                 return response()->json(['error' => 'Unauthenticated'], 401);
             }
-            
-          
-            // dd($success);
-           
            
         } else {
             return response()->json(['error' => 'Unauthenticated'], 401);

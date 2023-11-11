@@ -43,7 +43,7 @@ class AddController extends Controller
         ]);
         $validate->validate();
 
-        $uid = Str::random();
+        $uid = Str::uuid();
         // dd($uid);
 
         $startEvent = new EventDate([
@@ -135,7 +135,7 @@ class AddController extends Controller
         ]);
         $validate->validate();
 
-        $uid = Str::random('10');
+        $uid = Str::uuid();
 
         $voucher = new Voucher([
             'uid' => $uid,
@@ -191,7 +191,7 @@ class AddController extends Controller
         if ($totali < $amount) {
             return redirect()->back()->with('error', 'Saldo Anda tidak mencukupi!');
         } else {
-            $uid = Str::random('10');
+            $uid = Str::uuid();
             $penarikan = new Penarikan([
                 'uid' => $uid,
                 'uid_user' => Auth::user()->uid,

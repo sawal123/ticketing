@@ -36,7 +36,7 @@ class addController extends Controller
         ]);
         $validate->validate();
 
-        $uid = Str::random();
+        $uid = Str::uuid();
         // dd($uid);
 
         $event = new Event([
@@ -109,7 +109,7 @@ class addController extends Controller
         }
 
         $slider = new Slider([
-            'uid' => Str::random(10),
+            'uid' => Str::uuid(),
             'sort' => $angka,
             'title' => $request->title,
             'url' => $request->url,
@@ -126,7 +126,7 @@ class addController extends Controller
 
     public function addTerm(Request $request)
     {
-        $uid = Str::random(10);
+        $uid = Str::uuid();
         $title = $request->title;
         $des = $request->term;
         $term = new Term();
@@ -148,7 +148,7 @@ class addController extends Controller
             'gender' => 'required|string|max:20'
         ]);
         $validate->validate();
-        $uid = Str::random(10);
+        $uid = Str::uuid();
         if ($request->role === 'penyewa') {
             $bank = new Bank([
                 'uid' =>  $uid,

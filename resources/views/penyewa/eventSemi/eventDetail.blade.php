@@ -46,14 +46,14 @@
                                     <p>{{ $eventDetail->alamat }} <a href="{{ $eventDetail->map }}" target="blank"
                                             class="btn btn-primary">Kunjungi</a></p>
                                     <p>Biaya Layanan : Rp {{ $eventDetail->fee }}</p>
-                                    <p class="text-muted float-start me-3">
+                                    {{-- <p class="text-muted float-start me-3">
                                         <span class="fa fa-star text-warning"></span>
                                         <span class="fa fa-star text-warning"></span>
                                         <span class="fa fa-star text-warning"></span>
                                         <span class="fa fa-star-half-o text-warning"></span>
                                         <span class="fa fa-star-o text-warning"></span>
                                     </p>
-                                    <p class="text-muted mb-4">( 40 Customers Reviews) </p>
+                                    <p class="text-muted mb-4">( 40 Customers Reviews) </p> --}}
                                     <h4 class="mt-4"><b> Description</b></h4>
                                     <p>{!! $eventDetail->deskripsi !!}</p>
                                     <hr>

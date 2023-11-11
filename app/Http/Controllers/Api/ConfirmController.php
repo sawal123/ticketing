@@ -8,8 +8,9 @@ use App\Models\Event;
 use App\Models\HargaCart;
 use Illuminate\Http\Request;
 // use Illuminate\Support\Facades\DB;
-use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\DB;
+use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\Auth;
 
 class ConfirmController extends Controller
 {
@@ -80,7 +81,6 @@ class ConfirmController extends Controller
         ->join('events', 'events.uid', '=', 'carts.event_uid')
         ->join('users', 'users.uid', '=', 'carts.user_uid')
         ->get();
-        // $user = User::where('uid', $cart->user_uid)->get();
         if($data !== null){
             return response()->json([
                 'cart' =>$cart,
@@ -90,8 +90,8 @@ class ConfirmController extends Controller
 
     }
 
-    public function listEvent(){
-        $event = Event::all();
+    public function listEvent(Request $request){
+        $event = Event::where('user_uid', Auth::user()->uid)->get();
         return response()->json([
             'event'=>$event,
         ], 200);

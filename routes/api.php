@@ -20,21 +20,26 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
-    return $request->user();
+// Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
+//     return $request->user();
+// });
+
+// Route::get('/', function(){
+//     return response()->json([
+//        "success"=>"Suceess"
+//     ], 200);
+// });
+Route::post('/login', [AuthController::class, 'login']);
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/verfikasi/{data?}', [ConfirmController::class, 'verfikasi']);
+    Route::put('/status/{data}', [ConfirmController::class, 'upKonfirmasi']);
+    Route::get('/confirm/{data?}', [ConfirmController::class, 'cekData']);
+    Route::get('/listEvent', [ConfirmController::class, 'listEvent']);
 });
-
-Route::post('/login',[AuthController::class, 'login']);
-
 Route::get('/slide/{data?}', [SlideController::class, 'slide']);
-Route::get('/confirm/{data?}',[ConfirmController::class, 'cekData']);
-Route::get('/listEvent', [ConfirmController::class, 'listEvent']);
-Route::get('/verfikasi/{data?}',[ConfirmController::class, 'verfikasi']);
-Route::put('/status/{data}', [ConfirmController::class, 'upKonfirmasi']);
+
 
 
 Route::post('/callback', [TransactionController::class, 'callback']);
-
-
 Route::get('/finishMidtrans', [SlideController::class, 'finishMidtrans']);
-
