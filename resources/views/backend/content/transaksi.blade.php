@@ -112,10 +112,13 @@
                                                     data-status="{{ $carts->status }}"><span
                                                         class="fe fe-edit fs-14"></span></button>
 
-                                                <a href="{{ url('admin/deleteTransksi') }}"
-                                                    class="btn text-danger btn-sm delete" data-bs-toggle="tooltip"
-                                                    data-bs-original-title="Delete"><span
-                                                        class="fe fe-trash-2 fs-14"></span></a>
+                                                        @if($carts->status !==  'SUCCESS')
+                                                        <a href="{{ url('admin/deleteTransksi') }}"
+                                                        class="btn text-danger btn-sm delete" data-bs-toggle="tooltip"
+                                                        data-bs-original-title="Delete"><span
+                                                            class="fe fe-trash-2 fs-14"></span></a>
+                                                        @endif
+                                             
                                             </div>
                                         </td>
                                     </tr>

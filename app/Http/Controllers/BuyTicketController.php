@@ -97,9 +97,10 @@ class BuyTicketController extends Controller
     public function checkout(Request $request)
     {
         error_reporting(0);
-        $kode = Str::random(10);
+        $kode = Str::uuid();
+        $str = Str::random(3);
         $number = mt_rand(1000, 9999999999);
-        $invoice = str_pad($number, 10, '0', STR_PAD_LEFT);
+        $invoice = str_pad($str.$number, 10, '0', STR_PAD_LEFT);
         $ticketValue = [];
         $hargaValue = [];
         $kategoriValue = [];

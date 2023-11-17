@@ -35,6 +35,19 @@ class PenyewaController extends Controller
             $tra += $transaksi[$key]->amount;
         }
 
+        $totalHargaCart = Cart::select(['harga_carts.harga_ticket', 'harga_carts.quantity'])
+            ->join('harga_carts', 'harga_carts.uid', '=', 'carts.uid')
+            ->join('events', 'events.uid', '=', 'carts.event_uid')
+            ->where('carts.status', 'SUCCESS')
+            // ->where('carts.payment_type', '!=', 'cash')
+            ->where('events.user_uid', Auth::user()->uid)
+            ->get();
+        $ar = 0;
+
+        foreach ($totalHargaCart as $key => $tHC) {
+            $ar += ($totalHargaCart[$key]->harga_ticket * $totalHargaCart[$key]->quantity);
+        }
+
         $gr = HargaCart::join('carts', 'carts.uid', '=', 'harga_carts.uid',)
             ->join('events', 'events.uid', '=', 'carts.event_uid')
             ->where('carts.status', 'SUCCESS')
@@ -122,7 +135,7 @@ class PenyewaController extends Controller
             [
                 'title' => 'Dashboard',
                 'countUser' => $user,
-                'transaction' => $tra,
+                'transaction' => $ar,
                 'totalTransaksi' => $totalTransaksi,
                 'gr' => $date,
                 'qty' => $qty,
@@ -230,7 +243,7 @@ class PenyewaController extends Controller
             ->where('carts.payment_type', '!=', 'cash')
             ->where('events.user_uid', Auth::user()->uid)
             ->get();
-        // dd($harga_cart);
+        // dd($ar);
         $jml = 0;
         foreach ($harga_cart as $hs) {
             $jml += (int)$hs->quantity;

@@ -321,7 +321,9 @@ class editController extends Controller
         }
 
         $carts->status = $request->status;
+        $transaksis->status_transaksi = $request->status;
         $carts->save();
+        $transaksis->save();
         return redirect()->back()->with("success", "Transaksi Berhasil di Ubah");
     }
 
