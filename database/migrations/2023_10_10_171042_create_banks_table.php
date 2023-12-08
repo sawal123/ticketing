@@ -19,6 +19,7 @@ return new class extends Migration
             $table->string('bank');
             $table->string('norek');
             $table->timestamps();
+            $table->softDeletes();
         });
     }
 

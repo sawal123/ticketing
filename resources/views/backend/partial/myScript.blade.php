@@ -95,6 +95,14 @@
         m.find("#inv").val(inv)
         m.find("#status").val(status)
     })
+    $(document).on("show.bs.modal", "#upContact", function(e){
+        var b = $(e.relatedTarget)
+        var m = $(this)
+        m.find("#id").val(b.data('id'))
+        m.find("#sosmed").val(b.data('sosmed'))
+        m.find("#nama").val(b.data('nama'))
+        m.find("#link").val(b.data('link'))
+    })
 
 
     $(document).ready(function() {

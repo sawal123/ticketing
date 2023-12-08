@@ -10,6 +10,7 @@ use App\Models\Event;
 use App\Models\Harga;
 use App\Models\Slider;
 use App\Models\Talent;
+use App\Models\Contact;
 use App\Models\Landing;
 use App\Models\Penarikan;
 use App\Models\Transaction;
@@ -316,7 +317,7 @@ class editController extends Controller
         $carts = Cart::where("uid", $request->uid)->first();
         // dd($user);
 
-        if($request->status === "SUCCESS"){
+        if ($request->status === "SUCCESS") {
             Mail::to($user->email)->send(new MidtransPaymentNotification($user, $carts, $barcode));
         }
 
@@ -385,5 +386,26 @@ class editController extends Controller
             DB::rollback();
             return redirect()->back()->with('error', 'Gagal Update. Silahkan coba lagi.');
         }
+    }
+    public function editContact(Request $request)
+    {
+        $validate = Validator::make($request->all(), [
+            'sosmed' => 'string|required',
+            'nama' => 'string|required',
+            'link' => 'string|required|max:255',
+        ]);
+        $validate->validate();
+        $con = Contact::where('id', $request->id)->first();
+        $con->sosmed = $request->sosmed;
+        $con->name = $request->nama;
+        $con->link = $request->link;
+        if ($request->hasFile('icon')) {
+            $file = $request->file('icon');
+            $fileName = time() . '_' . $file->getClientOriginalName();
+            $file->storeAs('public/icon/', $fileName);
+            $con->icon = $fileName;
+        }
+        $con->save();
+        return redirect()->back()->with('success', 'Contact Berhasil Di Ubah');
     }
 }

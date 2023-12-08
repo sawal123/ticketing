@@ -34,7 +34,7 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/verfikasi/{data?}', [ConfirmController::class, 'verfikasi']);
     Route::put('/status/{data}', [ConfirmController::class, 'upKonfirmasi']);
-    Route::get('/confirm/{data?}', [ConfirmController::class, 'cekData']);
+    Route::get('/confirm/{data}', [ConfirmController::class, 'cekData']);
     Route::get('/listEvent', [ConfirmController::class, 'listEvent']);
 });
 Route::get('/slide/{data?}', [SlideController::class, 'slide']);

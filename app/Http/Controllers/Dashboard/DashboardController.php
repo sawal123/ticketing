@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Dashboard;
 
-use App\Models\BankIndonesia;
 use App\Models\Cart;
 use App\Models\Term;
 use App\Models\User;
@@ -10,12 +9,14 @@ use App\Models\Event;
 use App\Models\Harga;
 use App\Models\Slider;
 use App\Models\Talent;
+use App\Models\Contact;
 use App\Models\Landing;
 use App\Models\HargaCart;
 use App\Models\Penarikan;
 use Illuminate\View\View;
 use App\Models\Transaction;
 use Illuminate\Http\Request;
+use App\Models\BankIndonesia;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
 use Illuminate\Pagination\Paginator;
@@ -131,9 +132,11 @@ class DashboardController extends Controller
     public function seo(Request $request)
     {
         $logo = Landing::all();
+        $contact = Contact::all();
         return view('backend.content.seo', [
             'title' => 'Seo',
             'logo' => $logo,
+            'contact'=> $contact
            
         ]);
     }

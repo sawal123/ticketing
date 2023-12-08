@@ -3,17 +3,18 @@
 namespace App\Http\Controllers\Dashboard;
 
 use App\Models\Cart;
-use App\Models\Penarikan;
-use App\Models\Talent;
-use App\Models\Voucher;
-use Illuminate\Http\Request;
-use App\Http\Controllers\Controller;
-use App\Models\Event;
-use App\Models\Harga;
-use App\Models\HargaCart;
-use App\Models\Slider;
 use App\Models\Term;
 use App\Models\User;
+use App\Models\Event;
+use App\Models\Harga;
+use App\Models\Slider;
+use App\Models\Talent;
+use App\Models\Contact;
+use App\Models\Voucher;
+use App\Models\HargaCart;
+use App\Models\Penarikan;
+use Illuminate\Http\Request;
+use App\Http\Controllers\Controller;
 
 class DeleteController extends Controller
 {
@@ -93,6 +94,13 @@ class DeleteController extends Controller
         // dd($uid);
         $penarikan = Penarikan::where('uid', $uid)->first();
         $penarikan->delete();
+        return redirect()->back()->with('delete', 'Data berhasil dihapus');
+    }
+    public function deleteContact($id)
+    {
+        // dd($uid);
+        $contact = Contact::where('id', $id)->first();
+        $contact->delete();
         return redirect()->back()->with('delete', 'Data berhasil dihapus');
     }
 }

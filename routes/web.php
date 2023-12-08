@@ -154,6 +154,7 @@ Route::prefix('admin')
         Route::post('/addSlide', [addController::class, 'addSlide']);
         Route::post('/addTerm', [addController::class, 'addTerm']);
         Route::post('/addAdmin', [addController::class, 'addAdmin']);
+        Route::post('/addContact', [addController::class, 'addContact']);
 
         // ROUTE EDIT
         // Route::get('/updateLogo/{data}', [editController::class, 'updateLogo']);
@@ -165,6 +166,8 @@ Route::prefix('admin')
         Route::post('/user/editUser', [editController::class, 'editUser']);
         Route::get('/setujuiEvent/{data}', [editController::class, 'setujuiEvent']);
         Route::post('/editPenarikan', [editController::class, 'editStatusInvoice']);
+
+        Route::post('/editContact', [editController::class, 'editContact']);
 
         Route::post('/editLogo', [editController::class, 'editLogo']);
         Route::post('/editIcon', [editController::class, 'editIcon']);
@@ -183,6 +186,7 @@ Route::prefix('admin')
         Route::get('/term/delete/{id}', [DeleteController::class, 'deleteTerm']);
         Route::get('/user/delete/{id}', [DeleteController::class, 'deleteUser']);
         Route::get('/deletePen/{data}', [DeleteController::class, 'deletePenarikan']);
+        route::get('/delete/contact/{data}', [DeleteController::class, 'deleteContact']);
     });
     
     

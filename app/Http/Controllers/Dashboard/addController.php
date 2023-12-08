@@ -14,6 +14,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
 use App\Models\Bank;
+use App\Models\Contact;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use \Illuminate\Http\RedirectResponse;
@@ -185,5 +186,29 @@ class addController extends Controller
 
         // dd($request->poto);
         return redirect()->back()->with('addUser', 'User Berhasil Di Tambah');
+    }
+
+    public function addContact(Request $request){
+        $validate = Validator::make($request->all(),[
+            'sosmed' => 'string|required',
+            'nama'=> 'string|required',
+            'link'=> 'string|required|max:255',
+        ]);
+        $validate->validate();
+
+        $contact = Contact::create([
+            'sosmed'=> $request->sosmed,
+            'name'=> $request->nama,
+            'link'=> $request->link,
+            'icon'=> 'null'
+        ]);
+        if ($request->hasFile('icon')) {
+            $file = $request->file('icon');
+            $fileName = time() . '_' . $file->getClientOriginalName();
+            $file->storeAs('public/icon/', $fileName);
+            $contact->icon = $fileName;
+            $contact->save();
+        }
+        return redirect()->back()->with('success', 'Contact Berhasil Di Tambah');
     }
 }

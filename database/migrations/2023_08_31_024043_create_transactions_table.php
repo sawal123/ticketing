@@ -19,6 +19,7 @@ return new class extends Migration
             $table->string('amount');
             $table->string('status_transaksi');
             $table->timestamps();
+            $table->softDeletes();
         });
     }
 

@@ -20,6 +20,7 @@ return new class extends Migration
             $table->string('kwitansi');
             $table->string('status');
             $table->timestamps();
+            $table->softDeletes();
         });
     }
 
