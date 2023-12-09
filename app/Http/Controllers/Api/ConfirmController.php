@@ -23,12 +23,10 @@ class ConfirmController extends Controller
             ->where('carts.invoice' , $data)
             ->groupBy('carts.uid','carts.user_uid','carts.event_uid', 'carts.invoice', 'carts.status', 'carts.konfirmasi')
             ->first();
-
             if ($cart !== null && $cart->status === 'SUCCESS') {
                 $user = User::select(['uid', 'name'])->where('uid', $cart->user_uid)->first();
                 $event = Event::select(['event'])->where('uid', $cart->event_uid)->first();
                 $harga = HargaCart::select(['quantity', 'kategori_harga'])->where('uid', $cart->uid)->get();
-
                 $tes = [];
                 foreach ($harga as $hargas) {
                     $tes[] = $hargas;
