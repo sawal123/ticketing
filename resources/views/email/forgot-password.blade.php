@@ -58,7 +58,7 @@ p, h2{
             </p>
         </div>
         <div class="margin"></div>
-        <a href="http://127.0.0.1:8000/reset-password/{{$uid}}" type="submit" class="button">Reset Password</a>
+        <a href="https://go-tik.com/reset-password/{{$uid}}" type="submit" class="button">Reset Password</a>
         <div class="margin"></div>
         <br>
 

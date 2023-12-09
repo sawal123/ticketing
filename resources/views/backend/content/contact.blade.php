@@ -76,7 +76,6 @@
                                         data-link="{{ $contacts->link }}" data-bs-target="#upContact"
                                         data-bs-effect="effect-sign" data-bs-toggle="modal"><span
                                             class="fe fe-edit fs-14"></span></button>
-
                                     <a href="{{ url('admin/delete/contact/' . $contacts->id) }}"
                                         class="btn text-danger btn-sm delete" data-bs-toggle="tooltip"
                                         data-bs-original-title="Delete"><span class="fe fe-trash-2 fs-14"></span></a>
