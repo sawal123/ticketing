@@ -19,6 +19,7 @@ use Illuminate\Http\Request;
 use App\Models\BankIndonesia;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
+use App\Models\Provinsi;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
@@ -268,19 +269,19 @@ class DashboardController extends Controller
 
     public function profile()
     {
+        error_reporting(0);
 
         $data = User::where('users.uid', Auth::user()->uid)
             ->join('banks', 'banks.uid', '=', 'users.uid')
             ->first();
         // dd($data);
-        $http = Http::get('https://www.emsifa.com/api-wilayah-indonesia/api/provinces.json');
-        if ($http->successful()) {
-            $provinsi = $http->json();
-        }
+        // $http = Http::get('https://www.emsifa.com/api-wilayah-indonesia/api/provinces.json');
+        // if ($http->successful()) {
+        //     $provinsi = $http->json();
+        // }
+        $provinsi = Provinsi::all();
         // dd($provinsi);
-
         $bi = BankIndonesia::all();
-        // dd($bi);
 
         return view('backend.content.profile',
             [
