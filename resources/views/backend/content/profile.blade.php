@@ -33,7 +33,7 @@
                         <div class="card-body">
                             <div class="text-center chat-image mb-5">
                                 <div class="avatar avatar-xxl chat-profile mb-3 brround border-4" >
-                                    <img alt="avatar" src="{{ asset('storage/user/' . $profile->gambar) }}"
+                                    <img alt="" src="{{ asset('storage/user/' . $profile->gambar) }}"
                                         class="brround avatar-xxl" style="object-fit: cover;border: white 5px solid" >
                                 </div>
                                 <div class="main-chat-msg-name">

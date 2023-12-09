@@ -189,7 +189,37 @@ $(document).ready(function () {
             sSearch: "",
         },
     });
+    var myContact = $("#myContact").DataTable({
+        buttons: [
+            {
+                extend: "print",
+                exportOptions: {
+                    columns: [0, 1, 2, 3, 4],
+                },
+            },
+            {
+                extend: "excel",
+                exportOptions: {
+                    columns: [0, 1, 2, 3, 4],
+                },
+            },
+            // {
+            //     extend: "pdf",
+            //     exportOptions: {
+            //         columns: [0, 1, 2, 3, 4],
+            //     },
+            // },
+        ],
+        language: {
+            searchPlaceholder: "Search...",
+            scrollX: "100%",
+            sSearch: "",
+        },
+    });
 
+    myContact.buttons()
+    .container()
+    .appendTo("#myContact_wrapper .col-md-6:eq(0)");
     file.buttons()
         .container()
         .appendTo("#file-datatable_wrapper .col-md-6:eq(0)");

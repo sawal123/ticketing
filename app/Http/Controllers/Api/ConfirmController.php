@@ -90,10 +90,19 @@ class ConfirmController extends Controller
 
     }
 
-    public function listEvent(Request $request){
-        $event = Event::where('user_uid', Auth::user()->uid)->get();
-        return response()->json([
-            'event'=>$event,
-        ], 200);
+    public function listEvent(){
+        $event = Event::where('user_uid', Auth::user()->uid)->where('konfirmasi', '!=' , NULL)->get();
+        // dd($event);
+        if($event !== null){
+            return response()->json([
+                'event'=>$event,
+            ], 200);
+        }
+        else{
+            return response()->json([
+               'message' => 'Error'
+            ], 500);
+        }
+       
     }
 }

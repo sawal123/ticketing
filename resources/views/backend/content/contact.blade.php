@@ -21,7 +21,7 @@
     </div>
     <div class="card-body">
         <div class="table-responsive">
-            <table id="myTable" class=" table table-bordered text-nowrap key-buttons border-bottom">
+            <table id="myContact" class=" table table-bordered text-nowrap key-buttons border-bottom">
                 <thead class="border-top">
                     <tr>
                         <th class="bg-transparent border-bottom-0" style="width: 5%;">No</th>

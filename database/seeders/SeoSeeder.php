@@ -16,8 +16,8 @@ class SeoSeeder extends Seeder
         Landing::create([
             'description' => 'Gotik Description',
             'keyword'=> 'Gotik Keyword',
-            'logo'=> 'logo',
-            'icon'=> 'icon'
+            'logo'=> 'logo.png',
+            'icon'=> 'icon.png'
         ]);
     }
 }
