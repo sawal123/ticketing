@@ -63,23 +63,30 @@ class BuyTicketController extends Controller
 
         $cVoucher = CartVoucher::where('uid', $cart)->first();
         $voucher = Voucher::where('code', $code)->first();
-
+        $carts = HargaCart::where('uid', $cart)->first();
+        // dd($carts);
         if ($code === null && $cVoucher) {
             $cVoucher->code = '';
+            $carts->voucher = null;
+            $carts->disc = '0';
             $cVoucher->save();
+            $carts->save();
             return redirect()->back()->with('voucher', 'Voucher dihapus');
         }
         if ($voucher) {
             if ($cVoucher) {
                 $cVoucher->code = $code;
+                $carts->voucher = $code;
+                $carts->disc = $voucher->nominal;
                 $cVoucher->save();
+                $carts->save();
                 return redirect()->back()->with('voucher', 'Voucher berhasil digunakan');
             }
             // dd($voucher->digunakan);
             if ($voucher->digunakan < $voucher->limit) {
                 $cartV = new CartVoucher([
                     'uid' => $cart,
-                    'uid_vouchers'=> $voucher->uid,
+                    'uid_vouchers' => $voucher->uid,
                     'user_uid' => Auth::user()->uid,
                     'event_uid' => $request->event,
                     'code' => $code
@@ -100,12 +107,14 @@ class BuyTicketController extends Controller
         $kode = Str::uuid();
         $str = Str::random(3);
         $number = mt_rand(1000, 9999999999);
-        $invoice = str_pad($str.$number, 10, '0', STR_PAD_LEFT);
+        $invoice = str_pad($str . $number, 10, '0', STR_PAD_LEFT);
         $ticketValue = [];
         $hargaValue = [];
         $kategoriValue = [];
         $orderByInput = [];
         $req = [];
+
+
         for ($i = 0; $i < 10; $i++) {
             $ticketValue[] = $request->input('ticket' . $i);
             $hargaValue[] = $request->input('harga' . $i);
@@ -119,8 +128,27 @@ class BuyTicketController extends Controller
         if ($ticketValue == [] || $hargaValue == [] ||  $kategoriValue == []) {
             return redirect()->back()->with('error', 'Harap pilih ticket anda!');
         } else {
+            $hargaCartsArray = [];
             $event = Event::where('uid', $request->eventUid)->first();
             $carts = Cart::where('event_uid', $event->uid)->where('user_uid', Auth::user()->uid)->first();
+            $harga_ticket = Harga::where('uid', $event->uid)->get();
+
+            foreach ($kategoriValue as $index => $value) {
+                $hargaCarts = HargaCart::where('kategori_harga', $harga_ticket[$index]->kategori)->get();
+                $totalQuantity  = $hargaCarts->sum('quantity');
+                $hargaCartsArray[$harga_ticket[$index]->kategori] = $totalQuantity ;
+            }
+            // dd($hargaCartsArray["Tes"]);
+            $cek = 0;
+            foreach ($harga_ticket as $index => $harga_t) {
+                if($harga_t[$index]->kategori === $hargaCartsArray[$harga_t[$index]->kategori]){
+                    $cek = $hargaCartsArray[$harga_t[$index]->kategori] + $harga_t[$index]->qty;
+                }
+            }
+            dd($cek);
+
+            
+            // dd($totali);
         }
 
         if ($carts->status === 'UNPAID') {
@@ -130,6 +158,7 @@ class BuyTicketController extends Controller
                 $hargaArray[] = $hargaCarts;
             }
             foreach ($ticketValue as $index => $value) {
+                // dd($value);
                 $harga = $hargaValue[$index] ?? null; // Mengambil harga sesuai indeks
                 $kategori = $kategoriValue[$index] ?? null; // Mengambil kategori sesuai indeks
                 $orderBy = $orderByInput[$index];
@@ -151,6 +180,8 @@ class BuyTicketController extends Controller
                             'event_uid' => $event->uid,
                             'quantity' => $value,
                             'harga_ticket' => $harga,
+                            'voucher' => null,
+                            'disc' => '0',
                             'kategori_harga' => $kategori
                         ]);
                     }
@@ -161,6 +192,8 @@ class BuyTicketController extends Controller
                         'event_uid' => $event->uid,
                         'quantity' => $value,
                         'harga_ticket' => $harga,
+                        'voucher' => null,
+                        'disc' => '0',
                         'kategori_harga' => $kategori
                     ]);
                 }
@@ -176,6 +209,8 @@ class BuyTicketController extends Controller
             ]);
 
             foreach ($ticketValue as $index => $value) {
+                // dd($harga_ticket[$index]->qty);
+                // $hargaCarts = HargaCart::where('kategori', $harga_ticket[$index]->qty)->first();
                 $harga = $hargaValue[$index] ?? null; // Mengambil harga sesuai indeks
                 $kategori = $kategoriValue[$index] ?? null; // Mengambil kategori sesuai indeks
                 $orderBy = $orderByInput[$index];
@@ -185,6 +220,8 @@ class BuyTicketController extends Controller
                     'event_uid' => $event->uid,
                     'quantity' => $value,
                     'harga_ticket' => $harga,
+                    'voucher' => null,
+                    'disc' => '0',
                     'kategori_harga' => $kategori
                 ]);
             }

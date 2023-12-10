@@ -21,9 +21,9 @@
                             <h2 class="mb-0 number-font">Rp {{ number_format($totalHargaCart, 0, ',', '.') }}</h2>
                         </div>
                     </div>
-                    <span class="text-muted fs-12"><span class="text-secondary"><i
+                    {{-- <span class="text-muted fs-12"><span class="text-secondary"><i
                                 class="fe fe-arrow-up-circle  text-secondary"></i> 5%</span>
-                        Last week</span>
+                        Last week</span> --}}
                 </div>
             </div>
         </div>
@@ -36,9 +36,9 @@
                             <h2 class="mb-0 number-font">{{ number_format($totalFee, 0, ',', '.') }} Ticket</h2>
                         </div>
                     </div>
-                    <span class="text-muted fs-12"><span class="text-secondary"><i
+                    {{-- <span class="text-muted fs-12"><span class="text-secondary"><i
                                 class="fe fe-arrow-up-circle  text-secondary"></i> 5%</span>
-                        Last week</span>
+                        Last week</span> --}}
                 </div>
             </div>
         </div>
@@ -61,7 +61,10 @@
                                     <th class="border-bottom-0">Tanggal</th>
                                     <th class="border-bottom-0">Name</th>
                                     <th class="border-bottom-0">Qty</th>
+                                    <th class="border-bottom-0">Jmlh</th>
+                                    <th class="border-bottom-0">Disc</th>
                                     <th class="border-bottom-0">Total</th>
+                                    <th class="border-bottom-0">Voucher</th>
                                     <th class="border-bottom-0">Payment</th>
                                     {{-- <th class="border-bottom-0">Fee</th> --}}
                                     <th class="border-bottom-0">Status</th>
@@ -85,6 +88,9 @@
                                         </td>
                                         <td>{{ $carts->total_quantity }}</td>
                                         <td>{{ $carts->total_harga }}</td>
+                                        <td>{{ $carts->disc }}</td>
+                                        <td>{{ $carts->total_harga - $carts->disc }}</td>
+                                        <td>{{ $carts->voucher}}</td>
                                         <td>{{ $carts->payment_type }}</td>
                                         <td>
                                             <div class="mt-sm-1 d-block">

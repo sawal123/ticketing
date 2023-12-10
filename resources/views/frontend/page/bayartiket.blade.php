@@ -73,7 +73,7 @@
                                     <input type="text" class="form-control my-2" name="code"
                                         placeholder="Masukan Code Voucher.." value="{{ $cartV->code }}"
                                         aria-label="Example text with button addon" aria-describedby="button-addon1">
-                                    <button type="submit" class="btn btn-primary" style="height: auto"
+                                    <button type="submit"class="btn btn-primary" style="height: auto"
                                         id="button-addon1">Submit</button>
                                 @endif
 
@@ -95,6 +95,16 @@
                             <div class="card-body">
                                 <div class="row">
                                     <div class="col">
+                                        @if ($cart->status === 'SUCCESS')
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <p class="text-start m-0" style="font-size: 14px; font-weight: bold">Voucher
+                                                </p>
+                                                <h6 class="text-end m-0" style="font-size: 16px; font-weight: bold">
+                                                    {{ $cartV->code }}
+                                                </h6>
+                                            </div>
+                                            <hr>
+                                        @endif
                                         <div class="d-flex justify-content-between align-items-center">
                                             <p class="text-start m-0" style="font-size: 14px; font-weight: bold">Total
                                                 Ticket</p>
