@@ -11,7 +11,7 @@ class HargaCart extends Model
 {
     use HasFactory;
     use SoftDeletes;
-    protected $fillable=['uid','orderBy', 'event_uid', 'quantity', 'harga_ticket', 'kategori_harga'];
+    protected $fillable=['uid','orderBy', 'event_uid', 'quantity', 'harga_ticket', 'voucher', 'disc', 'kategori_harga'];
 
     public function carts()
     {

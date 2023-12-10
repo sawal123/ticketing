@@ -131,24 +131,37 @@ class BuyTicketController extends Controller
             $hargaCartsArray = [];
             $event = Event::where('uid', $request->eventUid)->first();
             $carts = Cart::where('event_uid', $event->uid)->where('user_uid', Auth::user()->uid)->first();
+
             $harga_ticket = Harga::where('uid', $event->uid)->get();
 
             foreach ($kategoriValue as $index => $value) {
-                $hargaCarts = HargaCart::where('kategori_harga', $harga_ticket[$index]->kategori)->get();
+                $hargaCarts = HargaCart::join('carts', 'carts.uid' , '=', 'harga_carts.uid')
+                    ->select('carts.uid','carts.status', 'harga_carts.quantity', 'harga_carts.kategori_harga')
+                    ->where('carts.status', '=', 'SUCCESS')
+                    ->where('harga_carts.kategori_harga', $harga_ticket[$index]->kategori)
+                    ->get();
                 $totalQuantity  = $hargaCarts->sum('quantity');
-                $hargaCartsArray[$harga_ticket[$index]->kategori] = $totalQuantity ;
+                $hargaCartsArray[$harga_ticket[$index]->kategori] = $totalQuantity;
             }
-            // dd($hargaCartsArray["Tes"]);
             $cek = 0;
+            $cekLagi = [];
+            $arrayHarga = [];
             foreach ($harga_ticket as $index => $harga_t) {
-                if($harga_t[$index]->kategori === $hargaCartsArray[$harga_t[$index]->kategori]){
-                    $cek = $hargaCartsArray[$harga_t[$index]->kategori] + $harga_t[$index]->qty;
+                $arrrayHarga[] = $harga_t->kategori;
+                $HargaIndex = array_keys($hargaCartsArray);
+                if ($harga_t->kategori === $HargaIndex[$index]) {
+                    $cek = $ticketValue[$index] + $hargaCartsArray[$harga_t->kategori];
+                    if ($cek <= $harga_t->qty) {
+                        // dd($cek . "<=" . $harga_t->qty);
+                        true;
+                    } else {
+                        return redirect()->back()->with('error', 'Ticket Tidak Cukup!');
+                    }
+                    $cekLagi[] = $cek;
+                } else {
+                    return redirect()->back()->with('error', 'Terjadi Kesalahan!');
                 }
             }
-            dd($cek);
-
-            
-            // dd($totali);
         }
 
         if ($carts->status === 'UNPAID') {

@@ -76,18 +76,17 @@
                                         @foreach ($list as $key => $list)
                                             <div class="card ps-3 my-2">
                                                 <div class="row d-flex align-items-center">
-                                                    <div class="col-4" style="float: right">
-                                                        <p style="font-size: 12px; font-weight: 800" class="m-0">
-                                                            {{ $list['kategori'] }}</p>
+                                                    <div class="col-4 py-2" style="float: right">
+                                                        <p style="font-size: 12px; font-weight: 800; line-height: 15px" class="m-0">
+                                                            {{ $list['kategori'] }} </p>
                                                         <p style="font-weight: bold" class="harga">
 
-                                                            {{ number_format($list['harga'], 0, ',', '.') }}</p>
+                                                            Rp {{ number_format($list['harga'], 0, ',', '.') }}</p>
                                                     </div>
                                                     @php
                                                         $kategori = $list['kategori'];
                                                         $qty = $list['qty'];
-                                                        // echo $jmlhQty[$kategori];
-                                                        // echo $qty;
+                                                      
                                                     @endphp
                                                     <div class="col-8 d-flex justify-content-end align-content-end">
                                                         <div class="input-wrapper container d-flex ">
@@ -104,8 +103,8 @@
                                                                     style="min-width: 40px; height: 40px;"
                                                                     data-target="quantity{{ $loop->index }}">-</button>
 
-                                                                <input type="text"
-                                                                    class="form-control input quantity{{ $loop->index }}"
+                                                                <input type="text"  
+                                                                    class="form-control p-0 input quantity{{ $loop->index }}"
                                                                     min="0" max="5" step="1"
                                                                     value="0" name="ticket{{ $loop->index }}"
                                                                     id="" readonly>
@@ -170,10 +169,14 @@
                                             @foreach ($lists as $lists)
                                                 <div class="card ps-3 my-2">
                                                     <div class="row d-flex align-items-center">
-                                                        <div class="col-4" style="float: right">
-                                                            <h5 class="m-0">{{ $lists['kategori'] }}</h5>
-                                                            <p>{{ number_format($lists['harga'], 0, ',', '.') }}</p>
+                                                        <div class="col-4 py-2" style="float: right">
+                                                            <p style="font-size: 12px; font-weight: 800; line-height: 15px" class="m-0">
+                                                                {{ $lists['kategori'] }} </p>
+                                                            <p style="font-weight: bold" class="harga">
+    
+                                                                Rp {{ number_format($lists['harga'], 0, ',', '.') }}</p>
                                                         </div>
+                                                      
                                                         <div class="col-8 d-flex justify-content-end align-content-end">
                                                             <div class="input-wrapper container d-flex ">
                                                                 <div class="input-wrapper container d-flex ">

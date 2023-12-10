@@ -105,21 +105,6 @@
                                             </div>
                                             <hr>
                                         @endif
-                                        <div class="d-flex justify-content-between align-items-center">
-                                            <p class="text-start m-0" style="font-size: 14px; font-weight: bold">Total
-                                                Ticket</p>
-                                            <h6 class="text-end m-0" style="font-size: 16px; font-weight: bold">
-                                                Rp {{ number_format($total, 0, ',', '.') }}
-                                            </h6>
-                                        </div>
-                                        <hr>
-                                        <div class="d-flex justify-content-between align-items-center">
-                                            <p class="text-start m-0" style="font-size: 14px; font-weight: bold">Layanan
-                                                Fee</p>
-                                            <h6 class="text-end m-0" style="font-size: 16px; font-weight: bold">
-                                                Rp {{ number_format($event->fee * $fee, 0, ',', '.') }}
-                                            </h6>
-                                        </div>
                                         @php
                                             $persen = 0;
                                             // $total += $event->fee * $fee;
@@ -134,6 +119,14 @@
                                             }
                                         @endphp
                                         <div class="d-flex justify-content-between align-items-center">
+                                            <p class="text-start m-0" style="font-size: 14px; font-weight: bold">Total
+                                                Ticket</p>
+                                            <h6 class="text-end m-0" style="font-size: 16px; font-weight: bold">
+                                                Rp {{ number_format($total, 0, ',', '.') }}
+                                            </h6>
+                                        </div>
+                                        <hr>
+                                        <div class="d-flex justify-content-between align-items-center">
                                             <p class="text-start m-0" style="font-size: 14px; font-weight: bold">Discount
                                             </p>
                                             <h6 class="text-end m-0" style="font-size: 16px; font-weight: bold">
@@ -146,6 +139,15 @@
                                             </h6>
                                         </div>
                                         <hr>
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <p class="text-start m-0" style="font-size: 14px; font-weight: bold">Layanan
+                                                Fee</p>
+                                            <h6 class="text-end m-0" style="font-size: 16px; font-weight: bold">
+                                                Rp {{ number_format($event->fee * $fee, 0, ',', '.') }}
+                                            </h6>
+                                        </div>
+
+
 
                                         <div class="d-flex justify-content-between align-items-center">
                                             <p class="text-start m-0" style="font-size: 16px; font-weight: bold">Total</p>
