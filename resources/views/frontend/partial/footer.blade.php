@@ -12,14 +12,11 @@
                         <p>Follow Gotik dan ikuti perkembangan tentang event disini.</p>
                         <div class="fugu--social-icon">
                             <ul>
-                            <li><a href="#"><img src="{{asset('assets/images/social2/twitter.svg')}}"
-                                        alt=""></a></li>
-                            <li><a href="#"><img src="{{asset('assets/images/social2/facebook.svg')}}"
-                                        alt=""></a></li>
-                            <li><a href="#"><img src="{{asset('assets/images/social2/instagram.svg')}}"
-                                        alt=""></a></li>
-                           
-                        </ul>
+                                @foreach ($contact as $item)
+                                    <li><a href="{{ $item->link }}"><img src="{{ asset('storage/sosmed/'.$item->icon) }}" alt=""></a>
+                                    </li>
+                                @endforeach
+                            </ul>
                         </div>
                     </div>
                 </div>
@@ -30,7 +27,7 @@
                             <li><a href="#">Event Management</a></li>
                             <li><a href="#">Online Ticketing</a></li>
                             <li><a href="#">Point Of Sale (Coming Soon)</a></li>
-                            
+
                         </ul>
                     </div>
                 </div>
@@ -40,7 +37,7 @@
                         <ul>
                             <li><a href="#">Rme Management</a></li>
                             <li><a href="#">Arum Media</a></li>
-                            
+
                         </ul>
                     </div>
                 </div>
@@ -49,8 +46,8 @@
                         <span>Support</span>
                         <ul>
                             <li><a href="">Hubungi Kami</a></li>
-                            <li><a href="{{url('/term')}}">Term and Condition</a></li>
-                            
+                            <li><a href="{{ url('/term') }}">Term and Condition</a></li>
+
                         </ul>
                     </div>
                 </div>
@@ -58,7 +55,7 @@
         </div>
         <div class="fugu--footer-bottom">
             <p>&copy; Copyright 2023, Gotik</p>
-           
+
         </div>
     </div>
 </footer>

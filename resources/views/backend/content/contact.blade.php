@@ -44,8 +44,8 @@
                             </td>
                             <td>
                                 <div class="d-flex">
-                                    <span class="avatar bradius"
-                                        style="background-image: url({{ asset('storage/icon/' . $contacts->icon) }})"></span>
+                                    <span class="avatar bradius "
+                                        style="background-image: url({{ asset('storage/sosmed/' . $contacts->icon) }})"></span>
                                     <div class="ms-3 mt-0 mt-sm-2 d-block">
                                         <h6 class="mb-0 fs-14 fw-semibold">
                                             {{ $contacts->sosmed }}</h6>

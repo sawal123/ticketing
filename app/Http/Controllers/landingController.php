@@ -7,12 +7,13 @@ use App\Models\Term;
 use App\Models\User;
 use App\Models\Event;
 use App\Models\Harga;
+use App\Models\Slider;
+use App\Models\Landing;
+use App\Models\HargaCart;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
-use App\Models\HargaCart;
-use App\Models\Slider;
 use Illuminate\Support\Facades\Auth;
 // use \Illuminate\Database\Eloquent\Collection;
 
@@ -24,8 +25,9 @@ class landingController extends Controller
         $event = Event::where('konfirmasi', '1')->take(9)->get();
         $harga = Harga::select('uid', 'harga')->orderBy('harga', 'asc')->get();
         $slide = Slider::all(['*']);
+       
         return view('frontend.page.home', [
-            'title' => 'HOME',
+            'title' => '',
             'event' => $event,
             'harga' => $harga,
             'slide' => $slide

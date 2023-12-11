@@ -47,15 +47,24 @@
     <div class="row row-sm">
         <div class="col-lg-12">
             <div class="card">
-                <div class="card-header">
-                    <h3 class="card-title">File Export</h3>
-                    @if (session('success'))
-                        <div class="alert alert-primary">
-                            {{ session('success') }}
-                        </div>
-                    @endif
-                </div>
+                <form action="{{ url('admin/transaksi') }}" method="get">
+                    @csrf
+                    <div class="card-header d-flex justify-content-between">
+                        <h3 class="card-title">File Export</h3>
+                        <div class="input-group w-md w-25">
 
+                            <input type="date" class="form-control " name="filter" value="{{ $filter }}">
+                            <button type="submit" class="btn btn-primary">Filter</button>
+
+                        </div>
+
+                    </div>
+                </form>
+                @if (session('success'))
+                    <div class="alert alert-primary">
+                        {{ session('success') }}
+                    </div>
+                @endif
                 <div class="card-body">
                     <div class="table-responsive">
                         <table id="file-datatable" class="table table-bordered text-nowrap key-buttons border-bottom">
@@ -103,8 +112,7 @@
                                                 <button type="submit" class="btn text-primary btn-sm"
                                                     data-bs-original-title="Edit" data-bs-target="#editTransaksi"
                                                     data-bs-effect="effect-sign" data-bs-toggle="modal"
-                                                    data-uid="{{ $carts->uid }}"
-                                                    data-inv="{{ $carts->invoice }}"
+                                                    data-uid="{{ $carts->uid }}" data-inv="{{ $carts->invoice }}"
                                                     data-name="@foreach ($use as $users)
                                                     @if ($users->uid == $carts->user_uid)
                                                         {{ $users->name }}
@@ -112,13 +120,13 @@
                                                     data-status="{{ $carts->status }}"><span
                                                         class="fe fe-edit fs-14"></span></button>
 
-                                                        @if($carts->status !==  'SUCCESS')
-                                                        <a href="{{ url('admin/deleteTransksi') }}"
+                                                @if ($carts->status !== 'SUCCESS')
+                                                    <a href="{{ url('admin/deleteTransksi') }}"
                                                         class="btn text-danger btn-sm delete" data-bs-toggle="tooltip"
                                                         data-bs-original-title="Delete"><span
                                                             class="fe fe-trash-2 fs-14"></span></a>
-                                                        @endif
-                                             
+                                                @endif
+
                                             </div>
                                         </td>
                                     </tr>

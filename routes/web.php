@@ -78,6 +78,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/checkVoucer', [BuyTicketController::class, 'checkVoucher']);
     Route::post('/checkout', [BuyTicketController::class, 'checkout']);
     Route::get('/transaksi', [landingController::class, 'listTransaksi']);
+ 
     Route::post('/paynow', [TransactionController::class, 'paynow']);
     Route::get('/detail-ticket/delete/{uid}/{user_uid}', [DeleteController::class, 'deteleListTransaksi']);
     Route::get('/logout', function () {
@@ -99,6 +100,7 @@ Route::prefix('dashboard')
     ->group(function () {
         Route::get('/', [PenyewaController::class, 'index'])->name('dashboard');
         Route::get('/transaksi', [PenyewaController::class, 'transaksi'])->name('dashboard.transaksi');
+       
         Route::get('/cash', [PenyewaController::class, 'cash'])->name('dashboard.cash');
         Route::get('/event/{addEvent?}/{uid?}', [PenyewaController::class, 'event']);
         Route::get('/ubahEvents/{uid}', [PenyewaController::class, 'ubahEvents']);
@@ -133,7 +135,8 @@ Route::prefix('admin')
     ->group(function () {
         Route::get('/', [DashboardController::class, 'dashboard']);
     
-        Route::get('/transaksi', [DashboardController::class, 'transaksi']);
+        Route::get('/transaksi/{filter?}', [DashboardController::class, 'transaksi']);
+        // Route::get('/transaksi/filter', [DashboardController::class, 'transaksi']);
         Route::get('/user/{data?}', [DashboardController::class, 'user']);
         Route::get('/event/{addEvent?}/{uid?}', [DashboardController::class, 'event']);
         Route::get('/ubahEvents/{uid}', [DashboardController::class, 'ubahEvents']);

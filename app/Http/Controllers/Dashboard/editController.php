@@ -402,7 +402,7 @@ class editController extends Controller
         if ($request->hasFile('icon')) {
             $file = $request->file('icon');
             $fileName = time() . '_' . $file->getClientOriginalName();
-            $file->storeAs('public/icon/', $fileName);
+            $file->storeAs('public/sosmed/', $fileName);
             $con->icon = $fileName;
         }
         $con->save();

@@ -63,9 +63,9 @@ class DashboardController extends Controller
             'countUser' => $user,
             'transaction' => $tra,
             'totalTransaksi' => $totalTransaksi,
-            'date'=> $date,
-            'qty'=> $qty,
-            'amount'=> $amount,
+            'date' => $date,
+            'qty' => $qty,
+            'amount' => $amount,
         ]);
     }
     public function event($addEvent = null, $uid = null)
@@ -119,14 +119,14 @@ class DashboardController extends Controller
     {
         $slide = Slider::orderBy('sort', 'asc')->get();
         $logo = Landing::all();
-       
+
         // dd($logo[0]->logo);
         return view('backend.content.landing', [
             'title' => 'Landing',
             'slide' => $slide,
             'slider' => $slide,
             'logo' => $logo,
-           
+
         ]);
     }
 
@@ -137,23 +137,27 @@ class DashboardController extends Controller
         return view('backend.content.seo', [
             'title' => 'Seo',
             'logo' => $logo,
-            'contact'=> $contact
-           
+            'contact' => $contact
+
         ]);
     }
 
-    public function term(){
+    public function term()
+    {
         $term = Term::all();
-        return view('backend.content.term',[
-            'title'=> 'Term And Condition',
+        return view('backend.content.term', [
+            'title' => 'Term And Condition',
             'term' => $term,
         ]);
     }
-    public function transaksi()
+    public function transaksi(Request $request)
     {
+        $filter = $request->filter;
+        if ($filter === null) {
+            $filter = date('Y-m-d');
+        }
         $use = User::all();
         $cartQuery = Cart::select(
-            // 'users.name',
             'carts.uid',
             'carts.user_uid',
             'carts.invoice',
@@ -167,36 +171,39 @@ class DashboardController extends Controller
         )
             ->join('harga_carts', 'harga_carts.uid', '=', 'carts.uid')
             ->join('events', 'events.uid', '=', 'carts.event_uid')
-            // Menggunakan LEFT JOIN
-            ->groupBy('carts.uid','carts.user_uid', 'carts.invoice', 'carts.status', 'events.event', 'events.fee', 'carts.created_at', 'events.cover');
+            ->whereDate('carts.created_at', '=', $filter)
+            ->groupBy('carts.uid', 'carts.user_uid', 'carts.invoice', 'carts.status', 'events.event', 'events.fee', 'carts.created_at', 'events.cover');
         $cart = $cartQuery->get();
-// dd($cart);
-        $totalHargaCart = Cart::select(['harga_carts.harga_ticket'])->where('carts.status', 'SUCCESS')
-            ->join('harga_carts', 'harga_carts.uid', '=', 'carts.uid')
-            ->get();
+        $totalHargaCart = Cart::join('harga_carts', 'harga_carts.uid', '=', 'carts.uid')
+        ->select(DB::raw('SUM(harga_carts.harga_ticket * harga_carts.quantity) as harga_ticket'))
+        ->where('carts.status', 'SUCCESS')->get();
         $ar = 0;
+        // dd($totalHargaCart);
         foreach ($totalHargaCart as $key => $tHC) {
             $ar += $totalHargaCart[$key]->harga_ticket;
         }
-        $totalFee = Event::select(['fee'])->where('carts.status', 'SUCCESS')
-            ->join('carts', 'carts.event_uid', '=', 'events.uid')
+        $totalFee = Event::join('carts', 'carts.event_uid', '=', 'events.uid')
+        ->join('harga_carts', 'harga_carts.uid', '=', 'carts.uid')
+        ->select(   DB::raw('SUM(events.fee * harga_carts.quantity) as total_fee'))->where('carts.status', 'SUCCESS')
             ->get();
         $fe = 0;
+        // dd($totalFee);
         foreach ($totalFee as $key => $tfe) {
-            $fe += $totalFee[$key]->fee;
+            $fe += $totalFee[$key]->total_fee;
         }
         $user = [];
         foreach ($use as $users) {
             $user[] = $users;
         }
-        // dd($cart);
+// dd($fe);
         return view('backend.content.transaksi',
             [
                 'title' => 'Transaksi Dashboard',
                 'cart' => $cart,
                 'use' => $use,
                 'totalHargaCart' => $ar,
-                'totalFee' => $fe
+                'totalFee' => $fe,
+                'filter' => $filter
             ]
         );
     }
@@ -283,7 +290,8 @@ class DashboardController extends Controller
         // dd($provinsi);
         $bi = BankIndonesia::all();
 
-        return view('backend.content.profile',
+        return view(
+            'backend.content.profile',
             [
                 'title' => 'profile',
                 'profile' => $data,

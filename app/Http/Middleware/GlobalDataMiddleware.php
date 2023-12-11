@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\Contact;
 use App\Models\Landing;
 use Closure;
 use Illuminate\Http\Request;
@@ -21,6 +22,7 @@ class GlobalDataMiddleware
         $user = Auth::user();
         $csrfToken = csrf_token();
         $logo = Landing::all();
+        $contact = Contact::all();
         // dd($logo);
 
         view()->share([
@@ -28,7 +30,9 @@ class GlobalDataMiddleware
             'user'=> $user,
            'csrfToken' => $csrfToken,
            'cari'=> null,
-           'logo' => $logo
+           'logo' => $logo,
+           'seo' => $logo,
+           'contact'=> $contact
         ]);
         return $next($request);
     }
