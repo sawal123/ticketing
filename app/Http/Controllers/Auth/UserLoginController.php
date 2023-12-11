@@ -86,6 +86,9 @@ class UserLoginController extends Controller
             $user->save();
             return redirect('/login');
         }
+        else{
+            return redirect('/login')->with('error', 'Gagal Reset Password');
+        }
         
     }
 }
