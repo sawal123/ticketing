@@ -34,6 +34,8 @@
     <link rel="stylesheet" href="{{ asset('landing/css/animate.css') }}" />
     <link rel="stylesheet" href="{{asset('assets/plugins/sweetalert2/dist/sweetalert2.min.css')}}">
 
+    <link href="{{asset('/assets/css/icons.css')}}" rel="stylesheet">
+
 
     <!-- Code Editor  -->
 

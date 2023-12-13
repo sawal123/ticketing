@@ -26,7 +26,7 @@
                         <ul>
                             <li><a href="#">Event Management</a></li>
                             <li><a href="#">Online Ticketing</a></li>
-                            <li><a href="#">Point Of Sale (Coming Soon)</a></li>
+                            <li><a href="#">Point Of Sale</a></li>
 
                         </ul>
                     </div>
@@ -36,7 +36,7 @@
                         <span>Partner</span>
                         <ul>
                             <li><a href="#">Rme Management</a></li>
-                            <li><a href="#">Arum Media</a></li>
+                            {{-- <li><a href="#">Arum Media</a></li> --}}
 
                         </ul>
                     </div>
@@ -45,7 +45,7 @@
                     <div class="fugu--footer-menu">
                         <span>Support</span>
                         <ul>
-                            <li><a href="">Hubungi Kami</a></li>
+                            <li><a href="{{url('/contact')}}">Hubungi Kami</a></li>
                             <li><a href="{{ url('/term') }}">Term and Condition</a></li>
 
                         </ul>

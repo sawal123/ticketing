@@ -155,4 +155,8 @@ class landingController extends Controller
             'term' => $term
         ]);
     }
+
+    public function contact(){
+        return view('frontend.page.contact');
+    }
 }

@@ -61,6 +61,8 @@ Route::get('/search/{cari?}/', [landingController::class, 'search']);
 Route::get('/cari', [landingController::class, 'cari']);
 Route::get('/term', [landingController::class, 'term']);
 
+Route::get('/contact', [landingController::class, 'contact']);
+
 
 
 Route::get('/invoice/{uid}', [Controller::class, 'invoice']);
