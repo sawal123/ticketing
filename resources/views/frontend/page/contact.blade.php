@@ -20,18 +20,21 @@
                             </div>
                             <div class="card-body">
                                 <ul class="list-group list-group-flush">
+                                    @foreach ($contactus as $con)
                                     <li class="list-group-item">
-                                        <i class="fe fe-map me-2"></i>
-                                        Jalan Menteng Raya Gang Perintis No. 10, Medan
+                                        <i class="fe {{ $con->link }}  me-2"></i>
+                                        {{ $con->name }}
                                     </li>
-                                    <li class="list-group-item">
+                                    @endforeach
+                                  
+                                    {{-- <li class="list-group-item">
                                         <i class="fe fe-phone me-2"></i>
                                         +62 852-9723-7151
                                     </li>
                                     <li class="list-group-item">
                                         <i class="fe fe-mail me-2"></i>
                                         admin@go-tik.com
-                                    </li>
+                                    </li> --}}
 
                                 </ul>
                             </div>

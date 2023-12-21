@@ -14,6 +14,7 @@ use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
+use App\Models\Contact;
 use Illuminate\Support\Facades\Auth;
 // use \Illuminate\Database\Eloquent\Collection;
 
@@ -131,8 +132,7 @@ class landingController extends Controller
         }
         //  dd($event);
         $harga = Harga::select('uid', 'harga')->orderBy('harga', 'asc')->get();
-        return view(
-            'frontend.page.post.post',
+        return view('frontend.page.post.post',
             [
                 'title' => 'Search Event',
                 'event' => $event,
@@ -157,6 +157,10 @@ class landingController extends Controller
     }
 
     public function contact(){
-        return view('frontend.page.contact');
+       
+        // dd($contact);
+        return view('frontend.page.contact',[
+           
+        ]);
     }
 }

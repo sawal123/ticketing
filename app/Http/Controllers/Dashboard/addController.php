@@ -190,16 +190,18 @@ class addController extends Controller
 
     public function addContact(Request $request){
         $validate = Validator::make($request->all(),[
-            'sosmed' => 'string|required',
-            'nama'=> 'string|required',
-            'link'=> 'string|required|max:255',
+            'sosmed' => 'string',
+            'nama'=> 'string',
+            'link'=> 'string|max:255|nullable',
         ]);
         $validate->validate();
+        // dd($request->link);
+        
 
         $contact = Contact::create([
             'sosmed'=> $request->sosmed,
             'name'=> $request->nama,
-            'link'=> $request->link,
+            'link'=> $request->link == null ? '' :$request->link,
             'icon'=> 'null'
         ]);
         if ($request->hasFile('icon')) {

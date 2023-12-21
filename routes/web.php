@@ -136,6 +136,8 @@ Route::prefix('admin')
     ->middleware(['auth', 'admin'])
     ->group(function () {
         Route::get('/', [DashboardController::class, 'dashboard']);
+
+        Route::get('/search',[DashboardController::class, 'event']);
     
         Route::get('/transaksi/{filter?}', [DashboardController::class, 'transaksi']);
         // Route::get('/transaksi/filter', [DashboardController::class, 'transaksi']);

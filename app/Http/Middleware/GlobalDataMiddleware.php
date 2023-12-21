@@ -22,7 +22,9 @@ class GlobalDataMiddleware
         $user = Auth::user();
         $csrfToken = csrf_token();
         $logo = Landing::all();
-        $contact = Contact::all();
+        $sosmed = Contact::where('icon', '!=', 'null')->get();
+        $contact = Contact::where('icon', 'null')->get();
+        // 'contact'=>$contact
         // dd($logo);
 
         view()->share([
@@ -32,7 +34,8 @@ class GlobalDataMiddleware
            'cari'=> null,
            'logo' => $logo,
            'seo' => $logo,
-           'contact'=> $contact
+           'contact'=> $sosmed,
+           'contactus'=> $contact,
         ]);
         return $next($request);
     }

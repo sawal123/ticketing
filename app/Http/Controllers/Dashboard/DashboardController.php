@@ -22,7 +22,6 @@ use App\Http\Controllers\Controller;
 use App\Models\Provinsi;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Http;
 
 class DashboardController extends Controller
 {
@@ -68,13 +67,21 @@ class DashboardController extends Controller
             'amount' => $amount,
         ]);
     }
-    public function event($addEvent = null, $uid = null)
+    public function event(Request $request , $addEvent = null, $uid = null)
     {
         error_reporting(0);
         $event = Event::all();
         if ($addEvent === null) {
             $pagination = Event::paginate(12);
-            // dd($pagination);
+
+            if ($request->has('query')) {
+                // Lakukan pencarian berdasarkan nama atau atribut lainnya
+                $searchQuery = $request->input('query');
+                $event = Event::where('nama', 'LIKE', "%$searchQuery%")
+                    // tambahkan kondisi pencarian berdasarkan atribut lain jika diperlukan
+                    ->paginate(12);
+            }
+
             return view('backend.content.event', [
                 'title' => 'Event',
                 'event' => $event,

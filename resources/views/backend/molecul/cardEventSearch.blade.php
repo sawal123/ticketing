@@ -3,9 +3,8 @@
         <div class="row">
             <div class="col-xl-5 col-lg-8 col-md-8 col-sm-8">
                 <div class="input-group d-flex w-100 float-start">
-                    <input type="text" class="form-control border-end-0 my-2"
-                        placeholder="Search ...">
-                    <button class="btn input-group-text bg-transparent border-start-0 text-muted my-2">
+                    <input type="text" id="searchInput" class="form-control border-end-0 my-2" placeholder="Search ...">
+                    <button  id="searchButton" class="btn input-group-text bg-transparent border-start-0 text-muted my-2">
                         <i class="fe fe-search text-muted" aria-hidden="true"></i>
                     </button>
                 </div>
@@ -18,10 +17,29 @@
                                 class="fa fa-list"></i></a></li>
                 </ul>
             </div> --}}
-            {{-- <div class="col-xl-3 col-lg-12">
-                <a href="{{url('/admin/event/addEvent')}}" class="btn btn-primary btn-block float-end my-2"><i
-                        class="fa fa-plus-square me-2"></i>New Product</a>
-            </div> --}}
+
         </div>
     </div>
 </div>
+
+<script>
+     $(document).ready(function () {
+        // Tangkap perubahan nilai pada input
+        $("#searchButton").click(function () {
+            // Ambil nilai dari input pencarian
+            var searchQuery = $("#searchInput").val();
+            console.log(searchQuery)
+
+            // Kirim permintaan Ajax ke server untuk mendapatkan hasil pencarian
+            $.ajax({
+                url: "admin/event", // Ganti dengan URL yang sesuai di server Anda
+                method: "GET",
+                data: { query: searchQuery },
+                success: function (data) {
+                    // Perbarui konten hasil pencarian tanpa mereset halaman
+                    $("#resultContainer").html(data);
+                }
+            });
+        });
+    });
+</script>

@@ -45,9 +45,6 @@
                         </div>
                     </div>
                 </div>
-
-            </div>
-            <div class="row">
                 <div class="col">
                     <div class="card p-0">
                         <div class="card-body p-4">
@@ -69,6 +66,7 @@
                 </div>
 
             </div>
+           
         </div>
         <div class="col">
             <div class="row">
@@ -111,7 +109,6 @@
                         </div>
                     </div>
                 </div>
-
                 <div class="col-xl-6 col-lg-6">
                     <div class="card p-0">
                         <div class="card-body p-4">

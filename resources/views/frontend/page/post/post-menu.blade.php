@@ -32,10 +32,10 @@
 
             
         </div>
-        <h3 class="text-center">Event Tidak Ditemukan!</h3>
+        {{-- <h3 class="text-center">Event Tidak Ditemukan!</h3> --}}
         <div class="d-flex justify-content-center align-items-center">
 
-            <img src="{{ asset('/storage/setting/nodata.png') }}" class="text-center" style="width: 400px"
+            <img src="{{ asset('/storage/setting/nodata.svg') }}" class="text-center" 
                 alt="">
         </div>
         @endif

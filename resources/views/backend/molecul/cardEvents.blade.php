@@ -1,4 +1,5 @@
-@foreach ($paginate as $events)
+
+@foreach ($event as $events)
     <div class="col-md-6 col-xl-2 col-sm-6">
         <div class="card">
             <div class="product-grid6">
@@ -23,9 +24,9 @@
                         <h1 class="title fw-bold fs-20"><a
                                 href="{{ url('/admin/event/eventDetail/' . $events->uid) }}">{{ $events->event }}</a>
                         </h1>
-                       <div class=" mb-2 btn-sm {{$events->konfirmasi != null ? 'btn-primary': 'btn-danger'}}">
-                        {{$events->konfirmasi != null ? 'Disetujui': 'Belum disetujui'}}
-                       </div>
+                        <div class=" mb-2 btn-sm {{ $events->konfirmasi != null ? 'btn-primary' : 'btn-danger' }}">
+                            {{ $events->konfirmasi != null ? 'Disetujui' : 'Belum disetujui' }}
+                        </div>
                     </div>
                 </div>
 
@@ -33,9 +34,10 @@
         </div>
     </div>
 @endforeach
+
 <div class="mb-5">
     <div class="float-end">
-        <ul class="pagination {{$paginate->total() === 0 ? 'd-none' : ''}} ">
+        <ul class="pagination {{ $paginate->total() === 0 ? 'd-none' : '' }} ">
             @if ($paginate->currentPage() === 1)
                 <li class="page-item disabled">
                     <a class="page-link" href="#" tabindex="-1">Prev</a>

@@ -390,15 +390,15 @@ class editController extends Controller
     public function editContact(Request $request)
     {
         $validate = Validator::make($request->all(), [
-            'sosmed' => 'string|required',
-            'nama' => 'string|required',
-            'link' => 'string|required|max:255',
+            'sosmed' => 'string',
+            'nama' => 'string',
+            'link' => 'string|max:255|nullable',
         ]);
         $validate->validate();
         $con = Contact::where('id', $request->id)->first();
         $con->sosmed = $request->sosmed;
         $con->name = $request->nama;
-        $con->link = $request->link;
+        $con->link =  $request->link == null ? '' : $request->link;
         if ($request->hasFile('icon')) {
             $file = $request->file('icon');
             $fileName = time() . '_' . $file->getClientOriginalName();

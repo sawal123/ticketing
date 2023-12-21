@@ -29,14 +29,14 @@
                         <label class="col-md-3 form-label">Link :</label>
                         <div class="col-md-9">
                             <input type="link" class="form-control" name="link"  placeholder="Masukan link.."
-                                required>
+                                >
                         </div>
                     </div>
                     <div class="row mb-4">
                         <label class="col-md-3 form-label">Icon :</label>
                         <div class="col-md-9">
                             <input type="file" class="form-control" name="icon" 
-                                required>
+                                >
                         </div>
                     </div>
                    
@@ -86,7 +86,7 @@
                             <label class="col-md-3 form-label">Link :</label>
                             <div class="col-md-9">
                                 <input type="link" class="form-control" name="link" id="link" placeholder="Masukan link.."
-                                    required>
+                                    >
                             </div>
                         </div>
                         <div class="row mb-4">
