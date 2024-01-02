@@ -19,7 +19,7 @@
                         </div>
                         <div class="form-group">
                             <div class="fxt-transformY-50 fxt-transition-delay-2">
-                                <input id="password" type="password" class="form-control" name="password" placeholder="********" required="required">
+                                <input id="password" type="password" class="form-control" name="password" placeholder="********" required="required" autocomplete="password">
                                 <i toggle="#password" class="fa fa-fw fa-eye toggle-password field-icon"></i>
                             </div>
                         </div>

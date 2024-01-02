@@ -8,13 +8,13 @@
 	<meta name="description" content="">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<!-- Favicon -->
-	<link rel="shortcut icon" type="image/x-icon" href="{{asset('penyewa/img/favicon.png')}}">
+	<link rel="shortcut icon" href="{{ asset('storage/logo/' . $logo[0]->icon) }}" type="image/x-icon">
 	<!-- Bootstrap CSS -->
 	<link rel="stylesheet" href="{{asset('penyewa/css/bootstrap.min.css')}}">
 	<!-- Fontawesome CSS -->
 	<link rel="stylesheet" href="{{asset('penyewa/css/fontawesome-all.min.css')}}">
 	<!-- Flaticon CSS -->
-	<link rel="stylesheet" href="{{asset('penywa/font/flaticon.css')}}">
+	{{-- <link rel="stylesheet" href="{{asset('penywa/font/flaticon.css')}}"> --}}
 	<!-- Google Web Fonts -->
 	<link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" rel="stylesheet">
 	<!-- Custom CSS -->
@@ -38,7 +38,7 @@
 	<!-- jquery-->
 	<script src="{{asset('penyewa/js/jquery-3.5.0.min.js')}}"></script>
 	<!-- Bootstrap js -->
-	<script src="asset('penyewa/js/bootstrap.min.js')"></script>
+	{{-- <script src="asset('penyewa/js/bootstrap.min.js')"></script> --}}
 	<!-- Imagesloaded js -->
 	<script src="{{asset('penyewa/js/imagesloaded.pkgd.min.js')}}"></script>
 	<!-- Validator js -->

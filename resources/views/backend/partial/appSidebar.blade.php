@@ -44,7 +44,7 @@
                 <hr>
 
                 <li class="slide ">
-                    <a class="side-menu__item {{request()->is('admin/user') ? 'active': ''}}" data-bs-toggle="slide" href="javascript:void(0)"><i
+                    <a class="side-menu__item {{request()->is('admin/setting*') ? 'active': ''}}" data-bs-toggle="slide" href="javascript:void(0)"><i
                             class="side-menu__icon fa fa-cog"></i><span
                             class="side-menu__label">Setting</span><i
                             class="angle fe fe-chevron-right"></i>
@@ -65,9 +65,9 @@
                                     <div class="tab-pane active" id="side13">
                                         <ul class="sidemenu-list">
                                             <li class="side-menu-label1"><a href="javascript:void(0)">Setting</a></li>
-                                            <li> <a class="slide-item {{request()->is('admin/setting/slide') ? 'active': ''}}" data-bs-toggle="slide" href="{{ url('/admin/setting/slide') }}"><span class="side-menu__label">Slide</span></a></li>
-                                            <li><a href="{{ url('admin/setting/seo') }}"" class="slide-item {{request()->is('/admin/setting/seo') ? 'active': ''}}">SEO</a></li>
-                                            <li><a href="{{ url('admin/setting/term') }}"" class="slide-item {{request()->is('/admin/setting/term') ? 'active': ''}}">Term and Condition</a></li>
+                                            <li><a href="{{ url('/admin/setting/slide') }}" class="slide-item {{request()->is('admin/setting/slide') ? 'active': ''}}"><span class="side-menu__label">Slide</span></a></li>
+                                            <li><a href="{{ url('admin/setting/seo') }}"" class="slide-item {{request()->is('admin/setting/seo') ? 'active': ''}}">SEO</a></li>
+                                            <li><a href="{{ url('admin/setting/term') }}"" class="slide-item {{request()->is('admin/setting/term') ? 'active': ''}}">Term and Condition</a></li>
                                         </ul>
                                     </div>
                                 </div>
@@ -79,7 +79,7 @@
               
                 
                 <li class="slide ">
-                    <a class="side-menu__item {{request()->is('admin/user') ? 'active': ''}}" data-bs-toggle="slide" href="javascript:void(0)"><i
+                    <a class="side-menu__item {{request()->is('admin/user*') ? 'active': ''}}" data-bs-toggle="slide" href="javascript:void(0)"><i
                             class="side-menu__icon fe fe-users "></i><span
                             class="side-menu__label">User</span><i
                             class="angle fe fe-chevron-right"></i>

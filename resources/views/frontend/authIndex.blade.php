@@ -13,12 +13,12 @@
         content="admin,admin dashboard,admin panel,admin template,bootstrap,clean,dashboard,flat,jquery,modern,responsive,premium admin templates,responsive admin,ui,ui kit.">
 
     <!-- FAVICON -->
-    <link rel="shortcut icon" href="{{asset('storage/logo/'. $logo[0]->icon)}}" type="image/x-icon">
+    <link rel="shortcut icon" href="{{ asset('storage/logo/' . $logo[0]->icon) }}" type="image/x-icon">
     <link rel="stylesheet" href="https://drive.google.com/uc?export=view&id=1yTLwNiCZhIdCWolQldwq4spHQkgZDqkG">
     <!-- TITLE -->
-    <title>{{$title}}</title>
+    <title>{{ $title }}</title>
     @include('backend.partial.link')
-    
+
 
 </head>
 
@@ -36,11 +36,11 @@
         <div class="page-main">
 
             <!--app-content open-->
-         
-                    <!-- CONTAINER -->
-                    @yield('auth')
-                    <!-- CONTAINER END -->
-               
+
+            <!-- CONTAINER -->
+            @yield('auth')
+            <!-- CONTAINER END -->
+
             <!--app-content close-->
 
         </div>
@@ -48,7 +48,20 @@
 
         <!-- BACK-TO-TOP -->
         <a href="#top" id="back-to-top"><i class="fa fa-angle-up"></i></a>
-        @include('backend.partial.script')
+        {{-- @include('backend.partial.script') --}}
+        <script src="{{ asset('/assets/js/jquery.min.js') }}"></script>
+        <!-- BOOTSTRAP JS -->
+        <script src="{{ asset('/assets/plugins/bootstrap/js/popper.min.js') }}"></script>
+        <script src="{{ asset('/assets/plugins/bootstrap/js/bootstrap.min.js') }}"></script>
+        <!-- Color Theme js -->
+        <script src="{{ asset('/assets/js/themeColors.js') }}"></script>
+        <!-- CUSTOM JS -->
+        <script src="{{ asset('/assets/js/custom.js') }}"></script>
+        <!-- SHOW PASSWORD JS -->
+        <script src="{{ asset('/assets/js/show-password.min.js') }}"></script>
+
+      
+
 </body>
 
 </html>

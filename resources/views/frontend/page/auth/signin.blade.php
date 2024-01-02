@@ -54,7 +54,7 @@
                                                 <i class="zmdi zmdi-eye text-muted" aria-hidden="true"></i>
                                             </a>
                                             <input class="input100 border-start-0 form-control ms-0" type="password"
-                                                name="password" placeholder="Password" required>
+                                                name="password" placeholder="Password" required autocomplete="password">
                                         </div>
                                         <div class="text-end pt-4">
                                             <p class="mb-0"><a href="{{ url('/forgot-password') }}"
@@ -70,7 +70,7 @@
                                             <p class="text-dark mb-0">Not a member?<a href="{{ url('/register') }}"
                                                     class="text-primary ms-1">Sign UP</a></p>
                                         </div>
-                                        <label class="login-social-icon"><span>Login with Social</span></label>
+                                        {{-- <label class="login-social-icon"><span>Login with Social</span></label>
                                         <div class="d-flex justify-content-center">
                                             <a href="javascript:void(0)">
                                                 <div class="social-login me-4 text-center">
@@ -78,9 +78,9 @@
                                                 </div>
                                             </a>
 
-                                        </div>
+                                        </div> --}}
                                     </div>
-                                    <div class="tab-pane" id="tab6">
+                                    {{-- <div class="tab-pane" id="tab6">
                                         <div id="mobile-num" class="wrap-input100 validate-input input-group mb-4">
                                             <a href="javascript:void(0)" class="input-group-text bg-white text-muted">
                                                 <span>+91</span>
@@ -100,7 +100,7 @@
                                                 Proceed
                                             </a>
                                         </div>
-                                    </div>
+                                    </div> --}}
                                 </div>
                             </div>
                         </div>

@@ -78,14 +78,14 @@
                                 <i class="mdi mdi-city" aria-hidden="true"></i>
                             </a>
                             <input class="input100 border-start-0 ms-0 form-control" type="text" name="alamat"
-                                placeholder="Address..">
+                                placeholder="Address.." autocomplete="username">
                         </div>
                         <div class="wrap-input100 validate-input input-group" id="Password-toggle">
                             <a href="javascript:void(0)" class="input-group-text bg-white text-muted">
                                 <i class="zmdi zmdi-eye" aria-hidden="true"></i>
                             </a>
                             <input class="input100 border-start-0 ms-0 form-control" type="password" name="password"
-                                placeholder="Password" required>
+                                placeholder="Password" required autocomplete="current-password">
                         </div>
                         <label class="custom-control custom-checkbox mt-4">
                             <input type="checkbox" class="custom-control-input" required>
@@ -100,7 +100,7 @@
                             <p class="text-dark mb-0 d-inline-flex">Already have account ?<a href="{{ url('/login') }}"
                                     class="text-primary ms-1">Sign In</a></p>
                         </div>
-                        <label class="login-social-icon"><span>Register with Social</span></label>
+                        {{-- <label class="login-social-icon"><span>Register with Social</span></label>
                         <div class="d-flex justify-content-center">
                             <a href="javascript:void(0)">
                                 <div class="social-login me-4 text-center">
@@ -108,7 +108,7 @@
                                 </div>
                             </a>
 
-                        </div>
+                        </div> --}}
                     </form>
                 </div>
             </div>
