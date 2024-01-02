@@ -11,6 +11,7 @@ use App\Models\Slider;
 use App\Models\Talent;
 use App\Models\Contact;
 use App\Models\Landing;
+use App\Models\Provinsi;
 use App\Models\HargaCart;
 use App\Models\Penarikan;
 use Illuminate\View\View;
@@ -19,9 +20,9 @@ use Illuminate\Http\Request;
 use App\Models\BankIndonesia;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
-use App\Models\Provinsi;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Http;
 
 class DashboardController extends Controller
 {
@@ -218,6 +219,7 @@ class DashboardController extends Controller
     public function user($data = null)
     {
         $http = Http::get('https://www.emsifa.com/api-wilayah-indonesia/api/provinces.json');
+        // dd($http);
         if ($http->successful()) {
             $provinsi = $http->json();
         }
