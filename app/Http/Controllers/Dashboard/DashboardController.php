@@ -218,11 +218,13 @@ class DashboardController extends Controller
 
     public function user($data = null)
     {
-        $http = Http::get('https://www.emsifa.com/api-wilayah-indonesia/api/provinces.json');
-        // dd($http);
-        if ($http->successful()) {
-            $provinsi = $http->json();
-        }
+        // $http = Http::get('https://www.emsifa.com/api-wilayah-indonesia/api/provinces.json');
+     
+        // dd($provinsi);
+        // if ($http->successful()) {
+        //     $provinsi = $http->json();
+        // }
+        $provinsi = Provinsi::all();
         $datas = [];
         if ($data === 'admin') {
             foreach ($provinsi as $provinsis) {
