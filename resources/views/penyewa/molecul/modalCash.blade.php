@@ -109,7 +109,7 @@
                     </div>
                     <div class="">
                         <button type="submit" class="btn btn-primary">Cash</button>
-                        <button class="btn btn-light" data-bs-dismiss="modal">Close</button>
+                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Close</button>
                     </div>
 
                 </div>

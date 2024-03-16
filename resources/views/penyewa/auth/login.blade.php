@@ -30,7 +30,7 @@
                                         <input id="checkbox1" type="checkbox">
                                         <label for="checkbox1">Keep me logged in</label>
                                     </div>
-                                    <a href="forgot-password-14.html" class="switcher-text">Forgot Password</a>
+                                    <a href="{{ url('forgot-password') }}" class="switcher-text">Forgot Password</a>
                                 </div>
                             </div>
                         </div>

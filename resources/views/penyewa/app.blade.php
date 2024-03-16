@@ -74,6 +74,7 @@
         @include('penyewa.partial.script')
 
         @include('penyewa.partial.myScript')
+        <script src="{{asset('penyewa/js/style.js')}}"></script>
       
 </body>
 

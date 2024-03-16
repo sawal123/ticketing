@@ -55,9 +55,10 @@
         var title = tombol.data('title');
         var term = tombol.data('term');
         var modal = $(this);
+        console.log(term)
         modal.find('#termUid').val(uid)
         modal.find('#termTitle').val(title)
-        modal.find('#termTerm').text(term)
+        modal.find('#termTerm').html(term)
     })
     $(document).on("show.bs.modal", "#upUser", function(e) {
         var t = $(e.relatedTarget);

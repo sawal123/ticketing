@@ -55,8 +55,8 @@
                         <label class="col-md-3 form-label mb-4">Term :</label>
                         <div class="col-md-9 mb-4">
                             <div class="form-floating">
-                                <textarea class="summernote" name="term" id="termTerm" required>
-                                    
+                                <textarea class="summernote" name="term"  required>
+                                    <div id="termTerm"></div>
                                     </textarea>
                             </div>
                         </div>

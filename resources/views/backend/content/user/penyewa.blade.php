@@ -71,7 +71,8 @@
                                         <td>
                                             <div class="d-flex">
                                                 <span class="avatar bradius"
-                                                    style="background-image: url({{ asset('storage/user/'. $users->gambar) }})"></span>
+                                                    style="background-image: url('{{ asset("storage/user/". $users->gambar) }}')"></span>
+                                                    {{-- <img class="avatar bradius" src="{{ asset('storage/user/'. $users->gambar) }}" alt="" srcset=""> --}}
                                                 <div class="ms-3 mt-0 mt-sm-2 d-block">
                                                     <h6 class="mb-0 fs-14 fw-semibold">
                                                         {{ $users->name }}</h6>

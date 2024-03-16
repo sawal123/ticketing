@@ -46,16 +46,34 @@
                                     <p>{{ $eventDetail->alamat }} <a href="{{ $eventDetail->map }}" target="blank"
                                             class="btn btn-primary">Kunjungi</a></p>
                                     <p>Biaya Layanan : Rp {{ $eventDetail->fee }}</p>
-                                    {{-- <p class="text-muted float-start me-3">
-                                        <span class="fa fa-star text-warning"></span>
-                                        <span class="fa fa-star text-warning"></span>
-                                        <span class="fa fa-star text-warning"></span>
-                                        <span class="fa fa-star-half-o text-warning"></span>
-                                        <span class="fa fa-star-o text-warning"></span>
-                                    </p>
-                                    <p class="text-muted mb-4">( 40 Customers Reviews) </p> --}}
+
                                     <h4 class="mt-4"><b> Description</b></h4>
-                                    <p>{!! $eventDetail->deskripsi !!}</p>
+                                    <style>
+                                        .container {
+                                            max-height: 4em;
+                                            /* Tampilkan hanya 3 baris teks */
+                                            overflow: hidden;
+                                        }
+
+                                        .container.expanded {
+                                            max-height: none;
+                                            /* Tampilkan semua teks saat diperluas */
+                                        }
+
+                                        .content {
+                                            margin: 0;
+                                        }
+
+                                        #readMoreBtn {
+                                            display: block;
+                                            margin-top: 10px;
+                                        }
+                                    </style>
+                                    <div class="container">
+                                        <p class="content">{!! $eventDetail->deskripsi !!}</p>
+                                    </div>
+                                    <button id="readMoreBtn" class="btn btn-outline-primary">Baca Selengkapnya</button>
+                                    
                                     <hr>
                                     <div class="btn-list mt-4">
                                         <a href="{{ url('/dashboard/ubahEvents/' . $eventDetail->uid) }}"
