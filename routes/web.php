@@ -120,12 +120,14 @@ Route::prefix('dashboard')
         Route::post('/addPartner', [PenyewaAddController::class, 'addPartner']);
 
         Route::post('/editTalent', [PenyewaEditController::class, 'editTalent']);
+        Route::post('/editEventPenyewa', [PenyewaEditController::class, 'editEventPenyewa']);
         Route::post('/editEvent', [PenyewaEditController::class, 'editEvent']);
         Route::post('/editHarga', [PenyewaEditController::class, 'editHarga']);
         Route::post('/editRekening', [PenyewaEditController::class, 'editRekening']);
         Route::post('/editProfile', [PenyewaEditController::class, 'editProfile']);
         Route::post('/editPartner', [PenyewaEditController::class, 'editPartner']);
 
+        Route::get('/events/delete/{id}', [PenyewaDelete::class, 'eventDelete']);
         Route::get('/delete/{id}', [PenyewaDelete::class, 'deleteTalent']);
         Route::get('/hargas/delete/{id}', [PenyewaDelete::class, 'deleteHarga']);
         Route::get('/delete/voucher/{id}', [PenyewaDelete::class, 'deleteVoucher']);

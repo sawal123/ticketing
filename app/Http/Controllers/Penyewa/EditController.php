@@ -12,22 +12,25 @@ use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
+use App\Models\EventDate;
 // use Dotenv\Validator;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Auth;
 
 class EditController extends Controller
 {
-    public function editEvent(Request $request)
+    public function editEventPenyewa(Request $request)
     {
-        $event = Event::where('uid', $request->uid)->where('user_uid', Auth::user()->uid)->first(); // Mengambil instance model yang akan diupdate
+        $event = Event::where('uid', $request->uid)->where('user_uid', Auth::user()->uid)->first(); 
+        $eventDate = EventDate::where('uid', $request->uid)->first();
 
         $tanggal = date('Y-m-d H:i', strtotime($request->tanggal));
         $event->event = $request->event;
         $event->alamat = $request->alamat;
         $event->tanggal = $tanggal;
+        $eventDate->start= $request->start;
+        $eventDate->end= $request->end;
         $event->status = $request->status;
-        $event->fee = $request->fee;
         $event->deskripsi = $request->deskripsi;
         $event->map = $request->map;
         $event->slug = Str::slug($request->event);
@@ -39,6 +42,7 @@ class EditController extends Controller
             $event->cover = $fileName;
         }
 
+        $eventDate->save();
         $event->save();
         return redirect('/dashboard/event/eventDetail/' . $request->uid)->with('success', 'Berhasil di Update');
     }

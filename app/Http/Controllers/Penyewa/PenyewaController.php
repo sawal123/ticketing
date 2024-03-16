@@ -197,7 +197,9 @@ class PenyewaController extends Controller
 
     public function ubahEvents($uid)
     {
-        $ubahEvent = Event::where('uid', $uid)->first();
+        $ubahEvent = Event::join('event_dates','events.uid', 'event_dates.uid')->where('events.uid', $uid)->first();
+        
+        // dd($ubahEvent);
         return view('penyewa.eventSemi.addEvent', [
             'title' => 'Ubah Event',
             'ubahEvent' => $ubahEvent

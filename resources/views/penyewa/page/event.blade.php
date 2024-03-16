@@ -21,9 +21,9 @@
                   @include('penyewa.molecul.cardEventSearch')
                 </div>
             </div>
-            @if (session('deleteEvent'))
+            @if (session('hapus'))
             <div class="alert alert-success">
-                {{ session('deleteEvent') }}
+                {{ session('hapus') }}
             </div>
         @endif
             <div class="tab-content">

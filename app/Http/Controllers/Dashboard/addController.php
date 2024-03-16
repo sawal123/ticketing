@@ -139,6 +139,10 @@ class addController extends Controller
     }
     public function addAdmin(Request $request)
     {
+        $mail = User::where('email', $request->email)->first();
+        if($mail){
+            return redirect()->back()->with('gagal', 'Email sudah terdaftar');
+        }
         $validate = Validator::make($request->all(), [
             'nama' => 'required|string|max:255',
             'email' => 'required|string|email',

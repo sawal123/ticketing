@@ -64,7 +64,7 @@
                     @if (request()->is('dashboard/event/addEvent'))
                         <form action="{{ url('/dashboard/addEvents') }}" method="post" enctype="multipart/form-data">
                         @else
-                            <form action="{{ url('/dashboard/editEvent') }}" method="post" enctype="multipart/form-data">
+                            <form action="{{ url('/dashboard/editEventPenyewa') }}" method="post" enctype="multipart/form-data">
                     @endif
 
                     @csrf
@@ -91,7 +91,7 @@
                                     required>
                             </div>
                         </div>
-                        {{-- @if (request()->is('dashboard/event/addEvent') === false)
+                        @if (request()->is('dashboard/event/addEvent') === false)
                             <div class="row mb-4">
                                 <label class="col-md-3 form-label">Status Event :</label>
                                 <div class="col-md-9">
@@ -106,15 +106,15 @@
                                     </select>
                                 </div>
                             </div>
-                        @endif --}}
+                        @endif
 
-                        {{-- <div class="row mb-4">
+                        <div class="row mb-4">
                             <label class="col-md-3 form-label">Tanggal Event :</label>
                             <div class="col-md-9">
                                 <input type="datetime-local" value="{{ $ubahEvent->tanggal }}" name="tanggal"
                                     class="form-control" required>
                             </div>
-                        </div> --}}
+                        </div>
 
                         <div class="row mb-4">
                             <div class="col-3">

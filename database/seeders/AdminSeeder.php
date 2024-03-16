@@ -27,7 +27,7 @@ class AdminSeeder extends Seeder
             'gender' => 'pria',
             'gambar' => 'null',
             'role' => 'admin',
-            'password' => '$2y$10$auGmPWvxktS055z1fD3uAeyWCmrRKRwnuMmrIouP1u8ryaSH056L6'
+            'password' => bcrypt("Gotik123")
         ]);
 
         $bank = Bank::create([
