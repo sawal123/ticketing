@@ -1,0 +1,19 @@
+.con {
+    max-height: 4em;
+    /* Tampilkan hanya 3 baris teks */
+    overflow: hidden;
+}
+
+.con.expanded {
+    max-height: none;
+    /* Tampilkan semua teks saat diperluas */
+}
+
+.content {
+    margin: 0;
+}
+
+#readMore {
+    display: block;
+    margin-top: 10px;
+}

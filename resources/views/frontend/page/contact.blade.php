@@ -21,8 +21,8 @@
                             <div class="card-body fugu--social-icon">
                                 <ul class="list-group list-group-flush">
                                     @foreach ($contactus as $con)
-                                    <li class="list-group-item">
-                                        <i class="fe {{ $con->name }}  me-2"></i>
+                                    <li class="list-group-item d-flex m-0">
+                                        <a class="me-2" href="{{ $sos->link }}"><i class="fe {{ $con->name }}  me-2"></i></a>
                                         {{ $con->sosmed }}
                                     </li>
                                     @endforeach

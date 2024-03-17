@@ -1,4 +1,4 @@
-<script src="{{asset('penyewa/js/style.js')}}"></script>
+{{-- <script src="{{asset('penyewa/js/style.js')}}"></script> --}}
 
 
 @if (request()->is('dashboard'))

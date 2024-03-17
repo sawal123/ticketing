@@ -35,7 +35,11 @@
                         </div>
                         <div class="mt-5"></div>
                         <h4>Description</h4>
-                        <p>{!! $ticket->deskripsi !!}</p>
+                        <div class="con">
+                            <p class="content">{!! $ticket->deskripsi !!}</p>
+                        </div>
+                        <button id="readMore" class="btn btn-primary py-0">Baca Selengkapnya</button>
+                        {{-- <p>{!! $ticket->deskripsi !!}</p> --}}
                         <div class="row my-5">
                             <h4>Talent</h4>
                             @foreach ($tickets as $tickets)

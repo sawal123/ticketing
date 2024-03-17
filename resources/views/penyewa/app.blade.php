@@ -75,6 +75,24 @@
 
         @include('penyewa.partial.myScript')
         <script src="{{asset('penyewa/js/style.js')}}"></script>
+        <script src="{{ asset('penyewa/js/styleMore.js') }}"></script>
+        <script>
+            // document.addEventListener("DOMContentLoaded", function() {
+            //     var content = document.querySelector(".content");
+            //     var container = document.querySelector(".container");
+            //     var readMoreBtn = document.getElementById("readMoreBtn");
+
+            //     readMoreBtn.addEventListener("click", function() {
+            //         container.classList.toggle("expanded");
+
+            //         if (container.classList.contains("expanded")) {
+            //             readMoreBtn.textContent = "Baca Lebih Sedikit";
+            //         } else {
+            //             readMoreBtn.textContent = "Baca Selengkapnya";
+            //         }
+            //     });
+            // });
+        </script>
       
 </body>
 
