@@ -18,12 +18,18 @@
                             <div class="card-header">
                                 <h5>Contact</h5>
                             </div>
-                            <div class="card-body">
+                            <div class="card-body fugu--social-icon">
                                 <ul class="list-group list-group-flush">
                                     @foreach ($contactus as $con)
                                     <li class="list-group-item">
-                                        <i class="fe {{ $con->link }}  me-2"></i>
-                                        {{ $con->name }}
+                                        <i class="fe {{ $con->name }}  me-2"></i>
+                                        {{ $con->sosmed }}
+                                    </li>
+                                    @endforeach
+                                    @foreach ($contact as $sos)
+                                    <li class="list-group-item d-flex m-0" >
+                                        <a class="me-2" href="{{ $sos->link }}"><img width="16" height="16" src="{{ asset('storage/sosmed/'.$sos->icon) }}" alt=""></a>
+                                        {{ $sos->sosmed }}
                                     </li>
                                     @endforeach
                                   

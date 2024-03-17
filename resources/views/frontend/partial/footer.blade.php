@@ -13,7 +13,7 @@
                         <div class="fugu--social-icon">
                             <ul>
                                 @foreach ($contact as $item)
-                                    <li><a href="{{ $item->link }}"><img src="{{ asset('storage/sosmed/'.$item->icon) }}" alt=""></a>
+                                    <li><a href="{{ $item->link }}"><img width="16" height="16" src="{{ asset('storage/sosmed/'.$item->icon) }}" alt=""></a>
                                     </li>
                                 @endforeach
                             </ul>
