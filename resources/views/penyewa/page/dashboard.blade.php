@@ -27,7 +27,7 @@
             @endif
             <div class="col-lg-12 col-md-12 col-sm-12 col-xl-12">
                 <div class="row">
-                    <div class="col-lg-6 col-md-6 col-sm-12 col-xl-3">
+                    {{-- <div class="col-lg-6 col-md-6 col-sm-12 col-xl-3">
                         <div class="card overflow-hidden">
                             <div class="card-body">
                                 <div class="d-flex">
@@ -46,7 +46,7 @@
                                     Last week</span>
                             </div>
                         </div>
-                    </div>
+                    </div> --}}
                     <div class="col-lg-6 col-md-6 col-sm-12 col-xl-3">
                         <div class="card overflow-hidden">
                             <div class="card-body">
@@ -61,9 +61,7 @@
                                         </div>
                                     </div>
                                 </div>
-                                <span class="text-muted fs-12"><span class="text-pink"><i
-                                            class="fe fe-arrow-down-circle text-pink"></i> 0.75%</span>
-                                    Last 6 days</span>
+                                
                             </div>
                         </div>
                     </div>
@@ -81,9 +79,7 @@
                                         </div>
                                     </div>
                                 </div>
-                                <span class="text-muted fs-12"><span class="text-green"><i
-                                            class="fe fe-arrow-up-circle text-green"></i> 0.9%</span>
-                                    Last 9 days</span>
+                                
                             </div>
                         </div>
                     </div>
@@ -101,9 +97,7 @@
                                         </div>
                                     </div>
                                 </div>
-                                <span class="text-muted fs-12"><span class="text-warning"><i
-                                            class="fe fe-arrow-up-circle text-warning"></i> 0.6%</span>
-                                    Last year</span>
+                                
                             </div>
                         </div>
                     </div>

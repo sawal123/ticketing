@@ -73,7 +73,7 @@ class PenyewaController extends Controller
             $amount[] = $grs->total_amount;
         }
         // dd($gr);
-        $totalTransaksi = Transaction::where('status_transaksi', 'SUCCESS')->count();
+        $totalTransaksi = Transaction::where('status_transaksi', 'SUCCESS')->where('user_uid', Auth::user()->uid)->count();
 
         $partner = Partner::where('referensi', Auth::user()->uid)->where('status', 'active')->get();
 
@@ -135,9 +135,7 @@ class PenyewaController extends Controller
             $hargaOption[$key + 1] = $options;
         }
 
-        return view(
-            'penyewa.page.dashboard',
-            [
+        return view('penyewa.page.dashboard',[
                 'title' => 'Dashboard',
                 'countUser' => $user,
                 'transaction' => $ar - $discounts,

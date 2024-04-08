@@ -158,7 +158,7 @@
                                 <div class="form-floating">
                                     <textarea id="summernote" name="deskripsi" required>
                                         {{ $ubahEvent->deskripsi }}
-                                        </textarea>
+                                    </textarea>
 
                                 </div>
                             </div>
