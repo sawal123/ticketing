@@ -78,6 +78,7 @@
                                     <th class="border-bottom-0">Qty</th>
                                     <th class="border-bottom-0">Total</th>
                                     <th class="border-bottom-0">Fee</th>
+                                    <th class="border-bottom-0">Type</th>
                                     <th class="border-bottom-0">Status</th>
                                     <th class="border-bottom-0">Action</th>
                                 </tr>
@@ -99,7 +100,8 @@
                                         </td>
                                         <td>{{ $carts->total_quantity }}</td>
                                         <td>{{ $carts->total_harga }}</td>
-                                        <td>{{ $carts->fee }}</td>
+                                        <td>{{ $carts->payment_type === 'cash' ? 0 :$carts->fee }}</td>
+                                        <td>{{ $carts->payment_type }}</td>
                                         <td>
                                             <div class="mt-sm-1 d-block">
                                                 <span
@@ -121,7 +123,7 @@
                                                         class="fe fe-edit fs-14"></span></button>
 
                                                 @if ($carts->status !== 'SUCCESS')
-                                                    <a href="{{ url('admin/deleteTransksi') }}"
+                                                    <a href="{{ url('admin/deleteTransksi'. $carts->uid) }}"
                                                         class="btn text-danger btn-sm delete" data-bs-toggle="tooltip"
                                                         data-bs-original-title="Delete"><span
                                                             class="fe fe-trash-2 fs-14"></span></a>

@@ -174,13 +174,14 @@ class DashboardController extends Controller
             DB::raw('SUM(events.fee * harga_carts.quantity) as fee'),
             'events.cover',
             'carts.created_at',
+            'carts.payment_type',
             DB::raw('SUM(harga_carts.quantity * harga_carts.harga_ticket) as total_harga'),
             DB::raw('SUM(harga_carts.quantity) as total_quantity')
         )
             ->join('harga_carts', 'harga_carts.uid', '=', 'carts.uid')
             ->join('events', 'events.uid', '=', 'carts.event_uid')
             ->whereDate('carts.created_at', '=', $filter)
-            ->groupBy('carts.uid', 'carts.user_uid', 'carts.invoice', 'carts.status', 'events.event', 'events.fee', 'carts.created_at', 'events.cover');
+            ->groupBy('carts.uid', 'carts.user_uid', 'carts.invoice', 'carts.status', 'events.event', 'events.fee', 'carts.payment_type', 'carts.created_at', 'events.cover');
         $cart = $cartQuery->get();
         $totalHargaCart = Cart::join('harga_carts', 'harga_carts.uid', '=', 'carts.uid')
         ->select(DB::raw('SUM(harga_carts.harga_ticket * harga_carts.quantity) as harga_ticket'))
@@ -192,7 +193,7 @@ class DashboardController extends Controller
         }
         $totalFee = Event::join('carts', 'carts.event_uid', '=', 'events.uid')
         ->join('harga_carts', 'harga_carts.uid', '=', 'carts.uid')
-        ->select(   DB::raw('SUM(events.fee * harga_carts.quantity) as total_fee'))->where('carts.status', 'SUCCESS')
+        ->select(   DB::raw('SUM(events.fee * harga_carts.quantity) as total_fee'))->where('carts.status', 'SUCCESS')->where('payment_type', '!=', 'cash')
             ->get();
         $fe = 0;
         // dd($totalFee);

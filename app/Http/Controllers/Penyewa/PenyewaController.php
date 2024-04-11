@@ -26,9 +26,9 @@ class PenyewaController extends Controller
     public function index()
     {
         $user = User::where('role', 'user')->count();
-        $transaksi = Transaction::select(['amount'])->where('status_transaksi', 'SUCCESS')->get();
+        $transaksi = Transaction::select('amount')->where('status_transaksi', 'SUCCESS')->get();
         $event = Event::where('user_uid', Auth::user()->uid)->count();
-        // dd($event);
+        // dd($transaksi);
 
         $tra = 0;
         foreach ($transaksi as $key => $tr) {
@@ -134,7 +134,7 @@ class PenyewaController extends Controller
             }
             $hargaOption[$key + 1] = $options;
         }
-
+// dd($amount);
         return view('penyewa.page.dashboard',[
                 'title' => 'Dashboard',
                 'countUser' => $user,

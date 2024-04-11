@@ -15,6 +15,7 @@ use App\Models\HargaCart;
 use App\Models\Penarikan;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
+use App\Models\Transaction;
 
 class DeleteController extends Controller
 {
@@ -102,5 +103,15 @@ class DeleteController extends Controller
         $contact = Contact::where('id', $id)->first();
         $contact->delete();
         return redirect()->back()->with('delete', 'Data berhasil dihapus');
+    }
+
+    public function deleteTransaksi($uid){
+        $transaksi = Transaction::where('uid', $uid)->first();
+        $cart = Cart::where('uid', $uid)->first();
+        $h_cart = HargaCart::where('uid', $uid)->first();
+        $transaksi->delete();
+        $cart->delete();
+        $h_cart->delete();
+        return redirect()->back()->with('delete', 'Transaksi berhasil dihapus');
     }
 }

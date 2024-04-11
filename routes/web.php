@@ -189,6 +189,8 @@ Route::prefix('admin')
 
         // ROUTE DELETE
         Route::get('/delete/{id}', [DeleteController::class, 'deleteTalent']);
+        Route::get('/deleteTransksi/{uid}', [DeleteController::class, 'deleteTransaksi']);
+
         Route::get('/landing/delete/{uid}', [DeleteController::class, 'deleteSlide']);
         Route::get('/events/delete/{uid}', [DeleteController::class, 'deleteEvent']);
         Route::get('/hargas/delete/{id}', [DeleteController::class, 'deleteHarga']);

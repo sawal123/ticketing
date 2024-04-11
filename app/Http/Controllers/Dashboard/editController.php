@@ -282,8 +282,13 @@ class editController extends Controller
             $user->password = bcrypt($request->password);
         }
         $user->save();
+        if($user->role === 'penyewa'){
+            return redirect()->back()->with('editUser', 'Penyewa Berhasil Diubah');
+        }else{
+            return redirect()->back()->with('editUser', 'Admin Berhasil Diubah');
+        }
         // dd($request->poto);
-        return redirect()->back()->with('editUser', 'User Berhasil Diubah');
+        
     }
 
 

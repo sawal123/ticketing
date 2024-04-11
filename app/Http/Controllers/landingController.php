@@ -23,7 +23,8 @@ class landingController extends Controller
 {
     public function home()
     {
-        $event = Event::where('konfirmasi', '1')->take(9)->get();
+        $event = Event::where('konfirmasi', '1')->join('users', 'events.user_uid', '=' ,'users.uid')->take(9)->get();
+        // dd($event);
         $harga = Harga::select('uid', 'harga')->orderBy('harga', 'asc')->get();
         $slide = Slider::all(['*']);
        

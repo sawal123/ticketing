@@ -15,12 +15,12 @@
                         @endif
 
                         <img src="{{ asset('/storage/cover/' . $events->cover) }}" class="card-img-top " loading="lazy"
-                            style="border-radius: 6%; {{ $events->status === 'close' ? 'filter: grayscale(100%)' : '' }}"
+                            style="border-radius: 4%; {{ $events->status === 'close' ? 'filter: grayscale(100%)' : '' }}"
                             alt="...">
                     </div>
                     <div class="card-body fugu--card-data text-start">
-                        <h5 class="" style="color: white">{{ $events->event }}</h5>
-                        <a style="color: white; " class="mb-2" href="{{ $events->map }}">{{ $events->alamat }}</a>
+                        <h6 class="" style="color: white">{{ $events->event }}</h6>
+                        <a style="color: white; " class="mb-2" href="{{ $events->map }}"><p>{{ $events->alamat }}</p></a>
                         <p>{{ date('Y-m-d H:i', strtotime($events->tanggal)) }}</p>
                         <div class="fugu--card-footer mt-1">
                             <div class="fugu--card-footer-data">
@@ -37,6 +37,8 @@
                         </div>
                         <a class="fugu--btn btn-sm bg-white" href="{{ url('/ticket/' . $events->slug) }}">Beli</a>
                     </div>
+                    <hr class="my-2">
+                    <p>By: {{ $events->name }}</p>
                 </div>
             </div>
         @endforeach

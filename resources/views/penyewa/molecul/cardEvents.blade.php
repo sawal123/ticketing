@@ -1,5 +1,5 @@
 @foreach ($paginate as $events)
-    <div class="col-md-6 col-xl-2 col-sm-6">
+    <div class="col-md-6 col-xl-3 col-sm-6">
         <div class="card">
             <div class="product-grid6">
                 <div class="product-image6 p-1">

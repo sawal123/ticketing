@@ -188,8 +188,14 @@ class addController extends Controller
         }
         $user->save();
 
+        if ($request->role === 'penyewa') {
+            return redirect()->back()->with('addUser', 'Penyewa Berhasil Di Tambah');
+        }else{
+            return redirect()->back()->with('addUser', 'Admin Berhasil Di Tambah');
+        }
+
         // dd($request->poto);
-        return redirect()->back()->with('addUser', 'User Berhasil Di Tambah');
+        
     }
 
     public function addContact(Request $request){
