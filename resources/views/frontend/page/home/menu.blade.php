@@ -31,7 +31,7 @@
                                     @break
 
                                     {{-- @else
-                                        <p>Ticket Belum Tersedia</p> --}}
+                                        <p>Ticket Belum Tersedia </p> --}}
                                 @endif
                             @endforeach
                         </div>
