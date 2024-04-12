@@ -21,26 +21,35 @@ class EditController extends Controller
 {
     public function editEventPenyewa(Request $request)
     {
-        $event = Event::where('uid', $request->uid)->where('user_uid', Auth::user()->uid)->first(); 
+        $event = Event::where('uid', $request->uid)->where('user_uid', Auth::user()->uid)->first();
         $eventDate = EventDate::where('uid', $request->uid)->first();
 
         $tanggal = date('Y-m-d H:i', strtotime($request->tanggal));
         $event->event = $request->event;
         $event->alamat = $request->alamat;
         $event->tanggal = $tanggal;
-        $eventDate->start= $request->start;
-        $eventDate->end= $request->end;
+        $eventDate->start = $request->start;
+        $eventDate->end = $request->end;
         $event->status = $request->status;
         $event->deskripsi = $request->deskripsi;
         $event->map = $request->map;
         $event->slug = Str::slug($request->event);
 
+
+
         if ($request->hasFile('cover')) {
+            $imagePath = public_path() . '/storage/cover/' . $event->cover;
+            if (file_exists($imagePath) === true) {
+                unlink($imagePath);
+            }
+
             $file = $request->file('cover');
             $fileName = $event->uid . '_' . time() . '_' . $file->getClientOriginalName();
             $file->storeAs('public/cover/', $fileName);
             $event->cover = $fileName;
         }
+
+
 
         $eventDate->save();
         $event->save();
@@ -138,17 +147,18 @@ class EditController extends Controller
         }
     }
 
-    public function editPartner(Request $request){
+    public function editPartner(Request $request)
+    {
         $validate = Validator::make($request->all(), [
-            'name'=> 'string|required',
-            'email'=> 'string|required',
-            'city'=> 'string|required',
-            'alamat'=> 'string|required',
+            'name' => 'string|required',
+            'email' => 'string|required',
+            'city' => 'string|required',
+            'alamat' => 'string|required',
             'nomor' => 'numeric|required',
         ]);
 
         $validate->validate();
-        $partner = Partner::where('uid', $request->uid)->first(); 
+        $partner = Partner::where('uid', $request->uid)->first();
         // dd($partner);
 
         $partner->name = $request->name;
@@ -157,17 +167,11 @@ class EditController extends Controller
         $partner->alamat = $request->alamat;
         $partner->hp = $request->nomor;
 
-        try{
+        try {
             $partner->save();
             return redirect()->back()->with('success', 'Partner Berhasil Diubah');
-        }catch(\Exception $e){
+        } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Gagal Diubah');
         }
-
-        
-
-
-
-
     }
 }

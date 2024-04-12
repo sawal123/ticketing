@@ -80,7 +80,39 @@
                                         <td>
                                             {{ $carts->email }}
                                         </td>
-                                        <td>{{ $carts->total_quantity }}</td>
+                                        <td>
+                                            <a class="modal-effect btn btn-primary-light d-grid mb-3"
+                                                data-bs-effect="effect-scale" data-bs-toggle="modal"
+                                                href="#modaldemo8{{ $key }}">{{ $carts->total_quantity }}
+                                                Ticket</a>
+                                            <div class="modal fade" id="modaldemo8{{ $key }}">
+
+                                                <div class="modal-dialog modal-dialog-centered text-center" role="document">
+                                                    <div class="modal-content modal-content-demo">
+                                                        <div class="modal-header">
+                                                            <h6 class="modal-title">Detail Ticket</h6><button
+                                                                aria-label="Close" class="btn-close"
+                                                                data-bs-dismiss="modal"><span
+                                                                    aria-hidden="true">&times;</span></button>
+                                                        </div>
+                                                        <div class="modal-body">
+                                                            @foreach ($qtyTiket as $qt)
+                                                                @if ($qt->uid === $carts->uid)
+                                                                    <div class="d-flex justify-content-between">
+                                                                        <p>{{ $qt->kategori_harga }} </p>
+                                                                        <p>{{ $qt->quantity }} </p>
+                                                                    </div>
+                                                                @endif
+                                                            @endforeach
+                                                        </div>
+                                                        <div class="modal-footer">
+                                                            <button class="btn btn-light"
+                                                                data-bs-dismiss="modal">Close</button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </td>
                                         <td>{{ $carts->total_harga }}</td>
 
                                         <td>

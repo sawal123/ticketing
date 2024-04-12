@@ -50,9 +50,9 @@
                                             aria-label="Default select example" required name="gender">
                                             <option selected disabled>Choose Gender..</option>
                                             <option value="wanita" @if ($dataUser->gender === 'wanita') @selected(true) @endif>
-                                                Female</option>
+                                                Wanita</option>
                                             <option value="pria" @if ($dataUser->gender === 'pria') @selected(true) @endif>
-                                                Male</option>
+                                                Pria</option>
 
                                         </select>
                                         <select class="form-select mb-2" style="height: 40px !important;padding-left: 30px"

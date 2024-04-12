@@ -47,15 +47,13 @@
     <div class="row row-sm">
         <div class="col-lg-12">
             <div class="card">
-                <form action="{{ url('admin/transaksi') }}" method="get">
+                <form action="{{ url('admin/transaksi/') }}" method="get">
                     @csrf
                     <div class="card-header d-flex justify-content-between">
                         <h3 class="card-title">File Export</h3>
                         <div class="input-group w-md w-25">
-
                             <input type="date" class="form-control " name="filter" value="{{ $filter }}">
                             <button type="submit" class="btn btn-primary">Filter</button>
-
                         </div>
 
                     </div>
@@ -98,9 +96,12 @@
                                                 @endif
                                             @endforeach
                                         </td>
-                                        <td>{{ $carts->total_quantity }}</td>
+                                        <td>
+                                            <span
+                                                class="badge rounded-pill text-bg-primary">{{ $carts->total_quantity }}</span>
+                                        </td>
                                         <td>{{ $carts->total_harga }}</td>
-                                        <td>{{ $carts->payment_type === 'cash' ? 0 :$carts->fee }}</td>
+                                        <td>{{ $carts->payment_type === 'cash' ? 0 : $carts->fee }}</td>
                                         <td>{{ $carts->payment_type }}</td>
                                         <td>
                                             <div class="mt-sm-1 d-block">
@@ -121,14 +122,12 @@
                                                     @endif @endforeach"
                                                     data-status="{{ $carts->status }}"><span
                                                         class="fe fe-edit fs-14"></span></button>
-
                                                 @if ($carts->status !== 'SUCCESS')
-                                                    <a href="{{ url('admin/deleteTransksi'. $carts->uid) }}"
+                                                    <a href="{{ url('admin/deleteTransksi/' . $carts->uid) }}"
                                                         class="btn text-danger btn-sm delete" data-bs-toggle="tooltip"
                                                         data-bs-original-title="Delete"><span
                                                             class="fe fe-trash-2 fs-14"></span></a>
                                                 @endif
-
                                             </div>
                                         </td>
                                     </tr>

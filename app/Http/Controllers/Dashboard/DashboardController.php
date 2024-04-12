@@ -160,6 +160,9 @@ class DashboardController extends Controller
     }
     public function transaksi(Request $request)
     {
+        if($request->uid !== null){
+            dd('yes');
+        }
         $filter = $request->filter;
         if ($filter === null) {
             $filter = date('Y-m-d');

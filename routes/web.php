@@ -141,7 +141,7 @@ Route::prefix('admin')
 
         Route::get('/search',[DashboardController::class, 'event']);
     
-        Route::get('/transaksi/{filter?}', [DashboardController::class, 'transaksi']);
+        Route::get('/transaksi/{uid?}', [DashboardController::class, 'transaksi']);
         // Route::get('/transaksi/filter', [DashboardController::class, 'transaksi']);
         Route::get('/user/{data?}', [DashboardController::class, 'user']);
         Route::get('/event/{addEvent?}/{uid?}', [DashboardController::class, 'event']);

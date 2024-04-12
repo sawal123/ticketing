@@ -42,6 +42,10 @@ class editController extends Controller
         $event->map = $request->map;
 
         if ($request->hasFile('cover')) {
+            $imagePath = public_path() . '/storage/cover/' . $event->cover;
+            if (file_exists($imagePath) === true) {
+                unlink($imagePath);
+            }
             $file = $request->file('cover');
             $fileName = $event->uid . '_' . time() . '_' . $file->getClientOriginalName();
             $file->storeAs('public/cover/', $fileName);
@@ -61,6 +65,10 @@ class editController extends Controller
         $talents->talent = $talent;
 
         if ($request->hasFile('gambar')) {
+            $imagePath = public_path() . '/storage/talent/' . $talents->gambar;
+            if (file_exists($imagePath) === true) {
+                unlink($imagePath);
+            }
             $file = $request->file('gambar');
             $fileName = $talents->uid . '_' . time() . '_' . $file->getClientOriginalName();
             $file->storeAs('public/talent/', $fileName);
@@ -92,6 +100,10 @@ class editController extends Controller
         $slide->url = $request->url;
         $slide->sort = $request->sort;
         if ($request->hasFile('gambar')) {
+            $imagePath = public_path() . '/storage/slide/' . $slide->gambar;
+            if (file_exists($imagePath) === true) {
+                unlink($imagePath);
+            }
             $file = $request->file('gambar');
             $fileName = $slide->uid . '_' . time() . '_' . $file->getClientOriginalName();
             $file->storeAs('public/slide/', $fileName);
@@ -112,8 +124,7 @@ class editController extends Controller
             $com = compact('provinsi');
         }
 
-        return view(
-            'frontend.page.editProfile',
+        return view('frontend.page.editProfile',
             [
                 'title' => 'Edit Profile',
                 'dataUser' => $dataUser,
@@ -142,6 +153,10 @@ class editController extends Controller
         $user->kota = $request->input('kota');
         $user->alamat = $request->input('alamat');
         if ($request->hasFile('gambar')) {
+            $imagePath = public_path() . '/storage/user/' . $user->gambar;
+            if (file_exists($imagePath) === true) {
+                unlink($imagePath);
+            }
             $file = $request->file('gambar');
             $fileName = $user->uid . '_' . time() . '_' . $file->getClientOriginalName();
             $file->storeAs('public/user/', $fileName);
@@ -272,6 +287,10 @@ class editController extends Controller
         $user->gender = $request->gender;
 
         if ($request->hasFile('poto')) {
+            $imagePath = public_path() . '/storage/user/' . $user->gambar;
+            if (file_exists($imagePath) === true) {
+                unlink($imagePath);
+            }
             $file = $request->file('poto');
             $fileName = $user->uid . '_' . time() . '_' . $file->getClientOriginalName();
             $file->storeAs('public/user/', $fileName);
@@ -359,6 +378,10 @@ class editController extends Controller
         $user->alamat = $request->alamat;
 
         if ($request->hasFile('img')) {
+            $imagePath = public_path() . '/storage/user/' . $user->gambar;
+            if (file_exists($imagePath) === true) {
+                unlink($imagePath);
+            }
             $file = $request->file('img');
             $fileName = $user->uid . '_' . time() . '_' . $file->getClientOriginalName();
             $file->storeAs('public/user/', $fileName);
@@ -405,6 +428,10 @@ class editController extends Controller
         $con->name = $request->nama;
         $con->link =  $request->link == null ? '' : $request->link;
         if ($request->hasFile('icon')) {
+            $imagePath = public_path() . '/storage/sosmed/' . $con->icon;
+            if (file_exists($imagePath) === true) {
+                unlink($imagePath);
+            }
             $file = $request->file('icon');
             $fileName = time() . '_' . $file->getClientOriginalName();
             $file->storeAs('public/sosmed/', $fileName);

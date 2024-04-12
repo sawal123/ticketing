@@ -53,7 +53,7 @@
                                 <div class="d-flex">
                                     <div class="mt-2">
                                         <h6 class="">Total Omset</h6>
-                                        <h2 class="mb-0 number-font">Rp {{ number_format($amount[0], 0, ',', '.') }}</h2>
+                                        <h2 class="mb-0 number-font">Rp {{ number_format($totalAmount, 0, ',', '.') }}</h2>
                                     </div>
                                     <div class="ms-auto">
                                         <div class="chart-wrapper mt-1">

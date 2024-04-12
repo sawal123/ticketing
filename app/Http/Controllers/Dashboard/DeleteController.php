@@ -38,6 +38,10 @@ class DeleteController extends Controller
     public function deleteSlide($uid)
     {
         $slide = Slider::where('uid', $uid)->first();
+        $imagePath = public_path() . '/storage/slide/' . $slide->gambar;
+        if (file_exists($imagePath) === true) {
+            unlink($imagePath);
+        }
         $slide->delete();
         return redirect()->back()->with('deleteSlide', 'Slide Berhasil Dihapus');
     }
@@ -46,14 +50,22 @@ class DeleteController extends Controller
     {
         $event = Event::where('uid', $uid)->first();
         if ($event) {
+            $imagePath = public_path() . '/storage/cover/' . $event->cover;
+            if (file_exists($imagePath) === true) {
+                unlink($imagePath);
+            }
             $event->delete();
             $talent = Talent::where('uid', $event->uid)->get();
             if ($talent) {
                 foreach ($talent as $talentItem) {
+                    $imagePath = public_path() . '/storage/cover/' . $talentItem->gambar;
+                    if (file_exists($imagePath) === true) {
+                        unlink($imagePath);
+                    }
                     $talentItem->delete();
                 }
             }
-            $harga = Talent::where('uid', $event->uid)->get();
+            $harga = Harga::where('uid', $event->uid)->get();
             if ($harga) {
                 foreach ($harga as $hargaItem) {
                     $hargaItem->delete();
@@ -81,6 +93,10 @@ class DeleteController extends Controller
     {
         $user = User::where('uid', $uid)->first();
         // dd($user);
+        $imagePath = public_path() . '/storage/user/' . $user->gambar;
+        if (file_exists($imagePath) === true) {
+            unlink($imagePath);
+        }
         $user->delete();
         return redirect()->back()->with('deleteUser', 'User Berhasil Dihapus');
     }
@@ -101,6 +117,10 @@ class DeleteController extends Controller
     {
         // dd($uid);
         $contact = Contact::where('id', $id)->first();
+        $imagePath = public_path() . '/storage/sosmed/' . $contact->icon;
+        if (file_exists($imagePath) === true) {
+            unlink($imagePath);
+        }
         $contact->delete();
         return redirect()->back()->with('delete', 'Data berhasil dihapus');
     }
