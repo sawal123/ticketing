@@ -84,6 +84,26 @@
 
     })
 
+    $(document).on("show.bs.modal", "#upCasher", function(e) {
+        var t = $(e.relatedTarget)
+        var uid = t.data('uid')
+        var nama = t.data('nama')
+        var email = t.data('email')
+        var lahir = t.data('lahir')
+        var alamat = t.data('alamat')
+        var nomor = t.data('nomor')
+        var gender = t.data('gender')
+        console.log(uid)
+        var m = $(this);
+        m.find('#uid').val(uid)
+        m.find('#nama').val(nama)
+        m.find('#email').val(email)
+        m.find('#lahir').val(lahir)
+        m.find('#alamat').val(alamat)
+        m.find('#nomor').val(nomor)
+        m.find('#gender').val(gender)
+    })
+
     $(document).on("show.bs.modal", "#editTransaksi", function(e){
         var b = $(e.relatedTarget)
         var uid = b.data('uid')

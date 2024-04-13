@@ -222,11 +222,14 @@ class AddController extends Controller
             'email' => 'required|email',
             'alamat' => 'required|string',
             'ttl' => 'required|string',
-            'total' => 'required|numeric'
+            'total' => 'required|numeric',
+            'gender'=> 'required', 
+            'nomor'=> 'required|numeric'
         ]);
         $validate->validate();
 
         $string = Str::random(3);
+        $string2 = Str::random(2);
         $number = mt_rand(1000, 9999999999);
         $invoice = str_pad($string . $number, 10, '0', STR_PAD_LEFT);
         $str = Str::uuid();
@@ -243,6 +246,9 @@ class AddController extends Controller
         $alamat =  $request->alamat;
         $ttl =  $request->ttl;
         $total =  $request->total;
+        $gender = $request->gender;
+        $nomor = $request->nomor;
+        $konfirmasi = $request->konfirmasi;
 
 
         $events = Event::where('event', $event)->first();
@@ -252,13 +258,12 @@ class AddController extends Controller
             'uid' => $str,
             'user_uid' => $uid,
             'event_uid' => $events->uid,
-            'invoice' => 'INV-' . $invoice,
+            'invoice' => $order_id,
             'status' => 'SUCCESS',
-            'konfirmasi' => null,
+            'konfirmasi' => $konfirmasi,
             'link' => null,
             'payment_type' => 'cash',
         ]);
-
         $hargaCart = new HargaCart([
             'orderBy' => '1',
             'uid' => $str,
@@ -273,7 +278,7 @@ class AddController extends Controller
             'user_uid' => $uid,
             'event_uid'=> $events->uid,
             'amount' => $total,
-            'invoice'=> 'INV-' . $invoice,
+            'invoice'=> $order_id,
             'payment_type' => 'cash',
             'status_transaksi' => 'SUCCESS'
         ]);
@@ -285,8 +290,10 @@ class AddController extends Controller
             'uid_event' => $events->uid,
             'name' => $nama,
             'email' => $email,
+            'nomor' => $nomor,
             'alamat' => $alamat,
             'lahir' => $ttl,
+            'gender' => $gender,
         ]);
 
         try {

@@ -15,6 +15,7 @@ use App\Models\HargaCart;
 use App\Models\Penarikan;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
+use App\Models\Cash;
 use App\Models\Transaction;
 
 class DeleteController extends Controller
@@ -100,6 +101,31 @@ class DeleteController extends Controller
         $user->delete();
         return redirect()->back()->with('deleteUser', 'User Berhasil Dihapus');
     }
+
+    public function deleteCashes($uid)
+    {
+        $cashes = Cash::where('uid', $uid)->first();
+        $cart = Cart::where('uid', $uid)->first();
+        $transaksi =  Transaction::where('uid', $uid)->first();
+        $hargaCart = HargaCart::where('uid', $uid)->get();
+        $cashes->delete();
+        if ($hargaCart) {
+            foreach ($hargaCart as $hc) {
+                $hc->delete();
+            }
+        }
+        if ($transaksi) {
+            $transaksi->delete();
+        }
+        if ($cart) {
+            $cart->delete();
+        }
+        if ($cashes) {
+            $cashes->delete();
+        }
+        return redirect()->back()->with('success', 'Cashes Berhasil Dihapus');
+    }
+
     public function deleteVoucher($uid)
     {
         $voucher = Voucher::where('uid', $uid)->first();
@@ -125,13 +151,22 @@ class DeleteController extends Controller
         return redirect()->back()->with('delete', 'Data berhasil dihapus');
     }
 
-    public function deleteTransaksi($uid){
+    public function deleteTransaksi($uid)
+    {
         $transaksi = Transaction::where('uid', $uid)->first();
         $cart = Cart::where('uid', $uid)->first();
         $h_cart = HargaCart::where('uid', $uid)->first();
-        $transaksi->delete();
-        $cart->delete();
-        $h_cart->delete();
+        if ($transaksi) {
+            $transaksi->delete();
+        }
+        if ($cart) {
+            $cart->delete();
+        }
+        if ($h_cart) {
+            $h_cart->delete();
+        }
+
+
         return redirect()->back()->with('delete', 'Transaksi berhasil dihapus');
     }
 }

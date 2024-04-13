@@ -17,11 +17,13 @@ use App\Models\Transaction;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
+use App\Mail\CashNotifikasiMail;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Auth\Events\Validated;
 use App\Mail\MidtransPaymentNotification;
+use App\Models\Cash;
 use Illuminate\Support\Facades\Validator;
 
 class editController extends Controller
@@ -124,7 +126,8 @@ class editController extends Controller
             $com = compact('provinsi');
         }
 
-        return view('frontend.page.editProfile',
+        return view(
+            'frontend.page.editProfile',
             [
                 'title' => 'Edit Profile',
                 'dataUser' => $dataUser,
@@ -301,13 +304,37 @@ class editController extends Controller
             $user->password = bcrypt($request->password);
         }
         $user->save();
-        if($user->role === 'penyewa'){
+        if ($user->role === 'penyewa') {
             return redirect()->back()->with('editUser', 'Penyewa Berhasil Diubah');
-        }else{
+        } else {
             return redirect()->back()->with('editUser', 'Admin Berhasil Diubah');
         }
         // dd($request->poto);
-        
+
+    }
+
+    public function editCashes(Request $request)
+    {
+        $validate = Validator::make($request->all(), [
+            'uid' => 'required|string',
+            'nama' => 'required|string|max:255',
+            'email' => 'required|string|email',
+            'lahir' => 'date',
+            'alamat' => 'required|string|max:255',
+            'nomor' => 'required|numeric',
+            'gender' => 'required|string|max:20'
+        ]);
+        $validate->validate();
+
+        $cashes = Cash::where('uid', $request->uid)->first();
+        $cashes->name = $request->nama;
+        $cashes->email = $request->email;
+        $cashes->lahir = $request->lahir;
+        $cashes->alamat = $request->alamat;
+        $cashes->nomor = $request->nomor;
+        $cashes->gender = $request->gender;
+        $cashes->save();
+        return redirect()->back()->with('success', 'Cashes Berhasil Diubah');
     }
 
 
@@ -335,20 +362,27 @@ class editController extends Controller
         $uid = $request->uid;
         $name = $request->name;
         $barcode = $request->inv;
-        // dd($name);
+
         $user = User::where("name", $name)->first();
         $transaksis = Transaction::where("uid", $request->uid)->first();
         $carts = Cart::where("uid", $request->uid)->first();
-        // dd($user);
+        $cash = Cash::where('uid', $uid)->first();
 
         if ($request->status === "SUCCESS") {
-            Mail::to($user->email)->send(new MidtransPaymentNotification($user, $carts, $barcode));
+            if ($carts->payment_type === 'cash') {
+                Mail::to($cash->email)->send(new CashNotifikasiMail($cash->name,  $barcode));
+            } else {
+                Mail::to($user->email)->send(new MidtransPaymentNotification($user, $carts, $barcode));
+            }
         }
 
         $carts->status = $request->status;
-        $transaksis->status_transaksi = $request->status;
+        if ($transaksis) {
+            $transaksis->status_transaksi = $request->status;
+            $transaksis->save();
+        }
         $carts->save();
-        $transaksis->save();
+        // $transaksis->save();
         return redirect()->back()->with("success", "Transaksi Berhasil di Ubah");
     }
 

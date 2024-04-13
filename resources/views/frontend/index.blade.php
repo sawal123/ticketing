@@ -94,7 +94,6 @@
 
                 if (container.classList.contains("expanded")) {
                     readMore.textContent = "Baca Lebih Sedikit";
-                    // console.log(readMore.textContent)
                 } else {
                     readMore.textContent = "Baca Selengkapnya";
                 }

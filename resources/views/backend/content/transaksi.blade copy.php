@@ -47,7 +47,7 @@
     <div class="row row-sm">
         <div class="col-lg-12">
             <div class="card">
-                <form action="{{ url('admin/transaksi/'. $uidEvent) }}" method="get">
+                <form action="{{ url('admin/transaksi/') }}" method="get">
                     @csrf
                     <div class="card-header d-flex justify-content-between">
                         <h3 class="card-title">File Export</h3>
@@ -59,15 +59,13 @@
                     </div>
                 </form>
                 @if (session('success'))
-                   <div class="container mt-3">
-                     <div class="alert alert-primary">
+                    <div class="alert alert-primary">
                         {{ session('success') }}
                     </div>
-                   </div>
                 @endif
                 <div class="card-body">
                     <div class="table-responsive">
-                        <table id="tablePenyewa" class="table table-bordered text-nowrap key-buttons border-bottom">
+                        <table id="file-datatable" class="table table-bordered text-nowrap key-buttons border-bottom">
                             <thead>
                                 <tr>
                                     <th class="border-bottom-0">No</th>
@@ -76,12 +74,9 @@
                                     <th class="border-bottom-0">Tanggal</th>
                                     <th class="border-bottom-0">Name</th>
                                     <th class="border-bottom-0">Qty</th>
-                                    <th class="border-bottom-0">Jmlh</th>
-                                    <th class="border-bottom-0">Disc</th>
                                     <th class="border-bottom-0">Total</th>
-                                    <th class="border-bottom-0">Voucher</th>
-                                    <th class="border-bottom-0">Payment</th>
                                     <th class="border-bottom-0">Fee</th>
+                                    <th class="border-bottom-0">Type</th>
                                     <th class="border-bottom-0">Status</th>
                                     <th class="border-bottom-0">Action</th>
                                 </tr>
@@ -102,7 +97,6 @@
                                             @endforeach
                                         </td>
                                         <td>
-
                                             <a class="modal-effect btn btn-primary-light d-grid mb-3"
                                                 data-bs-effect="effect-scale" data-bs-toggle="modal"
                                                 href="#modaldemo8{{ $key }}">{{ $carts->total_quantity }}
@@ -119,7 +113,8 @@
                                                         </div>
                                                         <div class="modal-body">
                                                             @foreach ($qtyTiket as $qt)
-                                                                @if ($qt->uid === $carts->uid)
+                                                            {{-- <p>{{ $qt->uid }}</p> --}}
+                                                            @if ($qt->uid === $carts->uid)
                                                                     <div class="d-flex justify-content-between">
                                                                         <p>{{ $qt->kategori_harga }} </p>
                                                                         <p>{{ $qt->quantity }} </p>
@@ -134,22 +129,16 @@
                                                     </div>
                                                 </div>
                                             </div>
-
                                         </td>
-
                                         <td>{{ $carts->total_harga }}</td>
-                                        <td>{{ $carts->disc }}</td>
-                                        <td>{{ $carts->total_harga - $carts->disc }}</td>
-                                        <td>{{ $carts->voucher }}</td>
-                                        <td>{{ $carts->payment_type }}</td>
                                         <td>{{ $carts->payment_type === 'cash' ? 0 : $carts->fee }}</td>
+                                        <td>{{ $carts->payment_type }}</td>
                                         <td>
                                             <div class="mt-sm-1 d-block">
                                                 <span
                                                     class="badge bg-success-transparent rounded-pill text-success p-2 px-3">{{ $carts->status }}</span>
                                             </div>
                                         </td>
-                                       
                                         <td>
                                             <div class="g-2">
 
@@ -175,7 +164,6 @@
                                 @endforeach
                                 @include('backend.molecul.modalTransaksi')
                             </tbody>
-
                         </table>
                     </div>
                 </div>

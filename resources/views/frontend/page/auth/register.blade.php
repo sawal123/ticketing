@@ -58,8 +58,8 @@
                             </a>
                             <select class="form-select" aria-label="Default select example" required name="gender">
                                 <option selected disabled>Choose Gender..</option>
-                                <option value="wanita">Male</option>
-                                <option value="pria">Female</option>
+                                <option value="wanita">Wanita</option>
+                                <option value="pria">Pria</option>
                             </select>
                         </div>
                         <div class="wrap-input100 validate-input input-group">

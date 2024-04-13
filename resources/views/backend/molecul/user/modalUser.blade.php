@@ -65,7 +65,7 @@
                         </div>
                     </div>
                     <div class="row mb-4">
-                        <label class="col-md-3 form-label">Alamat :</label>
+                        <label class="col-md-3 form-label">Gender :</label>
                         <div class="col-md-9">
                             <div class="wrap-input100 validate-input input-group">
                                 <a href="javascript:void(0)" class="input-group-text bg-white text-muted">

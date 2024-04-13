@@ -103,6 +103,7 @@
                                             <li><a href="{{ url('/admin/user') }}" class="slide-item {{request()->is('admin/user') ? 'active': ''}}"> Role User</a></li>
                                             <li><a href="{{ url('/admin/user/admin') }}"" class="slide-item {{request()->is('admin/user/admin') ? 'active': ''}}"> Role Admin</a></li>
                                             <li><a href="{{ url('/admin/user/penyewa') }}"" class="slide-item {{request()->is('admin/user/penyewa') ? 'active': ''}}"> Role Penyewa</a></li>
+                                            <li><a href="{{ url('/admin/user/cashes') }}" class="slide-item {{request()->is('admin/user/cashes') ? 'active': ''}}"> Role Cashes</a></li>
                                         </ul>
                                     </div>
                                 </div>

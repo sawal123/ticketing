@@ -13,8 +13,7 @@
                     <div class="row mb-4">
                         <label class="col-md-3 	d-none d-lg-block form-label">Partner</label>
                         <div class="col-md-9">
-                            <select  class="form-select" name="partner"
-                                aria-label="Default select example">
+                            <select class="form-select" name="partner" aria-label="Default select example">
                                 <option selected>Pilih Partner</option>
                                 @foreach ($partner as $key => $partners)
                                     <option value="{{ $partners->uid }}" class="{{ $key + 1 }}">
@@ -65,7 +64,7 @@
                     <div class="row mb-4">
                         <label class="col-md-3 	d-none d-lg-block form-label">Name</label>
                         <div class="col-md-9">
-                            <input type="text" class="form-control" name="name" placeholder="Masukan Nama.."
+                            <input type="text" class="form-control" name="name" placeholder="Masukan Nama Lengkap.."
                                 autocomplete="off" required>
                         </div>
                     </div>
@@ -74,6 +73,13 @@
                         <div class="col-md-9">
                             <input type="email" class="form-control" name="email" placeholder="Masukan Email.."
                                 autocomplete="off" required>
+                        </div>
+                    </div>
+                    <div class="row mb-4">
+                        <label class="col-md-3 	d-none d-lg-block form-label" for="nomor">WhatsApp</label>
+                        <div class="col-md-9">
+                            <input type="number" class="form-control" name="nomor"
+                                placeholder="Masukan Nomor WhatsApp.." autocomplete="off" required>
                         </div>
                     </div>
                     <div class="row mb-4">
@@ -90,13 +96,42 @@
                         </div>
                     </div>
 
-                    <div class="form-check d-flex justify-content-start">
-                        <input class="form-check-input" type="checkbox" value="" id="defaultCheck1" required
-                            name="check">
-                        <label class="form-check-label" for="defaultCheck1">
-                            Sudah Bayar Cash?
-                        </label>
+                    <div class="row mb-4">
+                        <label class="col-md-3 	d-none d-lg-block form-label" for="gender">Jenis Kelamin</label>
+                        <div class="col-md-9">
+                            <select id="jenis" class="form-select" name="gender"
+                                aria-label="Default select example">
+                                <option selected disabled>Jenis Kelamin</option>
+                                <option value="wanita">Wanita</option>
+                                <option value="pria">Pria</option>
+                            </select>
+                        </div>
                     </div>
+
+                    <div class="row">
+                        <div class="col-md-3">
+
+                        </div>
+                        <div class="col-md-9">
+                            <div class="row">
+                                <div class="col">
+                                    <input class="form-check-input" type="checkbox" value="1"
+                                        id="defaultCheck1" required name="check">
+                                    <label class="form-check-label" for="defaultCheck1">
+                                        Sudah Bayar Cash?
+                                    </label>
+                                </div>
+                                <div class="col">
+                                    <input class="form-check-input" type="checkbox" value="1"
+                                        id="defaultCheck2" required name="konfirmasi">
+                                    <label class="form-check-label" for="defaultCheck2">
+                                        Langsung Masuk
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
 
 
                 </div>

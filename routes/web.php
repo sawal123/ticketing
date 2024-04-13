@@ -173,6 +173,7 @@ Route::prefix('admin')
         Route::post('/editSlide', [editController::class, 'editSlide']);
         Route::post('/editTerm', [editController::class, 'editTerm']);
         Route::post('/user/editUser', [editController::class, 'editUser']);
+        Route::post('/user/editCashes', [editController::class, 'editCashes']);
         Route::get('/setujuiEvent/{data}', [editController::class, 'setujuiEvent']);
         Route::post('/editPenarikan', [editController::class, 'editStatusInvoice']);
 
@@ -196,6 +197,7 @@ Route::prefix('admin')
         Route::get('/hargas/delete/{id}', [DeleteController::class, 'deleteHarga']);
         Route::get('/term/delete/{id}', [DeleteController::class, 'deleteTerm']);
         Route::get('/user/delete/{id}', [DeleteController::class, 'deleteUser']);
+        Route::get('/cashes/delete/{id}', [DeleteController::class, 'deleteCashes']);
         Route::get('/deletePen/{data}', [DeleteController::class, 'deletePenarikan']);
         route::get('/delete/contact/{data}', [DeleteController::class, 'deleteContact']);
     });

@@ -5,16 +5,16 @@
             <div class="product-grid6">
                 <div class="product-image6 p-1">
                     <ul class="icons" style="right: 0; top: 10px">
-                        {{-- <li>
-                            <a href="{{ url('admin/event/eventDetail/' . $events->uid) }}" class="btn btn-primary"> <i
+                        <li>
+                            <a href="{{ url('admin/transaksi/' . $events->uid) }}" class="btn btn-primary"> <i
                                     class="fe fe-eye"> </i> </a>
-                        </li> --}}
+                        </li>
                         <li>
                             <a href="{{ url('admin/events/delete/' . $events->uid) }}" class="delete btn btn-danger">
                                 <i class="fe fe-trash"> </i> </a>
                         </li>
                     </ul>
-                    <a href="{{ url('admin/event/eventDetail/' . $events->uid) }}">
+                    <a >
                         <img class="img-fluid br-7 w-100" src="{{ asset('storage/cover/' . $events->cover) }}"
                             alt="img">
                     </a>

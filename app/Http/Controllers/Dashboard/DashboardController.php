@@ -20,6 +20,7 @@ use Illuminate\Http\Request;
 use App\Models\BankIndonesia;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
+use App\Models\Cash;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
@@ -68,7 +69,7 @@ class DashboardController extends Controller
             'amount' => $amount,
         ]);
     }
-    public function event(Request $request , $addEvent = null, $uid = null)
+    public function event(Request $request, $addEvent = null, $uid = null)
     {
         error_reporting(0);
         $event = Event::all();
@@ -160,62 +161,123 @@ class DashboardController extends Controller
     }
     public function transaksi(Request $request)
     {
-        if($request->uid !== null){
-            dd('yes');
-        }
         $filter = $request->filter;
         if ($filter === null) {
             $filter = date('Y-m-d');
         }
-        $use = User::all();
-        $cartQuery = Cart::select(
-            'carts.uid',
-            'carts.user_uid',
-            'carts.invoice',
-            'carts.status',
-            'events.event',
-            DB::raw('SUM(events.fee * harga_carts.quantity) as fee'),
-            'events.cover',
-            'carts.created_at',
-            'carts.payment_type',
-            DB::raw('SUM(harga_carts.quantity * harga_carts.harga_ticket) as total_harga'),
-            DB::raw('SUM(harga_carts.quantity) as total_quantity')
-        )
-            ->join('harga_carts', 'harga_carts.uid', '=', 'carts.uid')
-            ->join('events', 'events.uid', '=', 'carts.event_uid')
-            ->whereDate('carts.created_at', '=', $filter)
-            ->groupBy('carts.uid', 'carts.user_uid', 'carts.invoice', 'carts.status', 'events.event', 'events.fee', 'carts.payment_type', 'carts.created_at', 'events.cover');
-        $cart = $cartQuery->get();
-        $totalHargaCart = Cart::join('harga_carts', 'harga_carts.uid', '=', 'carts.uid')
-        ->select(DB::raw('SUM(harga_carts.harga_ticket * harga_carts.quantity) as harga_ticket'))
-        ->where('carts.status', 'SUCCESS')->get();
-        $ar = 0;
-        // dd($totalHargaCart);
-        foreach ($totalHargaCart as $key => $tHC) {
-            $ar += $totalHargaCart[$key]->harga_ticket;
+        if ($request->uid !== null) {
+            $use = User::all();
+            $cartQuery = Cart::join('events', 'events.uid', '=', 'carts.event_uid')->select(
+                    'carts.uid',
+                    'carts.user_uid',
+                    'carts.invoice',
+                    'carts.status',
+                    'events.event',
+                    DB::raw('SUM(events.fee * harga_carts.quantity) as fee'),
+                    'events.cover',
+                    'carts.created_at',
+                    'carts.payment_type',
+                    DB::raw('SUM(harga_carts.quantity * harga_carts.harga_ticket) as total_harga'),
+                    DB::raw('SUM(harga_carts.quantity) as total_quantity')
+                )
+                ->join('harga_carts', 'harga_carts.uid', '=', 'carts.uid')
+
+                ->whereDate('carts.created_at', '=', $filter)
+                ->where('carts.event_uid', '=', $request->uid)
+                ->groupBy('carts.uid', 'carts.user_uid', 'carts.invoice', 'carts.status', 'events.event', 'events.fee', 'carts.payment_type', 'carts.created_at', 'events.cover');
+            $cart = $cartQuery->get();
+            // $totalHargaCart = Cart::join('harga_carts', 'harga_carts.uid', '=', 'carts.uid')
+            // ->select(DB::raw('SUM(harga_carts.harga_ticket * harga_carts.quantity) as harga_ticket'))
+            // ->where('carts.status', 'SUCCESS')->get();
+            $totalHargaCart = Cart::join('harga_carts', 'harga_carts.uid', '=', 'carts.uid')
+                ->join('events', 'events.uid', '=', 'carts.event_uid')
+                ->select(['harga_carts.uid', 'harga_carts.harga_ticket', 'harga_carts.quantity', 'harga_carts.disc', 'kategori_harga'])
+                ->where('carts.status', 'SUCCESS')
+                ->where('carts.event_uid', '=', $request->uid)
+                // ->where('carts.payment_type', '!=', 'cash')
+                // ->where('events.user_uid', Auth::user()->uid)
+                ->get();
+            $ar = 0;
+            // dd($totalHargaCart);
+            foreach ($totalHargaCart as $key => $tHC) {
+                $ar += $totalHargaCart[$key]->harga_ticket;
+            }
+            $totalFee = Event::join('carts', 'carts.event_uid', '=', 'events.uid')
+                ->join('harga_carts', 'harga_carts.uid', '=', 'carts.uid')
+                ->select(DB::raw('SUM(events.fee * harga_carts.quantity) as total_fee'))->where('carts.status', 'SUCCESS')->where('payment_type', '!=', 'cash')
+                ->get();
+            $fe = 0;
+            // dd($totalFee);
+            foreach ($totalFee as $key => $tfe) {
+                $fe += $totalFee[$key]->total_fee;
+            }
+            $user = [];
+            foreach ($use as $users) {
+                $user[] = $users;
+            }
+        } else {
+            $use = User::all();
+            $cartQuery = Cart::select(
+                'carts.uid',
+                'carts.user_uid',
+                'carts.invoice',
+                'carts.status',
+                'events.event',
+                DB::raw('SUM(events.fee * harga_carts.quantity) as fee'),
+                'events.cover',
+                'carts.created_at',
+                'carts.payment_type',
+                DB::raw('SUM(harga_carts.quantity * harga_carts.harga_ticket) as total_harga'),
+                DB::raw('SUM(harga_carts.quantity) as total_quantity')
+            )
+                ->join('harga_carts', 'harga_carts.uid', '=', 'carts.uid')
+                ->join('events', 'events.uid', '=', 'carts.event_uid')
+                ->whereDate('carts.created_at', '=', $filter)
+                ->groupBy('carts.uid', 'carts.user_uid', 'carts.invoice', 'carts.status', 'events.event', 'events.fee', 'carts.payment_type', 'carts.created_at', 'events.cover');
+            $cart = $cartQuery->get();
+            // $totalHargaCart = Cart::join('harga_carts', 'harga_carts.uid', '=', 'carts.uid')
+            // ->select(DB::raw('SUM(harga_carts.harga_ticket * harga_carts.quantity) as harga_ticket'))
+            // ->where('carts.status', 'SUCCESS')->get();
+            $totalHargaCart = Cart::join('harga_carts', 'harga_carts.uid', '=', 'carts.uid')
+                ->join('events', 'events.uid', '=', 'carts.event_uid')
+                ->select(['harga_carts.uid', 'harga_carts.harga_ticket', 'harga_carts.quantity', 'harga_carts.disc', 'kategori_harga'])
+                ->where('carts.status', 'SUCCESS')
+                // ->where('carts.payment_type', '!=', 'cash')
+                // ->where('events.user_uid', Auth::user()->uid)
+                ->get();
+            $ar = 0;
+            // dd($totalHargaCart);
+            foreach ($totalHargaCart as $key => $tHC) {
+                $ar += $totalHargaCart[$key]->harga_ticket;
+            }
+            $totalFee = Event::join('carts', 'carts.event_uid', '=', 'events.uid')
+                ->join('harga_carts', 'harga_carts.uid', '=', 'carts.uid')
+                ->select(DB::raw('SUM(events.fee * harga_carts.quantity) as total_fee'))->where('carts.status', 'SUCCESS')->where('payment_type', '!=', 'cash')
+                ->get();
+            $fe = 0;
+            // dd($totalFee);
+            foreach ($totalFee as $key => $tfe) {
+                $fe += $totalFee[$key]->total_fee;
+            }
+            $user = [];
+            foreach ($use as $users) {
+                $user[] = $users;
+            }
         }
-        $totalFee = Event::join('carts', 'carts.event_uid', '=', 'events.uid')
-        ->join('harga_carts', 'harga_carts.uid', '=', 'carts.uid')
-        ->select(   DB::raw('SUM(events.fee * harga_carts.quantity) as total_fee'))->where('carts.status', 'SUCCESS')->where('payment_type', '!=', 'cash')
-            ->get();
-        $fe = 0;
-        // dd($totalFee);
-        foreach ($totalFee as $key => $tfe) {
-            $fe += $totalFee[$key]->total_fee;
-        }
-        $user = [];
-        foreach ($use as $users) {
-            $user[] = $users;
-        }
-// dd($fe);
-        return view('backend.content.transaksi',
+
+
+        // dd($fe);
+        return view(
+            'backend.content.transaksi',
             [
                 'title' => 'Transaksi Dashboard',
                 'cart' => $cart,
                 'use' => $use,
+                'qtyTiket' => $totalHargaCart,
                 'totalHargaCart' => $ar,
                 'totalFee' => $fe,
-                'filter' => $filter
+                'filter' => $filter,
+                'uidEvent' => $request->uid
             ]
         );
     }
@@ -223,7 +285,7 @@ class DashboardController extends Controller
     public function user($data = null)
     {
         // $http = Http::get('https://www.emsifa.com/api-wilayah-indonesia/api/provinces.json');
-     
+
         // dd($provinsi);
         // if ($http->successful()) {
         //     $provinsi = $http->json();
@@ -236,17 +298,21 @@ class DashboardController extends Controller
             }
             // dd($datas[0]);
             $admin = User::where('role', 'admin')->get();
-            return view('backend.content.user.admin', ['title' => 'User', 'users' => $admin, 'provinsi' => $provinsi, 'datas' => $datas]);
+            return view('backend.content.user.admin', ['title' => 'Role Admin', 'users' => $admin, 'provinsi' => $provinsi, 'datas' => $datas]);
         }
 
         if ($data === 'penyewa') {
             $penyewa = User::where('role', 'penyewa')->get();
-            return view('backend.content.user.penyewa', ['title' => 'User', 'users' => $penyewa, 'provinsi' => $provinsi]);
+            return view('backend.content.user.penyewa', ['title' => 'Role Penyewa', 'users' => $penyewa, 'provinsi' => $provinsi]);
+        }
+        if ($data === 'cashes') {
+            $cashes = Cash::all();
+            return view('backend.content.user.cashes', ['title' => 'Role Cashes', 'users' => $cashes, 'provinsi' => $provinsi]);
         }
 
         if ($data === null) {
             $users = User::where('role', 'user')->get();
-            return view('backend.content.user.user', ['title' => 'User', 'users' => $users, 'provinsi' => $provinsi]);
+            return view('backend.content.user.user', ['title' => 'Role User', 'users' => $users, 'provinsi' => $provinsi]);
         }
     }
 
