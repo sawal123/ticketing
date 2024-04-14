@@ -15,8 +15,8 @@
                             </div>
                         @endif
 
-                        <img src="{{ asset('/storage/cover/' . $events->cover) }}" class="card-img-top " loading="lazy"
-                            style="border-radius: 4%; {{ $events->status === 'close' ? 'filter: grayscale(100%)' : '' }}"
+                        <img src="{{ asset('/storage/cover/' . $events->cover) }}"  class="card-img-top " loading="lazy"
+                            style="border-radius: 4%; object-fit:cover; height: 150px;  {{ $events->status === 'close' ? 'filter: grayscale(100%)' : '' }} "
                             alt="...">
                     </div>
                     <div class="card-body fugu--card-data text-start">

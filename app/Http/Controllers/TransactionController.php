@@ -65,7 +65,7 @@ class TransactionController extends Controller
                 'email'         => Auth::user()->email
             ],
             'enabled_payments' => [
-                'gopay', 'permata_va', 'bank_transfer'
+                'gopay', 'permata_va', 'bank_transfer', 'qris'
             ],
             'vtweb' => []
         );

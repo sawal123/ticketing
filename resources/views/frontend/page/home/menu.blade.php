@@ -14,13 +14,15 @@
                             </div>
                         @endif
 
-                        <img src="{{ asset('/storage/cover/' . $events->cover) }}" class="card-img-top " loading="lazy"
-                            style="border-radius: 4%; {{ $events->status === 'close' ? 'filter: grayscale(100%)' : '' }}"
+                        <img src="{{ asset('/storage/cover/' . $events->cover) }}"  class="card-img-top " loading="lazy"
+                            style="border-radius: 4%; object-fit:cover; height: 150px;  {{ $events->status === 'close' ? 'filter: grayscale(100%)' : '' }} "
                             alt="...">
                     </div>
                     <div class="card-body fugu--card-data text-start">
                         <h6 class="" style="color: white">{{ $events->event }}</h6>
-                        <a style="color: white; " class="mb-2" href="{{ $events->map }}"><p>{{ $events->alamat }}</p></a>
+                        <a style="color: white; " class="mb-2" href="{{ $events->map }}">
+                            <p>{{ $events->alamat }}</p>
+                        </a>
                         <p>{{ date('Y-m-d H:i', strtotime($events->tanggal)) }}</p>
                         <div class="fugu--card-footer mt-1">
                             <div class="fugu--card-footer-data">

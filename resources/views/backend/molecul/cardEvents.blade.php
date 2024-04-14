@@ -1,10 +1,9 @@
-
 @foreach ($event as $events)
     <div class="col-md-6 col-xl-2 col-sm-6">
         <div class="card">
             <div class="product-grid6">
                 <div class="product-image6 p-1">
-                    <ul class="icons" style="right: 0; top: 10px">
+                    {{-- <ul class="icons" style="right: 0; top: 10px">
                         <li>
                             <a href="{{ url('admin/transaksi/' . $events->uid) }}" class="btn btn-primary"> <i
                                     class="fe fe-eye"> </i> </a>
@@ -13,9 +12,9 @@
                             <a href="{{ url('admin/events/delete/' . $events->uid) }}" class="delete btn btn-danger">
                                 <i class="fe fe-trash"> </i> </a>
                         </li>
-                    </ul>
-                    <a >
-                        <img class="img-fluid br-7 w-100" src="{{ asset('storage/cover/' . $events->cover) }}"
+                    </ul> --}}
+                    <a href="{{ url('/admin/event/eventDetail/' . $events->uid) }}" >
+                        <img  class="img-fluid br-7" style="object-fit: cover; height: 150px;" src="{{ asset('storage/cover/' . $events->cover) }}"
                             alt="img">
                     </a>
                 </div>
@@ -24,9 +23,20 @@
                         <h1 class="title fw-bold fs-20"><a
                                 href="{{ url('/admin/event/eventDetail/' . $events->uid) }}">{{ $events->event }}</a>
                         </h1>
-                        <div class=" mb-2 btn-sm {{ $events->konfirmasi != null ? 'btn-primary' : 'btn-danger' }}">
-                            {{ $events->konfirmasi != null ? 'Disetujui' : 'Belum disetujui' }}
+                        @if ($events->konfirmasi)
+                        <div class="my-2">
+                            <a href="{{ url('admin/events/delete/' . $events->uid) }}" class="delete btn btn-danger">
+                                <i class="fe fe-trash"> </i> </a>
+                            <a href="{{ url('admin/transaksi/' . $events->uid) }}" class="btn btn-primary"> <i
+                                class="fe fe-bar-chart-2"></i> Transaksi </a>
                         </div>
+                           
+                        @else
+                            <div class=" mb-2 btn-sm {{ $events->konfirmasi != null ? 'btn-primary' : 'btn-danger' }}">
+                                {{ $events->konfirmasi != null ? 'Disetujui' : 'Belum disetujui' }}
+                            </div>
+                        @endif
+
                     </div>
                 </div>
 
