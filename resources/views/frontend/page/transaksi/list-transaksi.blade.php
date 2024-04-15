@@ -16,11 +16,11 @@
                             <div class="card-body table-responsive">
                                 <table>
                                     <tr>
-                                        <td style="width: 20%">
+                                        <td >
                                             <img src="{{ asset('storage/cover/' . $transaksi->cover) }}" alt=""
-                                                class="rounded me-5" style="width: 200px">
+                                                class="rounded me-5" style="width: 100px; height: 100px; object-fit: cover">
                                         </td>
-                                        <td style="width: 15%">
+                                        <td >
                                             <p class="m-0">Ivoice</p>
                                             <h6 class="m-0">{{ $transaksi->invoice }}</h6>
                                         </td>
@@ -46,7 +46,7 @@
                                             <div class="d-flex  align-items-center justify-content-between">
                                                 <a href="{{ url('/detail-ticket/' . $transaksi->uid . '/' . Auth::user()->uid) }}"
                                                     class="btn btn-primary ">Detail</a>
-                                                @if ($transaksi->status === 'UNPAID')
+                                                @if ($transaksi->status === 'UNPAID' || $transaksi->status === 'CANCELLED')
                                                     <a href="{{ url('/detail-ticket/delete/' . $transaksi->uid . '/' . Auth::user()->uid) }}"
                                                         class="btn btn-danger delete">Delete</a>
                                                 @endif

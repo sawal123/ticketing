@@ -33,10 +33,16 @@
                             .fa-cart-plus{
                                 transform: rotate(0deg) !important;
                             }
+                            .trans{
+                                color: #888888 !important;
+                            }
+                            .trans:hover{
+                                color: #fff !important;
+                            }
                         </style>
                         @if ($user)
                             <li class="nav-link nav-item-has-children">
-                                <a href="{{ url('/transaksi') }}" class="nav-link-item drop-trigger">Transaksi <i
+                                <a href="{{ url('/transaksi') }}" class="nav-link-item drop-trigger trans">Transaksi <i
                                         class="fas fa-cart-plus"></i></a>
                             </li>
                             <li class="nav-item nav-link nav-item-has-children">
