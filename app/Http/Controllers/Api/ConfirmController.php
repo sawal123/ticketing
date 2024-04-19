@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Models\Cart;
+use App\Models\Cash;
 use App\Models\User;
 use App\Models\Event;
 use App\Models\HargaCart;
@@ -18,13 +19,17 @@ class ConfirmController extends Controller
     public function cekData($data = null)
     {
         if ($data !== null) {
-            $cart = Cart::select(['carts.uid', 'carts.user_uid', 'carts.event_uid', 'carts.invoice', 'carts.konfirmasi', 'carts.status',DB::raw('SUM(harga_carts.quantity) as qty')])
-            ->join('harga_carts', 'harga_carts.uid', '=', 'carts.uid')
-            ->where('carts.invoice' , $data)
-            ->groupBy('carts.uid','carts.user_uid','carts.event_uid', 'carts.invoice', 'carts.status', 'carts.konfirmasi')
-            ->first();
+            $cart = Cart::join('harga_carts', 'harga_carts.uid', '=', 'carts.uid')
+                ->select(['carts.uid', 'carts.user_uid', 'carts.event_uid', 'carts.invoice', 'carts.konfirmasi',  'carts.payment_type', 'carts.status', DB::raw('SUM(harga_carts.quantity) as qty')])
+                ->where('carts.invoice', $data)
+                ->groupBy('carts.uid', 'carts.user_uid', 'carts.event_uid', 'carts.invoice', 'carts.status', 'carts.konfirmasi', 'carts.payment_type')
+                ->first();
             if ($cart !== null && $cart->status === 'SUCCESS') {
-                $user = User::select(['uid', 'name'])->where('uid', $cart->user_uid)->first();
+                if($cart->payment_type === 'cash'){
+                    $user = Cash::select(['uid', 'name'])->where('uid_user', $cart->user_uid)->first();
+                }else{
+                    $user = User::select(['uid', 'name'])->where('uid', $cart->user_uid)->first();
+                }
                 $event = Event::select(['event'])->where('uid', $cart->event_uid)->first();
                 $harga = HargaCart::select(['quantity', 'kategori_harga'])->where('uid', $cart->uid)->get();
                 $tes = [];
@@ -71,36 +76,35 @@ class ConfirmController extends Controller
         }
     }
 
-    public function verfikasi($data){
+    public function verfikasi($data)
+    {
         $data;
         $cart = Cart::select(['carts.uid', 'carts.konfirmasi', 'events.event', 'users.name', 'users.gambar'])
-        ->where('event_uid', $data)
-        ->where('carts.konfirmasi', '1')
-        ->join('events', 'events.uid', '=', 'carts.event_uid')
-        ->join('users', 'users.uid', '=', 'carts.user_uid')
-        ->get();
-        if($data !== null){
+            ->where('event_uid', $data)
+            ->where('carts.konfirmasi', '1')
+            ->join('events', 'events.uid', '=', 'carts.event_uid')
+            ->join('users', 'users.uid', '=', 'carts.user_uid')
+            ->get();
+        if ($data !== null) {
             return response()->json([
-                'cart' =>$cart,
-                
-            ],200);
-        }
+                'cart' => $cart,
 
-    }
-
-    public function listEvent(){
-        $event = Event::where('user_uid', Auth::user()->uid)->where('konfirmasi', '!=' , NULL)->get();
-        // dd($event);
-        if($event !== null){
-            return response()->json([
-                'event'=>$event,
             ], 200);
         }
-        else{
+    }
+
+    public function listEvent()
+    {
+        $event = Event::where('user_uid', Auth::user()->uid)->where('konfirmasi', '!=', NULL)->get();
+        // dd($event);
+        if ($event !== null) {
             return response()->json([
-               'message' => 'Error'
+                'event' => $event,
+            ], 200);
+        } else {
+            return response()->json([
+                'message' => 'Error'
             ], 500);
         }
-       
     }
 }

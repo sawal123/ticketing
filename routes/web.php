@@ -101,9 +101,9 @@ Route::prefix('dashboard')
     ->middleware(['auth', 'penyewa'])
     ->group(function () {
         Route::get('/', [PenyewaController::class, 'index'])->name('dashboard');
-        Route::get('/transaksi', [PenyewaController::class, 'transaksi'])->name('dashboard.transaksi');
+        Route::get('/transaksi/{uid?}', [PenyewaController::class, 'transaksi'])->name('dashboard.transaksi');
        
-        Route::get('/cash', [PenyewaController::class, 'cash'])->name('dashboard.cash');
+        Route::get('/cash/{uid?}', [PenyewaController::class, 'cash'])->name('dashboard.cash');
         Route::get('/event/{addEvent?}/{uid?}', [PenyewaController::class, 'event']);
         Route::get('/ubahEvents/{uid}', [PenyewaController::class, 'ubahEvents']);
         Route::get('/voucher', [PenyewaController::class, 'voucher']);

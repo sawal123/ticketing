@@ -2,7 +2,7 @@
 
 @section('content')
     <div class="page-header">
-        <h1 class="page-title">Dashboard Transaksi</h1>
+        <h1 class="page-title">Dashboard Transaksi Cash {{$event->event}}</h1>
         <div>
             <ol class="breadcrumb">
                 <li class="breadcrumb-item"><a href="javascript:void(0)">Dashboard</a></li>
@@ -47,9 +47,17 @@
     <div class="row row-sm">
         <div class="col-lg-12">
             <div class="card">
-                <div class="card-header">
-                    <h3 class="card-title">File Export</h3>
-                </div>
+                <form action="{{ url('dashboard/transaksi/'. $uidEvent) }}" method="get">
+                    @csrf
+                    <div class="card-header d-flex justify-content-between">
+                        <h3 class="card-title">File Export</h3>
+                        <div class="input-group w-md w-25">
+                            <input type="date" class="form-control " name="filter" value="{{ $filter }}">
+                            <button type="submit" class="btn btn-primary">Filter</button>
+                        </div>
+
+                    </div>
+                </form>
                 <div class="card-body">
                     <div class="table-responsive">
                         <table id="tablePenyewa" class="table table-bordered text-nowrap key-buttons border-bottom">

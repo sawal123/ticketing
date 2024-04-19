@@ -15,7 +15,7 @@
                     </ul>
                     <a href="{{ url('dashboard/event/eventDetail/' . $events->uid) }}">
                         <img class="img-fluid br-7 w-100" src="{{ asset('storage/cover/' . $events->cover) }}"
-                            alt="img">
+                            alt="img" style="height: 150px; object-fit: cover">
                     </a>
                 </div>
                 <div class="card-body pt-2">
@@ -23,8 +23,17 @@
                         <h1 class="title fw-bold fs-20"><a
                                 href="{{ url('/dashboard/event/eventDetail/' . $events->uid) }}">{{ $events->event }}</a>
                         </h1>
-                        <button disabled="disabled "
-                            class="btn btn-success">{{ $events->konfirmasi === null ? 'Menunggu Persetujuan' : 'Disetujui' }}</button>
+                        @if ($events->konfirmasi === null)
+                            <button disabled="disabled " class="btn btn-success">Menunggu Persetujuan</button>
+                        @else
+                            <a href="{{ url('dashboard/transaksi/' . $events->uid) }}" class="btn btn-primary"> <i
+                                    class="fe fe-bar-chart-2"></i>E-Commerce</a>
+                                    <a href="{{ url('dashboard/cash/' . $events->uid) }}" class="btn btn-secondary"> <i
+                                        class="fe fe-bar-chart-2"></i>Cash</a>
+                        @endif
+
+
+
 
                     </div>
                 </div>

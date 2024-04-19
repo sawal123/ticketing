@@ -27,7 +27,7 @@
                                         <td style="width: 15%">
                                             <p class="m-0">Tanggal Transaksi</p>
                                             <h6 class="m-0">
-                                                {{ \Carbon\Carbon::parse($transaksi->created_at)->locale('id')->isoFormat('dddd, d-MMMM-Y') }}
+                                                {{ \Carbon\Carbon::parse($transaksi->created_at)->locale('id')->isoFormat('dddd, D-MMMM-Y') }}
                                             </h6>
                                         </td>
                                         <td style="width: 7%">

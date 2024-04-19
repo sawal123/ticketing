@@ -41,10 +41,8 @@ class BarcodeController extends Controller
         }else{
             $user = User::where('uid', $cart->user_uid)->first();
         }
-        // dd($hargaC);
-        // Menampilkan tampilan dengan barcode
-        return view(
-            'barcode',
+
+        return view('barcode',
             [
                 'barcodeData' => $barcodeData,
                 'invoice' => $url,

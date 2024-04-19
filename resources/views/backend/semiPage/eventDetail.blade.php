@@ -46,8 +46,8 @@
                                     <p>{{ $eventDetail->alamat }} <a href="{{ $eventDetail->map }}" target="blank"
                                             class="btn btn-primary">Kunjungi</a></p>
                                     <p>Biaya Layanan : Rp {{ $eventDetail->fee }}</p>
-                                    
-                                    <p class="text-muted mb-4">By : {{$us->name}}</p>
+
+                                    <p class="text-muted mb-4">By : {{ $us->name }}</p>
                                     <h4 class="mt-4"><b> Description</b></h4>
                                     <p>{!! $eventDetail->deskripsi !!}</p>
                                     <hr>
@@ -63,6 +63,7 @@
                                             class="notice btn btn-{{ $eventDetail->konfirmasi === null ? 'primary' : 'success' }}"><i
                                                 class="fe fe-{{ $eventDetail->konfirmasi === null ? 'clock' : 'check' }}">
                                             </i>
+                                            
                                             @if ($eventDetail->konfirmasi === null)
                                                 Setujui
                                             @else

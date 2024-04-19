@@ -123,7 +123,7 @@
                                 </div>
                                 <div class="col">
                                     <input class="form-check-input" type="checkbox" value="1"
-                                        id="defaultCheck2" required name="konfirmasi">
+                                        id="defaultCheck2" name="konfirmasi">
                                     <label class="form-check-label" for="defaultCheck2">
                                         Langsung Masuk
                                     </label>
