@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Dashboard;
 
 use App\Models\Bank;
 use App\Models\Cart;
+use App\Models\Cash;
 use App\Models\Term;
 use App\Models\User;
 use App\Models\Event;
@@ -15,15 +16,16 @@ use App\Models\Landing;
 use App\Models\Penarikan;
 use App\Models\Transaction;
 use Illuminate\Http\Request;
+use App\Jobs\sendEmailTrnsaksi;
+use App\Mail\CashNotifikasiMail;
+use App\Jobs\sendEmailETransaksi;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
-use App\Mail\CashNotifikasiMail;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Auth\Events\Validated;
 use App\Mail\MidtransPaymentNotification;
-use App\Models\Cash;
 use Illuminate\Support\Facades\Validator;
 
 class editController extends Controller
@@ -370,9 +372,13 @@ class editController extends Controller
 
         if ($request->status === "SUCCESS") {
             if ($carts->payment_type === 'cash') {
-                Mail::to($cash->email)->send(new CashNotifikasiMail($cash->name,  $barcode));
+                // Mail::to($cash->email)->send(new CashNotifikasiMail($cash->name,  $barcode));
+                $send = new sendEmailTrnsaksi($cash->email, $cash->name, $barcode);
+               dispatch($send);
             } else {
-                Mail::to($user->email)->send(new MidtransPaymentNotification($user, $carts, $barcode));
+                // Mail::to($user->email)->send(new MidtransPaymentNotification($user, $carts, $barcode));
+                $send = new sendEmailETransaksi($user, $carts, $barcode);
+                dispatch($send);
             }
         }
 

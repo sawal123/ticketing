@@ -121,10 +121,12 @@ class BuyTicketController extends Controller
             $kategoriValue[] = $request->input('kategori' . $i);
             $orderByInput[] = $request->input('orderBy' . $i);
         }
+        // dd($orderByInput);
         $ticketValue = array_filter($ticketValue);
         $hargaValue = array_filter($hargaValue);
         $kategoriValue = array_filter($kategoriValue);
         $orderByInput = array_filter($orderByInput);
+        // dd($orderByInput);
         if ($ticketValue == [] || $hargaValue == [] ||  $kategoriValue == []) {
             return redirect()->back()->with('error', 'Harap pilih ticket anda!');
         } else {
@@ -133,7 +135,7 @@ class BuyTicketController extends Controller
             $carts = Cart::where('event_uid', $event->uid)->where('user_uid', Auth::user()->uid)->first();
 
             $harga_ticket = Harga::where('uid', $event->uid)->get();
-
+// dd($kategoriValue);s
             foreach ($kategoriValue as $index => $value) {
                 $hargaCarts = HargaCart::join('carts', 'carts.uid' , '=', 'harga_carts.uid')
                     ->select('carts.uid','carts.status', 'harga_carts.quantity', 'harga_carts.kategori_harga')
@@ -146,9 +148,12 @@ class BuyTicketController extends Controller
             $cek = 0;
             $cekLagi = [];
             $arrayHarga = [];
+            // dd($harga_ticket);
             foreach ($harga_ticket as $index => $harga_t) {
-                $arrrayHarga[] = $harga_t->kategori;
+                // $arrrayHarga[] = $harga_t->kategori;
+                // dd($harga_t->kategori);
                 $HargaIndex = array_keys($hargaCartsArray);
+                // dd($harga_t->kategori . '='. $HargaIndex[$index]);
                 if ($harga_t->kategori === $HargaIndex[$index]) {
                     $cek = $ticketValue[$index] + $hargaCartsArray[$harga_t->kategori];
                     if ($cek <= $harga_t->qty) {
@@ -158,9 +163,10 @@ class BuyTicketController extends Controller
                         return redirect()->back()->with('error', 'Ticket Tidak Cukup!');
                     }
                     $cekLagi[] = $cek;
-                } else {
-                    return redirect()->back()->with('error', 'Terjadi Kesalahan!');
                 }
+                // else {
+                //     return redirect()->back()->with('error', 'Terjadi Kesalahan!');
+                // }
             }
         }
 

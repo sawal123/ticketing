@@ -28,11 +28,16 @@ class DeleteController extends Controller
     }
     public function deteleListTransaksi($uid, $user_uid)
     {
-        $talent = Cart::with(['users'])->where('uid', $uid)->first();
-        $hargaCart = HargaCart::with(['carts'])->where('uid', $talent->uid)->first();
-        // dd($talent);
-        $talent->delete();
-        $hargaCart->delete();
+        $cart = Cart::with(['users'])->where('uid', $uid)->first();
+
+            $hargaCart = HargaCart::with(['carts'])->where('uid', $cart->uid)->get();
+            foreach($hargaCart as $hc){
+                $hc->delete();
+            }
+
+        // dd($cart);
+        $cart->delete();
+        // $hargaCart->delete();
         return redirect()->back()->with('deleteList', 'Check Out Berhasil dihapus');
     }
 

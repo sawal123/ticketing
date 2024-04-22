@@ -14,13 +14,15 @@
                                     @php
                                         $total = 0;
                                     @endphp
-                                    @foreach ($hargaC as $hC)
-                                        @if ($hC->kategori_harga === $harga->kategori)
-                                            @php
-                                                $total += $hC->quantity;
-                                            @endphp
-                                        @endif
-                                    @endforeach
+                                    {{-- @foreach ($cart as $c) --}}
+                                        @foreach ($hargaC as $hC)
+                                            @if ($hC->kategori_harga === $harga->kategori)
+                                                @php
+                                                    $total += $hC->quantity;
+                                                @endphp
+                                            @endif
+                                        @endforeach
+                                    {{-- @endforeach --}}
                                     {{ $total }}
                                 </p>
                             </div>

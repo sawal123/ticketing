@@ -21,6 +21,7 @@ use Illuminate\Http\Request;
 use App\Mail\CashNotifikasiMail;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
+use App\Jobs\sendEmailTrnsaksi;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Http\RedirectResponse;
@@ -223,7 +224,7 @@ class AddController extends Controller
             'alamat' => 'required|string',
             'ttl' => 'required|string',
             'total' => 'required|numeric',
-            'gender'=> 'required', 
+            'gender'=> 'required',
             'nomor'=> 'required|numeric'
         ]);
         $validate->validate();
@@ -234,7 +235,7 @@ class AddController extends Controller
         $invoice = str_pad($string . $number, 10, '0', STR_PAD_LEFT);
         $str = Str::uuid();
         $order_id = 'INV-' . $invoice;
-        
+
 // dd($str);
         $uid =  $request->uid;
         $partner =  $request->partner;
@@ -297,7 +298,9 @@ class AddController extends Controller
         ]);
 
         try {
-            Mail::to($email)->send(new CashNotifikasiMail($nama, $order_id));
+            // Mail::to($email)->send(new CashNotifikasiMail($nama, $order_id));
+            $send = new sendEmailTrnsaksi($email, $nama, $order_id);
+            dispatch($send);
             $cart->save();
             $hargaCart->save();
             $cash->save();
@@ -335,6 +338,6 @@ class AddController extends Controller
         } catch (Exception $e) {
             return back()->with('error', $e->getMessage());
         }
-        
+
     }
 }
