@@ -136,7 +136,7 @@
                                             <h5 class="total">Rp 0</h5>
                                         </div>
                                         <div class="col-6 d-flex justify-content-end align-items-center">
-                                            <button type="submit" class="btn btn-primary">Check Out</button>
+                                            <button type="submit" class="btn btn-primary checkButton" disabled>Check Out</button>
                                         </div>
                                     </div>
                                 </div>
@@ -206,7 +206,7 @@
                                                                             min="0" max="5" step="1"
                                                                             value="0"
                                                                             name="ticket{{ $loop->index }}"
-                                                                            id="" readonly>
+                                                                            data-target="quantity{{ $loop->index }}" readonly>
 
                                                                         <input type="hidden"
                                                                             name="orderBy{{ $loop->index }}"
@@ -234,7 +234,7 @@
                                                         <h5 class="total">Rp 0</h5>
                                                     </div>
                                                     <div class="col-6 d-flex justify-content-end align-items-center">
-                                                        <button type="submit" class="btn btn-primary">Check Out</a>
+                                                        <button type="submit"  class="btn btn-primary checkButton" >Check Out</a>
                                                     </div>
                                                 </div>
                                             </div>

@@ -16,7 +16,11 @@
                             </div>
                         </div>
                     </div>
+                    
                     <div class="col-12 col-lg-8">
+                        <div class="alert alert-danger">
+                            Pastikan Email Kamu Aktif Ya! <strong>{{Auth::user()->email}}</strong>
+                        </div>
                         @if (session('success'))
                             <div class="alert alert-primary">
                                 {{ session('success') }}
@@ -26,6 +30,7 @@
                             <h5 class="card-header">Ticket Detail </h5>
 
                             <div class="card-body">
+                             
                                 <h6>Invoice : {{ $cart->invoice }}</h6>
                                 <div class="d-flex justify-content-between">
                                     <p class="m-0">Qty</p>

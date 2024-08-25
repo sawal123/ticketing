@@ -14,7 +14,7 @@ class Event extends Model
     ];
     public function harga()
     {
-        return $this->hasOne(Harga::class, 'uid', 'uid'); // 'uid' di model Event sesuai dengan kunci asing di model Harga
+        return $this->hasOne(Harga::class, 'uid', 'uid')->orderBy('harga', 'asc'); // 'uid' di model Event sesuai dengan kunci asing di model Harga
     }
 
     public function talent(){

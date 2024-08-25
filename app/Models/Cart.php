@@ -15,8 +15,16 @@ class Cart extends Model
     {
         return $this->hasOne(User::class, 'uid', 'uid'); // 'uid' di model Event sesuai dengan kunci asing di model Harga
     }
+    public function hargaCarts()
+    {
+        return $this->hasMany(HargaCart::class, 'uid', 'uid'); // Pastikan kunci asing dan lokal sesuai
+    }
 
-    public function event(){
-        return $this->hasOne(Event::class, 'uid', 'event_uid');
+    // public function event(){
+    //     return $this->hasOne(Event::class, 'uid', 'event_uid');
+    // }
+    public function event()
+    {
+        return $this->belongsTo(Event::class, 'event_uid', 'uid');
     }
 }

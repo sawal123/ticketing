@@ -25,7 +25,10 @@ class PenyewaController extends Controller
 {
     public function index()
     {
-        $user = User::where('role', 'user')->count();
+        // $user = User::where('role', 'user')->count();
+
+        // $user = User::where()
+
         $transaksi = Transaction::select('amount')->where('status_transaksi', 'SUCCESS')->get();
         $event = Event::where('user_uid', Auth::user()->uid)->count();
         // dd($transaksi);
@@ -75,14 +78,16 @@ class PenyewaController extends Controller
             $totalAmount +=   $grs->total_amount;
         }
         // dd($gr);
-        $totalTransaksi = Transaction::where('status_transaksi', 'SUCCESS')->where('user_uid', Auth::user()->uid)->count();
-
+        $totalTransaksi = Cart::where('carts.status', 'SUCCESS')
+            ->join('events', 'events.uid', '=', 'carts.event_uid')
+            ->where('events.user_uid', Auth::user()->uid)
+            ->count();
+        // dd($totalTransaksi);
         $partner = Partner::where('referensi', Auth::user()->uid)->where('status', 'active')->get();
 
         $e = Event::join('hargas', 'hargas.uid', '=', 'events.uid')
             ->select('events.event', 'events.fee', 'hargas.kategori', 'hargas.harga')
             ->where('events.user_uid', '=', Auth::user()->uid)->where('events.konfirmasi', '=', '1')->get();
-
         $transformedEvents = [];
         $ubahStruktur = [];
 
@@ -137,12 +142,91 @@ class PenyewaController extends Controller
             }
             $hargaOption[$key + 1] = $options;
         }
-        // dd($ticketOptions);
+
+        $harga_cart = HargaCart::select(['quantity'])
+            ->join('carts', 'carts.uid', '=', 'harga_carts.uid')
+            ->join('events', 'events.uid', '=', 'carts.event_uid')
+            ->where('carts.status', 'SUCCESS')
+            ->where('carts.payment_type', '!=', 'cash')
+            ->where('events.user_uid', Auth::user()->uid)
+            // ->whereDate('carts.created_at', '=', $filter)
+            ->get();
+        // dd($ar);
+        $jml = 0;
+        foreach ($harga_cart as $hs) {
+            $jml += (int)$hs->quantity;
+        }
+
+        $genderCounts = Cart::join('users', 'users.uid', '=', 'carts.user_uid')
+            ->join('events', 'events.uid', '=', 'carts.event_uid')
+            ->select('users.gender', DB::raw('COUNT(*) as count'))
+            ->where('events.user_uid', Auth::user()->uid)
+            ->where('carts.status', 'SUCCESS')
+            ->groupBy('users.gender')
+            ->pluck('count', 'users.gender')
+            ->toArray();
+        $wanita = $genderCounts['wanita'] ?? 0;
+        $pria = $genderCounts['pria'] ?? 0;
+
+
+
+        // $wanita = Cart::join('users', 'users.uid', '=', 'carts.user_uid')
+        //     ->join('events', 'events.uid', '=', 'carts.event_uid')
+        //     ->select('users.gender')
+        //     ->where('events.user_uid', Auth::user()->uid)
+        //     ->where('carts.status', 'SUCCESS')
+        //     ->where('users.gender', '=', 'wanita')
+        //     ->count();
+        // $pria = Cart::join('users', 'users.uid', '=', 'carts.user_uid')
+        //     ->join('events', 'events.uid', '=', 'carts.event_uid')
+        //     ->select('users.gender')
+        //     ->where('events.user_uid', Auth::user()->uid)
+        //     ->where('carts.status', 'SUCCESS')
+        //     ->where('users.gender', '=', 'pria')
+        //     ->count();
+
+        // Hitung total pengguna
+        $totalUsers = $wanita + $pria;
+
+        // Hitung persentase
+        $persentaseWanita = $totalUsers > 0 ? ($wanita / $totalUsers) * 100 : 0;
+        $persentasePria = $totalUsers > 0 ? ($pria / $totalUsers) * 100 : 0;
+
+        $dataUser = [$wanita, $pria, $persentaseWanita, $persentasePria];
+
+        $birtday = Cart::join('users', 'users.uid', '=', 'carts.user_uid')
+            ->join('events', 'events.uid', '=', 'carts.event_uid')
+            ->select(
+                DB::raw(
+                    "
+        CASE
+            WHEN TIMESTAMPDIFF(YEAR, users.birthday, users.created_at) < 18 THEN '18 thn ke bawah'
+            WHEN TIMESTAMPDIFF(YEAR, users.birthday, users.created_at) BETWEEN 18 AND 25 THEN '18 s/d 25 tahun'
+            ELSE '25 tahun ke atas'
+        END AS age_group"
+                ),
+                'users.gender',
+                DB::raw('COUNT(*) as count')
+            )
+            ->where('events.user_uid', Auth::user()->uid)
+            ->where('carts.status', 'SUCCESS')
+            ->groupBy('age_group', 'users.gender')
+            ->get()
+            ->groupBy('age_group')
+            ->map(function ($group) {
+                return $group->groupBy('gender')->mapWithKeys(function ($item, $key) {
+                    return [$key => $item->sum('count')];
+                });
+            })
+            ->toArray();
+        // dd($birtday);
+
+        // dd($dataUser);
         return view(
             'penyewa.page.dashboard',
             [
                 'title' => 'Dashboard',
-                'countUser' => $user,
+                'dataUser' => $dataUser,
                 'transaction' => $ar - $discounts,
                 'totalTransaksi' => $totalTransaksi,
                 'gr' => $date,
@@ -153,7 +237,9 @@ class PenyewaController extends Controller
                 'event' => $transformedEvents,
                 'ticketEvent' => $ticketOptions,
                 'hargaTicket' => $hargaOption,
-                'partner' => $partner
+                'partner' => $partner,
+                'totalTiket' => $jml,
+                'birtday' => $birtday
             ]
         );
     }
@@ -186,7 +272,7 @@ class PenyewaController extends Controller
             $talent = Talent::where('uid', $uid)->get();
             $harga = Harga::where('uid', $uid)->get();
             $hargaC = HargaCart::join('carts', 'carts.uid', '=', 'harga_carts.uid')->where('carts.event_uid', $eventDetail->uid)->where('carts.status', 'SUCCESS')->get();
-            $cart = Cart::where('event_uid', $eventDetail->uid)->where('status', '=' , 'SUCCESS')->get();
+            $cart = Cart::where('event_uid', $eventDetail->uid)->where('status', '=', 'SUCCESS')->get();
             // dd($hargaC);
             if ($eventDetail === null) {
                 abort('403');
@@ -198,7 +284,7 @@ class PenyewaController extends Controller
                 'eventDetail' => $eventDetail,
                 'talent' => $talent,
                 'harga' => $harga,
-                'cart'=> $cart
+                'cart' => $cart
             ]);
         }
     }
@@ -218,10 +304,10 @@ class PenyewaController extends Controller
     public function transaksi(Request $request)
     {
         $filter = $request->filter;
-        if ($filter === null) {
-            $filter = date('Y-m-d');
-        }
-        // dd($request->filter);
+        // if ($filter === null) {
+        //     $filter = date('Y-m-d');
+        // }
+        // dd($request->uid);
         $event = null;
         if ($request->uid !== null) {
             $use = User::all();
@@ -246,10 +332,10 @@ class PenyewaController extends Controller
                 ->where('carts.status', 'SUCCESS')
                 ->where('carts.payment_type', '!=', 'cash')
                 ->where('events.user_uid', Auth::user()->uid)
-                ->where('carts.event_uid', '=', $request->uid)
+                ->where('carts.event_uid', $request->uid)
                 ->groupBy('carts.uid', 'carts.user_uid', 'carts.invoice', 'carts.status', 'carts.payment_type', 'harga_carts.disc', 'harga_carts.voucher', 'events.event', 'events.fee', 'carts.created_at', 'events.cover');
 
-            $cart = $cartQuery->get();
+
             // dd($cart);
             $totalHargaCart = Cart::select(['harga_carts.uid', 'harga_carts.harga_ticket', 'harga_carts.quantity', 'harga_carts.disc', 'kategori_harga'])
                 ->join('harga_carts', 'harga_carts.uid', '=', 'carts.uid')
@@ -257,11 +343,29 @@ class PenyewaController extends Controller
                 ->where('carts.status', 'SUCCESS')
                 ->where('carts.payment_type', '!=', 'cash')
                 ->where('events.user_uid', Auth::user()->uid)
-                ->where('carts.event_uid', '=', $request->uid)
-                ->get();
+                ->where('carts.event_uid', '=', $request->uid);
             $ar = 0;
             $discounts = 0;
             // dd($totalHargaCart);
+
+
+
+            $harga_cart = HargaCart::select(['quantity'])
+                ->join('carts', 'carts.uid', '=', 'harga_carts.uid')
+                ->join('events', 'events.uid', '=', 'carts.event_uid')
+                ->where('carts.status', 'SUCCESS')
+                ->where('carts.payment_type', '!=', 'cash')
+                ->where('events.user_uid', Auth::user()->uid);
+
+            if ($filter === null) {
+                $cart = $cartQuery->get();
+                $totalHargaCart =  $totalHargaCart->get();
+                $harga_cart = $harga_cart->get();
+            } else {
+                $cart = $cartQuery->whereDate('carts.created_at', '=', $filter)->get();
+                $totalHargaCart =  $totalHargaCart->whereDate('carts.created_at', '=', $filter)->get();
+                $harga_cart = $harga_cart->whereDate('carts.created_at', '=', $filter)->get();
+            }
 
             foreach ($totalHargaCart as $key => $tHC) {
                 $ar += ($totalHargaCart[$key]->harga_ticket * $totalHargaCart[$key]->quantity);
@@ -271,14 +375,6 @@ class PenyewaController extends Controller
                 $discounts += $totalHargaCart[$key]->disc;
             }
 
-            $harga_cart = HargaCart::select(['quantity'])
-                ->join('carts', 'carts.uid', '=', 'harga_carts.uid')
-                ->join('events', 'events.uid', '=', 'carts.event_uid')
-                ->where('carts.status', 'SUCCESS')
-                ->where('carts.payment_type', '!=', 'cash')
-                ->where('events.user_uid', Auth::user()->uid)
-                ->get();
-            // dd($ar);
             $jml = 0;
             foreach ($harga_cart as $hs) {
                 $jml += (int)$hs->quantity;
@@ -305,22 +401,33 @@ class PenyewaController extends Controller
                 ->where('carts.status', 'SUCCESS')
                 ->where('carts.payment_type', '!=', 'cash')
                 ->where('events.user_uid', Auth::user()->uid)
-                ->whereDate('carts.created_at', '=', $filter)
                 ->groupBy('carts.uid', 'carts.user_uid', 'carts.invoice', 'carts.status', 'carts.payment_type', 'harga_carts.disc', 'harga_carts.voucher', 'events.event', 'events.fee', 'carts.created_at', 'events.cover');
 
-            $cart = $cartQuery->get();
-            // dd($cart);
             $totalHargaCart = Cart::select(['harga_carts.uid', 'harga_carts.harga_ticket', 'harga_carts.quantity', 'harga_carts.disc', 'kategori_harga'])
                 ->join('harga_carts', 'harga_carts.uid', '=', 'carts.uid')
                 ->join('events', 'events.uid', '=', 'carts.event_uid')
                 ->where('carts.status', 'SUCCESS')
                 ->where('carts.payment_type', '!=', 'cash')
-                ->where('events.user_uid', Auth::user()->uid)
-                ->whereDate('carts.created_at', '=', $filter)
-                ->get();
+                ->where('events.user_uid', Auth::user()->uid);
             $ar = 0;
             $discounts = 0;
-            // dd($totalHargaCart);
+
+            $harga_cart = HargaCart::select(['quantity'])
+                ->join('carts', 'carts.uid', '=', 'harga_carts.uid')
+                ->join('events', 'events.uid', '=', 'carts.event_uid')
+                ->where('carts.status', 'SUCCESS')
+                ->where('carts.payment_type', '!=', 'cash')
+                ->where('events.user_uid', Auth::user()->uid);
+
+            if ($filter === null) {
+                $cart = $cartQuery->get();
+                $totalHargaCart =  $totalHargaCart->get();
+                $harga_cart = $harga_cart->get();
+            } else {
+                $cart = $cartQuery->whereDate('carts.created_at', '=', $filter)->get();
+                $totalHargaCart =  $totalHargaCart->whereDate('carts.created_at', '=', $filter)->get();
+                $harga_cart = $harga_cart->whereDate('carts.created_at', '=', $filter)->get();
+            }
 
             foreach ($totalHargaCart as $key => $tHC) {
                 $ar += ($totalHargaCart[$key]->harga_ticket * $totalHargaCart[$key]->quantity);
@@ -330,15 +437,6 @@ class PenyewaController extends Controller
                 $discounts += $totalHargaCart[$key]->disc;
             }
 
-            $harga_cart = HargaCart::select(['quantity'])
-                ->join('carts', 'carts.uid', '=', 'harga_carts.uid')
-                ->join('events', 'events.uid', '=', 'carts.event_uid')
-                ->where('carts.status', 'SUCCESS')
-                ->where('carts.payment_type', '!=', 'cash')
-                ->where('events.user_uid', Auth::user()->uid)
-                ->whereDate('carts.created_at', '=', $filter)
-                ->get();
-            // dd($ar);
             $jml = 0;
             foreach ($harga_cart as $hs) {
                 $jml += (int)$hs->quantity;
@@ -354,21 +452,24 @@ class PenyewaController extends Controller
                 'use' => $use,
                 'qtyTiket' => $totalHargaCart,
                 'totalHargaCart' => $ar - $discounts,
-                'totalFee' => $jml
+                'totalFee' => $jml,
+                'filter' => $filter,
+                'uid' => $request->uid
             ]
         );
     }
 
-    public function cash(Request $request )
+    public function cash(Request $request)
     {
         $filter = $request->filter;
-        if ($filter === null) {
-            $filter = date('Y-m-d');
-        }
+        // if ($filter === null) {
+        //     $filter = date('Y-m-d');
+        // }
         // dd($filter);
         $use = User::all();
         $event = null;
-        if($request->uid){
+        // dd($request->uid);
+        if ($request->uid) {
             $event = Event::where('uid', $request->uid)->first();
             $cartQuery = Cart::select(
                 'carts.uid',
@@ -379,8 +480,6 @@ class PenyewaController extends Controller
                 'carts.status',
                 'carts.payment_type',
                 'events.event',
-                'events.fee',
-                'events.cover',
                 'carts.created_at',
                 DB::raw('SUM(harga_carts.quantity * harga_carts.harga_ticket) as total_harga'),
                 DB::raw('SUM(harga_carts.quantity) as total_quantity')
@@ -392,10 +491,13 @@ class PenyewaController extends Controller
                 ->where('carts.payment_type', 'cash')
                 ->where('events.user_uid', Auth::user()->uid)
                 ->where('events.uid', $request->uid)
-                ->whereDate('carts.created_at', '=', $filter)
-                ->groupBy('carts.uid', 'carts.user_uid', 'carts.invoice', 'cashes.name', 'cashes.email', 'carts.status', 'carts.payment_type', 'events.event', 'events.fee', 'carts.created_at', 'events.cover');
+                ->groupBy('carts.uid', 'carts.user_uid', 'carts.invoice', 'cashes.name', 'cashes.email', 'carts.status', 'carts.payment_type', 'events.event', 'carts.created_at',);
 
-            $cart = $cartQuery->get();
+            if ($filter === null) {
+                $cart = $cartQuery->get();
+            } else {
+                $cart = $cartQuery->whereDate('carts.created_at', $filter)->get();
+            }
             // dd($cart);
             $totalHargaCart = Cart::select(['harga_carts.uid', 'harga_carts.harga_ticket', 'harga_carts.quantity', 'harga_carts.kategori_harga'])
                 ->join('harga_carts', 'harga_carts.uid', '=', 'carts.uid')
@@ -424,8 +526,8 @@ class PenyewaController extends Controller
             foreach ($harga_cart as $hs) {
                 $jml += (int)$hs->quantity;
             }
+        } else {
 
-        }else{
             $cartQuery = Cart::select(
                 'carts.uid',
                 'carts.user_uid',
@@ -435,8 +537,6 @@ class PenyewaController extends Controller
                 'carts.status',
                 'carts.payment_type',
                 'events.event',
-                'events.fee',
-                'events.cover',
                 'carts.created_at',
                 DB::raw('SUM(harga_carts.quantity * harga_carts.harga_ticket) as total_harga'),
                 DB::raw('SUM(harga_carts.quantity) as total_quantity')
@@ -447,35 +547,40 @@ class PenyewaController extends Controller
                 ->where('carts.status', 'SUCCESS')
                 ->where('carts.payment_type', 'cash')
                 ->where('events.user_uid', Auth::user()->uid)
-                ->whereDate('carts.created_at', '=', $filter)
-                ->groupBy('carts.uid', 'carts.user_uid', 'carts.invoice', 'cashes.name', 'cashes.email', 'carts.status', 'carts.payment_type', 'events.event', 'events.fee', 'carts.created_at', 'events.cover');
+                ->groupBy('carts.uid', 'carts.user_uid', 'carts.invoice', 'cashes.name', 'cashes.email', 'carts.status', 'carts.payment_type', 'events.event', 'carts.created_at',);
 
-            $cart = $cartQuery->get();
-            // dd($cart);
             $totalHargaCart = Cart::select(['harga_carts.uid', 'harga_carts.harga_ticket', 'harga_carts.quantity', 'harga_carts.kategori_harga'])
                 ->join('harga_carts', 'harga_carts.uid', '=', 'carts.uid')
                 ->join('events', 'events.uid', '=', 'carts.event_uid')
                 ->where('carts.status', 'SUCCESS')
                 ->where('carts.payment_type', 'cash')
-                ->where('events.user_uid', Auth::user()->uid)
-                ->whereDate('carts.created_at', '=', $filter)
-                ->get();
+                ->where('events.user_uid', Auth::user()->uid);
+            // ->get();
             $ar = 0;
-
-            foreach ($totalHargaCart as $key => $tHC) {
-                $ar += ($totalHargaCart[$key]->harga_ticket * $totalHargaCart[$key]->quantity);
-            }
 
             $harga_cart = HargaCart::select(['quantity'])
                 ->join('carts', 'carts.uid', '=', 'harga_carts.uid')
                 ->join('events', 'events.uid', '=', 'carts.event_uid')
                 ->where('carts.status', 'SUCCESS')
                 ->where('carts.payment_type', 'cash')
-                ->where('events.user_uid', Auth::user()->uid)
-                ->whereDate('carts.created_at', '=', $filter)
-                ->get();
-            // dd($harga_cart);
+                ->where('events.user_uid', Auth::user()->uid);
+
             $jml = 0;
+
+            if ($filter === null) {
+                $harga_cart = $harga_cart->get();
+                $totalHargaCart = $totalHargaCart->get();
+                $cart = $cartQuery->get();
+            } else {
+                $harga_cart = $harga_cart->whereDate('carts.created_at', '=', $filter)->get();
+                $cart = $cartQuery->whereDate('carts.created_at', '=', $filter)->get();
+                $totalHargaCart = $totalHargaCart->whereDate('carts.created_at', '=', $filter)->get();
+            }
+
+            foreach ($totalHargaCart as $key => $tHC) {
+                $ar += ($totalHargaCart[$key]->harga_ticket * $totalHargaCart[$key]->quantity);
+            }
+
             foreach ($harga_cart as $hs) {
                 $jml += (int)$hs->quantity;
             }
@@ -487,12 +592,14 @@ class PenyewaController extends Controller
 
         return view('penyewa.page.cash', [
             'title' => 'Cash',
-            'event'=> $event,
+            'event' => $event,
             'cart' => $cart,
             'use' => $use,
             'totalHargaCart' => $ar,
             'qtyTiket' => $totalHargaCart,
-            'totalFee' => $jml
+            'sellTiket' => $jml,
+            'filter' => $filter,
+            'uid' => $request->uid
         ]);
     }
 

@@ -23,7 +23,8 @@ class landingController extends Controller
 {
     public function home()
     {
-        $event = Event::where('konfirmasi', '1')
+        $events = Event::with('harga')
+            ->where('konfirmasi', '1')
             ->join('users', 'events.user_uid', '=', 'users.uid')
             ->select(
                 'events.uid',
@@ -37,18 +38,18 @@ class landingController extends Controller
                 'events.slug',
                 'events.konfirmasi',
                 'users.name'
-
             )
+            ->orderBy('events.created_at', 'desc')
             ->take(9)
             ->get();
-        $harga = Harga::select('uid', 'harga')->orderBy('harga', 'asc')->get();
+        // $harga = Harga::select('uid', 'harga')->orderBy('harga', 'asc')->get();
         $slide = Slider::all(['*']);
-        // dd($event);
+        // dd($harga);
 
         return view('frontend.page.home', [
-            'title' => '',
-            'event' => $event,
-            'harga' => $harga,
+            'title' => 'Tiket',
+            'events' => $events,
+            // 'harga' => $harga,
             'slide' => $slide
         ]);
     }
@@ -100,7 +101,7 @@ class landingController extends Controller
 
 
         return view('frontend.page.ticket', [
-            'title' => 'Ticket',
+            'title' => $ticket->event,
             'ticket' => $ticket,
             'tickets' => $tickets,
             'list' => $list,
@@ -147,22 +148,22 @@ class landingController extends Controller
             // return redirect('/search/'. $event);
         } else {
             $event = Event::where('konfirmasi', '1')
-            ->join('users', 'events.user_uid', '=', 'users.uid')
-            ->select(
-                'events.uid',
-                'events.user_uid',
-                'events.event',
-                'events.alamat',
-                'events.tanggal',
-                'events.status',
-                'events.cover',
-                'events.map',
-                'events.slug',
-                'events.konfirmasi',
-                'users.name'
+                ->join('users', 'events.user_uid', '=', 'users.uid')
+                ->select(
+                    'events.uid',
+                    'events.user_uid',
+                    'events.event',
+                    'events.alamat',
+                    'events.tanggal',
+                    'events.status',
+                    'events.cover',
+                    'events.map',
+                    'events.slug',
+                    'events.konfirmasi',
+                    'users.name'
 
-            )
-            ->get();
+                )
+                ->get();
         }
         //  dd($event);
         $harga = Harga::select('uid', 'harga')->orderBy('harga', 'asc')->get();
@@ -195,6 +196,6 @@ class landingController extends Controller
     {
 
         // dd($contact);
-        return view('frontend.page.contact', []);
+        return view('frontend.page.contact', ['title' => 'Contact',]);
     }
 }

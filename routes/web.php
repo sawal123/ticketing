@@ -17,7 +17,10 @@ use App\Http\Controllers\Auth\UserLoginController;
 use App\Http\Controllers\Dashboard\editController;
 use App\Http\Controllers\Dashboard\DeleteController;
 use App\Http\Controllers\Auth\UserRegisterController;
+use App\Http\Controllers\Dashboard\CashController;
 use App\Http\Controllers\Dashboard\DashboardController;
+use App\Http\Controllers\Dashboard\TController;
+use App\Http\Controllers\Dashboard\TransaksiController;
 use App\Http\Controllers\Penyewa\AddController as PenyewaAddController;
 use App\Http\Controllers\Penyewa\Auth\LoginController;
 use App\Http\Controllers\Penyewa\EditController as PenyewaEditController;
@@ -141,7 +144,13 @@ Route::prefix('admin')
 
         Route::get('/search',[DashboardController::class, 'event']);
     
-        Route::get('/transaksi/{uid?}', [DashboardController::class, 'transaksi']);
+        Route::get('/transaksi/{uid?}', [TransaksiController::class, 'transaksi']);
+        Route::get('/cash/{uid?}', [CashController::class, 'cash']);
+
+        Route::get('t/online/{uid?}', [TController::class, 'tonline'])->name('tonline');
+
+
+
         // Route::get('/transaksi/filter', [DashboardController::class, 'transaksi']);
         Route::get('/user/{data?}', [DashboardController::class, 'user']);
         Route::get('/event/{addEvent?}/{uid?}', [DashboardController::class, 'event']);

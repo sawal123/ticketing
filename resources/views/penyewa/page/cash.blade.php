@@ -2,7 +2,7 @@
 
 @section('content')
     <div class="page-header">
-        <h1 class="page-title">Dashboard Transaksi Cash {{$event->event}}</h1>
+        <h1 class="page-title">Transaksi Cash {{$event->event}}</h1>
         <div>
             <ol class="breadcrumb">
                 <li class="breadcrumb-item"><a href="javascript:void(0)">Dashboard</a></li>
@@ -21,9 +21,7 @@
                             <h2 class="mb-0 number-font">Rp {{ number_format($totalHargaCart, 0, ',', '.') }}</h2>
                         </div>
                     </div>
-                    <span class="text-muted fs-12"><span class="text-secondary"><i
-                                class="fe fe-arrow-up-circle  text-secondary"></i> 5%</span>
-                        Last week</span>
+                  
                 </div>
             </div>
         </div>
@@ -33,12 +31,10 @@
                     <div class="d-flex">
                         <div class="mt-2">
                             <h6 class="">Total Ticket Yang Terjual</h6>
-                            <h2 class="mb-0 number-font">{{ number_format($totalFee, 0, ',', '.') }} Ticket</h2>
+                            <h2 class="mb-0 number-font">{{ number_format($sellTiket, 0, ',', '.') }} Ticket</h2>
                         </div>
                     </div>
-                    <span class="text-muted fs-12"><span class="text-secondary"><i
-                                class="fe fe-arrow-up-circle  text-secondary"></i> 5%</span>
-                        Last week</span>
+                  
                 </div>
             </div>
         </div>
@@ -47,15 +43,16 @@
     <div class="row row-sm">
         <div class="col-lg-12">
             <div class="card">
-                <form action="{{ url('dashboard/cash/'. $uidEvent) }}" method="get">
-                    @csrf
+                <form action="{{ url('dashboard/cash') }}" method="get">
+                    {{-- @csrf --}} <!-- Tidak diperlukan untuk GET request -->
+                
                     <div class="card-header d-flex justify-content-between">
                         <h3 class="card-title">File Export</h3>
                         <div class="input-group w-md w-25">
-                            <input type="date" class="form-control " name="filter" value="{{ $filter }}">
+                            <input type="date" class="form-control" name="filter" value="{{ request('filter') }}">
+                            <input type="hidden" name="uid" value="{{ $uid }}">
                             <button type="submit" class="btn btn-primary">Filter</button>
                         </div>
-
                     </div>
                 </form>
                 <div class="card-body">
@@ -82,8 +79,8 @@
                                         <td>{{ strlen($carts->event > 10) ? substr($carts->event, 0, 15) . '...' : $carts->event }}
                                         </td>
                                         <td>
-                                            {{-- {{ date('d-M-Y', strtotime($carts->created_at)) }} --}}
-                                            {{\Carbon\Carbon::parse($transaksi->created_at)->locale('id')->isoFormat('dddd, D/MMMM/Y')}}
+                                            {{ date('d M Y', strtotime($carts->created_at)) }}
+                                            {{-- {{\Carbon\Carbon::parse($transaksi->created_at)->locale('id')->isoFormat('dddd, D MMMM Y')}} --}}
                                             {{-- {{ \Carbon\Carbon::parse($transaksi->created_at)->locale('id')->isoFormat('dddd, D-MMMM-Y') }} --}}
 
                                         </td>

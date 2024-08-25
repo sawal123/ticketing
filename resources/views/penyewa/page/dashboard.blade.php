@@ -61,7 +61,7 @@
                                         </div>
                                     </div>
                                 </div>
-                                
+
                             </div>
                         </div>
                     </div>
@@ -79,7 +79,25 @@
                                         </div>
                                     </div>
                                 </div>
-                                
+
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-6 col-md-6 col-sm-12 col-xl-3">
+                        <div class="card overflow-hidden">
+                            <div class="card-body">
+                                <div class="d-flex">
+                                    <div class="mt-2">
+                                        <h6 class="">Total Tiket Terjual</h6>
+                                        <h2 class="mb-0 number-font">{{ $totalTiket }}</h2>
+                                    </div>
+                                    <div class="ms-auto">
+                                        <div class="chart-wrapper mt-1">
+                                            <canvas id="profitchart" class="h-8 w-9 chart-dropshadow"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+
                             </div>
                         </div>
                     </div>
@@ -97,7 +115,7 @@
                                         </div>
                                     </div>
                                 </div>
-                                
+
                             </div>
                         </div>
                     </div>
@@ -107,9 +125,37 @@
         <!-- ROW-1 END -->
 
         <!-- ROW-2 -->
+        <div class="row my-4 d-lg-flex align-items-center">
+            <div class="col-lg-6 my-2">
+                <div class="alert alert-primary d-lg-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="fw-bold">Pria:</span> {{ $dataUser[0] }}
+                        <br>
+                        <span class="fw-bold">Wanita:</span> {{ $dataUser[1] }}
+                    </div>
+                    <div>
+                        <span class="fw-bold">Persentase Pria:</span> {{ number_format($dataUser[2], 2) }}%
+                        <br>
+                        <span class="fw-bold">Persentase Wanita:</span> {{ number_format($dataUser[3], 2) }}%
+                    </div>
+                </div>
+            </div>
+            @foreach ($birtday as $index => $genders)
+            <div class="col-lg-2 my-2">
+                <div class="alert alert-primary justify-content-between align-items-center">
+                    <strong>{{$index}}</strong>
+                    <br>
+                    <p>Pria: {{ $genders['pria'] ?? 0 }}</p>
+                    <p>Wanita: {{ $genders['wanita'] ?? 0 }}</p>
+                </div>
+            </div>
+                {{-- <h4>{{ $index }}</h4> --}}
+                
+            @endforeach
+            
+        </div>
 
         <div class="row">
-
             <div class="col-sm-12 col-md-12 col-lg-12 col-xl-12">
                 <div class="card">
                     <div class="card-header">

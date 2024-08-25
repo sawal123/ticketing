@@ -29,6 +29,8 @@
                                 <i class="fe fe-trash"> </i> </a>
                             <a href="{{ url('admin/transaksi/' . $events->uid) }}" class="btn btn-primary"> <i
                                 class="fe fe-bar-chart-2"></i> Transaksi </a>
+                            <a href="{{ url('admin/cash/' . $events->uid) }}" class="btn btn-secondary"> <i
+                                class="fe fe-bar-chart-2"></i> Cash </a>
                         </div>
                            
                         @else
