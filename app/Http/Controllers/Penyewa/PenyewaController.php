@@ -158,6 +158,7 @@ class PenyewaController extends Controller
         }
 
         $genderCounts = Cart::join('users', 'users.uid', '=', 'carts.user_uid')
+            // ->join('cashes', 'uid_user', '=', 'carts.user_uid')
             ->join('events', 'events.uid', '=', 'carts.event_uid')
             ->select('users.gender', DB::raw('COUNT(*) as count'))
             ->where('events.user_uid', Auth::user()->uid)
@@ -165,25 +166,11 @@ class PenyewaController extends Controller
             ->groupBy('users.gender')
             ->pluck('count', 'users.gender')
             ->toArray();
-        $wanita = $genderCounts['wanita'] ?? 0;
-        $pria = $genderCounts['pria'] ?? 0;
+        $pria = $genderCounts['wanita'] ?? 0;
+        $wanita = $genderCounts['pria'] ?? 0;
 
 
 
-        // $wanita = Cart::join('users', 'users.uid', '=', 'carts.user_uid')
-        //     ->join('events', 'events.uid', '=', 'carts.event_uid')
-        //     ->select('users.gender')
-        //     ->where('events.user_uid', Auth::user()->uid)
-        //     ->where('carts.status', 'SUCCESS')
-        //     ->where('users.gender', '=', 'wanita')
-        //     ->count();
-        // $pria = Cart::join('users', 'users.uid', '=', 'carts.user_uid')
-        //     ->join('events', 'events.uid', '=', 'carts.event_uid')
-        //     ->select('users.gender')
-        //     ->where('events.user_uid', Auth::user()->uid)
-        //     ->where('carts.status', 'SUCCESS')
-        //     ->where('users.gender', '=', 'pria')
-        //     ->count();
 
         // Hitung total pengguna
         $totalUsers = $wanita + $pria;
@@ -195,7 +182,9 @@ class PenyewaController extends Controller
         $dataUser = [$wanita, $pria, $persentaseWanita, $persentasePria];
 
         $birtday = Cart::join('users', 'users.uid', '=', 'carts.user_uid')
+            // ->join('cashes', 'uid_user', '=', 'carts.user_uid')
             ->join('events', 'events.uid', '=', 'carts.event_uid')
+
             ->select(
                 DB::raw(
                     "

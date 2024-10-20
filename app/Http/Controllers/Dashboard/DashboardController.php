@@ -44,7 +44,7 @@ class DashboardController extends Controller
             ->select(DB::raw('DATE(carts.created_at) as hargadate'), DB::raw('SUM(harga_carts.quantity) as total_qty'), DB::raw('SUM(harga_carts.quantity * harga_carts.harga_ticket) as total_amount'))
             ->groupBy(DB::raw('DATE(carts.created_at)'))
             ->get();
-        // dd($totalTransaksi);  
+        // dd($totalTransaksi);
 
         $date = [];
         $qty = [];
@@ -59,6 +59,60 @@ class DashboardController extends Controller
             $amount[] = $grs->total_amount;
         }
 
+
+        $genderCounts = Cart::join('users', 'users.uid', '=', 'carts.user_uid')
+            // ->join('events', 'events.uid', '=', 'carts.event_uid')
+            ->select('users.gender', DB::raw('COUNT(*) as count'))
+            // ->where('events.user_uid', Auth::user()->uid)
+            ->where('carts.status', 'SUCCESS')
+            ->groupBy('users.gender')
+            ->pluck('count', 'users.gender')
+            ->toArray();
+        $pria = $genderCounts['wanita'] ?? 0;
+        $wanita = $genderCounts['pria'] ?? 0;
+
+
+
+
+        // Hitung total pengguna
+        $totalUsers = $wanita + $pria;
+
+        // Hitung persentase
+        $persentaseWanita = $totalUsers > 0 ? ($wanita / $totalUsers) * 100 : 0;
+        $persentasePria = $totalUsers > 0 ? ($pria / $totalUsers) * 100 : 0;
+
+        $dataUser = [$wanita, $pria, $persentaseWanita, $persentasePria];
+        // dd($genderCounts);
+
+        $birtday = Cart::join('users', 'users.uid', '=', 'carts.user_uid')
+            // ->join('events', 'events.uid', '=', 'carts.event_uid')
+            ->select(
+                DB::raw(
+                    "
+            CASE
+                WHEN TIMESTAMPDIFF(YEAR, users.birthday, users.created_at) < 18 THEN '<18 thn'
+                WHEN TIMESTAMPDIFF(YEAR, users.birthday, users.created_at) BETWEEN 18 AND 25 THEN '18s/d25 thn'
+                ELSE '>25thn'
+            END AS age_group"
+                ),
+                'users.gender',
+                DB::raw('COUNT(*) as count')
+            )
+            ->where('carts.status', 'SUCCESS')
+            ->groupBy('age_group', 'users.gender')
+            ->get()
+            ->groupBy('age_group')
+            ->map(function ($group) {
+                // Kelompokkan berdasarkan gender dan hitung jumlah
+                return $group->groupBy('gender')->mapWithKeys(function ($item, $key) {
+                    return [$key => $item->sum('count')];
+                })->sortByDesc(function ($value, $key) {
+                    // Custom sorting: menempatkan pria di awal
+                    return $key === 'pria' ? 0 : 1;
+                });
+            })
+            ->toArray();
+        // dd($birtday);
         return view('backend.content.dashboard', [
             'title' => 'Admin',
             'countUser' => $user,
@@ -67,6 +121,8 @@ class DashboardController extends Controller
             'date' => $date,
             'qty' => $qty,
             'amount' => $amount,
+            'dataUser' => $dataUser,
+            'birtday' => $birtday
         ]);
     }
     public function event(Request $request, $addEvent = null, $uid = null)
@@ -160,7 +216,7 @@ class DashboardController extends Controller
         ]);
     }
 
-    
+
 
 
 

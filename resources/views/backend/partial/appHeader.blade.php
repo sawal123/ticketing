@@ -9,10 +9,10 @@
                     alt="logo">
             </a>
             <!-- LOGO -->
-            <div class="main-header-center ms-3 d-none d-lg-block">
+            {{-- <div class="main-header-center ms-3 d-none d-lg-block">
                 <input type="text" class="form-control" id="typehead" placeholder="Search for results...">
                 <button class="btn px-0 pt-2"><i class="fe fe-search" aria-hidden="true"></i></button>
-            </div>
+            </div> --}}
             <div class="d-flex order-lg-2 ms-auto header-right-icons">
                 <!-- SEARCH -->
                 <button class="navbar-toggler navresponsive-toggler d-lg-none ms-auto" type="button"
@@ -37,7 +37,7 @@
                                     </div>
                                 </div>
                             </div>
-                            
+
                             <!-- COUNTRY -->
                             <div class="d-flex">
                                 <a class="nav-link icon theme-layout nav-link-bg layout-setting">
@@ -46,17 +46,17 @@
                                 </a>
                             </div>
                             <!-- Theme-Layout -->
-                          
+
                             <div class="dropdown d-flex">
                                 <a class="nav-link icon full-screen-link nav-link-bg">
                                     <i class="fe fe-minimize fullscreen-button"></i>
                                 </a>
                             </div>
                             <!-- FULL-SCREEN -->
-                          
+
                             <!-- NOTIFICATIONS -->
-                            
-                           
+
+
                             <!-- SIDE-MENU -->
                             <div class="dropdown d-flex profile-1">
                                 <a href="javascript:void(0)" data-bs-toggle="dropdown" class="nav-link leading-none d-flex">

@@ -20,13 +20,13 @@ class sendEmailETransaksi implements ShouldQueue
      */
     public $user;
     public $carts;
-    public $barcode;
-    public function __construct($user, $carts, $barcode)
+    public $order_id;
+    public function __construct($user, $carts, $order_id)
     {
         //
         $this->user = $user;
         $this->carts = $carts;
-        $this->barcode = $barcode;
+        $this->order_id = $order_id;
     }
 
     /**
@@ -35,6 +35,6 @@ class sendEmailETransaksi implements ShouldQueue
     public function handle(): void
     {
         //
-        Mail::to($this->user)->send(new MidtransPaymentNotification($this->user, $this->carts, $this->barcode));
+        Mail::to($this->user)->send(new MidtransPaymentNotification($this->user, $this->carts, $this->order_id));
     }
 }

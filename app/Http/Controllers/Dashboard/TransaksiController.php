@@ -9,6 +9,7 @@ use App\Models\HargaCart;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
+use Defuse\Crypto\Key;
 
 class TransaksiController extends Controller
 {
@@ -80,6 +81,10 @@ class TransaksiController extends Controller
                 ->where('carts.payment_type', '!=', 'cash')
                 ->where('carts.event_uid', '=', $request->uid);
             $fe = 0;
+
+            // Khusus Filter Tanggal
+            // $tfe->where()
+            // End Fillter
 
             if ($filter === null) {
                 $totalFee = $tfe->get();

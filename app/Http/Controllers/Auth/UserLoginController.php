@@ -7,6 +7,7 @@ use Illuminate\Support\Str;
 use App\Mail\ForgotPassword;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
+use App\Jobs\ForgotPassword as JobsForgotPassword;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\MidtransPaymentNotification;
@@ -24,7 +25,7 @@ class UserLoginController extends Controller
                 'title' => 'Login'
             ]);
         }
-        
+
     }
     public function loginUser(Request $request)
     {
@@ -55,13 +56,15 @@ class UserLoginController extends Controller
                 'uid_user' => $user->uid,
             ]);
             $add->save();
-            Mail::to($user->email)->send(new ForgotPassword($user));
+            // Mail::to($user->email)->send(new ForgotPassword($user));
+            $send = new JobsForgotPassword($user, $email);
+            dispatch($send);
             return redirect()->back()->with('success', 'Periksa Email Anda, Atau Lihat Di Spam!');
         }
         else{
             return redirect()->back()->with('error', 'Email Tidak Terdaftar');
         }
-      
+
     }
 
     public function resetPassword($data){
@@ -74,7 +77,7 @@ class UserLoginController extends Controller
         }
         else{
             abort('403');
-        }  
+        }
     }
     public function newPassword(Request $request){
         $pass = $request->password;
@@ -89,6 +92,6 @@ class UserLoginController extends Controller
         else{
             return redirect('/login')->with('error', 'Gagal Reset Password');
         }
-        
+
     }
 }

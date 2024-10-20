@@ -18,7 +18,7 @@ class Event extends Model
     }
 
     public function talent(){
-        return $this->hasOne(Talent::class, 'uid', 'uid');
+        return $this->hasMany(Talent::class, 'uid', 'uid');
     }
 
     public function user()

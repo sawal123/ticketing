@@ -17,7 +17,7 @@ class Cart extends Model
     }
     public function hargaCarts()
     {
-        return $this->hasMany(HargaCart::class, 'uid', 'uid'); // Pastikan kunci asing dan lokal sesuai
+        return $this->hasMany(HargaCart::class, 'uid', 'uid');
     }
 
     // public function event(){

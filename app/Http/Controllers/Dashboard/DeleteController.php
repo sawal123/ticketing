@@ -29,8 +29,7 @@ class DeleteController extends Controller
     public function deteleListTransaksi($uid, $user_uid)
     {
         $cart = Cart::with(['users'])->where('uid', $uid)->first();
-
-            $hargaCart = HargaCart::with(['carts'])->where('uid', $cart->uid)->get();
+        $hargaCart = HargaCart::with(['cart'])->where('uid', $cart->uid)->get();
             foreach($hargaCart as $hc){
                 $hc->delete();
             }
@@ -109,6 +108,7 @@ class DeleteController extends Controller
 
     public function deleteCashes($uid)
     {
+
         $cashes = Cash::where('uid', $uid)->first();
         $cart = Cart::where('uid', $uid)->first();
         $transaksi =  Transaction::where('uid', $uid)->first();

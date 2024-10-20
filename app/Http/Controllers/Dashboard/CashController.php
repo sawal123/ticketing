@@ -96,7 +96,7 @@ class CashController extends Controller
                 ->join('carts', 'carts.uid', '=', 'harga_carts.uid')
                 ->join('events', 'events.uid', '=', 'carts.event_uid')
                 ->where('carts.status', 'SUCCESS')
-                ->where('carts.payment_type', '!=', 'cash')
+                ->where('carts.payment_type', '=', 'cash')
                 ->where('events.uid', $request->uid);
             $jml = 0;
             if ($filter === null) {
@@ -108,14 +108,14 @@ class CashController extends Controller
             foreach ($harga_cart as $hs) {
                 $jml += (int)$hs->quantity;
             }
+            // dd($jml);
         } else {
             return abort('403');
         }
 
 
         // dd($fe);
-        return view(
-            'backend.content.transaksi',
+        return view('backend.content.transaksi',
             [
                 'title' => 'Transaksi Dashboard',
                 'cart' => $cart,
@@ -130,5 +130,9 @@ class CashController extends Controller
                 'status' => $request->status
             ]
         );
+    }
+
+    public function editCash(Request $request){
+        return abort('403');
     }
 }

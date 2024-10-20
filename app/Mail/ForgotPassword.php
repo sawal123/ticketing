@@ -44,7 +44,7 @@ class ForgotPassword extends Mailable
             with:[
                 'name' => $this->user->name,
                 'uid' => $this->user->uid,
-                
+
             ],
         );
     }

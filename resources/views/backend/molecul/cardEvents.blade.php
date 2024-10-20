@@ -1,5 +1,5 @@
-@foreach ($event as $events)
-    <div class="col-md-6 col-xl-3 col-sm-6">
+@foreach ($paginate as $events)
+    <div class="col-md-6 col-xl-4 col-sm-6">
         <div class="card">
             <div class="product-grid6">
                 <div class="product-image6 p-1">
@@ -32,7 +32,7 @@
                             <a href="{{ url('admin/cash/' . $events->uid) }}" class="btn btn-secondary"> <i
                                 class="fe fe-bar-chart-2"></i> Cash </a>
                         </div>
-                           
+
                         @else
                             <div class=" mb-2 btn-sm {{ $events->konfirmasi != null ? 'btn-primary' : 'btn-danger' }}">
                                 {{ $events->konfirmasi != null ? 'Disetujui' : 'Belum disetujui' }}

@@ -135,10 +135,10 @@ class BuyTicketController extends Controller
             $carts = Cart::where('event_uid', $event->uid)->where('user_uid', Auth::user()->uid)->first();
 
             $harga_ticket = Harga::where('uid', $event->uid)->get();
-// dd($kategoriValue);s
+            // dd($kategoriValue);s
             foreach ($kategoriValue as $index => $value) {
-                $hargaCarts = HargaCart::join('carts', 'carts.uid' , '=', 'harga_carts.uid')
-                    ->select('carts.uid','carts.status', 'harga_carts.quantity', 'harga_carts.kategori_harga')
+                $hargaCarts = HargaCart::join('carts', 'carts.uid', '=', 'harga_carts.uid')
+                    ->select('carts.uid', 'carts.status', 'harga_carts.quantity', 'harga_carts.kategori_harga')
                     ->where('carts.status', '=', 'SUCCESS')
                     ->where('harga_carts.kategori_harga', $harga_ticket[$index]->kategori)
                     ->get();

@@ -22,24 +22,4 @@
     </div>
 </div>
 
-<script>
-     $(document).ready(function () {
-        // Tangkap perubahan nilai pada input
-        $("#searchButton").click(function () {
-            // Ambil nilai dari input pencarian
-            var searchQuery = $("#searchInput").val();
-            console.log(searchQuery)
 
-            // Kirim permintaan Ajax ke server untuk mendapatkan hasil pencarian
-            $.ajax({
-                url: "admin/event", // Ganti dengan URL yang sesuai di server Anda
-                method: "GET",
-                data: { query: searchQuery },
-                success: function (data) {
-                    // Perbarui konten hasil pencarian tanpa mereset halaman
-                    $("#resultContainer").html(data);
-                }
-            });
-        });
-    });
-</script>

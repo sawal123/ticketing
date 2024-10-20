@@ -17,29 +17,31 @@ use Illuminate\Mail\Mailables\Attachment;
 class MidtransPaymentNotification extends Mailable
 {
     use Queueable, SerializesModels;
-    
+
 
     /**
      * Create a new message instance.
      * @param \App\Models\User $user
      * @param Cart $cart
      */
+    public $event;
     public function __construct(protected User $user, protected Cart $cart, protected $barcode)
     {
         //
         $this->user = $user;
         $this->cart = $cart;
         $this->barcode = $barcode;
+        $this->event = Event::where('uid', $this->cart->event_uid)->select('event')->firstOrFail();
     }
 
     /**
      * Get the message envelope.
      */
-    
+
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Barcode Verifikasi GOTIK',
+            subject: 'Barcode Verifikasi GOTIK - '.$this->event ,
         );
     }
 
@@ -48,13 +50,15 @@ class MidtransPaymentNotification extends Mailable
      */
     public function content(): Content
     {
-        $user = Auth::user(); 
+        $user = Auth::user();
+
         return new Content(
             view: 'email.notif-email',
             with: [
                 'name' => $this->user->name,
                 'cart' => $this->cart->invoice,
                 'barcode' => $this->barcode,
+                'event'=> $this->event
             ],
         );
     }

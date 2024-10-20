@@ -11,5 +11,8 @@ class Talent extends Model
     protected $fillable = [
         'uid', 'talent', 'gambar',
     ];
-    
+
+    public function event(){
+        return $this->belongsTo(Event::class);
+    }
 }

@@ -24,7 +24,7 @@
 <body class="app sidebar-mini ltr light-mode">
 
 
-    
+
 
     <!-- PAGE -->
     <div class="page">
@@ -52,11 +52,11 @@
         </div>
 
         <!-- Sidebar-right -->
-        @include('backend.partial.sidebarRight')
+        {{-- @include('backend.partial.sidebarRight') --}}
         <!--/Sidebar-right-->
 
         <!-- Country-selector modal-->
-        @include('backend.partial.countryModal')
+        {{-- @include('backend.partial.countryModal') --}}
         <!-- Country-selector modal-->
 
         <!-- FOOTER -->
@@ -71,7 +71,7 @@
 
 
 
-      
+
 
 </body>
 

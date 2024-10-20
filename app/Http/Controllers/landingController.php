@@ -42,14 +42,14 @@ class landingController extends Controller
             ->orderBy('events.created_at', 'desc')
             ->take(9)
             ->get();
-        // $harga = Harga::select('uid', 'harga')->orderBy('harga', 'asc')->get();
+        $harga = Harga::select('uid', 'harga')->orderBy('harga', 'asc')->get();
         $slide = Slider::all(['*']);
         // dd($harga);
 
         return view('frontend.page.home', [
             'title' => 'Tiket',
             'events' => $events,
-            // 'harga' => $harga,
+            'harga' => $harga,
             'slide' => $slide
         ]);
     }
@@ -167,8 +167,7 @@ class landingController extends Controller
         }
         //  dd($event);
         $harga = Harga::select('uid', 'harga')->orderBy('harga', 'asc')->get();
-        return view(
-            'frontend.page.post.post',
+        return view('frontend.page.post.post',
             [
                 'title' => 'Search Event',
                 'event' => $event,

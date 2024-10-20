@@ -35,7 +35,7 @@ class BarcodeController extends Controller
         $hargaC = HargaCart::where('uid', $cart->uid)->get();
         $event = Event::where('uid', $cart->event_uid)->first();
         $barcodeData =  QrCode::size(250)->generate($url);
-        
+
         if($cart->payment_type === 'cash'){
             $user = Cash::where('uid', $cart->uid)->first();
         }else{

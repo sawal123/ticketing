@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Harga extends Model
 {
@@ -12,4 +13,8 @@ class Harga extends Model
     protected $fillable = [
         'uid', 'kategori', 'qty', 'harga',
     ];
+
+    public function event(){
+        return $this->belongsTo(Event::class);
+    }
 }

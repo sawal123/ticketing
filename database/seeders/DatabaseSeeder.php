@@ -17,6 +17,7 @@ class DatabaseSeeder extends Seeder
             SeoSeeder::class,
             BankIndonesia::class,
 
+
         ]);
     }
 }

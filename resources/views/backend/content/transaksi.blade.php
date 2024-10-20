@@ -24,7 +24,7 @@
     </div>
     <!-- PAGE-HEADER END -->
     <div class="row row-sm">
-        <div class="col-lg-6 col-md-6 col-sm-12 col-xl-3">
+        <div class="col-lg-6 col-md-6 col-sm-12 col-xl-4">
             <div class="card overflow-hidden">
                 <div class="card-body">
                     <div class="d-flex">
@@ -37,7 +37,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-lg-6 col-md-6 col-sm-12 col-xl-3">
+        <div class="col-lg-6 col-md-6 col-sm-12 col-xl-4">
             <div class="card overflow-hidden">
                 <div class="card-body">
                     <div class="d-flex">
@@ -53,7 +53,7 @@
             </div>
         </div>
         @if (request()->is('admin/transaksi/' . $uidEvent))
-            <div class="col-lg-6 col-md-6 col-sm-12 col-xl-3">
+            <div class="col-lg-6 col-md-6 col-sm-12 col-xl-4">
                 <div class="card overflow-hidden">
                     <div class="card-body">
                         <div class="d-flex">
@@ -248,87 +248,28 @@
 
                             </table>
                         @endif
+
+
+
+
+
                         @if (request()->is('admin/cash/' . $uidEvent))
-                            <table id="tablePenyewa" class="table table-bordered text-nowrap key-buttons border-bottom">
-                                <thead>
-                                    <tr>
-                                        <th class="border-bottom-0">No</th>
-                                        <th class="border-bottom-0">Invoice</th>
-                                        <th class="border-bottom-0" style="width: 10%">Event</th>
-                                        <th class="border-bottom-0">Tanggal</th>
-                                        <th class="border-bottom-0">Name</th>
-                                        <th class="border-bottom-0">Email</th>
-                                        <th class="border-bottom-0">Qty</th>
-                                        <th class="border-bottom-0">Jmlh</th>
-                                        <th class="border-bottom-0">Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach ($cart as $index => $ca)
-                                        <tr>
-                                            <td>{{ $index + 1 }}</td>
-                                            <td>{{ $ca->invoice }}</td>
-                                            <td>{{ strlen($ca->event > 10) ? substr($ca->event, 0, 15) . '...' : $ca->event }}
-                                            <td>{{ $ca->created_at }}</td>
-                                            <td>{{ $ca->name }}</td>
-                                            <td>{{ $ca->email }}</td>
-                                            <td>
-                                                <a class="modal-effect btn btn-primary-light d-grid mb-3"
-                                                    data-bs-effect="effect-scale" data-bs-toggle="modal"
-                                                    href="#modalCashQty{{ $index }}">{{ $ca->total_quantity }}
-                                                    Ticket</a>
+                          @include('backend.content.table.table-cash')
 
-                                                    <div class="modal fade" id="modalCashQty{{ $index }}">
-
-                                                        <div class="modal-dialog modal-dialog-centered text-center"
-                                                            role="document">
-                                                            <div class="modal-content modal-content-demo">
-                                                                <div class="modal-header">
-                                                                    <h6 class="modal-title">Detail Ticket</h6><button
-                                                                        aria-label="Close" class="btn-close"
-                                                                        data-bs-dismiss="modal"><span
-                                                                            aria-hidden="true">&times;</span></button>
-                                                                </div>
-                                                                <div class="modal-body">
-                                                                    @foreach ($qtyTiket as $qt)
-                                                                        @if ($qt->uid === $ca->uid)
-                                                                            <div class="d-flex justify-content-between">
-                                                                                <p>{{ $qt->kategori_harga }} </p>
-                                                                                <p>{{ $qt->quantity }} </p>
-                                                                            </div>
-                                                                        @endif
-                                                                    @endforeach
-                                                                </div>
-                                                                <div class="modal-footer">
-                                                                    <button class="btn btn-light"
-                                                                        data-bs-dismiss="modal">Close</button>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                            </td>
-                                            <td>Rp {{ number_format($ca->total_harga, 0, ',', '.') }}</td>
-
-                                            <td>
-                                                <div class="g-2">
-                                                    <a href="{{ url('admin/deleteTransksi/' . $ca->uid) }}"
-                                                        class="btn text-danger btn-sm delete" data-bs-toggle="tooltip"
-                                                        data-bs-original-title="Delete"><span
-                                                            class="fa fa-pencil fs-14"></span></a>
-                                                    <a href="{{ url('admin/deleteTransksi/' . $ca->uid) }}"
-                                                        class="btn text-danger btn-sm delete" data-bs-toggle="tooltip"
-                                                        data-bs-original-title="Delete"><span
-                                                            class="fe fe-trash-2 fs-14"></span></a>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
                         @endif
                     </div>
                 </div>
             </div>
         </div>
     </div>
+
+
+
+    <script>
+        var tukar = document.getElementById('tukar')
+        var tes = document.getElementByClassName('tes')
+
+        console.log(tukar)
+    </script>
+
 @endsection

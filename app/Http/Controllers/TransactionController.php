@@ -5,20 +5,22 @@ namespace App\Http\Controllers;
 
 use Exception;
 use Midtrans\Snap;
-use Midtrans\Notification;
 use App\Models\Cart;
-use App\Models\CartVoucher;
 use App\Models\User;
 use App\Models\Event;
+use App\Models\Voucher;
+use Midtrans\Notification;
+use App\Models\CartVoucher;
 use App\Models\Transaction;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use Midtrans\Config as konfig;
+use App\Jobs\sendEmailTrnsaksi;
 use App\Http\Controllers\Controller;
+use App\Jobs\sendEmailETransaksi;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\MidtransPaymentNotification;
-use App\Models\Voucher;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 // use Midtrans\CallbackService;
 
@@ -168,10 +170,14 @@ class TransactionController extends Controller
         // Kirimkan email
         if ($transaction) {
             if ($status === 'capture' && $fraud == 'accept') {
-                Mail::to($user->email)->send(new MidtransPaymentNotification($user, $carts, $order_id));
+                // Mail::to($user->email)->send(new MidtransPaymentNotification($user, $carts, $order_id));
+                $send = new sendEmailETransaksi($user, $carts, $order_id);
+                dispatch($send);
                 //
             } else if ($status === 'settlement') {
-                Mail::to($user->email)->send(new MidtransPaymentNotification($user, $carts, $order_id));
+                // Mail::to($user->email)->send(new MidtransPaymentNotification($user, $carts, $order_id));
+                $send = new sendEmailETransaksi($user, $carts, $order_id);
+                dispatch($send);
             } else if ($status === 'capture' && $fraud == 'challenge') {
                 return response()->json([
                     'meta' => [

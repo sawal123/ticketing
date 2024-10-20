@@ -1,4 +1,4 @@
-<footer class="fugu--footer-section" style="margin-top: 150px">
+<footer class="fugu--footer-section" >
     <div class="container">
         <div class="fugu--footer-top">
             <div class="row">

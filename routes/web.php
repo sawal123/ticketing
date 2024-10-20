@@ -19,10 +19,12 @@ use App\Http\Controllers\Dashboard\DeleteController;
 use App\Http\Controllers\Auth\UserRegisterController;
 use App\Http\Controllers\Dashboard\CashController;
 use App\Http\Controllers\Dashboard\DashboardController;
+use App\Http\Controllers\Dashboard\PaymentGatewayController;
 use App\Http\Controllers\Dashboard\TController;
 use App\Http\Controllers\Dashboard\TransaksiController;
 use App\Http\Controllers\Penyewa\AddController as PenyewaAddController;
 use App\Http\Controllers\Penyewa\Auth\LoginController;
+use App\Http\Controllers\Penyewa\BeliCash\CashController as BeliCashCashController;
 use App\Http\Controllers\Penyewa\EditController as PenyewaEditController;
 use App\Http\Controllers\Penyewa\DeleteController as PenyewaDelete;
 use App\Http\Controllers\Penyewa\PenyewaController;
@@ -83,7 +85,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/checkVoucer', [BuyTicketController::class, 'checkVoucher']);
     Route::post('/checkout', [BuyTicketController::class, 'checkout']);
     Route::get('/transaksi', [landingController::class, 'listTransaksi']);
- 
+
     Route::post('/paynow', [TransactionController::class, 'paynow']);
     Route::get('/detail-ticket/delete/{uid}/{user_uid}', [DeleteController::class, 'deteleListTransaksi']);
     Route::get('/logout', function () {
@@ -105,7 +107,7 @@ Route::prefix('dashboard')
     ->group(function () {
         Route::get('/', [PenyewaController::class, 'index'])->name('dashboard');
         Route::get('/transaksi/{uid?}', [PenyewaController::class, 'transaksi'])->name('dashboard.transaksi');
-       
+
         Route::get('/cash/{uid?}', [PenyewaController::class, 'cash'])->name('dashboard.cash');
         Route::get('/event/{addEvent?}/{uid?}', [PenyewaController::class, 'event']);
         Route::get('/ubahEvents/{uid}', [PenyewaController::class, 'ubahEvents']);
@@ -119,7 +121,8 @@ Route::prefix('dashboard')
         Route::post('/addHarga', [PenyewaAddController::class, 'addHarga']);
         Route::post('/addVoucher', [PenyewaAddController::class, 'addVoucher']);
         Route::post('/addPenarikan', [PenyewaAddController::class, 'addPenarikan']);
-        Route::post('/addCash', [PenyewaAddController::class, 'addCash']);
+        // Route::post('/addCash', [BeliCashCashController::class, 'addCash']);
+        Route::post('/addCash', [BeliCashCashController::class, 'createCash'])->name('add.cash');
         Route::post('/addPartner', [PenyewaAddController::class, 'addPartner']);
 
         Route::post('/editTalent', [PenyewaEditController::class, 'editTalent']);
@@ -143,9 +146,10 @@ Route::prefix('admin')
         Route::get('/', [DashboardController::class, 'dashboard']);
 
         Route::get('/search',[DashboardController::class, 'event']);
-    
+
         Route::get('/transaksi/{uid?}', [TransaksiController::class, 'transaksi']);
         Route::get('/cash/{uid?}', [CashController::class, 'cash']);
+        Route::get('/editCash', [CashController::class, 'editCash'])->name('AEditCash');
 
         Route::get('t/online/{uid?}', [TController::class, 'tonline'])->name('tonline');
 
@@ -157,12 +161,14 @@ Route::prefix('admin')
         Route::get('/ubahEvents/{uid}', [DashboardController::class, 'ubahEvents']);
         Route::get('/penarikan', [DashboardController::class, 'penarikan']);
 
+        Route::get('/payment-gateway', [PaymentGatewayController::class, 'index'])->name('payments');
+
         Route::get('/setting/slide', [DashboardController::class, 'landing']);
         Route::get('/setting/seo', [DashboardController::class, 'seo']);
         Route::get('/setting/term', [DashboardController::class, 'term']);
 
         Route::get('/profile', [DashboardController::class, 'profile']);
-        
+
 
         // Route::get('/event', [DashboardController::class, 'event']);
         // ROUTE ADD
@@ -181,6 +187,9 @@ Route::prefix('admin')
         Route::post('/editHarga', [editController::class, 'editHarga']);
         Route::post('/editSlide', [editController::class, 'editSlide']);
         Route::post('/editTerm', [editController::class, 'editTerm']);
+
+
+
         Route::post('/user/editUser', [editController::class, 'editUser']);
         Route::post('/user/editCashes', [editController::class, 'editCashes']);
         Route::get('/setujuiEvent/{data}', [editController::class, 'setujuiEvent']);
@@ -210,8 +219,8 @@ Route::prefix('admin')
         Route::get('/deletePen/{data}', [DeleteController::class, 'deletePenarikan']);
         route::get('/delete/contact/{data}', [DeleteController::class, 'deleteContact']);
     });
-    
-    
+
+
 
 
 // ====================

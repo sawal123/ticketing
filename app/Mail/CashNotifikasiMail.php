@@ -17,29 +17,30 @@ use Illuminate\Mail\Mailables\Attachment;
 class CashNotifikasiMail extends Mailable
 {
     use Queueable, SerializesModels;
-    
+
 
     /**
      * Create a new message instance.
      * @param \App\Models\User $user
      * @param Cart $cart
      */
-    public function __construct(protected  $nama, protected $order_id)
+    public function __construct(protected  $nama, protected $order_id, protected $event)
     {
         //
         $this->nama = $nama;
         $this->order_id = $order_id;
+        $this->event = $event;
 
     }
 
     /**
      * Get the message envelope.
      */
-    
+
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Barcode Verifikasi GOTIK',
+            subject: 'Barcode Verifikasi GOTIK - ' . $this->event,
         );
     }
 
@@ -48,13 +49,14 @@ class CashNotifikasiMail extends Mailable
      */
     public function content(): Content
     {
-        // $user = Auth::user(); 
+        // $user = Auth::user();
         return new Content(
             view: 'email.notif-email',
             with: [
                 'name' => $this->nama,
                 'cart' => $this->order_id,
                 'barcode' => $this->order_id,
+                'event' => $this->event
             ],
         );
     }
