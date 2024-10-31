@@ -4,7 +4,8 @@
             <!-- Brand Logo-->
             <div class="brand-logo">
                 <a href="{{ url('/') }}">
-                    <img src="{{ asset('storage/logo/'. $logo[0]->logo) }}" style="width: 100%" alt="" class="light-version-logo">
+                    <img src="{{ asset('storage/logo/' . $logo[0]->logo) }}" style="width: 100%" alt=""
+                        class="light-version-logo">
 
                 </a>
             </div>
@@ -22,7 +23,8 @@
                         <li class="nav-item nav-item-has-children p-2">
                             <div class="fugu--newsletter fugu--search " data-wow-delay=".30s">
                                 <form action="{{ url('/cari') }}" method="GET">
-                                    <input type="text" placeholder="Search..." name="cari" value="{{ old('cari') }}">
+                                    <input type="text" placeholder="Search..." name="cari"
+                                        value="{{ old('cari') }}">
                                     <button type="submit" id="fugu--submit-btn">Search</button>
                                     <button type="submit" id="fugu--search-btn"><img
                                             src="{{ asset('landing/images/svg2/search.svg') }}" alt=""></button>
@@ -30,13 +32,15 @@
                             </div>
                         </li>
                         <style>
-                            .fa-cart-plus{
+                            .fa-cart-plus {
                                 transform: rotate(0deg) !important;
                             }
-                            .trans{
+
+                            .trans {
                                 color: #888888 !important;
                             }
-                            .trans:hover{
+
+                            .trans:hover {
                                 color: #fff !important;
                             }
                         </style>
@@ -49,6 +53,16 @@
                                 <a href="#" class="nav-link-item drop-trigger">{{ $user->name }} <i
                                         class="fas fa-angle-down"></i></a>
                                 <ul class="sub-menu" id="submenu-1">
+                                    @if (Auth::user()->role === 'penyewa')
+                                        <li class="sub-menu--item">
+                                            <a href="{{ url('/dashboard') }}">Dashboard</a>
+                                        </li>
+                                    @endif
+                                    @if (Auth::user()->role === 'admin')
+                                        <li class="sub-menu--item">
+                                            <a href="{{ url('/admin') }}">Dashboard</a>
+                                        </li>
+                                    @endif
                                     <li class="sub-menu--item">
                                         <a href="{{ url('/profile') }}">Profile</a>
                                     </li>

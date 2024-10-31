@@ -211,8 +211,7 @@ class PenyewaController extends Controller
         // dd($birtday);
 
         // dd($dataUser);
-        return view(
-            'penyewa.page.dashboard',
+        return view('penyewa.page.dashboard',
             [
                 'title' => 'Dashboard',
                 'dataUser' => $dataUser,

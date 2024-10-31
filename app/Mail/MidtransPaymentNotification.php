@@ -41,7 +41,7 @@ class MidtransPaymentNotification extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Barcode Verifikasi GOTIK - '.$this->event ,
+            subject: 'Barcode Verifikasi GOTIK - '.$this->event->event ,
         );
     }
 

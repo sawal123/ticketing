@@ -18,8 +18,18 @@
                     </div>
                     
                     <div class="col-12 col-lg-8">
-                        <div class="alert alert-danger">
-                            Pastikan Email Kamu Aktif Ya! <strong>{{Auth::user()->email}}</strong>
+                        <div class="row mb-2">
+                            <div class="col">
+                                @if ($cart->status === 'SUCCESS')
+                                    <div class="alert alert-info" role="alert">
+                                        <small>Barcode telah dikirim ke email Anda (periksa juga folder SPAM)!</small>
+                                    </div>
+                                @endif
+                    
+                                <div class="alert alert-danger my-2" role="alert">
+                                    <small>Pastikan email Anda aktif: <strong>{{ Auth::user()->email }}</strong></small>
+                                </div>
+                            </div>
                         </div>
                         @if (session('success'))
                             <div class="alert alert-primary">

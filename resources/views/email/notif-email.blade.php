@@ -50,7 +50,7 @@ p, h2{
         <h3>Hi, {{ $name }}</h3>
         <hr>
         <div class="paragrap">
-            <strong>Terimakasih telah membeli tiket {{$event}} melalui GOTIK</strong>
+            <strong>Terimakasih telah membeli tiket {{$event->event}} melalui GOTIK</strong>
             <p>Barcode dan kode ini bersifat privasi, jangan beritahu/berikan kepada orang lain.
                 <br>
                 Tunjukan barcode/kode kepada panitia untuk konfirmasi kehadiran.

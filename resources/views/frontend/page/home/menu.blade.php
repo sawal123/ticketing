@@ -1,8 +1,8 @@
 <div class="container mx-auto">
     <div class="row">
-        <div class="col d-lg-flex d-block justify-content-center "
-            style="margin-right: auto; margin-left:auto; text-align: center">
-            @foreach ($events as $event)
+        @foreach ($events as $event)
+            <div class="col-3 d-flex justify-content-center mb-4">
+
                 <div class="card bg-dark border mx-2 my-2 d-inline-block" style="width: 18rem; border-radius: 4%;">
                     <div class="fugu--card-thumb">
                         @if ($event->status === 'close')
@@ -16,19 +16,17 @@
                             alt="...">
                     </div>
                     <div class="card-body fugu--card-data text-start">
-                        <h6 style="color: white">{{ $event->event }}</h6>
+                        <h6 style="color: white"><a href="{{ url('/ticket/' . $event->slug) }}"
+                                class="text-white">{{ $event->event }}</a>
+                        </h6>
                         <a style="color: white;" class="mb-2" href="{{ $event->map }}">
-                            <p>{{ $event->alamat }}</p>
+                            <p>{{ implode(' ', array_slice(explode(' ', $event->alamat), 0, 3)) . '...' }}</p>
                         </a>
                         <p>{{ date('Y-m-d H:i', strtotime($event->tanggal)) }}</p>
                         <div class="fugu--card-footer mt-1">
                             <div class="fugu--card-footer-data">
                                 <span>Start From:</span>
-                                {{-- @if ($event->harga)
-                                    <h4>Rp {{ number_format($event->harga->harga, 0, ',', '.') }}</h4>
-                                @else
-                                    <p>Ticket Belum Tersedia</p>
-                                @endif --}}
+
                                 @php
                                     $filtered_hargas = $harga->filter(function ($hargas) use ($event) {
                                         return $hargas->uid === $event->uid;
@@ -48,10 +46,11 @@
                         <p>By: {{ $event->name }}</p>
                     </div>
                 </div>
-            @endforeach
 
 
-        </div>
+
+            </div>
+        @endforeach
     </div>
 
     <div class="fugu--portfolio-btn">

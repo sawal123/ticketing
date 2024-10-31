@@ -10,7 +10,7 @@
     <meta name="keywords" content="{{ $seo[0]->keyword }}">
     <meta name="description" content="{{ $seo[0]->description }}">
     <meta name="author" content="Gotik">
-    
+
 
     <!-- FAVICON -->
     <link rel="shortcut icon" href="{{ asset('storage/logo/' . $logo[0]->icon) }}" type="image/x-icon">
@@ -18,6 +18,8 @@
     <!-- TITLE -->
     <title>{{ $title }}</title>
     @include('backend.partial.link')
+
+    {{-- <script src="https://unpkg.com/feather-icons"></script> --}}
 
 
 </head>
@@ -46,21 +48,60 @@
         </div>
 
 
-        <!-- BACK-TO-TOP -->
+        {{-- <!-- BACK-TO-TOP --> --}}
         <a href="#top" id="back-to-top"><i class="fa fa-angle-up"></i></a>
         {{-- @include('backend.partial.script') --}}
         <script src="{{ asset('/assets/js/jquery.min.js') }}"></script>
-        <!-- BOOTSTRAP JS -->
+        {{-- <!-- BOOTSTRAP JS --> --}}
         <script src="{{ asset('/assets/plugins/bootstrap/js/popper.min.js') }}"></script>
         <script src="{{ asset('/assets/plugins/bootstrap/js/bootstrap.min.js') }}"></script>
-        <!-- Color Theme js -->
+        {{-- <!-- Color Theme js --> --}}
         <script src="{{ asset('/assets/js/themeColors.js') }}"></script>
-        <!-- CUSTOM JS -->
+        {{-- <!-- CUSTOM JS --> --}}
         <script src="{{ asset('/assets/js/custom.js') }}"></script>
-        <!-- SHOW PASSWORD JS -->
+        {{-- <!-- SHOW PASSWORD JS --> --}}
         <script src="{{ asset('/assets/js/show-password.min.js') }}"></script>
 
-      
+
+       
+
+        <script>
+            // Validasi password saat input
+            document.getElementById('password').addEventListener('input', function() {
+                const password = this.value;
+                const errorDiv = document.getElementById('password-error');
+                const minLength = 8;
+                const hasLetter = /[A-Za-z]/.test(password);
+                const hasNumber = /\d/.test(password);
+
+                // Reset error message
+                errorDiv.textContent = '';
+
+                // Validasi minimal 8 karakter
+                if (password.length < minLength) {
+                    errorDiv.textContent = 'Password harus memiliki minimal 8 karakter.';
+                }
+                // Validasi kombinasi huruf dan angka
+                else if (!hasLetter || !hasNumber) {
+                    errorDiv.textContent = 'Password harus mengandung huruf dan angka.';
+                } else {
+                    errorDiv.textContent = 'Password Lulus Validasi.';
+                }
+            });
+
+            // Toggle visibility of the password
+            document.getElementById('togglePassword').addEventListener('click', function() {
+                const passwordInput = document.getElementById('password');
+                const icon = this;
+                if (passwordInput.type === 'password') {
+                    passwordInput.type = 'text';
+                    icon.classList.replace('zmdi-eye', 'zmdi-eye-off'); // Ganti ikon menjadi "eye-off"
+                } else {
+                    passwordInput.type = 'password';
+                    icon.classList.replace('zmdi-eye-off', 'zmdi-eye'); // Ganti ikon menjadi "eye"
+                }
+            });
+        </script>
 
 </body>
 
