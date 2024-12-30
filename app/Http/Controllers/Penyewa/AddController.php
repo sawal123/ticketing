@@ -129,13 +129,18 @@ class AddController extends Controller
         $validate = Validator::make($request->all(), [
             'code' => 'string|required|max:50',
             'unit' => 'string|required|max:255',
-            'nominal' => 'numeric|required',
+            // 'nominal' => 'numeric|required',
             'min' => 'required|numeric',
-            'max' => 'required|numeric',
+            'max' => 'numeric',
             'maxUse' => 'required|numeric'
         ]);
+        // dd($validate->validate());
         $validate->validate();
-
+        if($request->unit === 'rupiah'){
+            $nominal = $request->nominalRupiah;
+        }else{
+            $nominal = $request->nominalPersen;
+        }
         $uid = Str::uuid();
 
         $voucher = new Voucher([
@@ -144,7 +149,7 @@ class AddController extends Controller
             'event_uid' => 'null',
             'code' => $request->code,
             'unit' => $request->unit,
-            'nominal' => $request->nominal,
+            'nominal' => $nominal,
             'min_beli' => $request->min,
             'max_disc' => $request->max,
             'digunakan' => 0,

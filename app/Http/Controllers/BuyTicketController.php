@@ -30,23 +30,25 @@ class BuyTicketController extends Controller
             return redirect('/');
         }
         $event = Event::where('uid', $cart->event_uid)->first();
+        // dd($event);
         $harga = HargaCart::where('uid', $cart->uid)->get();
         $cartV = CartVoucher::where('uid', $cart->uid)->first();
         $voucher = Voucher::where('code', $cartV->code)->first();
-        // dd($cartV);
+       
         $counts = [];
         foreach ($harga as $count) {
             $counts[] = $count->harga_ticket * $count->quantity;
         }
         $jumlah = array_sum($counts);
-        $fee = '5';
+        // $fee = 5;
+        // dd($event->fee * $fee);
         return view('frontend.page.bayartiket', [
             'title' => 'Detail Ticket',
             'event' => $event,
             'harga' => $harga,
             'cart' => $cart,
             'total' => $jumlah,
-            'fee' => $fee,
+            // 'fee' => $fee,
             'uid' => $uid,
             'cartV' => $voucher
         ]);

@@ -21,46 +21,64 @@
                         </div>
                     </div>
                     <div class="row mb-4">
-                        <label class="col-md-3 form-label d-flex justify-content-start">Unit :</label>
+                        <label class="col-md-3 form-label d-flex justify-content-start">Type :</label>
                         <div class="col-md-9">
                             <div class="custom-controls-stacked d-flex align-items-center mt-2">
                                 <label class="custom-control mx-2 custom-radio">
-                                    <input type="radio" class="custom-control-input"
-                                        name="unit" value="rupiah" checked>
+                                    <input type="radio" class="custom-control-input" name="unit" value="rupiah"
+                                        checked onclick="toggleInput()">
                                     <span class="custom-control-label">Rupiah</span>
                                 </label>
                                 <label class="custom-control mx-2 custom-radio">
-                                    <input type="radio" class="custom-control-input"
-                                        name="unit" value="persen" >
+                                    <input type="radio" class="custom-control-input" name="unit" value="persen"
+                                        onclick="toggleInput()">
                                     <span class="custom-control-label">Persen</span>
                                 </label>
                             </div>
                         </div>
-                        
                     </div>
                     <div class="row mb-4">
-                        <label class="col-md-3 form-label d-flex justify-content-start">Nominal :</label>
+                        <label class="col-md-3 form-label d-flex justify-content-start">Discount</label>
                         <div class="col-md-9">
-                            <input type="number" class="form-control" name="nominal" placeholder="Masukan Nominal"
-                                required>
+                            <!-- Input Rupiah -->
+                            <div class="input-group" id="input-rupiah">
+                                <span class="input-group-text" id="basic-addon1">Rp</span>
+                                <input type="number" class="form-control" placeholder="100000" name="nominalRupiah"
+                                    aria-label="nominal" aria-describedby="basic-addon1">
+                            </div>
+                            <!-- Input Persen -->
+                            <div class="input-group" id="input-persen" style="display: none;">
+                                <input type="number" class="form-control" placeholder="20" name="nominalPersen"
+                                    aria-describedby="basic-addon2">
+                                <span class="input-group-text" id="basic-addon2">%</span>
+                            </div>
+                        </div>
+                    </div>
+                    <script>
+                        function toggleInput() {
+                            const isRupiahChecked = document.querySelector('input[name="unit"]:checked').value === "rupiah";
+                            document.getElementById('input-rupiah').style.display = isRupiahChecked ? 'flex' : 'none';
+                            document.getElementById('input-persen').style.display = isRupiahChecked ? 'none' : 'flex';
+                        }
+
+                        // Call toggleInput on page load to set initial state
+                        toggleInput();
+                    </script>
+                    <div class="row mb-4">
+                        <label class="col-md-3 form-label d-flex justify-content-start">Min Beli</label>
+                        <div class="col-md-9">
+                            <input type="number" class="form-control" name="min" placeholder="Rp 100.000" required>
                         </div>
                     </div>
                     <div class="row mb-4">
-                        <label class="col-md-3 form-label d-flex justify-content-start">Min Beli :</label>
-                        <div class="col-md-9">
-                            <input type="number" class="form-control" name="min" placeholder="Minimal Beli"
-                                required>
-                        </div>
-                    </div>
-                    <div class="row mb-4">
-                        <label class="col-md-3 form-label d-flex justify-content-start">Max Disc :</label>
+                        <label class="col-md-3 form-label d-flex justify-content-start">Max Discount</label>
                         <div class="col-md-9">
                             <input type="number" class="form-control" name="max" placeholder="Maksimal Discount"
                                 required>
                         </div>
                     </div>
                     <div class="row mb-4">
-                        <label class="col-md-3 form-label d-flex justify-content-start">Max Use :</label>
+                        <label class="col-md-3 form-label d-flex justify-content-start">Max Digunakan</label>
                         <div class="col-md-9">
                             <input type="number" class="form-control" name="maxUse" placeholder="Maksimal Digunakan"
                                 required>
@@ -90,58 +108,68 @@
             <form action="{{ url('dashboard/updateVoucher') }}" method="post" enctype="multipart/form-data">
                 @csrf
                 <div class="modal-body">
-                    {{-- <input type="hidden" name="uid" value="{{$eventDetail->uid}}"> --}}
+                    <input type="hidden" name="id">
                     <div class="row mb-4">
                         <label class="col-md-3 form-label d-flex justify-content-start">Code Voucher :</label>
                         <div class="col-md-9">
-                            <input type="text" class="form-control" name="code" id="codeV" placeholder="Masukan Code"
-                                required>
+                            <input type="text" class="form-control" name="code" id="codeV"
+                                placeholder="Masukan Code" required>
                         </div>
                     </div>
                     <div class="row mb-4">
-                        <label class="col-md-3 form-label d-flex justify-content-start">Unit :</label>
+                        <label class="col-md-3 form-label d-flex justify-content-start">Type :</label>
                         <div class="col-md-9">
                             <div class="custom-controls-stacked d-flex align-items-center mt-2">
                                 <label class="custom-control mx-2 custom-radio">
-                                    <input type="radio" class="custom-control-input unit"
-                                        name="unit" value="rupiah" checked>
+                                    <input type="radio" class="custom-control-input" name="unit" id="URupiah"
+                                        value="rupiah" checked onclick="toggleNom()">
                                     <span class="custom-control-label">Rupiah</span>
                                 </label>
                                 <label class="custom-control mx-2 custom-radio">
-                                    <input type="radio" class="custom-control-input unit"
-                                        name="unit" value="persen" >
+                                    <input type="radio" class="custom-control-input" name="unit" id="UPersen"
+                                        value="persen" onclick="toggleNom()">
                                     <span class="custom-control-label">Persen</span>
                                 </label>
                             </div>
                         </div>
-                        
                     </div>
                     <div class="row mb-4">
-                        <label class="col-md-3 form-label d-flex justify-content-start">Nominal :</label>
+                        <label class="col-md-3 form-label d-flex justify-content-start">Discount</label>
                         <div class="col-md-9">
-                            <input type="number" class="form-control" name="nominal" id="nominalV" placeholder="Masukan Nominal"
-                                required>
+                            <!-- Input Rupiah -->
+                            <div class="input-group" id="inputrupiah">
+                                <span class="input-group-text" id="basic-addon1">Rp</span>
+                                <input type="number" class="form-control" placeholder="100000" id="nominalRupiah"
+                                    name="nominalRupiah" aria-label="nominal" aria-describedby="basic-addon1">
+                            </div>
+                            <!-- Input Persen -->
+                            <div class="input-group" id="inputpersen" style="display: none;">
+                                <input type="number" class="form-control" placeholder="20" id="nominalPersen"
+                                    name="nominalPersen" aria-describedby="basic-addon2">
+                                <span class="input-group-text" id="basic-addon2">%</span>
+                            </div>
                         </div>
                     </div>
+                   
                     <div class="row mb-4">
                         <label class="col-md-3 form-label d-flex justify-content-start">Min Beli :</label>
                         <div class="col-md-9">
-                            <input type="number" class="form-control" name="min" id="minV" placeholder="Minimal Beli"
-                                required>
+                            <input type="number" class="form-control" name="min" id="minV"
+                                placeholder="Minimal Beli" required>
                         </div>
                     </div>
                     <div class="row mb-4">
                         <label class="col-md-3 form-label d-flex justify-content-start">Max Disc :</label>
                         <div class="col-md-9">
-                            <input type="number" class="form-control" name="max" id="maxV" placeholder="Maksimal Discount"
-                                required>
+                            <input type="number" class="form-control" name="max" id="maxV"
+                                placeholder="Maksimal Discount" required>
                         </div>
                     </div>
                     <div class="row mb-4">
                         <label class="col-md-3 form-label d-flex justify-content-start">Max Use :</label>
                         <div class="col-md-9">
-                            <input type="number" class="form-control" name="maxUse" id="maxUseV" placeholder="Maksimal Digunakan"
-                                required>
+                            <input type="number" class="form-control" name="maxUse" id="maxUseV"
+                                placeholder="Maksimal Digunakan" required>
                         </div>
                     </div>
 

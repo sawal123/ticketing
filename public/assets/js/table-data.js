@@ -161,6 +161,32 @@ $(document).ready(function () {
             sSearch: "",
         },
     });
+    // var table = $("#tableTransPenyewa").DataTable({
+    //     buttons: [
+    //         {
+    //             extend: "print",
+    //             exportOptions: {
+    //                 columns: [0, 1, 2, 3, 4, 5, 6, 7, 8],
+    //             },
+    //         },
+    //         {
+    //             extend: "excel",
+    //             exportOptions: {
+    //                 columns: [0, 1, 2, 3, 4, 5, 6, 7, 8],
+    //             },
+    //         },
+    //         {
+    //             extend: "pdf",
+    //             exportOptions: {
+    //                 columns: [0, 1, 2, 3, 4, 5, 6, 7, 8],
+    //             },
+    //         },
+    //     ],
+    // });
+    // tableTransPenyewa
+    //     .buttons()
+    //     .container()
+    //     .appendTo("#tableTransPenyewa_wrapper .col-md-6:eq(0)");
 
     var table = $("#tableAdminCash").DataTable({
         buttons: [
@@ -245,9 +271,12 @@ $(document).ready(function () {
         },
     });
 
-    myContact.buttons()
-    .container()
-    .appendTo("#myContact_wrapper .col-md-6:eq(0)");
+    
+
+    myContact
+        .buttons()
+        .container()
+        .appendTo("#myContact_wrapper .col-md-6:eq(0)");
     file.buttons()
         .container()
         .appendTo("#file-datatable_wrapper .col-md-6:eq(0)");
@@ -259,6 +288,7 @@ $(document).ready(function () {
         .buttons()
         .container()
         .appendTo("#tablePenyewa_wrapper .col-md-6:eq(0)");
+
     tableMoney
         .buttons()
         .container()
@@ -281,4 +311,33 @@ $(document).ready(function () {
         searching: true,
         responsive: true,
     });
+});
+
+
+$(document).ready(function() {
+    var table = $("#tableTransPenyewa").DataTable({
+        buttons: [{
+                extend: "print",
+                exportOptions: {
+                    columns: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+                },
+            },
+            {
+                extend: "excel",
+                exportOptions: {
+                    columns: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+                },
+            },
+            {
+                extend: "pdf",
+                exportOptions: {
+                    columns: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+                },
+            },
+        ],
+    });
+    table
+        .buttons()
+        .container()
+        .appendTo("#tableTransPenyewa_wrapper .col-md-6:eq(0)");
 });

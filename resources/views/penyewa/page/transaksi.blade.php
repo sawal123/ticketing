@@ -2,7 +2,7 @@
 
 @section('content')
     <div class="page-header">
-        <h1 class="page-title">Transaksi Online {{$event->event}}</h1>
+        <h1 class="page-title">Transaksi Online {{ $event->event }}</h1>
         <div>
             <ol class="breadcrumb">
                 <li class="breadcrumb-item"><a href="javascript:void(0)">Dashboard</a></li>
@@ -49,7 +49,7 @@
             <div class="card">
                 <form action="{{ url('dashboard/transaksi') }}" method="get">
                     {{-- @csrf --}} <!-- Tidak diperlukan untuk GET request -->
-                
+
                     <div class="card-header d-flex justify-content-between">
                         <h3 class="card-title">File Export</h3>
                         <div class="input-group w-md w-25">
@@ -61,7 +61,8 @@
                 </form>
                 <div class="card-body">
                     <div class="table-responsive">
-                        <table id="tablePenyewa" class="table table-bordered text-nowrap key-buttons border-bottom">
+                        <table id="tableTransPenyewa"
+                            class="table table-hover table-bordered text-nowrap key-buttons border-bottom">
                             <thead>
                                 <tr>
                                     <th class="border-bottom-0">No</th>
@@ -75,12 +76,10 @@
                                     <th class="border-bottom-0">Total</th>
                                     <th class="border-bottom-0">Voucher</th>
                                     <th class="border-bottom-0">Payment</th>
-                                    {{-- <th class="border-bottom-0">Fee</th> --}}
                                     <th class="border-bottom-0">Status</th>
-                                    {{-- <th class="border-bottom-0">Action</th> --}}
                                 </tr>
                             </thead>
-                            <tbody>
+                            <tbody class="table-group-divider">
                                 @foreach ($cart as $key => $carts)
                                     <tr>
                                         <td>{{ $key += 1 }}</td>
@@ -131,9 +130,22 @@
 
                                         </td>
 
-                                        <td>{{ $carts->total_harga }}</td>
-                                        <td>{{ $carts->disc }}</td>
-                                        <td>{{ $carts->total_harga - $carts->disc }}</td>
+                                        <td>Rp {{ number_format($carts->total_harga, 0, ',', '.') }}</td>
+                                        <td>
+                                            {{ $carts->unit === 'rupiah' ? 'Rp' . number_format($carts->disc, 2, ',', '.') : ($carts->unit === 'persen' ? $carts->disc . '%' : 'Tidak ada diskon') }}
+
+                                        </td>
+                                        <td>
+                                            @if ($carts->unit === 'rupiah')
+                                                {{ number_format($carts->total_harga - $carts->disc, 0, ',', '.') }}
+                                            @elseif ($carts->unit === 'persen')
+                                                Rp
+                                                {{ number_format($carts->total_harga - ($carts->total_harga * $carts->disc) / 100, 0, ',', '.') }}
+                                            @else
+                                                Rp {{ number_format($carts->total_harga, 0, ',', '.') }}
+                                            @endif
+                                        </td>
+
                                         <td>{{ $carts->voucher }}</td>
                                         <td>{{ $carts->payment_type }}</td>
                                         <td>
@@ -162,4 +174,5 @@
             </div>
         </div>
     </div>
+   
 @endsection

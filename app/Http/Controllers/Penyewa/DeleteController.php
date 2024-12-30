@@ -6,9 +6,10 @@ use App\Models\Event;
 use App\Models\Harga;
 use App\Models\Talent;
 use App\Models\Partner;
+use App\Models\Voucher;
+use App\Models\EventDate;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
-use App\Models\EventDate;
 
 class DeleteController extends Controller
 {
@@ -67,5 +68,10 @@ class DeleteController extends Controller
         $partner = Partner::where('uid', $uid)->first();
         $partner->delete();
         return redirect()->back()->with('success', 'Partner Berhasil dihapus');
+    }
+    public function deleteVoucher($uid){
+        $voucher = Voucher::where('uid', $uid)->first();
+        $voucher->delete();
+        return redirect()->back()->with('success', 'Voucher Berhasil dihapus');
     }
 }

@@ -48,6 +48,7 @@
                                 </div>
                                 @php
                                     $fee = 0;
+                                    $total1 = 0;
                                 @endphp
                                 @foreach ($harga as $harga)
                                     <div class="row">
@@ -137,7 +138,7 @@
                                             <p class="text-start m-0" style="font-size: 14px; font-weight: bold">Total
                                                 Ticket</p>
                                             <h6 class="text-end m-0" style="font-size: 16px; font-weight: bold">
-                                                Rp {{ number_format($total, 0, ',', '.') }}
+                                                Rp {{ number_format($total1, 0, ',', '.') }}
                                             </h6>
                                         </div>
                                         <hr>

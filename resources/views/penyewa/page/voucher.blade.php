@@ -34,7 +34,8 @@
                         </div>
                     @endif
                     <div class="table-responsive">
-                        <table id="tableVoucher" class="table table-hover table-bordered text-nowrap key-buttons border-bottom">
+                        <table id="tableVoucher"
+                            class="table table-hover table-bordered text-nowrap key-buttons border-bottom">
                             <thead>
                                 <tr>
                                     <th class="border-bottom-0">No</th>
@@ -50,13 +51,13 @@
                                 </tr>
                             </thead>
                             <tbody class="table-group-divider">
-                               
+
                                 @foreach ($voucher as $key => $v)
                                     <tr>
-                                        <td >{{ $key += 1 }}</td>
-                                        <td >{{ $v->code }}</td>
-                                        <td >{{ $v->unit }}</td>
-                                        <td >
+                                        <td>{{ $key += 1 }}</td>
+                                        <td>{{ $v->code }}</td>
+                                        <td>{{ $v->unit }}</td>
+                                        <td>
                                             @if ($v->unit === 'rupiah')
                                                 Rp {{ number_format($v->nominal, 0, ',', '.') }}
                                             @else
@@ -64,27 +65,35 @@
                                             @endif
 
                                         </td>
-                                        <td >Rp {{ number_format($v->min_beli, 0, ',', '.') }}</td>
-                                        <td >
+                                        <td>Rp {{ number_format($v->min_beli, 0, ',', '.') }}</td>
+                                        <td>
                                             Rp {{ number_format($v->max_disc, 0, ',', '.') }}
 
                                         </td>
-                                        <td >{{ $v->digunakan }}</td>
-                                        <td >{{ $v->limit }}</td>
+                                        <td>{{ $v->digunakan }}</td>
+                                        <td>{{ $v->limit }}</td>
                                         {{-- <td >{{ $v->fee }}</td> --}}
-                                        <td >
+                                        <td>
                                             <div class="mt-sm-1 d-block">
                                                 <span
                                                     class="badge bg-success-transparent rounded-pill text-success p-2 px-3">{{ $v->status }}</span>
                                             </div>
                                         </td>
-                                        <td >
+                                        <td>
                                             <div class="g-2">
-                                                <a type="submit" class="btn text-primary btn-sm" data-bs-toggle="modal" data-bs-target="#updateVoucher"
-                                                    data-bs-original-title="Edit"><span class="fe fe-edit fs-14"></span></a>
+                                                <a type="button" class="btn text-primary btn-sm" data-bs-toggle="modal"
+                                                    data-bs-target="#updateVoucher"
+                                                    data-id="{{ $v->id }}"
+                                                    data-code="{{ $v ->code }}"
+                                                    data-unit="{{ $v->unit }}" data-nominal="{{ $v->nominal }}"
+                                                    data-minbeli="{{ $v->min_beli }}" data-maxdisc="{{ $v->max_disc }}"
+                                                    data-limit="{{ $v->limit }}"
+                                                    data-bs-original-title="Edit"><span
+                                                        class="fe fe-edit fs-14"></span></a>
 
-                                                <a class="btn text-danger btn-sm delete" href="{{url('dashboard/delete/voucher/'.$v->uid)}}" data-bs-toggle="tooltip"
-                                                    data-bs-original-title="Delete"><span
+                                                <a class="btn text-danger btn-sm delete"
+                                                    href="{{ url('dashboard/delete/voucher/' . $v->uid) }}"
+                                                    data-bs-toggle="tooltip" data-bs-original-title="Delete"><span
                                                         class="fe fe-trash-2 fs-14"></span>
                                             </div>
                                         </td>

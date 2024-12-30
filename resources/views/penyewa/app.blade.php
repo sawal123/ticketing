@@ -65,6 +65,8 @@
         <a href="#top" id="back-to-top"><i class="fa fa-angle-up"></i></a>
         @include('penyewa.partial.script')
 
+      
+
         @include('penyewa.partial.myScript')
         <script src="{{asset('penyewa/js/style.js')}}"></script>
         <script src="{{ asset('penyewa/js/styleMore.js') }}"></script>
