@@ -8,8 +8,8 @@
             <!-- CONTAINER OPEN -->
             <div class="col col-login mx-auto mt-7">
                 <div class="text-center">
-                    <a href="{{url('/')}}"><img src="{{ asset('storage/logo/'. $logo[0]->logo) }}"  height="100"  class="header-brand-img"
-                        alt=""></a>
+                    <a href="{{ url('/') }}"><img src="{{ asset('storage/logo/' . $logo[0]->logo) }}" height="100"
+                            class="header-brand-img" alt=""></a>
                 </div>
             </div>
             <div class="container-login100">
@@ -24,73 +24,75 @@
                                 {{ session('error') }}
                             </div>
                         @endif
-                        <div class="wrap-input100 validate-input input-group d-flex flex-column">
-                            <label for="exampleFormControlInput1" class="form-label">Nama :</label>
-                            <div class=""><a href="javascript:void(0)" class="input-group-text bg-white text-muted">
-                                <i class="mdi mdi-account" aria-hidden="true"></i>
-                            </a>
-                            <input class="input100 border-start-0 ms-0 form-control" type="text" name="user"
-                                placeholder="User name"></div>
+                        <div class="mb-3">
+                            <label class="form-label" for="nama">Nama <span class="text-danger">*</span></label>
+                            <input type="text" name="user" class="form-control" id="nama"
+                                placeholder="Nama Kamu :">
                         </div>
-                        <div class="wrap-input100 validate-input input-group">
-                            <a href="javascript:void(0)" class="input-group-text bg-white text-muted">
-                                <i class="zmdi zmdi-email" aria-hidden="true"></i>
-                            </a>
-                            <input class="input100 border-start-0 ms-0 form-control" type="email" name="email"
-                                placeholder="Email" required>
+
+                        <div class="mb-3">
+                            <label class="form-label" for="email">Email <span class="text-danger">*</span></label>
+                            <input type="email" name="email" class="form-control" id="email"
+                                placeholder="Email Kamu :">
                         </div>
-                        <div class="wrap-input100 validate-input input-group">
-                            <a href="javascript:void(0)" class="input-group-text bg-white text-muted">
-                                <i class="zmdi zmdi-whatsapp" aria-hidden="true"></i>
-                            </a>
-                            <input class="input100 border-start-0 ms-0 form-control" type="number" name="nomor"
-                                placeholder="No WhatsApp" required>
+                        <div class="mb-3">
+                            <label class="form-label" for="nomor">Nomor WhatsApp <span
+                                    class="text-danger">*</span></label>
+                            <input type="number" name="nomor" class="form-control" id="nomor"
+                                placeholder="Nomor WhatsApp Kamu :">
                         </div>
-                        <div class="wrap-input100 validate-input input-group">
-                            <a href="javascript:void(0)" class="input-group-text bg-white text-muted">
-                                <i class="mdi mdi-calendar" aria-hidden="true"></i>
-                            </a>
-                            <input class="input100 border-start-0 ms-0 form-control" type="date" name="birthday"
-                                placeholder="birthday..">
-                        </div>
-                        <div class="wrap-input100 validate-input input-group">
-                            <a href="javascript:void(0)" class="input-group-text bg-white text-muted">
-                                <i class="zmdi zmdi-local-wc" aria-hidden="true"></i>
-                            </a>
-                            <select class="form-select" aria-label="Default select example" required name="gender">
-                                <option selected disabled>Choose Gender..</option>
-                                <option value="wanita">Wanita</option>
-                                <option value="pria">Pria</option>
+                        <div class="mb-3">
+                            <label class="form-label" for="date">Tanggal Lahir <span
+                                    class="text-danger">*</span></label>
+                            <input type="date" name="birthday" class="form-control" id="date" ">
+                                            </div>
+
+
+                                            <div class="mb-3">
+                                                <label class="form-label" for="date">Gender <span class="text-danger">*</span></label>
+                                                <select class="form-select" aria-label="Default select example" required name="gender">
+                                                    <option selected disabled>Choose Gender..</option>
+                                                    <option value="wanita">Wanita</option>
+                                                    <option value="pria">Pria</option>
+                                                </select>
+                                            </div>
+
+                                            <div class="mb-3">
+                                                <label class="form-label" for="date">Provinsi <span class="text-danger">*</span></label>
+                                                <select class="form-select" aria-label="Default select example" required name="kota">
+                                                    <option selected disabled>Choose City..</option>
+                                                         @foreach ($provinsi as
+                                $provinsi)
+                            <option value="{{ $provinsi['name'] }}">{{ $provinsi['name'] }}</option>
+                            @endforeach
                             </select>
                         </div>
-                        <div class="wrap-input100 validate-input input-group">
-                            <a href="javascript:void(0)" class="input-group-text bg-white text-muted">
-                                <i class="zmdi zmdi-city" aria-hidden="true"></i>
-                            </a>
-                            <select class="form-select" aria-label="Default select example" required name="kota">
-                                <option selected disabled>Choose City..</option>
-                                @foreach ($provinsi as $provinsi)
-                                    <option value="{{ $provinsi['name'] }}">{{ $provinsi['name'] }}</option>
-                                @endforeach
-                            </select>
+                        <div class="mb-3">
+                            <label class="form-label" for="alamat">Alamat <span class="text-danger">*</span></label>
+                            <input type="text" name="alamat" class="form-control" id="alamat"
+                                placeholder="Alamat Kamu :">
                         </div>
-                        <div class="wrap-input100 validate-input input-group">
-                            <a href="javascript:void(0)" class="input-group-text bg-white text-muted">
-                                <i class="mdi mdi-city" aria-hidden="true"></i>
-                            </a>
-                            <input class="input100 border-start-0 ms-0 form-control" type="text" name="alamat"
-                                placeholder="Address.." autocomplete="username">
+                        <div class="mb-3">
+                            <label class="form-label" for="password">Password <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <input type="password" name="password" required class="form-control" id="password"
+                                    placeholder="Password Kamu :">
+                                <span class="input-group-text">
+                                    <i class="zmdi zmdi-eye" id="togglePassword" style="cursor: pointer;"
+                                        aria-hidden="true"></i>
+                                </span>
+                            </div>
+                            <div id="password-error" class="text-danger mt-1"></div>
+                            @error('password')
+                                <div class="text-danger mt-1">{{ $message }}</div>
+                            @enderror
                         </div>
-                        <div class="wrap-input100 validate-input input-group" id="Password-toggle">
-                            <a href="javascript:void(0)" class="input-group-text bg-white text-muted">
-                                <i class="zmdi zmdi-eye" aria-hidden="true"></i>
-                            </a>
-                            <input class="input100 border-start-0 ms-0 form-control" type="password" name="password"
-                                placeholder="Password" required autocomplete="current-password">
-                        </div>
+
+
                         <label class="custom-control custom-checkbox mt-4">
                             <input type="checkbox" class="custom-control-input" required>
-                            <span class="custom-control-label">Agree the <a href="{{url('/term')}}">terms and policy</a></span>
+                            <span class="custom-control-label">Agree the <a href="{{ url('/term') }}">terms and
+                                    policy</a></span>
                         </label>
                         <div class="container-login100-form-btn">
                             <button type="submit" class="login100-form-btn btn-primary">

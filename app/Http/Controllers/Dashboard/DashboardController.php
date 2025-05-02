@@ -130,7 +130,7 @@ class DashboardController extends Controller
         error_reporting(0);
         $event = Event::all();
         if ($addEvent === null) {
-            $pagination = Event::paginate(12);
+            $pagination = Event::orderBy('created_at', 'desc')->paginate(12);
 
             if ($request->has('query')) {
                 // Lakukan pencarian berdasarkan nama atau atribut lainnya

@@ -36,11 +36,11 @@ class UserRegisterController extends Controller
         $validateUser = $request->validate([
             'user' => 'required|max:255',
             'email' => 'required|email',
-            'nomor' => 'required|numeric',
+            // 'nomor' => 'required|numeric',
             'birthday' => 'required|max:255',
             'gender' => 'required|max:10',
-            'kota' => 'required|max:100',
-            'alamat' => 'required|max:255',
+            // 'kota' => 'required|max:100',
+            // 'alamat' => 'required|max:255',
             'password' => [
                 'required',
                 'min:8',
@@ -58,10 +58,10 @@ class UserRegisterController extends Controller
             'uid' => $uid,
             'name' => $validateUser['user'],
             'email' => $validateUser['email'],
-            'nomor' => $validateUser['nomor'],
+            'nomor' => '',
             'birthday' => $validateUser['birthday'],
-            'alamat' => $validateUser['alamat'],
-            'kota' => $validateUser['kota'],
+            'alamat' => '',
+            'kota' => '',
             'gender' => $validateUser['gender'],
             'gambar' => '',
             'role' => User::USER_ROLE,
@@ -69,17 +69,8 @@ class UserRegisterController extends Controller
         ]);
         $success['token'] = $user->createToken('auth_token')->plainTextToken;
         $success['name'] = $user->name;
-        // dd($user);
         return redirect('/login')->with('success', 'Registrasi Berhasil');
 
-
-        // try {
-        //     // $user->save();
-
-        // } catch (\Exception $e) {
-        //     // Tangani kesalahan (misalnya: tampilkan pesan kesalahan atau log)
-        //     return back()->withInput()->withErrors(['success' => 'Terjadi kesalahan dalam menyimpan data.']);
-        // }
 
 
     }

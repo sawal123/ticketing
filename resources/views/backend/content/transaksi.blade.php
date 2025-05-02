@@ -30,7 +30,7 @@
                     <div class="d-flex">
                         <div class="mt-2">
                             <h6 class="">Total Uang Ticket Yang Terjual</h6>
-                            <h2 class="mb-0 number-font">Rp {{ number_format($totalHargaCart, 0, ',', '.') }}</h2>
+                            <h2 class="mb-0 number-font">Rp {{ number_format($totalPenjualan, 0, ',', '.') }}</h2>
                         </div>
                     </div>
 
@@ -46,9 +46,6 @@
                             <h2 class="mb-0 number-font">{{ $jmlh }} Ticket</h2>
                         </div>
                     </div>
-                    {{-- <span class="text-muted fs-12"><span class="text-secondary"><i
-                                class="fe fe-arrow-up-circle  text-secondary"></i> 5%</span>
-                        Last week</span> --}}
                 </div>
             </div>
         </div>
@@ -208,8 +205,18 @@
                                             </td>
 
                                             <td>{{ $carts->total_harga / $carts->total_quantity }}</td>
-                                            <td>{{ $carts->disc }}</td>
-                                            <td>{{ $carts->total_harga - $carts->disc }}</td>
+                                            <td> {{ $carts->unit === 'rupiah' ? 'Rp' . number_format($carts->disc, 2, ',', '.') : ($carts->unit === 'persen' ? $carts->disc . '%' : 'Tidak ada diskon') }}
+                                            </td>
+                                            <td>
+                                                @if ($carts->unit === 'rupiah')
+                                                    {{ number_format($carts->total_harga - $carts->disc, 0, ',', '.') }}
+                                                @elseif ($carts->unit === 'persen')
+                                                    Rp
+                                                    {{ number_format($carts->total_harga - ($carts->total_harga * $carts->disc) / 100, 0, ',', '.') }}
+                                                @else
+                                                    Rp {{ number_format($carts->total_harga, 0, ',', '.') }}
+                                                @endif
+                                            </td>
                                             <td>{{ $carts->voucher }}</td>
                                             <td>{{ $carts->payment_type }}</td>
                                             <td>{{ $carts->payment_type === 'cash' ? 0 : $carts->fee }}</td>
@@ -248,27 +255,17 @@
 
                             </table>
                         @endif
-
-
-
-
-
                         @if (request()->is('admin/cash/' . $uidEvent))
-                          @include('backend.content.table.table-cash')
-
+                            @include('backend.content.table.table-cash')
                         @endif
                     </div>
                 </div>
             </div>
         </div>
     </div>
-
-
-
     <script>
         var tukar = document.getElementById('tukar')
         var tes = document.getElementByClassName('tes')
-
         console.log(tukar)
     </script>
 

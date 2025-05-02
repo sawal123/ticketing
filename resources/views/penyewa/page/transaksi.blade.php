@@ -18,7 +18,7 @@
                     <div class="d-flex">
                         <div class="mt-2">
                             <h6 class="">Total Uang Ticket Yang Terjual</h6>
-                            <h2 class="mb-0 number-font">Rp {{ number_format($totalHargaCart, 0, ',', '.') }}</h2>
+                            <h2 class="mb-0 number-font">Rp {{ number_format($totalPenjualan, 0, ',', '.') }}</h2>
                         </div>
                     </div>
                     {{-- <span class="text-muted fs-12"><span class="text-secondary"><i

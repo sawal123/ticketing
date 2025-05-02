@@ -17,7 +17,7 @@
                     <form class="login100-form validate-form" method="POST" action="{{ route('register-user') }}">
                         @csrf
                         <span class="login100-form-title">
-                            Registration
+                            Registration Gotik
                         </span>
                         @if (session('error'))
                             <div class="alert alert-danger">
@@ -35,41 +35,20 @@
                             <input type="email" name="email" class="form-control" id="email"
                                 placeholder="Email Kamu :">
                         </div>
-                        <div class="mb-3">
-                            <label class="form-label" for="nomor">Nomor WhatsApp <span
-                                    class="text-danger">*</span></label>
-                            <input type="number" name="nomor" class="form-control" id="nomor"
-                                placeholder="Nomor WhatsApp Kamu :">
-                        </div>
+                      
                         <div class="mb-3">
                             <label class="form-label" for="date">Tanggal Lahir <span
                                     class="text-danger">*</span></label>
-                            <input type="date" name="birthday" class="form-control" id="date" ">
-                                        </div>
-
-
-                                        <div class="mb-3">
-                                            <label class="form-label" for="date">Gender <span class="text-danger">*</span></label>
-                                            <select class="form-select" aria-label="Default select example" required name="gender">
-                                                <option selected disabled>Choose Gender..</option>
-                                                <option value="wanita">Wanita</option>
-                                                <option value="pria">Pria</option>
-                                            </select>
-                                        </div>
-
-                                        <div class="mb-3">
-                                            <label class="form-label" for="date">Provinsi <span class="text-danger">*</span></label>
-                                            <select class="form-select" aria-label="Default select example" required name="kota">
-                                                <option selected disabled>Choose City..</option>
-                                                    @foreach ($provinsi as $provinsi)
-                            <option value="{{ $provinsi['name'] }}">{{ $provinsi['name'] }}</option>
-                            @endforeach
-                            </select>
+                            <input type="date" name="birthday" class="form-control" id="date" />
                         </div>
+
                         <div class="mb-3">
-                            <label class="form-label" for="alamat">Alamat <span class="text-danger">*</span></label>
-                            <input type="text" name="alamat" class="form-control" id="alamat"
-                                placeholder="Alamat Kamu :">
+                            <label class="form-label" for="date">Gender <span class="text-danger">*</span></label>
+                            <select class="form-select" aria-label="Default select example" required name="gender">
+                                <option selected disabled>Choose Gender..</option>
+                                <option value="wanita">Wanita</option>
+                                <option value="pria">Pria</option>
+                            </select>
                         </div>
                         <div class="mb-3">
                             <label class="form-label" for="password">Password <span class="text-danger">*</span></label>
@@ -102,20 +81,11 @@
                             <p class="text-dark mb-0 d-inline-flex">Already have account ?<a href="{{ url('/login') }}"
                                     class="text-primary ms-1">Sign In</a></p>
                         </div>
-                        {{-- <label class="login-social-icon"><span>Register with Social</span></label>
-                        <div class="d-flex justify-content-center">
-                            <a href="javascript:void(0)">
-                                <div class="social-login me-4 text-center">
-                                    <i class="fa fa-google"></i>
-                                </div>
-                            </a>
-
-                        </div> --}}
+                      
                     </form>
                 </div>
             </div>
             <!-- CONTAINER CLOSED -->
         </div>
     </div>
-    
 @endsection

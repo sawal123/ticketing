@@ -19,13 +19,11 @@ class TransaksiController extends Controller
         $filter = $request->filter;
         $status = $request->status;
 
-        // if ($filter === null) {
-        //     $filter = date('Y-m-d');
-        // }
         if ($request->uid !== null) {
             $nameEvent = Event::where('uid', $request->uid)->firstOrFail();
             $use = User::all();
 
+            #Query Untuk Table
             $cartQuery = Cart::with('event', 'hargaCarts')
                 ->select(
                     'carts.uid',
@@ -37,11 +35,15 @@ class TransaksiController extends Controller
                     'events.cover',
                     'carts.created_at',
                     'carts.payment_type',
+                    DB::raw('MAX(harga_carts.disc) as disc'),
+                    DB::raw('MAX(vouchers.unit) as unit'),
+                    DB::raw('MAX(harga_carts.voucher) as voucher'),
                     DB::raw('SUM(harga_carts.quantity * harga_carts.harga_ticket) as total_harga'),
                     DB::raw('SUM(harga_carts.quantity) as total_quantity')
                 )
                 ->join('harga_carts', 'harga_carts.uid', '=', 'carts.uid')
                 ->join('events', 'events.uid', '=', 'carts.event_uid')
+                ->leftJoin('vouchers', 'vouchers.code', '=', 'harga_carts.voucher') // Join ke tabel vouchers
                 ->where('events.uid', $request->uid)
                 ->where('carts.payment_type', '!=', 'cash')
                 ->orderBy('carts.created_at', 'desc')
@@ -56,36 +58,45 @@ class TransaksiController extends Controller
             } else {
                 $cart = $cartQuery->whereDate('carts.created_at', $filter)->where('carts.status', $status)->get();
             }
+            #End Query
 
-
-            $Thc = Cart::select(['harga_carts.uid', 'harga_carts.harga_ticket', 'harga_carts.quantity', 'harga_carts.disc', 'kategori_harga'])
+            #Query Untuk Penghitungan 
+            $Thc = Cart::select(['harga_carts.uid', 'harga_carts.harga_ticket', 'harga_carts.quantity', 'harga_carts.disc', 'vouchers.unit', 'kategori_harga'])
                 ->join('harga_carts', 'harga_carts.uid', '=', 'carts.uid')
+                ->leftJoin('vouchers', 'vouchers.code', '=', 'harga_carts.voucher')
                 ->join('events', 'events.uid', '=', 'carts.event_uid')
                 ->where('carts.status', 'SUCCESS')
                 ->where('carts.payment_type', '!=', 'cash')
                 ->where('carts.event_uid', '=', $request->uid);
-
-            $ar = 0;
             if ($filter === null) {
-                $totalHargaCart = $Thc->get();
+                $dataTiket = $Thc->get();
             } else {
-                $totalHargaCart = $Thc->whereDate('carts.created_at', '=', $filter)->get();
+                $dataTiket = $Thc->whereDate('carts.created_at', '=', $filter)->get();
             }
-            foreach ($totalHargaCart as $key => $tHC) {
-                $ar += ($totalHargaCart[$key]->harga_ticket * $totalHargaCart[$key]->quantity);
-            }
+            #End Query
 
+            #Menghitung Total Uang Penjualan Tiket
+            $totalPenjualan = 0;
+            foreach ($dataTiket as $item) {
+                $hargaTicket = $item->harga_ticket * $item->quantity;
+
+                if ($item->unit === 'rupiah') {
+                    $hargaTicket -= $item->disc; // Diskon langsung dikurangkan
+                } elseif ($item->unit === 'persen') {
+                    $hargaTicket -= ($hargaTicket * $item->disc / 100); // Diskon persen dikonversikan
+                }
+
+                $totalPenjualan += $hargaTicket;
+            }
+            #End Penghitungan
+
+            #Query Uang Fee & Perhitungan
             $tfe = Event::join('carts', 'carts.event_uid', '=', 'events.uid')
                 ->join('harga_carts', 'harga_carts.uid', '=', 'carts.uid')
                 ->select(DB::raw('SUM(events.fee * harga_carts.quantity) as total_fee'))->where('carts.status', 'SUCCESS')
                 ->where('carts.payment_type', '!=', 'cash')
                 ->where('carts.event_uid', '=', $request->uid);
             $fe = 0;
-
-            // Khusus Filter Tanggal
-            // $tfe->where()
-            // End Fillter
-
             if ($filter === null) {
                 $totalFee = $tfe->get();
             } else {
@@ -94,7 +105,7 @@ class TransaksiController extends Controller
             foreach ($totalFee as $key => $tfe) {
                 $fe += $totalFee[$key]->total_fee;
             }
-
+            #End Perhitungan Dan Query
 
             $user = [];
             foreach ($use as $users) {
@@ -122,14 +133,15 @@ class TransaksiController extends Controller
         }
 
 
-        // dd($fe);
-        return view('backend.content.transaksi',
+        // dd($cart);
+        return view(
+            'backend.content.transaksi',
             [
                 'title' => 'Transaksi Dashboard',
                 'cart' => $cart,
                 'use' => $use,
-                'qtyTiket' => $totalHargaCart,
-                'totalHargaCart' => $ar,
+                'qtyTiket' => $dataTiket,
+                'totalPenjualan' => $totalPenjualan,
                 'totalFee' => $fe,
                 'filter' => $filter,
                 'uidEvent' => $request->uid,
