@@ -16,22 +16,22 @@
     });
 
     $(document).on("show.bs.modal", "#modalEditCash", function(e) {
-            var tombol = $(e.relatedTarget);
-            var uid = tombol.data('uid');
-            var name = tombol.data('name');
-            var invoice = tombol.data('invoice');
-            var email = tombol.data('email');
-            var kharga = tombol.data('kharga');
-            var qty = tombol.data('qty');
-            var modal = $(this);
-            console.log(KHarga)
-            modal.find("#uidCash").val(uid);
-            modal.find("#invoice").val(invoice);
-            modal.find("#name").val(name);
-            modal.find("#email").val(email);
-            modal.find("#KHarga").text(kharga);
-            modal.find("#qty").text(qty);
-        })
+        var tombol = $(e.relatedTarget);
+        var uid = tombol.data('uid');
+        var name = tombol.data('name');
+        var invoice = tombol.data('invoice');
+        var email = tombol.data('email');
+        var kharga = tombol.data('kharga');
+        var qty = tombol.data('qty');
+        var modal = $(this);
+        console.log(KHarga)
+        modal.find("#uidCash").val(uid);
+        modal.find("#invoice").val(invoice);
+        modal.find("#name").val(name);
+        modal.find("#email").val(email);
+        modal.find("#KHarga").text(kharga);
+        modal.find("#qty").text(qty);
+    })
 
     $(document).on("show.bs.modal", "#updateTalent", function(e) {
         var tombol = $(e.relatedTarget);
@@ -121,7 +121,7 @@
         m.find('#gender').val(gender)
     })
 
-    $(document).on("show.bs.modal", "#editTransaksi", function(e){
+    $(document).on("show.bs.modal", "#editTransaksi", function(e) {
         var b = $(e.relatedTarget)
         var uid = b.data('uid')
         var name = b.data('name')
@@ -133,7 +133,7 @@
         m.find("#inv").val(inv)
         m.find("#status").val(status)
     })
-    $(document).on("show.bs.modal", "#upContact", function(e){
+    $(document).on("show.bs.modal", "#upContact", function(e) {
         var b = $(e.relatedTarget)
         var m = $(this)
         m.find("#id").val(b.data('id'))
@@ -161,6 +161,28 @@
                 }
             });
             return false;
+        });
+    });
+
+
+    $(document).ready(function() {
+        $('.delete-form').on('submit', function(e) {
+            e.preventDefault(); // Cegah form submit dulu
+            const form = this;
+
+            Swal.fire({
+                title: "Yakin ingin menghapus data?",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                confirmButtonText: 'Ya, hapus!',
+                cancelButtonColor: '#3085d6',
+                cancelButtonText: "Batal"
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    form.submit(); // Submit form secara manual setelah konfirmasi
+                }
+            });
         });
     });
 </script>

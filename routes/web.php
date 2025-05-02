@@ -161,7 +161,7 @@ Route::prefix('admin')
         Route::get('/ubahEvents/{uid}', [DashboardController::class, 'ubahEvents']);
         Route::get('/penarikan', [DashboardController::class, 'penarikan']);
 
-        Route::get('/payment-gateway', [PaymentGatewayController::class, 'index'])->name('payments');
+        
 
         Route::get('/setting/slide', [DashboardController::class, 'landing']);
         Route::get('/setting/seo', [DashboardController::class, 'seo']);
@@ -218,6 +218,15 @@ Route::prefix('admin')
         Route::get('/cashes/delete/{id}', [DeleteController::class, 'deleteCashes']);
         Route::get('/deletePen/{data}', [DeleteController::class, 'deletePenarikan']);
         route::get('/delete/contact/{data}', [DeleteController::class, 'deleteContact']);
+
+
+        Route::get('/payment-gateway', [PaymentGatewayController::class, 'index'])->name('payments');
+        Route::post('/payment-gateway/store', [PaymentGatewayController::class, 'store'])->name('payments.store');
+        Route::post('/payment-gateway/update/{paymentGateway}', [PaymentGatewayController::class, 'update'])->name('payments.update');
+        Route::delete('/payment-gateway/delete/{paymentGateway}', [PaymentGatewayController::class, 'destroy'])->name('payments.destroy');
+
+
+
     });
 
 
