@@ -12,14 +12,24 @@ use App\Http\Controllers\Controller;
 use App\Models\Event;
 use App\Models\Harga;
 use App\Models\HargaCart;
+use App\Models\PaymentGateway;
 use App\Models\Voucher;
 use Illuminate\Support\Facades\Auth;
 
 class BuyTicketController extends Controller
 {
+
+    protected $data_pay = 1;
+    protected function payment()
+    {
+        $this->data_pay = PaymentGateway::where('is_active', '1')->get();
+    }
+
     public function index($uid, $user)
     {
         error_reporting(0);
+        $this->payment();
+        // dd($this->data_pay);
         // ?order_id=INV-05484&status_code=200&transaction_status=settlement
         $cart = Cart::where('uid', $uid)->where('user_uid', $user)->first();
         // dd($cart);
@@ -30,27 +40,50 @@ class BuyTicketController extends Controller
             return redirect('/');
         }
         $event = Event::where('uid', $cart->event_uid)->first();
-        // dd($event);
         $harga = HargaCart::where('uid', $cart->uid)->get();
+        // dd($harga);
         $cartV = CartVoucher::where('uid', $cart->uid)->first();
         $voucher = Voucher::where('code', $cartV->code)->first();
-       
+        // dd($voucher);
+
+
+
+
+        $iFee = PaymentGateway::where('slug', $cart->payment_type)->first();
+
+
         $counts = [];
         foreach ($harga as $count) {
             $counts[] = $count->harga_ticket * $count->quantity;
         }
         $jumlah = array_sum($counts);
-        // $fee = 5;
-        // dd($event->fee * $fee);
+        // dd($jumlah);
+        if ($iFee->biaya_type === 'persen') {
+            $selectInternetFee = ($iFee->biaya / 100) * $jumlah;
+        } else {
+            $selectInternetFee = $iFee->biaya;
+        }
+        // dd($selectInternetFee);
+        $diskon = 0;
+        if ($voucher->unit === 'rupiah') {
+           $diskon = $voucher->nominal;
+        } elseif ($voucher->unit === 'persen') {
+            $diskon = ($voucher->nominal / 100) * $jumlah;
+        }
+        // dd($diskon);
+
         return view('frontend.page.bayartiket', [
-            'title' => 'Detail Ticket',
-            'event' => $event,
-            'harga' => $harga,
-            'cart' => $cart,
-            'total' => $jumlah,
-            // 'fee' => $fee,
-            'uid' => $uid,
-            'cartV' => $voucher
+            'title'         => 'Detail Ticket',
+            'event'         => $event,
+            'harga'         => $harga,
+            'cart'          => $cart,
+            'total'         => $jumlah,
+            'uid'           => $uid,
+            'voucher'         => $voucher,
+            'payment'       => $this->data_pay,
+            'selectInternetFee' => $selectInternetFee,
+            'iFee'          => $iFee,
+            'diskon' => $diskon
         ]);
     }
 
@@ -62,11 +95,16 @@ class BuyTicketController extends Controller
         ]);
         $code = $request->code;
         $cart = $request->cartUid;
+        $event = $request->event;
+        // $cekEvent = Event::
 
         $cVoucher = CartVoucher::where('uid', $cart)->first();
         $voucher = Voucher::where('code', $code)->first();
         $carts = HargaCart::where('uid', $cart)->first();
-        // dd($carts);
+        // dd($voucher->event_uid .' + ' . $event);
+        if($voucher->event_uid !== $event){
+             return redirect()->back()->with('vError', 'Voucher ' . $code . ' Invalid');
+        } 
         if ($code === null && $cVoucher) {
             $cVoucher->code = '';
             $carts->voucher = null;
@@ -100,11 +138,28 @@ class BuyTicketController extends Controller
                 return redirect()->back()->with('vError', 'Voucher Expired');
             }
         } else {
-            return redirect()->back()->with('vError', 'Voucher Invalid');
+            return redirect()->back()->with('vError', 'Voucher ' . $code . ' Invalid');
         }
+    }
+    public function closeVoucher(Request $request)
+    {
+        $vali =  Validator::make($request->all(), [
+            'code' =>  'required|alpha_num',
+        ]);
+        $code = $request->code;
+        $cart = $request->cartUid;
+
+        $cVoucher = CartVoucher::where('uid', $cart)->first();
+        $voucher = Voucher::where('code', $code)->first();
+        $carts = HargaCart::where('uid', $cart)->first();
+        // dd($cVoucher);
+        $cVoucher->code = '';
+        $cVoucher->save();
+        return redirect()->back()->with('voucher', 'Voucher berhasil dihapus!');
     }
     public function checkout(Request $request)
     {
+        // dd($request);
         error_reporting(0);
         $kode = Str::uuid();
         $str = Str::random(3);
@@ -123,12 +178,11 @@ class BuyTicketController extends Controller
             $kategoriValue[] = $request->input('kategori' . $i);
             $orderByInput[] = $request->input('orderBy' . $i);
         }
-        // dd($orderByInput);
         $ticketValue = array_filter($ticketValue);
         $hargaValue = array_filter($hargaValue);
         $kategoriValue = array_filter($kategoriValue);
         $orderByInput = array_filter($orderByInput);
-        // dd($orderByInput);
+
         if ($ticketValue == [] || $hargaValue == [] ||  $kategoriValue == []) {
             return redirect()->back()->with('error', 'Harap pilih ticket anda!');
         } else {
@@ -150,25 +204,17 @@ class BuyTicketController extends Controller
             $cek = 0;
             $cekLagi = [];
             $arrayHarga = [];
-            // dd($harga_ticket);
             foreach ($harga_ticket as $index => $harga_t) {
-                // $arrrayHarga[] = $harga_t->kategori;
-                // dd($harga_t->kategori);
                 $HargaIndex = array_keys($hargaCartsArray);
-                // dd($harga_t->kategori . '='. $HargaIndex[$index]);
                 if ($harga_t->kategori === $HargaIndex[$index]) {
                     $cek = $ticketValue[$index] + $hargaCartsArray[$harga_t->kategori];
                     if ($cek <= $harga_t->qty) {
-                        // dd($cek . "<=" . $harga_t->qty);
                         true;
                     } else {
                         return redirect()->back()->with('error', 'Ticket Tidak Cukup!');
                     }
                     $cekLagi[] = $cek;
                 }
-                // else {
-                //     return redirect()->back()->with('error', 'Terjadi Kesalahan!');
-                // }
             }
         }
 
@@ -179,7 +225,6 @@ class BuyTicketController extends Controller
                 $hargaArray[] = $hargaCarts;
             }
             foreach ($ticketValue as $index => $value) {
-                // dd($value);
                 $harga = $hargaValue[$index] ?? null; // Mengambil harga sesuai indeks
                 $kategori = $kategoriValue[$index] ?? null; // Mengambil kategori sesuai indeks
                 $orderBy = $orderByInput[$index];

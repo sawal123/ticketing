@@ -75,10 +75,7 @@ $(document).on("show.bs.modal", "#upPartner", function (e) {
 });
 $(document).on("show.bs.modal", "#updateVoucher", function (e) {
     var tombol = $(e.relatedTarget);
-    $("#inputrupiah").hide();
-    $("#inputpersen").hide();
-    toggleNom()
-    // Set data from button to modal fields
+
     var id = tombol.data("id");
     var code = tombol.data("code");
     var unit = tombol.data("unit");
@@ -86,39 +83,50 @@ $(document).on("show.bs.modal", "#updateVoucher", function (e) {
     var minbeli = tombol.data("minbeli");
     var maxDisc = tombol.data("maxdisc");
     var limit = tombol.data("limit");
-    // console.log(unit);
+    var eventUid = tombol.data("event"); // Tambahkan event data
+// console.log(id)
     var modal = $(this);
     modal.find("#id").val(id);
     modal.find("#codeV").val(code);
 
-    // Set radio buttons and call toggleInput
+    // Set radio buttons untuk unit
     if (unit === "rupiah") {
         modal.find("#URupiah").prop("checked", true);
         modal.find("#nominalRupiah").val(nominal);
-        // setTimeout(toggleNom, 0);
     } else {
         modal.find("#UPersen").prop("checked", true);
         modal.find("#nominalPersen").val(nominal);
-        // setTimeout(toggleNom, 0);
     }
-    
 
     modal.find("#minV").val(minbeli);
     modal.find("#maxV").val(maxDisc);
     modal.find("#maxUseV").val(limit);
 
+    // Set event UID di select dropdown
+    modal.find("select[name='event']").val(eventUid); // Pastikan nilai 'eventUid' sesuai dengan option value
 });
 
-function toggleNom() {
-    const isRupiahChecked = document.querySelector('input[name="unit"]:checked').value === "rupiah";
-    console.log("isRupiahChecked:", isRupiahChecked);
-    console.log("inputrupiah display:", document.getElementById("inputrupiah").style.display);
-    console.log("inputpersen display:", document.getElementById("inputpersen").style.display);
-    
-    document.getElementById("inputrupiah").style.display = isRupiahChecked ? "flex" : "none";
-    document.getElementById("inputpersen").style.display = isRupiahChecked ? "none" : "flex";
-}
 
+function toggleNom() {
+    const isRupiahChecked =
+        document.querySelector('input[name="unit"]:checked').value === "rupiah";
+    console.log("isRupiahChecked:", isRupiahChecked);
+    console.log(
+        "inputrupiah display:",
+        document.getElementById("inputrupiah").style.display
+    );
+    console.log(
+        "inputpersen display:",
+        document.getElementById("inputpersen").style.display
+    );
+
+    document.getElementById("inputrupiah").style.display = isRupiahChecked
+        ? "flex"
+        : "none";
+    document.getElementById("inputpersen").style.display = isRupiahChecked
+        ? "none"
+        : "flex";
+}
 
 $(document).ready(function () {
     $(document).on("click", ".delete", function () {

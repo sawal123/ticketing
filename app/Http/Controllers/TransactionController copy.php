@@ -8,7 +8,6 @@ use Midtrans\Snap;
 use App\Models\Cart;
 use App\Models\User;
 use App\Models\Event;
-use Midtrans\CoreApi;
 use App\Models\Voucher;
 use App\Models\HargaCart;
 use Midtrans\Notification;
@@ -16,7 +15,6 @@ use App\Models\CartVoucher;
 use App\Models\Transaction;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
-use App\Models\PaymentGateway;
 use Midtrans\Config as konfig;
 use App\Jobs\sendEmailTrnsaksi;
 use App\Jobs\sendEmailETransaksi;
@@ -24,6 +22,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\MidtransPaymentNotification;
+use App\Models\PaymentGateway;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 // use Midtrans\CallbackService;
 
@@ -36,48 +35,59 @@ class TransactionController extends Controller
         $user_uid = $request->person;
         $event_uid = $request->event;
         $invoice = $request->invoice;
+        $kode = Str::random(10);
 
         $feePayment = PaymentGateway::find($payment_id);
         if (!$feePayment) {
             return back()->withErrors(['msg' => 'Metode pembayaran tidak ditemukan.']);
         }
-
+        
         $internetFee = 0;
-        $hargaItems = HargaCart::where('uid', $cart_uid)->get();
 
+        $hargaItems  = HargaCart::where('uid', $cart_uid)->get();
+        // Validasi jika tidak ada item
         if ($hargaItems->isEmpty()) {
             return back()->withErrors(['msg' => 'Cart kosong atau tidak valid.']);
         }
-
+        // Hitung total ulang dari database (aman dari manipulasi)
         $total = 0;
+
         foreach ($hargaItems as $item) {
             $subtotal = (int) $item->quantity * (int) $item->harga_ticket;
             $total += $subtotal;
         }
 
-        if ($feePayment->biaya_type === 'rupiah') {
+        if ($feePayment->biaya_type == 'rupiah') {
             $internetFee = $feePayment->biaya;
         } else {
             $internetFee = round(($feePayment->biaya / 100) * $total);
+
         }
 
         $cart = Cart::where('user_uid', $user_uid)->where('invoice', $invoice)->first();
         if (!$cart) {
             return back()->withErrors(['msg' => 'Cart tidak ditemukan.']);
         }
-       
+        dd($cart);
+        $pay = Transaction::create([
+            'uid' => $cart->uid,
+            'user_uid' => $user_uid,
+            'event_uid' => $event_uid,
+            'amount' => (int) ($total + $internetFee),
+            'status_transaksi' => 'UNPAID',
+            'invoice' => $invoice
+        ]);
 
-        // https://app.midtrans.com/snap/v4/redirection/0d74148c-6284-448d-999e-f384abe7f0c4#/bank-transfer/bri-va
-        // Konfigurasi Midtrans
+
+        // Konfigurasi midtrans
         konfig::$clientKey = config('services.midtrans.clientKey');
         konfig::$serverKey = config('services.midtrans.serverKey');
         konfig::$isProduction = config('services.midtrans.isProduction');
         konfig::$isSanitized = config('services.midtrans.isSanitized');
         konfig::$is3ds = config('services.midtrans.is3ds');
-        // dd($feePayment->slug.'_va');
-        // Jika QRIS, langsung arahkan ke QRIS
-        // dd($feePayment->slug . ($feePayment->category === 'ewallet'? '':'_va'));
-        $snapPayload = [
+
+        // Buat array untuk dikirim ke midtrans
+        $midtrans = array(
             'transaction_details' => [
                 'order_id' =>  $invoice,
                 'gross_amount' => (int) ($total + $internetFee),
@@ -87,39 +97,23 @@ class TransactionController extends Controller
                 'email'         => Auth::user()->email
             ],
             'enabled_payments' => [
-                // 'bri_va',
-                $feePayment->slug . ($feePayment->category === 'ewallet' ? '' : '_va')
+                'gopay',
+                'permata_va',
+                'bank_transfer',
+                'qris'
             ],
             'vtweb' => []
-        ];
-
+        );
         try {
-            $paymentUrl = Snap::createTransaction($snapPayload)->redirect_url;
-            $cart->link = $paymentUrl;
-            $cart->status = 'PENDING';
-            $cart->payment_type = $feePayment->slug;
+            // Ambil halaman payment midtrans
+            $paymentUrl = Snap::createTransaction($midtrans)->redirect_url;
+            $cart->link = $paymentUrl . '#';
             $cart->save();
-            $trans = Transaction::where('invoice', $invoice)->first();
-            if (!$trans) {
-                $pay = Transaction::create([
-                    'uid' => $cart->uid,
-                    'user_uid' => $user_uid,
-                    'event_uid' => $event_uid,
-                    'amount' => (int) ($total + $internetFee),
-                    'status_transaksi' => 'PENDING',
-                    'invoice' => $invoice,
-                    'payment_type' => $feePayment->slug,
-                    'status_transaksi' =>'PENDING'
-                ]);
-            }
-
+            // Redirect ke halaman midtrans
             return redirect($paymentUrl);
-        } catch (\Exception $e) {
-            return back()->withErrors(['msg' => 'Gagal membuat transaksi: ' . $e->getMessage()]);
+        } catch (Exception $e) {
+            echo $e->getMessage();
         }
-
-        // Jika bukan QRIS, gunakan Snap biasa (tampilkan pilihan metode bayar)
-
     }
 
     public function callback(Request $request)

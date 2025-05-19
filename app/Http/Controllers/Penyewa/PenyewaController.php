@@ -666,9 +666,12 @@ class PenyewaController extends Controller
     {
         $voucher = Voucher::where('vouchers.user_uid', Auth::user()->uid)
             ->get();
+            $event = Event::where('user_uid', Auth::user()->uid)->get();
+            // dd($event);
         return view('penyewa.page.voucher', [
             'title' => 'Voucher',
             'voucher' => $voucher,
+            'event' =>$event
 
         ]);
     }

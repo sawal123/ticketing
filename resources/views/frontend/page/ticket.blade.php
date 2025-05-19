@@ -81,7 +81,8 @@
                                             <div class="card ps-3 my-2">
                                                 <div class="row d-flex align-items-center">
                                                     <div class="col-4 py-2" style="float: right">
-                                                        <p style="font-size: 12px; font-weight: 800; line-height: 15px" class="m-0">
+                                                        <p style="font-size: 12px; font-weight: 800; line-height: 15px"
+                                                            class="m-0">
                                                             {{ $list['kategori'] }} </p>
                                                         <p style="font-weight: bold" class="harga">
 
@@ -90,7 +91,7 @@
                                                     @php
                                                         $kategori = $list['kategori'];
                                                         $qty = $list['qty'];
-                                                      
+
                                                     @endphp
                                                     <div class="col-8 d-flex justify-content-end align-content-end">
                                                         <div class="input-wrapper container d-flex ">
@@ -104,10 +105,12 @@
                                                                     value="{{ $list['kategori'] }}">
 
                                                                 <button type="button" class="btn btn-minus btn-primary"
-                                                                    style="min-width: 40px; height: 40px;"
-                                                                    data-target="quantity{{ $loop->index }}">-</button>
+                                                                    style="min-width: 40px; height: 40px; border-radius:20px 0px 0px 20px""
+                                                                    data-target="quantity{{ $loop->index }}"> <i
+                                                                        class="fa fa-minus"
+                                                                        style="color: #fff !important;"></i></button>
 
-                                                                <input type="text"  
+                                                                <input type="text"
                                                                     class="form-control p-0 input quantity{{ $loop->index }}"
                                                                     min="0" max="5" step="1"
                                                                     value="0" name="ticket{{ $loop->index }}"
@@ -116,9 +119,12 @@
                                                                 <input type="hidden" name="orderBy{{ $loop->index }}"
                                                                     value="{{ $loop->index + 1 }}">
 
-                                                                <button type="button" class="btn btn-plus btn btn-primary"
-                                                                    style="min-width: 40px; height: 40px;"
-                                                                    data-target="quantity{{ $loop->index }}">+</button>
+                                                                <button type="button" class="btn btn-plus btn-primary"
+                                                                    style="min-width: 40px; height: 40px; border-radius:0px 20px 20px 0px"
+                                                                    data-target="quantity{{ $loop->index }}">
+                                                                    <i class="fa fa-plus"
+                                                                        style="color: #fff !important;"></i>
+                                                                </button>
                                                             @else
                                                                 <button disabled="disabled"class="btn btn-success w-100">
                                                                     Sold Out</button>
@@ -128,6 +134,7 @@
                                                 </div>
                                             </div>
                                         @endforeach
+
                                 </div>
                                 <div class="card-footer text-muted">
                                     <div class="row">
@@ -136,7 +143,8 @@
                                             <h5 class="total">Rp 0</h5>
                                         </div>
                                         <div class="col-6 d-flex justify-content-end align-items-center">
-                                            <button type="submit" class="btn btn-primary checkButton" disabled>Check Out</button>
+                                            <button type="submit" class="btn btn-primary checkButton" disabled>Check
+                                                Out</button>
                                         </div>
                                     </div>
                                 </div>
@@ -174,13 +182,14 @@
                                                 <div class="card ps-3 my-2">
                                                     <div class="row d-flex align-items-center">
                                                         <div class="col-4 py-2" style="float: right">
-                                                            <p style="font-size: 12px; font-weight: 800; line-height: 15px" class="m-0">
+                                                            <p style="font-size: 12px; font-weight: 800; line-height: 15px"
+                                                                class="m-0">
                                                                 {{ $lists['kategori'] }} </p>
                                                             <p style="font-weight: bold" class="harga">
-    
+
                                                                 Rp {{ number_format($lists['harga'], 0, ',', '.') }}</p>
                                                         </div>
-                                                      
+
                                                         <div class="col-8 d-flex justify-content-end align-content-end">
                                                             <div class="input-wrapper container d-flex ">
                                                                 <div class="input-wrapper container d-flex ">
@@ -198,24 +207,31 @@
 
                                                                         <button type="button"
                                                                             class="btn btn-minus btn-primary"
-                                                                            style="min-width: 40px; height: 40px;"
-                                                                            data-target="quantity{{ $loop->index }}">-</button>
+                                                                            style="min-width: 40px; height: 40px; border-radius:20px 0px 0px 20px""
+                                                                            data-target="quantity{{ $loop->index }}"> <i
+                                                                                class="fa fa-minus"
+                                                                                style="color: #fff !important;"></i></button>
 
                                                                         <input type="text"
                                                                             class="form-control input quantity{{ $loop->index }}"
                                                                             min="0" max="5" step="1"
                                                                             value="0"
                                                                             name="ticket{{ $loop->index }}"
-                                                                            data-target="quantity{{ $loop->index }}" readonly>
+                                                                            data-target="quantity{{ $loop->index }}"
+                                                                            readonly>
 
                                                                         <input type="hidden"
                                                                             name="orderBy{{ $loop->index }}"
                                                                             value="{{ $loop->index + 1 }}">
 
+
                                                                         <button type="button"
-                                                                            class="btn btn-plus btn btn-primary"
-                                                                            style="min-width: 40px; height: 40px;"
-                                                                            data-target="quantity{{ $loop->index }}">+</button>
+                                                                            class="btn btn-plus btn-primary"
+                                                                            style="min-width: 40px; height: 40px; border-radius:0px 20px 20px 0px"
+                                                                            data-target="quantity{{ $loop->index }}">
+                                                                            <i class="fa fa-plus"
+                                                                                style="color: #fff !important;"></i>
+                                                                        </button>
                                                                     @else
                                                                         <button
                                                                             disabled="disabled"class="btn btn-success w-100">
@@ -234,7 +250,8 @@
                                                         <h5 class="total">Rp 0</h5>
                                                     </div>
                                                     <div class="col-6 d-flex justify-content-end align-items-center">
-                                                        <button type="submit"  class="btn btn-primary checkButton" >Check Out</a>
+                                                        <button type="submit" class="btn btn-primary checkButton">Check
+                                                            Out</a>
                                                     </div>
                                                 </div>
                                             </div>

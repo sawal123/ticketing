@@ -88,6 +88,7 @@
                                                     data-unit="{{ $v->unit }}" data-nominal="{{ $v->nominal }}"
                                                     data-minbeli="{{ $v->min_beli }}" data-maxdisc="{{ $v->max_disc }}"
                                                     data-limit="{{ $v->limit }}"
+                                                     data-event="{{ $v->event_uid }}"
                                                     data-bs-original-title="Edit"><span
                                                         class="fe fe-edit fs-14"></span></a>
 

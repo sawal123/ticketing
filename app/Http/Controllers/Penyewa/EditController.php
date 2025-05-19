@@ -3,19 +3,20 @@
 namespace App\Http\Controllers\Penyewa;
 
 use App\Models\Bank;
-use App\Models\Partner;
 use App\Models\User;
 use App\Models\Event;
 use App\Models\Harga;
 use App\Models\Talent;
+use App\Models\Partner;
+use App\Models\Voucher;
+use App\Models\EventDate;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use App\Http\Controllers\Controller;
-use App\Models\EventDate;
 // use Dotenv\Validator;
-use Illuminate\Support\Facades\Validator;
+use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Validator;
 
 class EditController extends Controller
 {
@@ -173,5 +174,50 @@ class EditController extends Controller
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Gagal Diubah');
         }
+    }
+
+    public function editVoucher(Request $request)
+    {
+        // Validasi input dari form
+        $validate = Validator::make($request->all(), [
+            'code' => 'string|required|max:50',
+            'unit' => 'string|required|max:255',
+            'min' => 'required|numeric',
+            'max' => 'numeric',
+            'maxUse' => 'required|numeric',
+            // 'event' => 'required|string|exists'  // Menambahkan validasi untuk event
+        ]);
+        $validate->validate();
+
+        // Cari voucher yang akan diupdate
+        $voucher = Voucher::find($request->id);
+        // dd($voucher->event_uid);
+
+        // Pastikan voucher ditemukan
+        if (!$voucher) {
+            return redirect()->back()->with('vError', 'Voucher tidak ditemukan');
+        }
+
+        // Tentukan nominal berdasarkan unit (rupiah atau persen)
+        if ($request->unit === 'rupiah') {
+            $nominal = $request->nominalRupiah;
+        } else {
+            $nominal = $request->nominalPersen;
+        }
+
+        // Update data voucher
+        $voucher->code = $request->code;
+        $voucher->unit = $request->unit;
+        $voucher->nominal = $nominal;
+        $voucher->min_beli = $request->min;
+        $voucher->max_disc = $request->max;
+        $voucher->limit = $request->maxUse;
+        $voucher->event_uid = $request->event; // Update event_uid (mengaitkan voucher dengan event baru)
+
+        // Simpan perubahan
+        $voucher->save();
+
+        // Redirect dengan pesan berhasil
+        return redirect()->back()->with('voucher', 'Voucher berhasil diperbarui');
     }
 }

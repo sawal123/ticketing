@@ -134,8 +134,8 @@ class AddController extends Controller
             'max' => 'numeric',
             'maxUse' => 'required|numeric'
         ]);
-        // dd($validate->validate());
         $validate->validate();
+        // dd($request->event);
         if($request->unit === 'rupiah'){
             $nominal = $request->nominalRupiah;
         }else{
@@ -146,7 +146,7 @@ class AddController extends Controller
         $voucher = new Voucher([
             'uid' => $uid,
             'user_uid' => Auth::user()->uid,
-            'event_uid' => 'null',
+            'event_uid' => $request->event,
             'code' => $request->code,
             'unit' => $request->unit,
             'nominal' => $nominal,

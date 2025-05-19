@@ -12,7 +12,7 @@
                 @endif
                 @if (count($transaksi) > 0)
                     @foreach ($transaksi as $transaksi)
-                        <div class="card d-none d-lg-block d-xl-block mt-5">
+                        <div class="card d-none d-lg-block d-xl-block mt-2 mb-2">
                             <div class="card-body table-responsive">
                                 <table>
                                     <tr>
@@ -43,7 +43,7 @@
                                             <h6 class="m-0">{{ $transaksi->status }}</h6>
                                         </td>
                                         <td style="width: 10%">
-                                            <div class="d-flex  align-items-center justify-content-between">
+                                            <div class="d-flex gap-2  align-items-center justify-content-between">
                                                 <a href="{{ url('/detail-ticket/' . $transaksi->uid . '/' . Auth::user()->uid) }}"
                                                     class="btn btn-primary ">Detail</a>
                                                 @if ($transaksi->status === 'UNPAID' || $transaksi->status === 'CANCELLED')
@@ -60,7 +60,7 @@
                             </div>
                         </div>
 
-                        <div class="card  d-md-block d-sm-block d-xl-none d-lg-none " style="margin-top: 100px">
+                        <div class="card  d-md-block d-sm-block d-xl-none d-lg-none " style="margin-top: 30px">
                             <img src="{{ asset('storage/cover/' . $transaksi->cover) }}" alt="" class=" me-5"
                                 style="width: 100%; border-radius:6px">
                             <div class="card-body">
@@ -87,7 +87,7 @@
                                     <p class="m-0">Status</p>
                                     <h6 class="m-0">{{ $transaksi->status }}</h6>
                                 </div>
-                                <div class="align-items-center">
+                                <div class=" align-items-center">
                                     <a href="{{ url('/detail-ticket/' . $transaksi->uid . '/' . Auth::user()->uid) }}"
                                         class="btn btn-primary w-100 mb-2 mt-1">Detail</a>
                                     @if ($transaksi->status === 'UNPAID')

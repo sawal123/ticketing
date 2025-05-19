@@ -83,6 +83,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('email/notif-email', [Controller::class, 'notif']);
     Route::get('/detail-ticket/{uid}/{user}', [BuyTicketController::class, 'index']);
     Route::post('/checkVoucer', [BuyTicketController::class, 'checkVoucher']);
+    Route::post('/closeVoucher', [BuyTicketController::class, 'closeVoucher']);
     Route::post('/checkout', [BuyTicketController::class, 'checkout']);
     Route::get('/transaksi', [landingController::class, 'listTransaksi']);
 
@@ -132,6 +133,7 @@ Route::prefix('dashboard')
         Route::post('/editRekening', [PenyewaEditController::class, 'editRekening']);
         Route::post('/editProfile', [PenyewaEditController::class, 'editProfile']);
         Route::post('/editPartner', [PenyewaEditController::class, 'editPartner']);
+        Route::post('/updateVoucher', [PenyewaEditController::class, 'editVoucher']);
 
         Route::get('/events/delete/{id}', [PenyewaDelete::class, 'eventDelete']);
         Route::get('/delete/{id}', [PenyewaDelete::class, 'deleteTalent']);

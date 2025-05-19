@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Dashboard;
 
 use Storage;
+use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use App\Models\PaymentGateway;
 use App\Http\Controllers\Controller;
@@ -34,12 +35,15 @@ class PaymentGatewayController extends Controller
     {
         $validated = $request->validate([
             'payment'     => 'required|string|max:100',
+            'category'    => 'required|string',
             'biaya'       => 'required|numeric',
             'biaya_type'  => 'required|in:rupiah,persen',
             'icon'        => 'nullable|image|mimes:png,jpg,jpeg,svg|max:2048',
             'is_active'   => 'required|boolean',
         ]);
 
+        // Generate slug dari field 'payment'
+        $validated['slug'] = Str::slug($validated['payment']);
         // Handle icon upload
         if ($request->hasFile('icon')) {
             $iconPath = $request->file('icon')->store('payment-icons', 'public');

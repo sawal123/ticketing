@@ -29,14 +29,12 @@ class DeleteController extends Controller
     public function deteleListTransaksi($uid, $user_uid)
     {
         $cart = Cart::with(['users'])->where('uid', $uid)->first();
+        $transaction = Transaction::with(['users'])->where('invoice', $cart->invoice)->first();
         $hargaCart = HargaCart::with(['cart'])->where('uid', $cart->uid)->get();
-            foreach($hargaCart as $hc){
-                $hc->delete();
-            }
-
-        // dd($cart);
+        foreach ($hargaCart as $hc) {
+            $hc->delete();
+        }
         $cart->delete();
-        // $hargaCart->delete();
         return redirect()->back()->with('deleteList', 'Check Out Berhasil dihapus');
     }
 

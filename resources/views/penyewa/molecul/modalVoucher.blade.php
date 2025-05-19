@@ -21,6 +21,16 @@
                         </div>
                     </div>
                     <div class="row mb-4">
+                        <label class="col-md-3 form-label d-flex justify-content-start">Event :</label>
+                        <div class="col-md-9">
+                            <select class="form-select" aria-label="Default select example" name="event">
+                                @foreach ($event as $item)
+                                    <option value="{{ $item->uid }}">{{ $item->event }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row mb-4">
                         <label class="col-md-3 form-label d-flex justify-content-start">Type :</label>
                         <div class="col-md-9">
                             <div class="custom-controls-stacked d-flex align-items-center mt-2">
@@ -108,7 +118,7 @@
             <form action="{{ url('dashboard/updateVoucher') }}" method="post" enctype="multipart/form-data">
                 @csrf
                 <div class="modal-body">
-                    <input type="hidden" name="id">
+                    <input type="hidden" name="id" id="id">
                     <div class="row mb-4">
                         <label class="col-md-3 form-label d-flex justify-content-start">Code Voucher :</label>
                         <div class="col-md-9">
@@ -117,68 +127,79 @@
                         </div>
                     </div>
                     <div class="row mb-4">
-                        <label class="col-md-3 form-label d-flex justify-content-start">Type :</label>
+                        <label class="col-md-3 form-label d-flex justify-content-start">Event :</label>
                         <div class="col-md-9">
-                            <div class="custom-controls-stacked d-flex align-items-center mt-2">
-                                <label class="custom-control mx-2 custom-radio">
-                                    <input type="radio" class="custom-control-input" name="unit" id="URupiah"
-                                        value="rupiah" checked onclick="toggleNom()">
-                                    <span class="custom-control-label">Rupiah</span>
-                                </label>
-                                <label class="custom-control mx-2 custom-radio">
-                                    <input type="radio" class="custom-control-input" name="unit" id="UPersen"
-                                        value="persen" onclick="toggleNom()">
-                                    <span class="custom-control-label">Persen</span>
-                                </label>
+                            <select class="form-select" name="event">
+                                @foreach ($event as $item)
+                                    <option value="{{ $item->uid }}">{{ $item->event }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+                        <div class="row mb-4">
+                            <label class="col-md-3 form-label d-flex justify-content-start">Type :</label>
+                            <div class="col-md-9">
+                                <div class="custom-controls-stacked d-flex align-items-center mt-2">
+                                    <label class="custom-control mx-2 custom-radio">
+                                        <input type="radio" class="custom-control-input" name="unit"
+                                            id="URupiah" value="rupiah" checked onclick="toggleNom()">
+                                        <span class="custom-control-label">Rupiah</span>
+                                    </label>
+                                    <label class="custom-control mx-2 custom-radio">
+                                        <input type="radio" class="custom-control-input" name="unit"
+                                            id="UPersen" value="persen" onclick="toggleNom()">
+                                        <span class="custom-control-label">Persen</span>
+                                    </label>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                    <div class="row mb-4">
-                        <label class="col-md-3 form-label d-flex justify-content-start">Discount</label>
-                        <div class="col-md-9">
-                            <!-- Input Rupiah -->
-                            <div class="input-group" id="inputrupiah">
-                                <span class="input-group-text" id="basic-addon1">Rp</span>
-                                <input type="number" class="form-control" placeholder="100000" id="nominalRupiah"
-                                    name="nominalRupiah" aria-label="nominal" aria-describedby="basic-addon1">
+                        <div class="row mb-4">
+                            <label class="col-md-3 form-label d-flex justify-content-start">Discount</label>
+                            <div class="col-md-9">
+                                <!-- Input Rupiah -->
+                                <div class="input-group" id="inputrupiah">
+                                    <span class="input-group-text" id="basic-addon1">Rp</span>
+                                    <input type="number" class="form-control" placeholder="100000"
+                                        id="nominalRupiah" name="nominalRupiah" aria-label="nominal"
+                                        aria-describedby="basic-addon1">
+                                </div>
+                                <!-- Input Persen -->
+                                <div class="input-group" id="inputpersen" style="display: none;">
+                                    <input type="number" class="form-control" placeholder="20" id="nominalPersen"
+                                        name="nominalPersen" aria-describedby="basic-addon2">
+                                    <span class="input-group-text" id="basic-addon2">%</span>
+                                </div>
                             </div>
-                            <!-- Input Persen -->
-                            <div class="input-group" id="inputpersen" style="display: none;">
-                                <input type="number" class="form-control" placeholder="20" id="nominalPersen"
-                                    name="nominalPersen" aria-describedby="basic-addon2">
-                                <span class="input-group-text" id="basic-addon2">%</span>
+                        </div>
+
+                        <div class="row mb-4">
+                            <label class="col-md-3 form-label d-flex justify-content-start">Min Beli :</label>
+                            <div class="col-md-9">
+                                <input type="number" class="form-control" name="min" id="minV"
+                                    placeholder="Minimal Beli" required>
                             </div>
                         </div>
-                    </div>
-                   
-                    <div class="row mb-4">
-                        <label class="col-md-3 form-label d-flex justify-content-start">Min Beli :</label>
-                        <div class="col-md-9">
-                            <input type="number" class="form-control" name="min" id="minV"
-                                placeholder="Minimal Beli" required>
+                        <div class="row mb-4">
+                            <label class="col-md-3 form-label d-flex justify-content-start">Max Disc :</label>
+                            <div class="col-md-9">
+                                <input type="number" class="form-control" name="max" id="maxV"
+                                    placeholder="Maksimal Discount" required>
+                            </div>
                         </div>
-                    </div>
-                    <div class="row mb-4">
-                        <label class="col-md-3 form-label d-flex justify-content-start">Max Disc :</label>
-                        <div class="col-md-9">
-                            <input type="number" class="form-control" name="max" id="maxV"
-                                placeholder="Maksimal Discount" required>
+                        <div class="row mb-4">
+                            <label class="col-md-3 form-label d-flex justify-content-start">Max Use :</label>
+                            <div class="col-md-9">
+                                <input type="number" class="form-control" name="maxUse" id="maxUseV"
+                                    placeholder="Maksimal Digunakan" required>
+                            </div>
                         </div>
-                    </div>
-                    <div class="row mb-4">
-                        <label class="col-md-3 form-label d-flex justify-content-start">Max Use :</label>
-                        <div class="col-md-9">
-                            <input type="number" class="form-control" name="maxUse" id="maxUseV"
-                                placeholder="Maksimal Digunakan" required>
-                        </div>
-                    </div>
 
 
-                </div>
-                <div class="modal-footer">
-                    <button type="submit" class="btn btn-primary">Update</button>
-                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Close</button>
-                </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="submit" class="btn btn-primary">Update</button>
+                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Close</button>
+                    </div>
             </form>
         </div>
     </div>

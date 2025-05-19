@@ -122,7 +122,18 @@
                                     placeholder="Contoh: DANA, BRI, OVO" required>
                             </div>
                         </div>
+                        <div class="row mb-4">
+                            <label class="col-md-3 form-label">Category:</label>
+                            <div class="col-md-9">
+                                <select class="form-select " aria-label="Default select example" name="category">
+                                    <option value="ewallet">Ewallet</option>
+                                    <option value="va">Virtual Account</option>
+                                    <option value="transfer">Transfer</option>
+                                    <option value="credit_card">Credit Card</option>
+                                </select>
+                            </div>
 
+                        </div>
                         <div class="row mb-4">
                             <label class="col-md-3 form-label">Biaya Admin:</label>
                             <div class="col-md-9">
