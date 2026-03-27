@@ -2,7 +2,7 @@
 
 @section('content')
     <div class="page-header">
-        <h1 class="page-title">Transaksi Cash {{$event->event}}</h1>
+        <h1 class="page-title">Transaksi Cash {{ $event->event ?? 'Semua Event' }}</h1>
         <div>
             <ol class="breadcrumb">
                 <li class="breadcrumb-item"><a href="javascript:void(0)">Dashboard</a></li>
@@ -21,7 +21,7 @@
                             <h2 class="mb-0 number-font">Rp {{ number_format($totalHargaCart, 0, ',', '.') }}</h2>
                         </div>
                     </div>
-                  
+
                 </div>
             </div>
         </div>
@@ -34,7 +34,7 @@
                             <h2 class="mb-0 number-font">{{ number_format($sellTiket, 0, ',', '.') }} Ticket</h2>
                         </div>
                     </div>
-                  
+
                 </div>
             </div>
         </div>
@@ -45,7 +45,7 @@
             <div class="card">
                 <form action="{{ url('dashboard/cash') }}" method="get">
                     {{-- @csrf --}} <!-- Tidak diperlukan untuk GET request -->
-                
+
                     <div class="card-header d-flex justify-content-between">
                         <h3 class="card-title">File Export</h3>
                         <div class="input-group w-md w-25">
@@ -76,7 +76,7 @@
                                     <tr>
                                         <td>{{ $key += 1 }}</td>
                                         <td>{{ $carts->invoice }}</td>
-                                        <td>{{ strlen($carts->event > 10) ? substr($carts->event, 0, 15) . '...' : $carts->event }}
+                                        <td>{{ strlen($carts->event) > 10 ? substr($carts->event, 0, 15) . '...' : $carts->event }}
                                         </td>
                                         <td>
                                             {{ date('d M Y', strtotime($carts->created_at)) }}
@@ -123,7 +123,7 @@
                                                 </div>
                                             </div>
                                         </td>
-                                        <td>{{ $carts->total_harga }}</td>
+                                        <td>Rp {{ number_format($carts->total_harga, 0, ',', '.') }}</td>
 
                                         <td>
                                             <div class="mt-sm-1 d-block">

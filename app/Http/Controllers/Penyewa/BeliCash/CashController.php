@@ -2,21 +2,22 @@
 
 namespace App\Http\Controllers\Penyewa\BeliCash;
 
-use Exception;
+use App\Http\Controllers\Controller;
+use App\Jobs\sendEmailTrnsaksi;
+use App\Mail\CashNotifikasiMail;
 use App\Models\Cart;
 use App\Models\Cash;
-use App\Models\User;
 use App\Models\Event;
 use App\Models\Harga;
 use App\Models\HargaCart;
 use App\Models\Transaction;
-use Illuminate\Support\Str;
+use App\Models\User;
+use Exception;
 use Illuminate\Http\Request;
-use App\Jobs\sendEmailTrnsaksi;
-use App\Mail\CashNotifikasiMail;
-use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 
 class CashController extends Controller
 {
@@ -45,14 +46,13 @@ class CashController extends Controller
         $str = Str::uuid();
         $order_id = 'CASH-' . $date . $invoice;
 
-        // dd($str);
-        $uid =  $request->uid;
-        $partner =  $request->partner;
-        $event =  $request->event;
-        $ticket =  $request->ticket;
-        $qty =  $request->qty;
-        $nama =  $request->name;
-        $email =  $request->email;
+        $uid = $request->uid;
+        $partner = $request->partner;
+        $event_name = $request->event;
+        $ticket_name = $request->ticket;
+        $qty = (int) $request->qty;
+        $nama = $request->name;
+        $email = $request->email;
         $alamat =  $request->alamat;
         $ttl =  $request->ttl;
         $total =  $request->total;
@@ -60,21 +60,35 @@ class CashController extends Controller
         $nomor = $request->nomor;
         $konfirmasi = $request->konfirmasi;
 
+        // 1. Ambil Data Event untuk dapet % Pajak
+        $events = Event::where('event', $event_name)->first();
+        if (!$events) return back()->with('error', 'Event tidak ditemukan');
 
-        $events = Event::where('event', $event)->first();
-        // dd($event);
-        $kategoriTicket = Harga::where('uid', $events->uid)->where('kategori', $ticket)->first();
+        // 2. Ambil Harga Tiket
+        $kategoriTicket = Harga::where('uid', $events->uid)
+            ->where('kategori', $ticket_name)
+            ->first();
+
+        // 3. LOGIKA HITUNG ULANG PAJAK (BACKEND)
+        $subtotal = $kategoriTicket->harga * $qty;
+        $pajakPersen = $events->fee ?? 0;
+        $nilaiPajak = ($pajakPersen / 100) * $subtotal;
+        $totalFinal = $subtotal + $nilaiPajak;
+
+        $str = Str::uuid();
+        $date = date('Ymd');
+        $invoice = 'CASH-' . $date . Str::upper(Str::random(10));
 
         $cart = new Cart([
             'uid' => $str,
             'user_uid' => $uid,
             'event_uid' => $events->uid,
-            'invoice' => $order_id,
+            'invoice' => $invoice,
             'status' => 'SUCCESS',
             'konfirmasi' => $konfirmasi,
-            'link' => null,
             'payment_type' => 'cash',
         ]);
+
         $hargaCart = new HargaCart([
             'orderBy' => '1',
             'uid' => $str,
@@ -82,17 +96,20 @@ class CashController extends Controller
             'quantity' => $qty,
             'harga_ticket' => $kategoriTicket->harga,
             'kategori_harga' => $kategoriTicket->kategori,
+            // Jika tabel HargaCart punya kolom disc/tax, simpan di sana juga
         ]);
-        // dd($hargaCart);
+
         $transaksi = new Transaction([
             'uid' => $str,
             'user_uid' => $uid,
             'event_uid' => $events->uid,
-            'amount' => $total,
-            'invoice' => $order_id,
+            'amount' => $totalFinal, // SIMPAN TOTAL YANG SUDAH TERMASUK PAJAK
+            'invoice' => $invoice,
             'payment_type' => 'cash',
             'status_transaksi' => 'SUCCESS'
         ]);
+
+        // ... (Proses simpan Cash, User, dan Email tetap sama)
 
         $cash = new Cash([
             'uid' => $str,
@@ -106,6 +123,7 @@ class CashController extends Controller
             'lahir' => $ttl,
             'gender' => $gender,
         ]);
+
         $cekEmail = User::where('email', $email)->first();
         // dd($cekEmail);
         if (!$cekEmail) {
@@ -125,15 +143,20 @@ class CashController extends Controller
         }
 
         try {
-            // Mail::to($email)->send(new CashNotifikasiMail($nama, $order_id));
-            $send = new sendEmailTrnsaksi($email, $nama, $order_id, $event);
-            dispatch($send);
+            DB::beginTransaction();
             $cart->save();
             $hargaCart->save();
-            $cash->save();
             $transaksi->save();
-            return redirect()->back()->with('success', 'Pembelian Cash Berhasil');
+            // save cash & user...
+            $cash->save();
+            DB::commit();
+
+            $send = new sendEmailTrnsaksi($email, $nama, $invoice, $events);
+            dispatch($send);
+
+            return redirect()->back()->with('success', 'Pembelian Cash Berhasil (Termasuk Pajak ' . $pajakPersen . '%)');
         } catch (Exception $e) {
+            DB::rollback();
             return back()->with('error', $e->getMessage());
         }
     }

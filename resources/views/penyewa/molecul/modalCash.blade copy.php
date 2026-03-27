@@ -27,12 +27,10 @@
                         <div class="col-md-9">
                             <select id="select-event" class="form-select" name="event"
                                 aria-label="Default select example">
-                                <option selected disabled>Pilih Event</option>
-                                @foreach ($event as $key => $e)
-                                    <option value="{{ $e['event'] }}" class="{{ $key + 1 }}"
-                                        data-fee="{{ $e['eventFee'] ?? 0 }}">
-                                        {{ $e['event'] }}
-                                    </option>
+                                <option selected>Pilih Event</option>
+                                @foreach ($event as $key => $events)
+                                    <option value="{{ $event[$key]['event'] }}" class="{{ $key + 1 }}">
+                                        {{ $event[$key]['event'] }}</option>
                                 @endforeach
                             </select>
                         </div>
@@ -66,8 +64,8 @@
                     <div class="row mb-4">
                         <label class="col-md-3 	d-none d-lg-block form-label">Name</label>
                         <div class="col-md-9">
-                            <input type="text" class="form-control" name="name"
-                                placeholder="Masukan Nama Lengkap.." autocomplete="off" required>
+                            <input type="text" class="form-control" name="name" placeholder="Masukan Nama Lengkap.."
+                                autocomplete="off" required>
                         </div>
                     </div>
                     <div class="row mb-4">
@@ -111,7 +109,9 @@
                     </div>
 
                     <div class="row">
-                        <div class="col-md-3"></div>
+                        <div class="col-md-3">
+
+                        </div>
                         <div class="col-md-9">
                             <div class="row">
                                 <div class="col">
@@ -132,48 +132,26 @@
                         </div>
                     </div>
 
-                    <div class="row mt-4">
-                        <div class="col-md-3"></div>
-                        <div class="col-md-9">
-                            <div class=" text-start">
-                                <div class="d-flex justify-content-between mb-2">
-                                    <span class="text-muted">Subtotal:</span>
-                                    <strong id="display-subtotal">Rp 0</strong>
-                                </div>
-                                <div class="d-flex justify-content-between mb-2">
-                                    <span class="text-muted" id="label-pajak">Pajak (0%):</span>
-                                    <strong id="display-pajak">Rp 0</strong>
-                                </div>
-                                <hr class="my-2">
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <span class="fw-bold" style="font-size: 16px;">Total Akhir:</span>
-                                    <strong id="display-total" class="text-primary" style="font-size: 18px;">Rp
-                                        0</strong>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+
 
                 </div>
                 <div class="modal-footer d-flex justify-content-between">
-                    <div>
+                    <div class="d-flex align-items-center">
                         <input type="hidden" value="{{ Auth::user()->uid }}" name="uid" readonly>
-                        <input type="hidden" value="0" id="total" name="total" readonly>
+                        <input type="hidden" value="" id="total" name="total" readonly>
+                        <h5>Total : </h5>
+                        <h6 id="total-harga"></h6>
                     </div>
-                    <div>
+                    <div class="">
+                        <button type="submit" class="btn btn-primary">Cash</button>
                         <button type="button" class="btn btn-light" data-bs-dismiss="modal">Close</button>
-                        <button type="submit" id="btn-submit"
-                            class="btn btn-primary d-inline-flex align-items-center gap-2">
-                            <span id="btn-text">Cash</span>
-                            <div id="btn-spinner" class="spinner-border spinner-border-sm d-none" role="status">
-                                <span class="visually-hidden">Loading...</span>
-                            </div>
-                        </button>
                     </div>
+
                 </div>
             </form>
         </div>
     </div>
+
 </div>
 
 <script>
@@ -182,100 +160,78 @@
         const ticketSelectContainer = document.getElementById("ticket-select-container");
         const ticketSelect = document.getElementById("select-ticket");
         const jumlahTiket = document.getElementById("select-jumlah");
-
-        // Elemen Rincian Harga
-        const displaySubtotal = document.getElementById("display-subtotal");
-        const labelPajak = document.getElementById("label-pajak");
-        const displayPajak = document.getElementById("display-pajak");
-        const displayTotal = document.getElementById("display-total");
+        const totalHarga = document.getElementById("total-harga");
         const totali = document.getElementById("total");
 
-        const ticketOptions = {!! json_encode($ticketEvent) !!};
-        const hargaTicket = {!! json_encode($hargaTicket) !!};
 
-        // Fungsi Format Uang
-        const formatRupiah = (angka) => {
-            return new Intl.NumberFormat('id-ID', {
-                style: 'currency',
-                currency: 'IDR',
-                minimumFractionDigits: 0
-            }).format(angka);
-        };
+        const ticketOptions = {!! html_entity_decode(json_encode($ticketEvent, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT)) !!};
+        const hargaTicket = {!! html_entity_decode(json_encode($hargaTicket, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT)) !!};
 
+        // Fungsi untuk menghitung total harga
         function hitungTotalHarga() {
+            const selectedEventId = eventSelect.value;
+            const selectedTicketName = ticketSelect.value;
+            const selectedJumlah = parseInt(jumlahTiket.value);
+
             const selectedOption = eventSelect.options[eventSelect.selectedIndex];
-            if (!selectedOption || selectedOption.disabled) return;
+            const selectEventClass = selectedOption.className;
 
-            const eventIndex = selectedOption.className;
-            const ticketName = ticketSelect.value;
-            const qty = parseInt(jumlahTiket.value) || 0;
 
-            const persenPajak = parseFloat(selectedOption.getAttribute('data-fee')) || 0;
 
-            if (ticketOptions[eventIndex]) {
-                const ticketsForEvent = ticketOptions[eventIndex];
-                let ticketIndex = null;
-
-                for (const key in ticketsForEvent) {
-                    if (ticketsForEvent[key] === ticketName) {
-                        ticketIndex = key;
+            if (selectEventClass in ticketOptions) {
+                const ticketOptionsForEvent = ticketOptions[selectEventClass];
+                const hargaTicketForEvent = hargaTicket[selectEventClass]
+                console.log(ticketOptionsForEvent)
+                console.log(hargaTicketForEvent)
+                let selectedTicketKey = null;
+                for (const key in ticketOptionsForEvent) {
+                    if (ticketOptionsForEvent[key] === selectedTicketName) {
+                        selectedTicketKey = parseInt(key);
                         break;
                     }
                 }
+                if (selectedTicketKey !== null) {
+                    const hargaPerTiket = parseFloat(hargaTicketForEvent[selectedTicketKey]);
+                    const total = selectedJumlah * hargaPerTiket;
 
-                if (ticketIndex !== null && qty > 0) {
-                    const price = parseFloat(hargaTicket[eventIndex][ticketIndex]);
-                    const subtotal = price * qty;
-                    const nilaiPajak = (persenPajak / 100) * subtotal;
-                    const totalAkhir = subtotal + nilaiPajak;
+                    const formattedTotal = new Intl.NumberFormat('en-US', {
+                        style: 'currency',
+                        currency: 'IDR',
 
-                    // Update UI Rincian
-                    displaySubtotal.textContent = formatRupiah(subtotal);
-                    labelPajak.textContent = `Pajak (${persenPajak}%):`;
-                    displayPajak.textContent = formatRupiah(nilaiPajak);
-                    displayTotal.textContent = formatRupiah(totalAkhir);
-
-                    // Update input hidden
-                    totali.value = totalAkhir;
+                    }).format(total);
+                    if (formattedTotal === "IDRNaN") {
+                        totalHarga.textContent = "IDR 0";
+                    } else {
+                        totalHarga.textContent = formattedTotal;
+                        totali.value = total;
+                    }
                 }
             }
         }
-
         eventSelect.addEventListener("change", function() {
-            const eventIndex = this.options[this.selectedIndex].className;
-            ticketSelect.innerHTML = "<option selected disabled>Pilih Ticket</option>";
+            const selectedEventId = eventSelect.value;
 
-            if (ticketOptions[eventIndex]) {
-                for (const ticket of ticketOptions[eventIndex]) {
+            const selectedOption = eventSelect.options[eventSelect.selectedIndex];
+            const selectEventClass = selectedOption.className;
+            ticketSelect.innerHTML = "";
+            if (selectEventClass in ticketOptions) {
+                const tickets = ticketOptions[selectEventClass];
+                for (const ticket of tickets) {
                     const option = document.createElement("option");
                     option.value = ticket;
                     option.textContent = ticket;
                     ticketSelect.appendChild(option);
                 }
-                ticketSelectContainer.style.display = "flex";
+                ticketSelectContainer.style.display = "block";
+
             } else {
+                // Jika event tidak dipilih, sembunyikan elemen select tiket
                 ticketSelectContainer.style.display = "none";
+
             }
-            hitungTotalHarga();
         });
 
         ticketSelect.addEventListener("change", hitungTotalHarga);
         jumlahTiket.addEventListener("input", hitungTotalHarga);
-        jumlahTiket.addEventListener("change", hitungTotalHarga);
-
-        // FITUR ANTI DOUBLE SUBMIT (LOADING)
-        const formCash = document.querySelector("#modalCash form");
-        const btnSubmit = document.getElementById("btn-submit");
-        const btnText = document.getElementById("btn-text");
-        const btnSpinner = document.getElementById("btn-spinner");
-
-        formCash.addEventListener("submit", function() {
-            // Disable tombol
-            btnSubmit.disabled = true;
-
-            // Ubah teks dan tampilkan animasi berputar
-            btnText.textContent = "Memproses...";
-            btnSpinner.classList.remove("d-none");
-        });
     });
 </script>

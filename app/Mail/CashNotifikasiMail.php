@@ -30,7 +30,6 @@ class CashNotifikasiMail extends Mailable
         $this->nama = $nama;
         $this->order_id = $order_id;
         $this->event = $event;
-
     }
 
     /**

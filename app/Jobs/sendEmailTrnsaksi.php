@@ -19,17 +19,17 @@ class sendEmailTrnsaksi implements ShouldQueue
      * Create a new job instance.
      */
 
-     public $email;
-     public $nama;
-     public $order_id;
-     public $event;
-    public function __construct($email, $nama, $order_id, $event)
+    public $email;
+    public $nama;
+    public $order_id;
+    public $events;
+    public function __construct($email, $nama, $order_id, $events)
     {
         //
         $this->email = $email;
         $this->nama = $nama;
         $this->order_id = $order_id;
-        $this->event = $event;
+        $this->events = $events;
     }
 
     /**
@@ -38,6 +38,6 @@ class sendEmailTrnsaksi implements ShouldQueue
     public function handle(): void
     {
         //
-        Mail::to($this->email)->send(new CashNotifikasiMail($this->nama, $this->order_id, $this->event));
+        Mail::to($this->email)->send(new CashNotifikasiMail($this->nama, $this->order_id, $this->events));
     }
 }
