@@ -82,31 +82,26 @@
                             <tbody class="table-group-divider">
                                 @foreach ($cart as $key => $carts)
                                     <tr>
-                                        <td>{{ $key += 1 }}</td>
+                                        <td>{{ $key + 1 }}</td>
                                         <td>{{ $carts->invoice }}</td>
-                                        <td>{{ strlen($carts->event > 10) ? substr($carts->event, 0, 15) . '...' : $carts->event }}
+                                        <td>{{ strlen($carts->event) > 10 ? substr($carts->event, 0, 15) . '...' : $carts->event }}
                                         </td>
-                                        <td>{{ $carts->created_at }}</td>
-                                        <td>
-                                            @foreach ($use as $users)
-                                                @if ($users->uid == $carts->user_uid)
-                                                    {{ $users->name }}
-                                                @endif
-                                            @endforeach
-                                        </td>
-                                        <td>
+                                        <td>{{ date('d M Y H:i', strtotime($carts->created_at)) }}</td>
 
+                                        <td>{{ $carts->user_name }}</td>
+
+                                        <td>
                                             <a class="modal-effect btn btn-primary-light d-grid mb-3"
                                                 data-bs-effect="effect-scale" data-bs-toggle="modal"
-                                                href="#modaldemo8{{ $key }}">{{ $carts->total_quantity }}
-                                                Ticket</a>
+                                                href="#modaldemo8{{ $key }}">
+                                                {{ $carts->total_quantity }} Ticket
+                                            </a>
                                             <div class="modal fade" id="modaldemo8{{ $key }}">
-
                                                 <div class="modal-dialog modal-dialog-centered text-center" role="document">
                                                     <div class="modal-content modal-content-demo">
                                                         <div class="modal-header">
-                                                            <h6 class="modal-title">Detail Ticket</h6><button
-                                                                aria-label="Close" class="btn-close"
+                                                            <h6 class="modal-title">Detail Ticket</h6>
+                                                            <button aria-label="Close" class="btn-close"
                                                                 data-bs-dismiss="modal"><span
                                                                     aria-hidden="true">&times;</span></button>
                                                         </div>
@@ -114,8 +109,8 @@
                                                             @foreach ($qtyTiket as $qt)
                                                                 @if ($qt->uid === $carts->uid)
                                                                     <div class="d-flex justify-content-between">
-                                                                        <p>{{ $qt->kategori_harga }} </p>
-                                                                        <p>{{ $qt->quantity }} </p>
+                                                                        <p>{{ $qt->kategori_harga }}</p>
+                                                                        <p>{{ $qt->quantity }}</p>
                                                                     </div>
                                                                 @endif
                                                             @endforeach
@@ -127,45 +122,32 @@
                                                     </div>
                                                 </div>
                                             </div>
-
                                         </td>
 
-                                        <td>Rp {{ number_format($carts->total_harga, 0, ',', '.') }}</td>
-                                        <td>
-                                            {{ $carts->unit === 'rupiah' ? 'Rp' . number_format($carts->disc, 2, ',', '.') : ($carts->unit === 'persen' ? $carts->disc . '%' : 'Tidak ada diskon') }}
+                                        <td>Rp {{ number_format($carts->subtotal_harga, 0, ',', '.') }}</td>
 
-                                        </td>
                                         <td>
                                             @if ($carts->unit === 'rupiah')
-                                                {{ number_format($carts->total_harga - $carts->disc, 0, ',', '.') }}
-                                            @elseif ($carts->unit === 'persen')
-                                                Rp
-                                                {{ number_format($carts->total_harga - ($carts->total_harga * $carts->disc) / 100, 0, ',', '.') }}
+                                                Rp {{ number_format($carts->voucher_disc, 0, ',', '.') }}
+                                            @elseif($carts->unit === 'persen')
+                                                {{ $carts->voucher_disc }}%
                                             @else
-                                                Rp {{ number_format($carts->total_harga, 0, ',', '.') }}
+                                                -
                                             @endif
                                         </td>
 
-                                        <td>{{ $carts->voucher }}</td>
-                                        <td>{{ $carts->payment_type }}</td>
-                                        <td>
-                                            <div class="mt-sm-1 d-block">
-                                                <span
-                                                    class="badge bg-success-transparent rounded-pill text-success p-2 px-3">{{ $carts->status }}</span>
-                                            </div>
+                                        <td class="fw-bold text-primary">Rp
+                                            {{ number_format($carts->final_amount, 0, ',', '.') }}</td>
+
+                                        <td>{{ $carts->voucher ?: '-' }}</td>
+                                        <td><span
+                                                class="badge bg-primary-transparent rounded-pill text-primary p-2 px-3">{{ strtoupper($carts->payment_type) }}</span>
                                         </td>
-                                        {{-- <td>
-                                            <div class="g-2">
-                                                <a class="btn text-primary btn-sm" data-bs-toggle="tooltip"
-                                                    data-bs-original-title="Edit"><span class="fe fe-edit fs-14"></span></a>
-                                                <a class="btn text-danger btn-sm" data-bs-toggle="tooltip"
-                                                    data-bs-original-title="Delete"><span
-                                                        class="fe fe-trash-2 fs-14"></span></a>
-                                            </div>
-                                        </td> --}}
+                                        <td><span
+                                                class="badge bg-success-transparent rounded-pill text-success p-2 px-3">{{ $carts->status }}</span>
+                                        </td>
                                     </tr>
                                 @endforeach
-
                             </tbody>
 
                         </table>
@@ -174,5 +156,4 @@
             </div>
         </div>
     </div>
-   
 @endsection
