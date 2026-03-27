@@ -37,79 +37,91 @@ class TransactionController extends Controller
         $event_uid = $request->event;
         $invoice = $request->invoice;
 
+        // 1. Ambil Data Payment Gateway
         $feePayment = PaymentGateway::find($payment_id);
         if (!$feePayment) {
             return back()->withErrors(['msg' => 'Metode pembayaran tidak ditemukan.']);
         }
 
-        $internetFee = 0;
-        $hargaItems = HargaCart::where('uid', $cart_uid)->get();
+        // 2. Ambil Data Event untuk mendapatkan % Pajak (Fee)
+        $event = Event::where('uid', $event_uid)->first();
+        $pajakPersen = $event->fee ?? 0;
 
+        // dd($pajakPersen . ' - ' . $user_uid . ' - ' . $event_uid . ' - ' . $cart_uid . ' - ' . $payment_id);
+        // 3. Ambil Item di Cart
+        $hargaItems = HargaCart::where('uid', $cart_uid)->get();
         if ($hargaItems->isEmpty()) {
             return back()->withErrors(['msg' => 'Cart kosong atau tidak valid.']);
         }
 
-        $total = 0;
+        // 4. Hitung Total Harga Tiket & Total Diskon
+        $totalTiket = 0;
+        $totalDiskon = 0;
         foreach ($hargaItems as $item) {
-            $subtotal = (int) $item->quantity * (int) $item->harga_ticket;
-            $total += $subtotal;
+            $totalTiket += ((int) $item->quantity * (int) $item->harga_ticket);
+            $totalDiskon += (int) $item->disc; // Mengambil diskon yang tersimpan di HargaCart
         }
 
+        // 5. Hitung Pajak (Pajak dihitung dari: Total Tiket - Diskon)
+        $subtotal = $totalTiket - $totalDiskon;
+        $nilaiPajak = ($pajakPersen / 100) * $subtotal;
+
+        // 6. Hitung Internet Fee (Biaya Admin Payment Gateway)
+        $internetFee = 0;
         if ($feePayment->biaya_type === 'rupiah') {
             $internetFee = $feePayment->biaya;
         } else {
-            $internetFee = round(($feePayment->biaya / 100) * $total);
+            $internetFee = round(($feePayment->biaya / 100) * $totalTiket);
         }
+
+        // 7. TOTAL AKHIR (Inilah yang dikirim ke Midtrans)
+        $grossAmount = (int) ($subtotal + $nilaiPajak + $internetFee);
 
         $cart = Cart::where('user_uid', $user_uid)->where('invoice', $invoice)->first();
         if (!$cart) {
             return back()->withErrors(['msg' => 'Cart tidak ditemukan.']);
         }
-       
 
-        // https://app.midtrans.com/snap/v4/redirection/0d74148c-6284-448d-999e-f384abe7f0c4#/bank-transfer/bri-va
         // Konfigurasi Midtrans
         konfig::$clientKey = config('services.midtrans.clientKey');
         konfig::$serverKey = config('services.midtrans.serverKey');
         konfig::$isProduction = config('services.midtrans.isProduction');
         konfig::$isSanitized = config('services.midtrans.isSanitized');
         konfig::$is3ds = config('services.midtrans.is3ds');
-        // dd($feePayment->slug.'_va');
-        // Jika QRIS, langsung arahkan ke QRIS
-        // dd($feePayment->slug . ($feePayment->category === 'ewallet'? '':'_va'));
+
         $snapPayload = [
             'transaction_details' => [
-                'order_id' =>  $invoice,
-                'gross_amount' => (int) ($total + $internetFee),
+                'order_id'     => $invoice,
+                'gross_amount' => $grossAmount, // Nilai Akhir yang sudah termasuk Pajak
             ],
             'customer_details' => [
-                'first_name'    => Auth::user()->name,
-                'email'         => Auth::user()->email
+                'first_name' => Auth::user()->name,
+                'email'      => Auth::user()->email
             ],
             'enabled_payments' => [
-                // 'bri_va',
                 $feePayment->slug . ($feePayment->category === 'ewallet' ? '' : '_va')
             ],
-            'vtweb' => []
         ];
 
         try {
             $paymentUrl = Snap::createTransaction($snapPayload)->redirect_url;
+
+            // Simpan ke database
             $cart->link = $paymentUrl;
             $cart->status = 'PENDING';
             $cart->payment_type = $feePayment->slug;
             $cart->save();
+
             $trans = Transaction::where('invoice', $invoice)->first();
             if (!$trans) {
-                $pay = Transaction::create([
-                    'uid' => $cart->uid,
-                    'user_uid' => $user_uid,
-                    'event_uid' => $event_uid,
-                    'amount' => (int) ($total + $internetFee),
+                Transaction::create([
+                    'uid'              => $cart->uid,
+                    'user_uid'         => $user_uid,
+                    'event_uid'        => $event_uid,
+                    'amount'           => $grossAmount, // Simpan total yang sudah termasuk pajak
                     'status_transaksi' => 'PENDING',
-                    'invoice' => $invoice,
-                    'payment_type' => $feePayment->slug,
-                    'status_transaksi' =>'PENDING'
+                    'invoice'          => $invoice,
+                    'payment_type'     => $feePayment->slug,
                 ]);
             }
 
@@ -117,9 +129,6 @@ class TransactionController extends Controller
         } catch (\Exception $e) {
             return back()->withErrors(['msg' => 'Gagal membuat transaksi: ' . $e->getMessage()]);
         }
-
-        // Jika bukan QRIS, gunakan Snap biasa (tampilkan pilihan metode bayar)
-
     }
 
     public function callback(Request $request)

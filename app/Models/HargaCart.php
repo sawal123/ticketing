@@ -9,17 +9,18 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class HargaCart extends Model
 {
-    use HasFactory;
-    use SoftDeletes;
-    protected $fillable=['uid','orderBy', 'event_uid', 'quantity', 'harga_ticket', 'voucher', 'disc', 'kategori_harga'];
+    use HasFactory, SoftDeletes;
 
-    // public function carts()
-    // {
-    //     return $this->hasMany(Cart::class, 'uid'); // Ganti 'harga_cart_id' sesuai dengan kunci asing yang sesuai dalam tabel carts
-    // }
+    protected $fillable = ['uid', 'orderBy', 'event_uid', 'quantity', 'harga_ticket', 'voucher', 'disc', 'kategori_harga'];
 
     public function cart()
     {
+        // Berasumsi 'uid' di tabel ini adalah foreign key ke 'uid' milik Cart
         return $this->belongsTo(Cart::class, 'uid', 'uid');
+    }
+
+    public function event() // Tambahan relasi langsung ke Event jika diperlukan
+    {
+        return $this->belongsTo(Event::class, 'event_uid', 'uid');
     }
 }

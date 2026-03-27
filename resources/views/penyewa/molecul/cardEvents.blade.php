@@ -28,8 +28,10 @@
                         @else
                             <a href="{{ url('dashboard/transaksi/' . $events->uid) }}" class="btn btn-primary"> <i
                                     class="fe fe-bar-chart-2"></i>E-Commerce</a>
-                                    <a href="{{ url('dashboard/cash/' . $events->uid) }}" class="btn btn-secondary"> <i
-                                        class="fe fe-bar-chart-2"></i>Cash</a>
+                            <a href="{{ url('dashboard/cash/' . $events->uid) }}" class="btn btn-secondary"> <i
+                                    class="fe fe-bar-chart-2"></i>Cash</a>
+                            <a href="{{ url('/dashboard/event/eventDetail/' . $events->uid) }}" class="btn btn-info"><i
+                                    class="fe fe-eye"></i> view</a>
                         @endif
 
 

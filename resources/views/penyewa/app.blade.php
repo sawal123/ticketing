@@ -11,7 +11,7 @@
     <meta name="description" content="{{ $seo[0]->description }}">
     <meta name="author" content="Gotik">
     <!-- FAVICON -->
-    <link rel="shortcut icon" type="image/x-icon" href="{{asset('storage/logo/'. $logo[0]->icon)}}">
+    <link rel="shortcut icon" type="image/x-icon" href="{{ asset('storage/logo/' . $logo[0]->icon) }}">
     <link rel="stylesheet" href="https://drive.google.com/uc?export=view&id=1yTLwNiCZhIdCWolQldwq4spHQkgZDqkG">
 
     <title>{{ $title }}</title>
@@ -65,11 +65,33 @@
         <a href="#top" id="back-to-top"><i class="fa fa-angle-up"></i></a>
         @include('penyewa.partial.script')
 
-      
+
 
         @include('penyewa.partial.myScript')
-        <script src="{{asset('penyewa/js/style.js')}}"></script>
-        <script src="{{ asset('penyewa/js/styleMore.js') }}"></script>
+        {{-- js untuk sweet alert dan update show modal data --}}
+        <script src="{{ asset('penyewa/js/style.js') }}?v={{ time() }}"></script>
+        {{-- Js untuk button more --}}
+        <script src="{{ asset('penyewa/js/styleMore.js') }}?v={{ time() }}"></script>
+
+        {{-- <script>
+            $(document).on("show.bs.modal", "#modalEditStaff", function(event) {
+                var button = $(event.relatedTarget);
+
+                var uid = button.data("uid");
+                var name = button.data("name");
+                var email = button.data("email");
+                var actionUrl = button.data("url"); // Ambil URL dari data-url
+
+                console.log("Data tertangkap:", name, actionUrl);
+
+                var modal = $(this);
+                modal.find("#edit_name").val(name);
+                modal.find("#edit_email").val(email);
+
+                // Langsung pasang URL yang dibawa tombol ke form action
+                modal.find("#formEditStaff").attr("action", actionUrl);
+            });
+        </script> --}}
 
 
 </body>

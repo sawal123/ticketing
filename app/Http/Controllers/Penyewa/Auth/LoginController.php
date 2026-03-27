@@ -8,18 +8,17 @@ use Illuminate\Support\Facades\Auth;
 
 class LoginController extends Controller
 {
-    public function index(Request $request){
+    public function index(Request $request)
+    {
         $user = $request->only('email', 'password');
         if (Auth::attempt($user)) {
-            if(Auth::user()->role === 'penyewa'){
+            if (Auth::user()->role === 'penyewa' || Auth::user()->role === 'staff') {
                 return redirect('/dashboard');
-            }
-            else{
+            } else {
                 return redirect()->back()->with('success', 'Email atau password salah.');
             }
         } else {
             return redirect()->back()->with('success', 'Email atau password salah.');
         }
-   
     }
 }

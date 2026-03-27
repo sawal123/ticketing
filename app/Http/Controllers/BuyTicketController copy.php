@@ -72,13 +72,6 @@ class BuyTicketController extends Controller
         }
         // dd($diskon);
 
-
-        // 1. Hitung Subtotal (Jumlah Tiket - Diskon)
-        $subtotal = $jumlah - $diskon;
-
-        // 2. Ambil Pajak (Fee) dari tabel Event (asumsi dalam persen)
-        $pajakPersen = $event->fee ?? 0;
-        $nilaiPajak = ($pajakPersen / 100) * $subtotal;
         return view('frontend.page.bayartiket', [
             'title'         => 'Detail Ticket',
             'event'         => $event,
@@ -90,10 +83,7 @@ class BuyTicketController extends Controller
             'payment'       => $this->data_pay,
             'selectInternetFee' => $selectInternetFee,
             'iFee'          => $iFee,
-            'diskon' => $diskon,
-            'pajakPersen' => $pajakPersen, // Kirim persen pajak
-            'nilaiPajak' => $nilaiPajak,   // Kirim nominal pajak
-            'subtotal' => $subtotal
+            'diskon' => $diskon
         ]);
     }
 

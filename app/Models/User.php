@@ -27,6 +27,7 @@ class User extends Authenticatable
     // $user = Auth::user();
     const USER_ROLE = 'user';
     const ADMIN_ROLE = 'admin';
+    const STAFF_ROLE = 'staff';
     protected $fillable = [
         'uid',
         'name',
@@ -39,6 +40,7 @@ class User extends Authenticatable
         'gambar',
         'role',
         'password',
+        'parent_uid',
     ];
 
     /**
@@ -64,5 +66,15 @@ class User extends Authenticatable
     public function events()
     {
         return $this->hasMany(Event::class, 'user_uid', 'uid');
+    }
+
+    public function carts()
+    {
+        return $this->hasMany(Cart::class, 'user_uid', 'uid');
+    }
+
+    public function transactions()
+    {
+        return $this->hasMany(Transaction::class, 'user_uid', 'uid');
     }
 }

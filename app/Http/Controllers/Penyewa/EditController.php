@@ -22,6 +22,9 @@ class EditController extends Controller
 {
     public function editEventPenyewa(Request $request)
     {
+        $request->validate([
+            'fee' => 'required|numeric|min:0|max:100',
+        ]);
         $event = Event::where('uid', $request->uid)->where('user_uid', Auth::user()->uid)->first();
         $eventDate = EventDate::where('uid', $request->uid)->first();
 
@@ -29,6 +32,7 @@ class EditController extends Controller
         $event->event = $request->event;
         $event->alamat = $request->alamat;
         $event->tanggal = $tanggal;
+        $event->fee = $request->fee; // TAMBAHKAN INI UNTUK MENGUPDATE FEE
         $eventDate->start = $request->start;
         $eventDate->end = $request->end;
         $event->status = $request->status;

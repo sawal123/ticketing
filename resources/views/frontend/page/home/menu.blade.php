@@ -27,15 +27,8 @@
                             <div class="fugu--card-footer-data">
                                 <span>Start From:</span>
 
-                                @php
-                                    $filtered_hargas = $harga->filter(function ($hargas) use ($event) {
-                                        return $hargas->uid === $event->uid;
-                                    });
-                                    $harga_terendah = $filtered_hargas->min('harga');
-                                @endphp
-
-                                @if ($harga_terendah)
-                                    <h4>Rp {{ number_format($harga_terendah, 0, ',', '.') }}</h4>
+                                @if ($event->harga)
+                                    <h4>Rp {{ number_format($event->harga->harga, 0, ',', '.') }}</h4>
                                 @else
                                     <p>Ticket Belum Tersedia</p>
                                 @endif
@@ -43,7 +36,7 @@
                             <a class="fugu--btn btn-sm bg-white" href="{{ url('/ticket/' . $event->slug) }}">Beli</a>
                         </div>
                         <hr class="my-2">
-                        <p class="mb-0">By: {{ $event->name }}</p>
+                        <p class="mb-0">By: {{ $event->user->name ?? 'Unknown' }}</p>
                     </div>
                 </div>
 

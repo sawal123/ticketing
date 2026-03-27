@@ -64,7 +64,8 @@
                     @if (request()->is('dashboard/event/addEvent'))
                         <form action="{{ url('/dashboard/addEvents') }}" method="post" enctype="multipart/form-data">
                         @else
-                            <form action="{{ url('/dashboard/editEventPenyewa') }}" method="post" enctype="multipart/form-data">
+                            <form action="{{ url('/dashboard/editEventPenyewa') }}" method="post"
+                                enctype="multipart/form-data">
                     @endif
 
                     @csrf
@@ -77,13 +78,20 @@
                                     placeholder="Nama Event" required>
                             </div>
                         </div>
-                        {{-- <div class="row mb-4">
-                            <label class="col-md-3 form-label">Biaya Layanan :</label>
+                        <div class="row mb-4">
+                            <label class="col-md-3 form-label">Pajak Event (%) :</label>
                             <div class="col-md-9">
-                                <input type="number" value="{{ $ubahEvent->fee }}" name="fee" class="form-control"
-                                    required>
+                                <div class="input-group">
+                                    <input type="number" name="fee" class="form-control" placeholder="Contoh: 10"
+                                        {{-- Logika Default: Jika addEvent tampilkan 10, jika edit tampilkan data asli --}}
+                                        value="{{ request()->is('dashboard/event/addEvent') ? '10' : $ubahEvent->fee }}"
+                                        min="0" max="100" required>
+                                    <span class="input-group-text">%</span>
+                                </div>
+                                <small class="text-muted">Besaran pajak yang akan ditambahkan ke total transaksi
+                                    pembeli.</small>
                             </div>
-                        </div> --}}
+                        </div>
                         <div class="row mb-4">
                             <label class="col-md-3 form-label">Alamat :</label>
                             <div class="col-md-9">

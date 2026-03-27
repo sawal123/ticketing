@@ -84,7 +84,7 @@ $(document).on("show.bs.modal", "#updateVoucher", function (e) {
     var maxDisc = tombol.data("maxdisc");
     var limit = tombol.data("limit");
     var eventUid = tombol.data("event"); // Tambahkan event data
-// console.log(id)
+    // console.log(id)
     var modal = $(this);
     modal.find("#id").val(id);
     modal.find("#codeV").val(code);
@@ -106,18 +106,17 @@ $(document).on("show.bs.modal", "#updateVoucher", function (e) {
     modal.find("select[name='event']").val(eventUid); // Pastikan nilai 'eventUid' sesuai dengan option value
 });
 
-
 function toggleNom() {
     const isRupiahChecked =
         document.querySelector('input[name="unit"]:checked').value === "rupiah";
     console.log("isRupiahChecked:", isRupiahChecked);
     console.log(
         "inputrupiah display:",
-        document.getElementById("inputrupiah").style.display
+        document.getElementById("inputrupiah").style.display,
     );
     console.log(
         "inputpersen display:",
-        document.getElementById("inputpersen").style.display
+        document.getElementById("inputpersen").style.display,
     );
 
     document.getElementById("inputrupiah").style.display = isRupiahChecked
@@ -149,18 +148,23 @@ $(document).ready(function () {
     });
 });
 
-// document.addEventListener("DOMContentLoaded", function () {
-//     var content = document.querySelector(".content");
-//     var container = document.querySelector(".container");
-//     var readMoreBtn = document.getElementById("readMoreBtn");
+$(document).ready(function () {
+    // Kode Modal Edit Staff
+    $(document).on("show.bs.modal", "#modalEditStaff", function (event) {
+        var button = $(event.relatedTarget);
 
-//     readMoreBtn.addEventListener("click", function () {
-//         container.classList.toggle("expanded");
+        var uid = button.data("uid");
+        var name = button.data("name");
+        var email = button.data("email");
+        var actionUrl = button.data("url");
 
-//         if (container.classList.contains("expanded")) {
-//             readMoreBtn.textContent = "Baca Lebih Sedikit";
-//         } else {
-//             readMoreBtn.textContent = "Baca Selengkapnya";
-//         }
-//     });
-// });
+        console.log("Data tertangkap di file eksternal:", name, actionUrl);
+
+        var modal = $(this);
+        modal.find("#edit_name").val(name);
+        modal.find("#edit_email").val(email);
+        modal.find("#formEditStaff").attr("action", actionUrl);
+    });
+
+    // Kode sweet alert dan lain-lain di bawah sini...
+});

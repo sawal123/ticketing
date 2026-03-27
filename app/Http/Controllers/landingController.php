@@ -4,181 +4,123 @@ namespace App\Http\Controllers;
 
 use App\Models\Cart;
 use App\Models\Term;
-use App\Models\User;
 use App\Models\Event;
 use App\Models\Harga;
 use App\Models\Slider;
-use App\Models\Landing;
 use App\Models\HargaCart;
-use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use App\Http\Controllers\Controller;
-use App\Models\Contact;
 use Illuminate\Support\Facades\Auth;
-// use \Illuminate\Database\Eloquent\Collection;
-
 
 class landingController extends Controller
 {
     public function home()
     {
-        $events = Event::with('harga')
+        // AJAIBNYA ELOQUENT: Cukup panggil with(['harga', 'user']) 
+        // Tidak perlu lagi join manual ke tabel users!
+        $events = Event::with(['harga', 'user'])
             ->where('konfirmasi', '1')
-            ->join('users', 'events.user_uid', '=', 'users.uid')
-            ->select(
-                'events.uid',
-                'events.user_uid',
-                'events.event',
-                'events.alamat',
-                'events.tanggal',
-                'events.status',
-                'events.cover',
-                'events.map',
-                'events.slug',
-                'events.konfirmasi',
-                'users.name'
-            )
-            ->orderBy('events.created_at', 'desc')
+            ->orderBy('created_at', 'desc')
             ->take(9)
             ->get();
-        $harga = Harga::select('uid', 'harga')->orderBy('harga', 'asc')->get();
-        $slide = Slider::all(['*']);
-        // dd($harga);
 
+        $slide = Slider::all();
+
+        // Saya hapus $harga global di sini karena biasanya harga itu nempel per-event.
+        // Jika view kamu masih butuh $harga global, bisa dikembalikan.
         return view('frontend.page.home', [
             'title' => 'Tiket',
             'events' => $events,
-            'harga' => $harga,
             'slide' => $slide
         ]);
     }
 
-    public function ticket($event)
+    public function ticket($slug)
     {
+        // Hapus error_reporting(0) karena kode kita sekarang sudah aman
 
-        error_reporting(0);
-        $ticket = Event::where('slug', $event)->first();
-        $tickets = Event::select('events.*', 'talent.*')->join('talent', 'events.uid', '=', 'talent.uid')->where('slug', $event)->get();
+        // Ambil event beserta SEMUA relasinya (Talent & Hargas)
+        // firstOrFail() akan memunculkan halaman 404 otomatis jika event tidak ada
+        $ticket = Event::with(['talents', 'hargas'])->where('slug', $slug)->firstOrFail();
 
-        $harga = Event::select('events.*', 'hargas.*')
-            ->join('hargas', 'events.uid', '=', 'hargas.uid')
-            ->where('slug', $event)->get();
-        $list = [];
-        foreach ($harga as $harga) {
-            $list[] = [
-                'uid' => $harga->uid,
-                'kategori' => $harga->kategori,
-                'qty' => $harga->qty,
-                'harga' => $harga->harga,
-            ];
-        }
-        $hc = HargaCart::select(['harga_carts.*'])
-            ->where('harga_carts.event_uid', $ticket->uid)->where('carts.status', 'SUCCESS')
-            ->join('carts', 'carts.uid', 'harga_carts.uid')
-            ->get();
-        $jml = 0;
-        $dataList = [];
-        foreach ($hc as $hcs) {
-            $dataList[] =
-                [
-                    'quantity' => $hcs->quantity,
-                    'kategori' => $hcs->kategori_harga,
-                ];
-        }
-
-        $jmlByCategory = [];
-
-        foreach ($dataList as $item) {
-            $kategori = $item['kategori'];
-            $quantity = $item['quantity'];
-            if (!isset($jmlByCategory[$kategori])) {
-                $jmlByCategory[$kategori] = 0;
-            }
-            $jmlByCategory[$kategori] += $quantity;
-        }
-        // dd($jmlByCategory);
-
+        // MENGHITUNG TIKET TERJUAL: Jauh lebih singkat dengan Query Builder Laravel
+        $soldTickets = HargaCart::select('kategori_harga', DB::raw('SUM(quantity) as total_sold'))
+            ->where('event_uid', $ticket->uid)
+            ->whereHas('cart', function ($query) {
+                // Pastikan hanya menghitung yang status transaksinya SUCCESS
+                $query->where('status', 'SUCCESS');
+            })
+            ->groupBy('kategori_harga')
+            ->pluck('total_sold', 'kategori_harga')
+            ->toArray();
+        // Hasilnya langsung berbentuk array: ['VIP' => 10, 'Reguler' => 25]
 
         return view('frontend.page.ticket', [
-            'title' => $ticket->event,
-            'ticket' => $ticket,
-            'tickets' => $tickets,
-            'list' => $list,
-            'lists' => $list,
-            'jmlhQty' => $jmlByCategory
+            'title'   => $ticket->event,
+            'ticket'  => $ticket,
+
+            // Variabel di bawah saya buat menyesuaikan view lama kamu agar tidak error.
+            // Walaupun sebenarnya di view kamu cukup panggil $ticket->talents dan $ticket->hargas
+            'tickets' => $ticket->talents,
+            'list'    => $ticket->hargas,
+            'lists'   => $ticket->hargas,
+            'jmlhQty' => $soldTickets
         ]);
     }
 
     public function listTransaksi()
     {
         $user = Auth::user();
-        // dd(Auth::user()->uid);
-        $cart = Cart::where('carts.user_uid', $user->uid)->select(
-            'carts.uid',
-            'carts.invoice',
-            'carts.status',
-            'events.cover',
-            'carts.created_at',
-            DB::raw('SUM(harga_carts.quantity * harga_carts.harga_ticket) as total_harga'),
-            DB::raw('SUM(harga_carts.quantity) as total_quantity')
-        )
-            ->join('harga_carts', 'harga_carts.uid', '=', 'carts.uid')
-            ->join('events', 'events.uid', '=', 'carts.event_uid')
-            ->groupBy('carts.uid', 'carts.invoice', 'carts.status', 'carts.created_at', 'events.cover')
-            ->get();
-        // dd($cart);
+
+        // Mengambil transaksi user dengan memanfaatkan relasi dan collection
+        $transaksi = Cart::with(['event', 'hargaCarts'])
+            ->where('user_uid', $user->uid)
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function ($cart) {
+                // Menghitung total quantity dan harga secara otomatis via Collection Laravel
+                $cart->total_quantity = $cart->hargaCarts->sum('quantity');
+                $cart->total_harga = $cart->hargaCarts->sum(function ($hc) {
+                    return $hc->quantity * $hc->harga_ticket;
+                });
+                return $cart;
+            });
+
         return view('frontend.page.transaksi.list-transaksi', [
             'title' => 'Transaksi',
-            'transaksi' => $cart
+            'transaksi' => $transaksi
         ]);
     }
 
     public function search($search = null)
     {
-        // $search = $request->search;
+        // Siapkan query dasar
+        $query = Event::with(['harga', 'user'])->where('konfirmasi', '1');
 
         if ($search) {
-            $event = Event::where('event', 'LIKE', "%$search%")
-                ->orWhere('alamat', 'LIKE', "%$search%")->orWhere('slug', 'LIKE', "%$search%")
-                ->orWhereHas('talent', function ($query) use ($search) {
-                    $query->where('talent', 'LIKE', "%$search%");
-                })
-                ->get();
-            // return redirect('/search/'. $event);
-        } else {
-            $event = Event::where('konfirmasi', '1')
-                ->join('users', 'events.user_uid', '=', 'users.uid')
-                ->select(
-                    'events.uid',
-                    'events.user_uid',
-                    'events.event',
-                    'events.alamat',
-                    'events.tanggal',
-                    'events.status',
-                    'events.cover',
-                    'events.map',
-                    'events.slug',
-                    'events.konfirmasi',
-                    'users.name'
-
-                )
-                ->get();
+            $query->where(function ($q) use ($search) {
+                $q->where('event', 'LIKE', "%$search%")
+                    ->orWhere('alamat', 'LIKE', "%$search%")
+                    ->orWhere('slug', 'LIKE', "%$search%")
+                    // Mencari berdasarkan nama talent menggunakan nama relasi yang baru: talents
+                    ->orWhereHas('talents', function ($q2) use ($search) {
+                        $q2->where('talent', 'LIKE', "%$search%");
+                    });
+            });
         }
-        //  dd($event);
-        $harga = Harga::select('uid', 'harga')->orderBy('harga', 'asc')->get();
-        return view('frontend.page.post.post',
-            [
-                'title' => 'Search Event',
-                'event' => $event,
-                'harga' => $harga,
-                // 'search' =>$search
-            ]
-        );
+
+        $events = $query->get();
+
+        return view('frontend.page.post.post', [
+            'title' => 'Search Event',
+            'event' => $events,
+        ]);
     }
-    public function cari()
+
+    public function cari(Request $request)
     {
-        $cari = $_GET['cari'];
+        // Best practice Laravel: gunakan class Request daripada $_GET native php
+        $cari = $request->input('cari');
         return redirect('/search/' . $cari)->withInput();
     }
 
@@ -193,8 +135,6 @@ class landingController extends Controller
 
     public function contact()
     {
-
-        // dd($contact);
-        return view('frontend.page.contact', ['title' => 'Contact',]);
+        return view('frontend.page.contact', ['title' => 'Contact']);
     }
 }

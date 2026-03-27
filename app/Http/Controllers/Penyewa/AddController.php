@@ -34,13 +34,12 @@ class AddController extends Controller
     {
         $validate = Validator::make($request->all(), [
             'event' => 'required|string|max:255',
-            // 'fee' => 'required|numeric',
+            'fee' => 'required|numeric|min:0|max:100', // Tambahkan validasi fee
             'alamat' => 'required|string|max:255',
             'start' => 'required|string',
             'end' => 'required|string',
             'map' => 'required|string|max:255',
             'deskripsi' => 'required|string',
-
         ]);
         $validate->validate();
 
@@ -60,7 +59,7 @@ class AddController extends Controller
             'alamat' => $request->alamat,
             'tanggal' =>  $request->start,
             'status' => 'active',
-            'fee' => 10000,
+            'fee' => $request->fee, // AMBIL DARI INPUT
             'deskripsi' => $request->deskripsi,
             'map' => $request->map,
             'slug' => Str::slug($request->event),
@@ -136,9 +135,9 @@ class AddController extends Controller
         ]);
         $validate->validate();
         // dd($request->event);
-        if($request->unit === 'rupiah'){
+        if ($request->unit === 'rupiah') {
             $nominal = $request->nominalRupiah;
-        }else{
+        } else {
             $nominal = $request->nominalPersen;
         }
         $uid = Str::uuid();
@@ -219,14 +218,15 @@ class AddController extends Controller
 
 
 
-    public function addPartner(Request $request){
+    public function addPartner(Request $request)
+    {
         $validator = Validator::make($request->all(), [
-            'referensi'=> 'string|max:255',
-            'name'=> 'string|required',
-            'email'=> 'string|email',
-            'city'=>'string|required',
-            'alamat'=> 'string|required',
-            'nomor'=> 'numeric|required',
+            'referensi' => 'string|max:255',
+            'name' => 'string|required',
+            'email' => 'string|email',
+            'city' => 'string|required',
+            'alamat' => 'string|required',
+            'nomor' => 'numeric|required',
         ]);
         $validator->validate();
         // dd(Str::uuid());
@@ -242,10 +242,9 @@ class AddController extends Controller
 
         try {
             $partner->save();
-            return redirect()->back()->with('success','Partner Berhasil Ditambah');
+            return redirect()->back()->with('success', 'Partner Berhasil Ditambah');
         } catch (Exception $e) {
             return back()->with('error', $e->getMessage());
         }
-
     }
 }

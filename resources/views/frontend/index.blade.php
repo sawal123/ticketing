@@ -84,20 +84,21 @@
 
     <script>
         document.addEventListener("DOMContentLoaded", function() {
+            // Ambil elemen dengan class baru yang tidak bentrok
+            var wrapper = document.querySelector(".deskripsi-wrapper");
+            var btn = document.getElementById("readMoreBtn");
 
-            var content = document.querySelector(".content");
-            var container = document.querySelector(".con");
-            var readMore = document.getElementById("readMore");
+            if (btn && wrapper) {
+                btn.addEventListener("click", function() {
+                    wrapper.classList.toggle("expanded");
 
-            readMore.addEventListener("click", function() {
-                container.classList.toggle("expanded");
-
-                if (container.classList.contains("expanded")) {
-                    readMore.textContent = "Baca Lebih Sedikit";
-                } else {
-                    readMore.textContent = "Baca Selengkapnya";
-                }
-            });
+                    if (wrapper.classList.contains("expanded")) {
+                        btn.textContent = "Baca Lebih Sedikit";
+                    } else {
+                        btn.textContent = "Baca Selengkapnya";
+                    }
+                });
+            }
         });
     </script>
 

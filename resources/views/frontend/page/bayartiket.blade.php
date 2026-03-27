@@ -237,7 +237,16 @@
                                             <h6 class="text-end m-0" style="font-size: 16px; font-weight: bold">
                                                 Rp <span id="biaya">0</span>
                                             </h6>
+
                                         </div>
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <p class="text-start m-0" style="font-size: 14px; font-weight: bold">Pajak
+                                                ({{ $pajakPersen }}%)</p>
+                                            <h6 class="text-end m-0" style="font-size: 16px; font-weight: bold">
+                                                Rp {{ number_format($nilaiPajak, 0, ',', '.') }}
+                                            </h6>
+                                        </div>
+                                        <hr>
                                         <div class="d-flex justify-content-between align-items-center">
                                             <p class="text-start m-0" style="font-size: 16px; font-weight: bold">Total</p>
                                             <h6 class="text-end m-0" style="font-size: 18px; font-weight: 900">Rp
@@ -252,12 +261,13 @@
                                                     value="">
                                                 <input type="hidden" name="invoice" value="{{ $cart->invoice }}">
                                                 <input type="hidden" name="person" value="{{ Auth::user()->uid }}">
-                                                <input type="hidden" name="event" value="{{ $uid }}">
+                                                <input type="hidden" name="event" value="{{ $event->uid }}">
                                                 <input type="hidden" name="cartUid" value="{{ $cart->uid }}">
                                                 {{-- <input type="hidden" value="{{ $total }}" name="amount"> --}}
 
                                                 @if ($cart->status === 'UNPAID')
-                                                    <button type="submit"  id="payButton" class="btn btn-primary w-100 mt-3">Bayar
+                                                    <button type="submit" id="payButton"
+                                                        class="btn btn-primary w-100 mt-3">Bayar
                                                         Sekarang</button>
                                                 @else
                                                     <a href="{{ $cart->link }}"
@@ -285,41 +295,34 @@
     <script>
         // Definisikan fungsi selectPayment terlebih dahulu
         function selectPayment(paymentId, biaya, biayaType, card) {
-            // Setel input hidden dengan ID payment yang dipilih
             document.getElementById('selectedPayment').value = paymentId;
-            // console.log(paymentId);
+
             let diskon = {{ $diskon ?? 0 }};
-            // Menandai card yang dipilih dengan memberikan border highlight
+            let nilaiPajak = {{ $nilaiPajak ?? 0 }}; // Ambil nilai pajak dari controller
+
             let cards = document.querySelectorAll('.card');
             cards.forEach(function(c) {
                 c.classList.remove('border-success');
             });
-            card.classList.add('border-success'); // Menambahkan border saat card dipilih
+            card.classList.add('border-success');
 
-            // Ambil total yang sudah ada
             let total = parseInt(document.getElementById('totalAmount').textContent.replace(/[^\d]/g, ''));
 
-            let totalWithFee = total;
             let fee = 0;
-
-            // Jika biaya menggunakan rupiah
             if (biayaType === 'rupiah') {
                 fee = biaya;
-                totalWithFee = (total + fee) - diskon;
-            }
-            // Jika biaya menggunakan persen
-            else if (biayaType === 'persen') {
+            } else if (biayaType === 'persen') {
                 fee = (biaya / 100) * total;
-                totalWithFee = (total + fee) - diskon;
             }
 
-            // Update tampilan biaya dan total
+            // HITUNG TOTAL AKHIR: (Total Tiket - Diskon) + Pajak + Internet Fee
+            let totalAkhir = (total - diskon) + nilaiPajak + fee;
+
             document.getElementById('biaya').textContent = fee.toLocaleString();
-            document.getElementById('finalTotal').textContent = totalWithFee.toLocaleString();
+            document.getElementById('finalTotal').textContent = totalAkhir.toLocaleString();
 
             document.getElementById('payButton').disabled = false;
         }
-
         document.addEventListener('DOMContentLoaded', function() {
             let firstPaymentCard = document.querySelector('.card');
             console.log(firstPaymentCard);
@@ -349,7 +352,7 @@
             document.getElementById('finalTotal').textContent = totalWithFee.toLocaleString();
 
             selectPayment(paymentId, biaya, biayaType, firstPaymentCard);
-              document.getElementById('payButton').disabled = true;
+            document.getElementById('payButton').disabled = true;
         });
     </script>
 @endsection

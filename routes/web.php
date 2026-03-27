@@ -1,33 +1,31 @@
 <?php
 
-use App\Http\Controllers\Controller;
-// use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Route;
-
-
-use App\Http\Controllers\BarcodeController;
-use App\Http\Controllers\landingController;
-use App\Http\Controllers\Api\SlideController;
-use App\Http\Controllers\BuyTicketController;
 use App\Http\Controllers\Api\ConfirmController;
-use App\Http\Controllers\TransactionController;
-use App\Http\Controllers\Dashboard\addController;
+use App\Http\Controllers\Api\SlideController;
 use App\Http\Controllers\Auth\UserLoginController;
-use App\Http\Controllers\Dashboard\editController;
-use App\Http\Controllers\Dashboard\DeleteController;
 use App\Http\Controllers\Auth\UserRegisterController;
+use App\Http\Controllers\BarcodeController;
+use App\Http\Controllers\BuyTicketController;
+use App\Http\Controllers\Controller;
+use App\Http\Controllers\Dashboard\addController;
 use App\Http\Controllers\Dashboard\CashController;
 use App\Http\Controllers\Dashboard\DashboardController;
+use App\Http\Controllers\Dashboard\DeleteController;
+use App\Http\Controllers\Dashboard\editController;
 use App\Http\Controllers\Dashboard\PaymentGatewayController;
 use App\Http\Controllers\Dashboard\TController;
 use App\Http\Controllers\Dashboard\TransaksiController;
+use App\Http\Controllers\landingController;
 use App\Http\Controllers\Penyewa\AddController as PenyewaAddController;
 use App\Http\Controllers\Penyewa\Auth\LoginController;
 use App\Http\Controllers\Penyewa\BeliCash\CashController as BeliCashCashController;
-use App\Http\Controllers\Penyewa\EditController as PenyewaEditController;
 use App\Http\Controllers\Penyewa\DeleteController as PenyewaDelete;
+use App\Http\Controllers\Penyewa\EditController as PenyewaEditController;
 use App\Http\Controllers\Penyewa\PenyewaController;
+use App\Http\Controllers\Penyewa\StaffController;
+use App\Http\Controllers\TransactionController;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
@@ -103,51 +101,79 @@ Route::get('/signin', [PenyewaController::class, 'login'])->name('signIn');
 Route::post('/signin/cekLogin', [LoginController::class, 'index'])->name('cekLogin');
 
 Route::prefix('dashboard')
-    ->namespace('Penyewa')
-    ->middleware(['auth', 'penyewa'])
+    ->middleware(['auth']) // Pastikan login dulu
     ->group(function () {
-        Route::get('/', [PenyewaController::class, 'index'])->name('dashboard');
-        Route::get('/transaksi/{uid?}', [PenyewaController::class, 'transaksi'])->name('dashboard.transaksi');
 
-        Route::get('/cash/{uid?}', [PenyewaController::class, 'cash'])->name('dashboard.cash');
-        Route::get('/event/{addEvent?}/{uid?}', [PenyewaController::class, 'event']);
-        Route::get('/ubahEvents/{uid}', [PenyewaController::class, 'ubahEvents']);
-        Route::get('/voucher', [PenyewaController::class, 'voucher']);
-        Route::get('/partner', [PenyewaController::class, 'partner']);
-        Route::get('/money', [PenyewaController::class, 'money']);
-        Route::get('/profile', [PenyewaController::class, 'profile']);
+        // =========================================================
+        // 1. AKSES BERSAMA (PENYEWA & STAFF)
+        // =========================================================
+        Route::middleware(['roles:penyewa,staff'])->group(function () {
+            // View Operasional
+            Route::get('/', [PenyewaController::class, 'index'])->name('dashboard');
+            Route::get('/transaksi/{uid?}', [PenyewaController::class, 'transaksi'])->name('dashboard.transaksi');
+            Route::get('/cash/{uid?}', [PenyewaController::class, 'cash'])->name('dashboard.cash');
+            Route::get('/event/{addEvent?}/{uid?}', [PenyewaController::class, 'event']);
+            Route::get('/ubahEvents/{uid}', [PenyewaController::class, 'ubahEvents']);
+            Route::get('/voucher', [PenyewaController::class, 'voucher']);
+            Route::get('/partner', [PenyewaController::class, 'partner']);
 
-        Route::post('/addEvents', [PenyewaAddController::class, 'addEvent'])->name('dashboard.addEvent');
-        Route::post('/addTalent', [PenyewaAddController::class, 'addTalent']);
-        Route::post('/addHarga', [PenyewaAddController::class, 'addHarga']);
-        Route::post('/addVoucher', [PenyewaAddController::class, 'addVoucher']);
-        Route::post('/addPenarikan', [PenyewaAddController::class, 'addPenarikan']);
-        // Route::post('/addCash', [BeliCashCashController::class, 'addCash']);
-        Route::post('/addCash', [BeliCashCashController::class, 'createCash'])->name('add.cash');
-        Route::post('/addPartner', [PenyewaAddController::class, 'addPartner']);
+            Route::get('/staff/delete/{uid}', [StaffController::class, 'destroy']);
+            Route::resource('staff', StaffController::class);
+        });
 
-        Route::post('/editTalent', [PenyewaEditController::class, 'editTalent']);
-        Route::post('/editEventPenyewa', [PenyewaEditController::class, 'editEventPenyewa']);
-        Route::post('/editEvent', [PenyewaEditController::class, 'editEvent']);
-        Route::post('/editHarga', [PenyewaEditController::class, 'editHarga']);
-        Route::post('/editRekening', [PenyewaEditController::class, 'editRekening']);
-        Route::post('/editProfile', [PenyewaEditController::class, 'editProfile']);
-        Route::post('/editPartner', [PenyewaEditController::class, 'editPartner']);
-        Route::post('/updateVoucher', [PenyewaEditController::class, 'editVoucher']);
+        // =========================================================
+        // 2. KHUSUS PENYEWA (OWNER) - Staff dilarang masuk
+        // =========================================================
+        Route::middleware(['roles:penyewa'])->group(function () {
+            // Keuangan & Profil Utama
+            Route::get('/money', [PenyewaController::class, 'money']);
+            Route::get('/profile', [PenyewaController::class, 'profile']);
 
-        Route::get('/events/delete/{id}', [PenyewaDelete::class, 'eventDelete']);
-        Route::get('/delete/{id}', [PenyewaDelete::class, 'deleteTalent']);
-        Route::get('/hargas/delete/{id}', [PenyewaDelete::class, 'deleteHarga']);
-        Route::get('/delete/voucher/{id}', [PenyewaDelete::class, 'deleteVoucher']);
-        Route::get('/delete/partner/{id}', [PenyewaDelete::class, 'deletePartner']);
+            // Post Sensitif (Uang & Rekening)
+            Route::post('/addPenarikan', [PenyewaAddController::class, 'addPenarikan']);
+            Route::post('/editRekening', [PenyewaEditController::class, 'editRekening']);
+            Route::post('/editProfile', [PenyewaEditController::class, 'editProfile']);
+
+            // Fitur Hapus (Hanya Owner yang boleh menghapus)
+            Route::get('/events/delete/{id}', [PenyewaDelete::class, 'eventDelete']);
+            Route::get('/delete/{id}', [PenyewaDelete::class, 'deleteTalent']);
+            Route::get('/hargas/delete/{id}', [PenyewaDelete::class, 'deleteHarga']);
+            Route::get('/delete/voucher/{id}', [PenyewaDelete::class, 'deleteVoucher']);
+            Route::get('/delete/partner/{id}', [PenyewaDelete::class, 'deletePartner']);
+
+            // Manajemen Staff
+
+
+
+            // Post Operasional (Input Data)
+            Route::post('/addEvents', [PenyewaAddController::class, 'addEvent'])->name('dashboard.addEvent');
+            Route::post('/addTalent', [PenyewaAddController::class, 'addTalent']);
+            Route::post('/addHarga', [PenyewaAddController::class, 'addHarga']);
+            Route::post('/addVoucher', [PenyewaAddController::class, 'addVoucher']);
+            Route::post('/addCash', [BeliCashCashController::class, 'createCash'])->name('add.cash');
+            Route::post('/addPartner', [PenyewaAddController::class, 'addPartner']);
+
+            // Edit Data Operasional
+            Route::post('/editTalent', [PenyewaEditController::class, 'editTalent']);
+            Route::post('/editEventPenyewa', [PenyewaEditController::class, 'editEventPenyewa']);
+            Route::post('/editEvent', [PenyewaEditController::class, 'editEvent']);
+            Route::post('/editHarga', [PenyewaEditController::class, 'editHarga']);
+            Route::post('/editPartner', [PenyewaEditController::class, 'editPartner']);
+            Route::post('/updateVoucher', [PenyewaEditController::class, 'editVoucher']);
+        });
     });
+
+Route::get('/staff/verify/{uid}', [StaffController::class, 'verify'])->name('staff.verify');
+Route::post('/staff/complete-profile/{uid}', [StaffController::class, 'completeProfile']);
+
+
 Route::prefix('admin')
     ->namespace('Dashboard')
     ->middleware(['auth', 'admin'])
     ->group(function () {
         Route::get('/', [DashboardController::class, 'dashboard']);
 
-        Route::get('/search',[DashboardController::class, 'event']);
+        Route::get('/search', [DashboardController::class, 'event']);
 
         Route::get('/transaksi/{uid?}', [TransaksiController::class, 'transaksi']);
         Route::get('/cash/{uid?}', [CashController::class, 'cash']);
@@ -163,7 +189,7 @@ Route::prefix('admin')
         Route::get('/ubahEvents/{uid}', [DashboardController::class, 'ubahEvents']);
         Route::get('/penarikan', [DashboardController::class, 'penarikan']);
 
-        
+
 
         Route::get('/setting/slide', [DashboardController::class, 'landing']);
         Route::get('/setting/seo', [DashboardController::class, 'seo']);
@@ -226,9 +252,6 @@ Route::prefix('admin')
         Route::post('/payment-gateway/store', [PaymentGatewayController::class, 'store'])->name('payments.store');
         Route::post('/payment-gateway/update/{paymentGateway}', [PaymentGatewayController::class, 'update'])->name('payments.update');
         Route::delete('/payment-gateway/delete/{paymentGateway}', [PaymentGatewayController::class, 'destroy'])->name('payments.destroy');
-
-
-
     });
 
 

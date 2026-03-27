@@ -14,18 +14,18 @@
 
     <!-- ROW-1 OPEN -->
     <div class="row row-cards">
-       
+
         <div class="col-xl-12 col-lg-12">
             <div class="row">
                 <div class="col-xl-12">
-                  @include('penyewa.molecul.cardEventSearch')
+                    @include('penyewa.molecul.cardEventSearch')
                 </div>
             </div>
             @if (session('hapus'))
-            <div class="alert alert-success">
-                {{ session('hapus') }}
-            </div>
-        @endif
+                <div class="alert alert-success">
+                    {{ session('hapus') }}
+                </div>
+            @endif
             <div class="tab-content">
                 <div class="tab-pane active" id="tab-11">
                     <div class="row">
@@ -37,11 +37,11 @@
                         <div class="col-xl-12 col-lg-12 col-md-12">
                             <div class="card overflow-hidden">
                                 <div class="card-body">
-                                  <h2>On Progress..</h2>
+                                    <h2>Coming Soon..</h2>
                                 </div>
                             </div>
                         </div>
-                    
+
                     </div>
                 </div>
             </div>

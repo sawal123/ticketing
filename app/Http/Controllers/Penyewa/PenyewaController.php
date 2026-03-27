@@ -28,9 +28,12 @@ class PenyewaController extends Controller
         // $user = User::where('role', 'user')->count();
 
         // $user = User::where()
+        $user = Auth::user();
+        $ownerId = ($user->role === 'staff') ? $user->parent_uid : $user->uid;
+        // dd($ownerId);
 
         $transaksi = Transaction::select('amount')->where('status_transaksi', 'SUCCESS')->get();
-        $event = Event::where('user_uid', Auth::user()->uid)->count();
+        $event = Event::where('user_uid', $ownerId)->count();
         // dd($transaksi);
 
         $tra = 0;
@@ -43,7 +46,7 @@ class PenyewaController extends Controller
             ->join('events', 'events.uid', '=', 'carts.event_uid')
             ->where('carts.status', 'SUCCESS')
             ->where('carts.payment_type', '!=', 'cash')
-            ->where('events.user_uid', Auth::user()->uid)
+            ->where('events.user_uid', $ownerId)
             ->get();
         $ar = 0;
         $discounts = 0;
@@ -70,7 +73,7 @@ class PenyewaController extends Controller
             ->leftJoin('vouchers', 'vouchers.code', '=', 'harga_carts.voucher')
             ->join('events', 'events.uid', '=', 'carts.event_uid')
             ->where('carts.status', 'SUCCESS')
-            ->where('events.user_uid', Auth::user()->uid)
+            ->where('events.user_uid', $ownerId)
             ->where('carts.payment_type', '!=', 'cash')
             ->get();
         // dd($totalHargaCart);
@@ -93,7 +96,7 @@ class PenyewaController extends Controller
             ->join('events', 'events.uid', '=', 'carts.event_uid')
             ->leftJoin('vouchers', 'vouchers.code', '=', 'harga_carts.voucher')
             ->where('carts.status', 'SUCCESS')
-            ->where('events.user_uid', Auth::user()->uid)
+            ->where('events.user_uid', $ownerId)
             ->select(
                 DB::raw('DATE(carts.created_at) as hargadate'),
                 DB::raw('SUM(harga_carts.quantity) as total_qty'),
@@ -122,14 +125,14 @@ class PenyewaController extends Controller
         // dd($gr);
         $totalTransaksi = Cart::where('carts.status', 'SUCCESS')
             ->join('events', 'events.uid', '=', 'carts.event_uid')
-            ->where('events.user_uid', Auth::user()->uid)
+            ->where('events.user_uid', $ownerId)
             ->count();
         // dd($totalTransaksi);
-        $partner = Partner::where('referensi', Auth::user()->uid)->where('status', 'active')->get();
+        $partner = Partner::where('referensi', $ownerId)->where('status', 'active')->get();
 
         $e = Event::join('hargas', 'hargas.uid', '=', 'events.uid')
             ->select('events.event', 'events.fee', 'hargas.kategori', 'hargas.harga')
-            ->where('events.user_uid', '=', Auth::user()->uid)->where('events.konfirmasi', '=', '1')->get();
+            ->where('events.user_uid', '=', $ownerId)->where('events.konfirmasi', '=', '1')->get();
         $transformedEvents = [];
         $ubahStruktur = [];
 
@@ -190,7 +193,7 @@ class PenyewaController extends Controller
             ->join('events', 'events.uid', '=', 'carts.event_uid')
             ->where('carts.status', 'SUCCESS')
             ->where('carts.payment_type', '!=', 'cash')
-            ->where('events.user_uid', Auth::user()->uid)
+            ->where('events.user_uid', $ownerId)
             // ->whereDate('carts.created_at', '=', $filter)
             ->get();
         // dd($ar);
@@ -203,7 +206,7 @@ class PenyewaController extends Controller
             // ->join('cashes', 'uid_user', '=', 'carts.user_uid')
             ->join('events', 'events.uid', '=', 'carts.event_uid')
             ->select('users.gender', DB::raw('COUNT(*) as count'))
-            ->where('events.user_uid', Auth::user()->uid)
+            ->where('events.user_uid', $ownerId)
             ->where('carts.status', 'SUCCESS')
             ->groupBy('users.gender')
             ->pluck('count', 'users.gender')
@@ -236,7 +239,7 @@ class PenyewaController extends Controller
                 'users.gender',
                 DB::raw('COUNT(*) as count')
             )
-            ->where('events.user_uid', Auth::user()->uid)
+            ->where('events.user_uid', $ownerId)
             ->where('carts.status', 'SUCCESS')
             ->groupBy('age_group', 'users.gender')
             ->get()
@@ -250,7 +253,8 @@ class PenyewaController extends Controller
         // dd($birtday);
 
         // dd($dataUser);
-        return view('penyewa.page.dashboard',
+        return view(
+            'penyewa.page.dashboard',
             [
                 'title' => 'Dashboard',
                 'dataUser' => $dataUser,
@@ -281,10 +285,12 @@ class PenyewaController extends Controller
 
     public function event($addEvent = null, $uid = null)
     {
+        $user = Auth::user();
+        $ownerId = ($user->role === 'staff') ? $user->parent_uid : $user->uid;
         error_reporting(0);
-        $event = Event::where('user_uid', Auth::user()->uid)->get();
+        $event = Event::where('user_uid', $ownerId)->get();
         if ($addEvent === null) {
-            $pagination = Event::where('user_uid', Auth::user()->uid)->paginate(12);
+            $pagination = Event::where('user_uid', $ownerId)->paginate(12);
             return view('penyewa.page.event', [
                 'title' => 'Event',
                 'event' => $event,
@@ -295,7 +301,7 @@ class PenyewaController extends Controller
                 'title' => 'Add Event',
             ]);
         } elseif ($addEvent === 'eventDetail') {
-            $eventDetail = Event::where('uid', $uid)->where('user_uid', Auth::user()->uid)->first();
+            $eventDetail = Event::where('uid', $uid)->where('user_uid', $ownerId)->first();
             $talent = Talent::where('uid', $uid)->get();
             $harga = Harga::where('uid', $uid)->get();
             $hargaC = HargaCart::join('carts', 'carts.uid', '=', 'harga_carts.uid')->where('carts.event_uid', $eventDetail->uid)->where('carts.status', 'SUCCESS')->get();
@@ -319,6 +325,8 @@ class PenyewaController extends Controller
 
     public function ubahEvents($uid)
     {
+        $user = Auth::user();
+        $ownerId = ($user->role === 'staff') ? $user->parent_uid : $user->uid;
         $ubahEvent = Event::join('event_dates', 'events.uid', 'event_dates.uid')->where('events.uid', $uid)->first();
 
         // dd($ubahEvent);
@@ -336,7 +344,7 @@ class PenyewaController extends Controller
         if ($request->uid !== null) {
             $use = User::all();
             $event = Event::where('uid', $request->uid)->first();
-            $voucherss = Voucher::where('user_uid', Auth::user()->uid)->get();
+            $voucherss = Voucher::where('user_uid', $ownerId)->get();
 
             $cartQuery = Cart::select(
                 'carts.uid',
@@ -359,7 +367,7 @@ class PenyewaController extends Controller
                 ->leftJoin('vouchers', 'vouchers.code', '=', 'harga_carts.voucher') // Join ke tabel vouchers
                 ->where('carts.status', 'SUCCESS')
                 ->where('carts.payment_type', '!=', 'cash')
-                ->where('events.user_uid', Auth::user()->uid)
+                ->where('events.user_uid', $ownerId)
                 ->where('carts.event_uid', $request->uid)
                 ->groupBy(
                     'carts.uid',
@@ -391,7 +399,7 @@ class PenyewaController extends Controller
                 ->leftJoin('vouchers', 'vouchers.code', '=', 'harga_carts.voucher')
                 ->where('carts.status', 'SUCCESS')
                 ->where('carts.payment_type', '!=', 'cash')
-                ->where('events.user_uid', Auth::user()->uid)
+                ->where('events.user_uid', $ownerId)
                 ->where('carts.event_uid', '=', $request->uid);
             // ->get();
 
@@ -405,7 +413,7 @@ class PenyewaController extends Controller
                 ->join('events', 'events.uid', '=', 'carts.event_uid')
                 ->where('carts.status', 'SUCCESS')
                 ->where('carts.payment_type', '!=', 'cash')
-                ->where('events.user_uid', Auth::user()->uid);
+                ->where('events.user_uid', $ownerId);
 
             if ($filter === null) {
                 $cart = $cartQuery->get();
@@ -457,7 +465,7 @@ class PenyewaController extends Controller
                 ->join('events', 'events.uid', '=', 'carts.event_uid')
                 ->where('carts.status', 'SUCCESS')
                 ->where('carts.payment_type', '!=', 'cash')
-                ->where('events.user_uid', Auth::user()->uid)
+                ->where('events.user_uid', $ownerId)
                 ->groupBy('carts.uid', 'carts.user_uid', 'carts.invoice', 'carts.status', 'carts.payment_type', 'harga_carts.disc', 'harga_carts.voucher', 'events.event', 'events.fee', 'carts.created_at', 'events.cover');
 
             $totalPenjualan = Cart::select(['harga_carts.uid', 'harga_carts.harga_ticket', 'harga_carts.quantity', 'harga_carts.disc', 'kategori_harga'])
@@ -465,7 +473,7 @@ class PenyewaController extends Controller
                 ->join('events', 'events.uid', '=', 'carts.event_uid')
                 ->where('carts.status', 'SUCCESS')
                 ->where('carts.payment_type', '!=', 'cash')
-                ->where('events.user_uid', Auth::user()->uid);
+                ->where('events.user_uid', $ownerId);
             $ar = 0;
             $discounts = 0;
 
@@ -474,7 +482,7 @@ class PenyewaController extends Controller
                 ->join('events', 'events.uid', '=', 'carts.event_uid')
                 ->where('carts.status', 'SUCCESS')
                 ->where('carts.payment_type', '!=', 'cash')
-                ->where('events.user_uid', Auth::user()->uid);
+                ->where('events.user_uid', $ownerId);
 
             if ($filter === null) {
                 $cart = $cartQuery->get();
@@ -499,8 +507,9 @@ class PenyewaController extends Controller
                 $jml += (int)$hs->quantity;
             }
         }
-// dd($totalPenjualan);
-        return view('penyewa.page.transaksi',
+        // dd($totalPenjualan);
+        return view(
+            'penyewa.page.transaksi',
             [
                 'title' => 'Transaksi',
                 'cart' => $cart,
@@ -518,6 +527,8 @@ class PenyewaController extends Controller
 
     public function cash(Request $request)
     {
+        $user = Auth::user();
+        $ownerId = ($user->role === 'staff') ? $user->parent_uid : $user->uid;
         $filter = $request->filter;
         // if ($filter === null) {
         //     $filter = date('Y-m-d');
@@ -546,7 +557,7 @@ class PenyewaController extends Controller
                 ->join('cashes', 'cashes.uid', '=', 'carts.uid')
                 ->where('carts.status', 'SUCCESS')
                 ->where('carts.payment_type', 'cash')
-                ->where('events.user_uid', Auth::user()->uid)
+                ->where('events.user_uid', $ownerId)
                 ->where('events.uid', $request->uid)
                 ->groupBy('carts.uid', 'carts.user_uid', 'carts.invoice', 'cashes.name', 'cashes.email', 'carts.status', 'carts.payment_type', 'events.event', 'carts.created_at',);
 
@@ -561,7 +572,7 @@ class PenyewaController extends Controller
                 ->join('events', 'events.uid', '=', 'carts.event_uid')
                 ->where('carts.status', 'SUCCESS')
                 ->where('carts.payment_type', 'cash')
-                ->where('events.user_uid', Auth::user()->uid)
+                ->where('events.user_uid', $ownerId)
                 ->where('events.uid', $request->uid)
                 ->get();
             $ar = 0;
@@ -575,7 +586,7 @@ class PenyewaController extends Controller
                 ->join('events', 'events.uid', '=', 'carts.event_uid')
                 ->where('carts.status', 'SUCCESS')
                 ->where('carts.payment_type', 'cash')
-                ->where('events.user_uid', Auth::user()->uid)
+                ->where('events.user_uid', $ownerId)
                 ->where('events.uid', $request->uid)
                 ->get();
             // dd($harga_cart);
@@ -603,7 +614,7 @@ class PenyewaController extends Controller
                 ->join('cashes', 'cashes.uid', '=', 'carts.uid')
                 ->where('carts.status', 'SUCCESS')
                 ->where('carts.payment_type', 'cash')
-                ->where('events.user_uid', Auth::user()->uid)
+                ->where('events.user_uid', $ownerId)
                 ->groupBy('carts.uid', 'carts.user_uid', 'carts.invoice', 'cashes.name', 'cashes.email', 'carts.status', 'carts.payment_type', 'events.event', 'carts.created_at',);
 
             $totalHargaCart = Cart::select(['harga_carts.uid', 'harga_carts.harga_ticket', 'harga_carts.quantity', 'harga_carts.kategori_harga'])
@@ -611,7 +622,7 @@ class PenyewaController extends Controller
                 ->join('events', 'events.uid', '=', 'carts.event_uid')
                 ->where('carts.status', 'SUCCESS')
                 ->where('carts.payment_type', 'cash')
-                ->where('events.user_uid', Auth::user()->uid);
+                ->where('events.user_uid', $ownerId);
             // ->get();
             $ar = 0;
 
@@ -620,7 +631,7 @@ class PenyewaController extends Controller
                 ->join('events', 'events.uid', '=', 'carts.event_uid')
                 ->where('carts.status', 'SUCCESS')
                 ->where('carts.payment_type', 'cash')
-                ->where('events.user_uid', Auth::user()->uid);
+                ->where('events.user_uid', $ownerId);
 
             $jml = 0;
 
@@ -664,93 +675,88 @@ class PenyewaController extends Controller
 
     public function voucher()
     {
-        $voucher = Voucher::where('vouchers.user_uid', Auth::user()->uid)
+        $user = Auth::user();
+        $ownerId = ($user->role === 'staff') ? $user->parent_uid : $user->uid;
+        $voucher = Voucher::where('vouchers.user_uid', $ownerId)
             ->get();
-            $event = Event::where('user_uid', Auth::user()->uid)->get();
-            // dd($event);
+        $event = Event::where('user_uid', $ownerId)->get();
+        // dd($event);
         return view('penyewa.page.voucher', [
             'title' => 'Voucher',
             'voucher' => $voucher,
-            'event' =>$event
+            'event' => $event
 
         ]);
     }
 
     public function money()
     {
+        $user = Auth::user();
+        $ownerId = ($user->role === 'staff') ? $user->parent_uid : $user->uid;
 
+        // 1. Hitung Total HC (Uang dari tiket non-cash) - Logic kamu sudah benar karena ada diskon
         $TotalHC = Cart::select([
-            'harga_carts.uid',
             'harga_carts.harga_ticket',
             'harga_carts.quantity',
             'harga_carts.disc',
-            'kategori_harga',
             'vouchers.unit'
         ])
             ->join('harga_carts', 'harga_carts.uid', '=', 'carts.uid')
             ->leftJoin('vouchers', 'vouchers.code', '=', 'harga_carts.voucher')
             ->join('events', 'events.uid', '=', 'carts.event_uid')
             ->where('carts.status', 'SUCCESS')
-            ->where('events.user_uid', Auth::user()->uid)
+            ->where('events.user_uid', $ownerId)
             ->where('carts.payment_type', '!=', 'cash')
             ->get();
-        // dd($totalHargaCart);
 
         $totalCart = 0;
         foreach ($TotalHC as $item) {
             $hargaTicket = $item->harga_ticket * $item->quantity;
-
             if ($item->unit === 'rupiah') {
-                $hargaTicket -= $item->disc; // Diskon langsung dikurangkan
+                $hargaTicket -= $item->disc;
             } elseif ($item->unit === 'persen') {
-                $hargaTicket -= ($hargaTicket * $item->disc / 100); // Diskon persen dikonversikan
+                $hargaTicket -= ($hargaTicket * $item->disc / 100);
             }
-            // Jika unit null, tidak ada pengurangan
-
             $totalCart += $hargaTicket;
         }
 
-
-        $totalHargaCarts = Cart::select(['harga_carts.harga_ticket', 'harga_carts.quantity'])
-            ->join('harga_carts', 'harga_carts.uid', '=', 'carts.uid')
+        // 2. Hitung Total Cash (LEBIH CEPAT TANPA FOREACH)
+        $ars = Cart::join('harga_carts', 'harga_carts.uid', '=', 'carts.uid')
             ->join('events', 'events.uid', '=', 'carts.event_uid')
             ->where('carts.payment_type', '=', 'cash')
             ->where('carts.status', 'SUCCESS')
-            ->where('events.user_uid', Auth::user()->uid)
-            ->get();
-        $ars = 0;
-        foreach ($totalHargaCarts as $key => $tHCs) {
-            $ars += ($totalHargaCarts[$key]->harga_ticket * $totalHargaCarts[$key]->quantity);
-        }
-        $penarikan = Penarikan::where('uid_user', Auth::user()->uid)->get();
-        $pending = Penarikan::where('status', 'PENDING')->get();
-        $arss = 0;
-        foreach ($pending as $key => $pendings) {
+            ->where('events.user_uid', $ownerId)
+            ->sum(\DB::raw('harga_carts.harga_ticket * harga_carts.quantity'));
 
-            $arss += $pending[$key]->amount;
-        }
+        // 3. Ambil data Tabel Penarikan
+        $penarikan = Penarikan::where('uid_user', $ownerId)->latest()->get();
 
-        $success = Penarikan::where('status', 'SUCCESS')
-            ->where('uid_user', Auth::user()->uid)
-            ->get();
-        $sc = 0;
-        foreach ($success as $key => $scs) {
-            $sc += (int) $success[$key]->amount;
-        }
+        // 4. Hitung Total Pending (BUG DIPERBAIKI & LEBIH CEPAT TANPA FOREACH)
+        $arss = Penarikan::where('uid_user', $ownerId)
+            ->where('status', 'PENDING')
+            ->sum('amount');
 
-        return view('penyewa.page.money', 
-        [
-            'title' => 'Money',
-            'money' => $penarikan,
-            'totalMoney' => $totalCart,
-            'cash' => $ars,
-            'pending' => $arss,
-            'paid' => $sc
-        ]);
+        // 5. Hitung Total Sukses/Paid (LEBIH CEPAT TANPA FOREACH)
+        $sc = Penarikan::where('uid_user', $ownerId)
+            ->where('status', 'SUCCESS')
+            ->sum('amount');
+
+        return view(
+            'penyewa.page.money',
+            [
+                'title' => 'Money',
+                'money' => $penarikan,
+                'totalMoney' => $totalCart,
+                'cash' => $ars,
+                'pending' => $arss,
+                'paid' => $sc
+            ]
+        );
     }
-
     public function partner()
     {
+        $user = Auth::user();
+        $ownerId = ($user->role === 'staff') ? $user->parent_uid : $user->uid;
         error_reporting(0);
         $http = Http::get('https://www.emsifa.com/api-wilayah-indonesia/api/provinces.json');
         if ($http->successful()) {
@@ -760,7 +766,7 @@ class PenyewaController extends Controller
         }
 
 
-        $partner = Partner::where('referensi', Auth::user()->uid)->get();
+        $partner = Partner::where('referensi', $ownerId)->get();
         // dd($provinsi[]);
         return view(
             'penyewa.page.partner',
@@ -775,12 +781,13 @@ class PenyewaController extends Controller
 
     public function profile()
     {
-
-        $data = User::where('users.uid', Auth::user()->uid)
+        $user = Auth::user();
+        $ownerId = ($user->role === 'staff') ? $user->parent_uid : $user->uid;
+        $data = User::where('users.uid', $ownerId)
             ->join('banks', 'banks.uid', '=', 'users.uid')
             ->first();
         if ($data === null) {
-            $data = User::where('uid', Auth::user()->uid)->first();
+            $data = User::where('uid', $ownerId)->first();
         }
         // dd($data);
         $http = Http::get('https://www.emsifa.com/api-wilayah-indonesia/api/provinces.json');
