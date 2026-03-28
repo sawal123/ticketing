@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ConfirmController;
+use App\Http\Controllers\Api\ListTicketController;
 use App\Http\Controllers\Api\SlideController;
 use App\Http\Controllers\Dashboard\DashboardController;
 use App\Http\Controllers\TransactionController;
@@ -20,22 +21,24 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-// Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
-//     return $request->user();
-// });
 
-// Route::get('/', function(){
-//     return response()->json([
-//        "success"=>"Suceess"
-//     ], 200);
-// });
 Route::post('/login', [AuthController::class, 'login']);
 
 Route::middleware('auth:sanctum')->group(function () {
-    Route::get('/verfikasi/{data?}', [ConfirmController::class, 'verfikasi']);
     Route::put('/status/{data}', [ConfirmController::class, 'upKonfirmasi']);
     Route::get('/confirm/{data}', [ConfirmController::class, 'cekData']);
+
+    Route::get('/verfikasi/{data?}', [ConfirmController::class, 'verfikasi']);
+
+    // Route::post('/ticket/verify', [ConfirmController::class, 'prosesVerifikasiTiket']);
+    Route::post('/ticket/search', [ConfirmController::class, 'checkTicketByInvoice']);
+    // 2. Update status (Saat klik tombol Verifikasi)
+    Route::post('/ticket/confirm/{uid}', [ConfirmController::class, 'confirmTicketStatus']);
+
+    Route::get('/event/{uid}/verified-tickets', [ListTicketController::class, 'listTiketVerifikasi']);
+    Route::get('/ticket/{uid}/detail', [ListTicketController::class, 'showTicketDetail']);
     Route::get('/listEvent', [ConfirmController::class, 'listEvent']);
+    Route::post('/logout', [AuthController::class, 'logout']);
 });
 Route::get('/slide/{data?}', [SlideController::class, 'slide']);
 

@@ -557,29 +557,38 @@ class PenyewaController extends Controller
     {
         $user = Auth::user();
         $ownerId = ($user->role === 'staff') ? $user->parent_uid : $user->uid;
-        $data = User::where('users.uid', $ownerId)
-            ->join('banks', 'banks.uid', '=', 'users.uid')
-            ->first();
-        if ($data === null) {
-            $data = User::where('uid', $ownerId)->first();
-        }
-        // dd($data);
-        $http = Http::get('https://www.emsifa.com/api-wilayah-indonesia/api/provinces.json');
-        if ($http->successful()) {
-            $provinsi = $http->json();
-        }
-        // dd($provinsi);
-        $bi = BankIndonesia::all();
-        // dd($data);
 
-        return view(
-            'penyewa.page.profile',
-            [
-                'title' => 'profile',
-                'profile' => $data,
-                'bi' => $bi,
-                'pr' => $provinsi
-            ]
-        );
+        // 1. KUERI LEBIH AMAN: Gunakan alias agar nama kolom database kamu yang asli 
+        // ('bank', 'norek', 'nama') bisa dibaca oleh file Blade yang baru.
+        $data = User::select(
+            'users.*',
+            'banks.bank as nama_bank',
+            'banks.norek as no_rek',
+            'banks.nama as nama_pemilik'
+        )
+            ->leftJoin('banks', 'banks.uid', '=', 'users.uid')
+            ->where('users.uid', $ownerId)
+            ->first();
+
+        // 2. FETCH API AMAN: Siapkan array kosong sebagai default jika API mati
+        $provinsi = [];
+        try {
+            // Tambahkan timeout agar loading website tidak muter-muter lama jika API down
+            $http = Http::timeout(3)->get('https://www.emsifa.com/api-wilayah-indonesia/api/provinces.json');
+            if ($http->successful()) {
+                $provinsi = $http->json();
+            }
+        } catch (\Exception $e) {
+            // Jika error/timeout, $provinsi tetap berupa array kosong sehingga Blade tidak crash
+        }
+
+        $bi = BankIndonesia::all();
+
+        return view('penyewa.page.profile', [
+            'title' => 'Profile',
+            'profile' => $data,
+            'bi' => $bi,
+            'pr' => $provinsi
+        ]);
     }
 }

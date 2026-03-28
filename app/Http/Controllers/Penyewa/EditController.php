@@ -2,21 +2,22 @@
 
 namespace App\Http\Controllers\Penyewa;
 
-use App\Models\Bank;
-use App\Models\User;
-use App\Models\Event;
-use App\Models\Harga;
-use App\Models\Talent;
-use App\Models\Partner;
-use App\Models\Voucher;
-use App\Models\EventDate;
-use Illuminate\Support\Str;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-// use Dotenv\Validator;
 use App\Http\Controllers\Controller;
+use App\Models\Bank;
+use App\Models\Event;
+use App\Models\EventDate;
+use App\Models\Harga;
+use App\Models\Partner;
+use App\Models\Talent;
+use App\Models\User;
+use App\Models\Voucher;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 
 class EditController extends Controller
 {
@@ -114,8 +115,8 @@ class EditController extends Controller
 
     public function editProfile(Request $request)
     {
-
-        $validate = Validator::make($request->all(), [
+        // 1. VALIDASI LANGSUNG (Lebih ringkas, tambahkan validasi gambar agar aman)
+        $request->validate([
             'nama' => 'required|string',
             'nomor' => 'required|numeric',
             'email' => 'required|email',
@@ -123,11 +124,11 @@ class EditController extends Controller
             'gender' => 'required|string',
             'provinsi' => 'required|string',
             'alamat' => 'required|string',
+            'img' => 'nullable|image|mimes:jpeg,png,jpg|max:2048' // Maksimal 2MB
         ]);
 
-        $validate->validate();
         $user = User::where('uid', Auth::user()->uid)->first();
-        // dd($user);
+
         $user->name = $request->nama;
         $user->nomor = $request->nomor;
         $user->email = $request->email;
@@ -136,21 +137,30 @@ class EditController extends Controller
         $user->kota = $request->provinsi;
         $user->alamat = $request->alamat;
 
+        // 2. MANAJEMEN GAMBAR PINTAR (Hapus gambar lama, simpan gambar baru)
         if ($request->hasFile('img')) {
+            // Cek dan hapus foto lama dari storage server jika ada
+            if ($user->gambar && Storage::exists('public/user/' . $user->gambar)) {
+                Storage::delete('public/user/' . $user->gambar);
+            }
+
             $file = $request->file('img');
-            $fileName = $user->uid . '_' . time() . '_' . $file->getClientOriginalName();
+            $fileName = $user->uid . '_' . time() . '.' . $file->getClientOriginalExtension();
             $file->storeAs('public/user/', $fileName);
             $user->gambar = $fileName;
         }
 
+        // 3. SIMPAN DATA
         try {
             $user->save();
             return redirect()->back()->with('editProfile', 'Informasi Berhasil Di Update');
         } catch (\Exception $e) {
-            DB::rollback();
-            return redirect()->back()->with('error', 'Gagal Update. Silahkan coba lagi.');
+            // Dihapus DB::rollback() karena kita hanya melakukan 1 save() (tidak pakai beginTransaction)
+            return redirect()->back()->with('error', 'Gagal Update Profile. Silahkan coba lagi.');
         }
     }
+
+
 
     public function editPartner(Request $request)
     {
@@ -223,5 +233,28 @@ class EditController extends Controller
 
         // Redirect dengan pesan berhasil
         return redirect()->back()->with('voucher', 'Voucher berhasil diperbarui');
+    }
+
+    public function updatePassword(Request $request)
+    {
+        // 1. Validasi Input
+        // 'confirmed' otomatis akan mengecek apakah 'new_password' sama dengan 'new_password_confirmation'
+        $request->validate([
+            'current_password' => 'required',
+            'new_password' => 'required|min:8|confirmed',
+        ]);
+
+        $user = Auth::user();
+
+        // 2. Cek apakah password lama yang dimasukkan benar
+        if (!Hash::check($request->current_password, $user->password)) {
+            return redirect()->back()->with('error', 'Password saat ini yang Anda masukkan salah!');
+        }
+
+        // 3. Simpan Password Baru (Jangan lupa dienkripsi dengan Hash::make)
+        $user->password = Hash::make($request->new_password);
+        $user->save();
+
+        return redirect()->back()->with('editProfile', 'Password berhasil diubah untuk alasan keamanan!');
     }
 }

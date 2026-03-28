@@ -119,6 +119,8 @@ Route::prefix('dashboard')
 
             Route::get('/staff/delete/{uid}', [StaffController::class, 'destroy']);
             Route::resource('staff', StaffController::class);
+
+            Route::post('/dashboard/updatePassword', [PenyewaEditController::class, 'updatePassword']);
         });
 
         // =========================================================
