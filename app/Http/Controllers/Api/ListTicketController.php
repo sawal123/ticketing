@@ -53,7 +53,7 @@ class ListTicketController extends Controller
     {
         // Ambil detail cart beserta relasi yang diperlukan
         $ticket = Cart::with([
-            'event:uid,event', // Ambil nama event
+            'event:uid,event,cover', // Ambil nama event
             'users:uid,name,email', // Ambil nama & email pemesan
             'hargaCarts:uid,kategori_harga,quantity' // Ambil rincian jenis tiket & qty
         ])
