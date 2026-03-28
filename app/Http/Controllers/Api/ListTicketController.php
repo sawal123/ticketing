@@ -19,6 +19,7 @@ class ListTicketController extends Controller
             'carts.konfirmasi',
             'carts.updated_at as waktu_verifikasi',
             'events.event as event_name',
+            'events.cover as event_cover',
             'users.name as user_name',
             'users.gambar as user_image'
         ])
@@ -82,6 +83,7 @@ class ListTicketController extends Controller
             'data' => [
                 'invoice' => $ticket->invoice,
                 'event_name' => $ticket->event->event ?? '-',
+                'event_cover' => $ticket->event->cover ?? '-',
                 'buyer_name' => $ticket->users->name ?? '-',
                 'email' => $ticket->users->email ?? '-',
                 'order_date' => $ticket->created_at->format('d M Y H:i'),
