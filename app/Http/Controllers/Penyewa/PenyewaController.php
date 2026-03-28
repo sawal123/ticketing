@@ -28,21 +28,42 @@ class PenyewaController extends Controller
         $user = Auth::user();
         $ownerId = ($user->role === 'staff') ? $user->parent_uid : $user->uid;
 
-        // 1. TOTAL OMSET (Mengambil data Amount dari tabel Transactions)
-        // Ini mencakup Online + Cash + Pajak & sudah terpotong diskon
-        $totalAmount = Transaction::join('events', 'events.uid', '=', 'transactions.event_uid')
-            ->where('transactions.status_transaksi', 'SUCCESS')
-            ->where('events.user_uid', $ownerId)
-            ->sum('transactions.amount');
+        // ==========================================================
+        // RUMUS DASAR PERHITUNGAN (Wajib ada di sini juga)
+        // ==========================================================
+        $rumusDasar = "
+            (
+                (harga_carts.quantity * harga_carts.harga_ticket) - 
+                COALESCE(
+                    CASE 
+                        WHEN vouchers.unit = '%' OR vouchers.unit = 'persen' 
+                        THEN (harga_carts.quantity * harga_carts.harga_ticket) * (vouchers.nominal / 100)
+                        ELSE vouchers.nominal 
+                    END, 
+                0)
+            ) 
+            * (1 + (COALESCE(events.fee, 0) / 100))
+        ";
 
-        // 2. TOTAL TIKET TERJUAL (Menghitung Quantity dari semua Cart SUCCESS)
-        $totalTiket = HargaCart::join('carts', 'carts.uid', '=', 'harga_carts.uid')
+        // ==========================================================
+        // 1 & 2. TOTAL OMSET & TIKET TERJUAL (Tanpa Filter Payment Type)
+        // ==========================================================
+        $omsetDanTiket = HargaCart::join('carts', 'carts.uid', '=', 'harga_carts.uid')
             ->join('events', 'events.uid', '=', 'carts.event_uid')
+            ->leftJoin('vouchers', 'vouchers.code', '=', 'harga_carts.voucher')
             ->where('carts.status', 'SUCCESS')
             ->where('events.user_uid', $ownerId)
-            ->sum('harga_carts.quantity');
+            ->select(
+                DB::raw("SUM($rumusDasar) as total_amount"),
+                DB::raw('SUM(harga_carts.quantity) as total_quantity')
+            )->first();
 
+        $totalAmount = $omsetDanTiket->total_amount ?? 0;
+        $totalTiket = $omsetDanTiket->total_quantity ?? 0;
+
+        // ==========================================================
         // 3. TOTAL TRANSAKSI (Menghitung jumlah Invoice SUCCESS)
+        // ==========================================================
         $totalTransaksi = Cart::join('events', 'events.uid', '=', 'carts.event_uid')
             ->where('carts.status', 'SUCCESS')
             ->where('events.user_uid', $ownerId)
@@ -51,59 +72,42 @@ class PenyewaController extends Controller
         // 4. TOTAL EVENT
         $eventCount = Event::where('user_uid', $ownerId)->count();
 
-        // 5. DATA UNTUK GRAFIK (GR)
         // ==========================================================
-        // 5. DATA UNTUK GRAFIK (Harian: Cash vs Online)
+        // 5. DATA UNTUK GRAFIK (Digabung 1 Kueri agar super cepat)
         // ==========================================================
-
-        // Ambil data omset harian langsung dari tabel Transactions (Akurat 100%)
-        $dailyOmset = Transaction::join('events', 'events.uid', '=', 'transactions.event_uid')
-            ->where('transactions.status_transaksi', 'SUCCESS')
-            ->where('events.user_uid', $ownerId)
-            ->select(
-                DB::raw('DATE(transactions.created_at) as date'),
-                'transactions.payment_type',
-                DB::raw('SUM(transactions.amount) as total_amount')
-            )
-            ->groupBy(DB::raw('DATE(transactions.created_at)'), 'transactions.payment_type')
-            ->get();
-
-        // Ambil data tiket harian
-        $dailyTiket = HargaCart::join('carts', 'carts.uid', '=', 'harga_carts.uid')
+        $dailyData = HargaCart::join('carts', 'carts.uid', '=', 'harga_carts.uid')
             ->join('events', 'events.uid', '=', 'carts.event_uid')
+            ->leftJoin('vouchers', 'vouchers.code', '=', 'harga_carts.voucher')
             ->where('carts.status', 'SUCCESS')
             ->where('events.user_uid', $ownerId)
             ->select(
                 DB::raw('DATE(carts.created_at) as date'),
                 'carts.payment_type',
-                DB::raw('SUM(harga_carts.quantity) as total_qty')
+                DB::raw('SUM(harga_carts.quantity) as total_qty'),
+                DB::raw("SUM($rumusDasar) as total_amount")
             )
             ->groupBy(DB::raw('DATE(carts.created_at)'), 'carts.payment_type')
             ->get();
 
-        // Gabungkan dan urutkan semua tanggal unik untuk sumbu X (Bawah) grafik
-        $dates = collect($dailyOmset->pluck('date'))
-            ->merge($dailyTiket->pluck('date'))
-            ->unique()
-            ->sort()
-            ->values()
-            ->toArray();
+        $dates = collect($dailyData->pluck('date'))->unique()->sort()->values()->toArray();
 
-        // Siapkan keranjang kosong untuk masing-masing garis
         $qtyOnline = [];
         $qtyCash = [];
         $amountOnline = [];
         $amountCash = [];
+        $lastDate = null;
 
-        // Isi keranjangnya sesuai tanggal
         foreach ($dates as $date) {
-            $qtyOnline[] = (int) $dailyTiket->where('date', $date)->where('payment_type', '!=', 'cash')->sum('total_qty');
-            $qtyCash[] = (int) $dailyTiket->where('date', $date)->where('payment_type', 'cash')->sum('total_qty');
-            $amountOnline[] = (float) $dailyOmset->where('date', $date)->where('payment_type', '!=', 'cash')->sum('total_amount');
-            $amountCash[] = (float) $dailyOmset->where('date', $date)->where('payment_type', 'cash')->sum('total_amount');
+            $lastDate = $date;
+            $qtyOnline[] = (int) $dailyData->where('date', $date)->where('payment_type', '!=', 'cash')->sum('total_qty');
+            $qtyCash[] = (int) $dailyData->where('date', $date)->where('payment_type', 'cash')->sum('total_qty');
+            $amountOnline[] = (float) $dailyData->where('date', $date)->where('payment_type', '!=', 'cash')->sum('total_amount');
+            $amountCash[] = (float) $dailyData->where('date', $date)->where('payment_type', 'cash')->sum('total_amount');
         }
 
-        // 6. SETUP DROPDOWN UNTUK MODAL CASH (Transformed Events)
+        // ==========================================================
+        // 6. SETUP DROPDOWN UNTUK MODAL CASH 
+        // ==========================================================
         $e = Event::join('hargas', 'hargas.uid', '=', 'events.uid')
             ->select('events.event', 'events.fee', 'hargas.kategori', 'hargas.harga')
             ->where('events.user_uid', $ownerId)
@@ -133,7 +137,9 @@ class PenyewaController extends Controller
             $hargaOption[$key + 1] = $val['harga'];
         }
 
+        // ==========================================================
         // 7. DATA DEMOGRAFI (GENDER & UMUR)
+        // ==========================================================
         $genderCounts = Cart::join('users', 'users.uid', '=', 'carts.user_uid')
             ->join('events', 'events.uid', '=', 'carts.event_uid')
             ->select('users.gender', DB::raw('COUNT(*) as count'))
@@ -173,7 +179,7 @@ class PenyewaController extends Controller
             'totalTiket' => $totalTiket,
             'totalTransaksi' => $totalTransaksi,
             'eventCount' => $eventCount,
-            'gr' => $date,
+            'gr' => $lastDate, // Perbaikan variabel
             'chartDates' => $dates,
             'qtyOnline' => $qtyOnline,
             'qtyCash' => $qtyCash,
@@ -187,7 +193,6 @@ class PenyewaController extends Controller
             'partner' => $partner
         ]);
     }
-
 
     public function login()
     {
@@ -257,7 +262,25 @@ class PenyewaController extends Controller
         $event = null;
 
         // ==========================================================
-        // 1. KUERI TABEL TRANSAKSI (GABUNG USER AGAR TIDAK LOOPING)
+        // RUMUS PERHITUNGAN SQL (Bisa Dipakai Berulang)
+        // Formula: ((Harga * Qty) - Diskon Voucher) + Fee Event (Pajak)
+        // ==========================================================
+        $rumusDasar = "
+        (
+            (harga_carts.quantity * harga_carts.harga_ticket) - 
+            COALESCE(
+                CASE 
+                    WHEN vouchers.unit = '%' OR vouchers.unit = 'persen' 
+                    THEN (harga_carts.quantity * harga_carts.harga_ticket) * (vouchers.nominal / 100)
+                    ELSE vouchers.nominal 
+                END, 
+            0)
+        ) 
+        * (1 + (COALESCE(events.fee, 0) / 100))
+    ";
+
+        // ==========================================================
+        // 1. KUERI TABEL TRANSAKSI (TANPA TABEL TRANSACTIONS)
         // ==========================================================
         $cartQuery = Cart::select(
             'carts.uid',
@@ -267,17 +290,13 @@ class PenyewaController extends Controller
             'carts.created_at',
             'events.event',
             'users.name as user_name',
-            'transactions.amount as final_amount',
-            'vouchers.unit',
-            'vouchers.nominal as voucher_disc', // <--- UBAH DI SINI (Ganti disc jadi nominal)
-            'harga_carts.voucher',
+            DB::raw("SUM($rumusDasar) as final_amount"), // <--- Tambahkan SUM manual di sini
             DB::raw('SUM(harga_carts.quantity) as total_quantity'),
             DB::raw('SUM(harga_carts.quantity * harga_carts.harga_ticket) as subtotal_harga')
         )
             ->join('harga_carts', 'harga_carts.uid', '=', 'carts.uid')
             ->join('events', 'events.uid', '=', 'carts.event_uid')
             ->join('users', 'users.uid', '=', 'carts.user_uid')
-            ->leftJoin('transactions', 'transactions.invoice', '=', 'carts.invoice')
             ->leftJoin('vouchers', 'vouchers.code', '=', 'harga_carts.voucher')
             ->where('carts.status', 'SUCCESS')
             ->where('carts.payment_type', '!=', 'cash')
@@ -289,19 +308,17 @@ class PenyewaController extends Controller
                 'carts.payment_type',
                 'carts.created_at',
                 'events.event',
-                'users.name',
-                'transactions.amount',
-                'vouchers.unit',
-                'vouchers.nominal', // <--- UBAH JUGA DI SINI (Di dalam Group By)
-                'harga_carts.voucher'
+                'users.name'
             )
             ->orderBy('carts.created_at', 'desc');
 
         // ==========================================================
-        // 2. KUERI KARTU STATISTIK (SANGAT CEPAT)
+        // 2. KUERI KARTU STATISTIK (DIPERBARUI)
         // ==========================================================
-        $omsetQuery = Transaction::join('carts', 'carts.invoice', '=', 'transactions.invoice')
+        // Omset sekarang dihitung langsung dari harga tiket, bukan transactions
+        $omsetQuery = HargaCart::join('carts', 'carts.uid', '=', 'harga_carts.uid')
             ->join('events', 'events.uid', '=', 'carts.event_uid')
+            ->leftJoin('vouchers', 'vouchers.code', '=', 'harga_carts.voucher')
             ->where('carts.status', 'SUCCESS')
             ->where('carts.payment_type', '!=', 'cash')
             ->where('events.user_uid', $ownerId);
@@ -329,12 +346,12 @@ class PenyewaController extends Controller
         }
 
         // ==========================================================
-        // 4. EKSEKUSI DATA (TANPA LOOPING FOREACH PHP)
+        // 4. EKSEKUSI DATA
         // ==========================================================
         $cart = $cartQuery->get();
 
-        // Hitung langsung dari database
-        $totalOmsetOnline = $omsetQuery->sum('transactions.amount');
+        // Biarkan Laravel yang membungkus rumusnya dengan SUM()
+        $totalOmsetOnline = $omsetQuery->sum(DB::raw($rumusDasar));
         $totalTiketOnline = $tiketQuery->sum('harga_carts.quantity');
 
         // Ambil detail tiket untuk modal
@@ -347,7 +364,7 @@ class PenyewaController extends Controller
             'cart' => $cart,
             'qtyTiket' => $qtyTiket,
             'totalPenjualan' => $totalOmsetOnline,
-            'totalFee' => $totalTiketOnline, // Total Ticket
+            'totalFee' => $totalTiketOnline,
             'filter' => $filter,
             'uid' => $request->uid
         ]);
@@ -363,6 +380,23 @@ class PenyewaController extends Controller
         $event = null;
 
         // ==========================================================
+        // RUMUS DASAR PERHITUNGAN
+        // ==========================================================
+        $rumusDasar = "
+            (
+                (harga_carts.quantity * harga_carts.harga_ticket) - 
+                COALESCE(
+                    CASE 
+                        WHEN vouchers.unit = '%' OR vouchers.unit = 'persen' 
+                        THEN (harga_carts.quantity * harga_carts.harga_ticket) * (vouchers.nominal / 100)
+                        ELSE vouchers.nominal 
+                    END, 
+                0)
+            ) 
+            * (1 + (COALESCE(events.fee, 0) / 100))
+        ";
+
+        // ==========================================================
         // 1. KUERI UNTUK TABEL DATA BAWAH
         // ==========================================================
         $cartQuery = Cart::select(
@@ -375,24 +409,36 @@ class PenyewaController extends Controller
             'carts.payment_type',
             'events.event',
             'carts.created_at',
-            'transactions.amount as total_harga', // Sudah termasuk pajak!
+            DB::raw("SUM($rumusDasar) as total_harga"), // <--- Rumus Sakti
             DB::raw('SUM(harga_carts.quantity) as total_quantity')
         )
             ->join('harga_carts', 'harga_carts.uid', '=', 'carts.uid')
             ->join('events', 'events.uid', '=', 'carts.event_uid')
             ->leftJoin('cashes', 'cashes.uid', '=', 'carts.uid')
-            ->leftJoin('transactions', 'transactions.invoice', '=', 'carts.invoice')
+            ->leftJoin('vouchers', 'vouchers.code', '=', 'harga_carts.voucher')
             ->where('carts.status', 'SUCCESS')
             ->where('carts.payment_type', 'cash')
             ->where('events.user_uid', $ownerId)
-            ->groupBy('carts.uid', 'carts.user_uid', 'carts.invoice', 'cashes.name', 'cashes.email', 'carts.status', 'carts.payment_type', 'events.event', 'carts.created_at', 'transactions.amount')
+            ->groupBy(
+                'carts.uid',
+                'carts.user_uid',
+                'carts.invoice',
+                'cashes.name',
+                'cashes.email',
+                'carts.status',
+                'carts.payment_type',
+                'events.event',
+                'carts.created_at'
+                // Dihapus: 'transactions.amount' dari groupBy
+            )
             ->orderBy('carts.created_at', 'desc');
 
         // ==========================================================
-        // 2. KUERI UNTUK KARTU TOTAL OMSET & TIKET (SANGAT CEPAT)
+        // 2. KUERI UNTUK KARTU TOTAL OMSET & TIKET
         // ==========================================================
-        $omsetQuery = Transaction::join('carts', 'carts.invoice', '=', 'transactions.invoice')
+        $omsetQuery = HargaCart::join('carts', 'carts.uid', '=', 'harga_carts.uid')
             ->join('events', 'events.uid', '=', 'carts.event_uid')
+            ->leftJoin('vouchers', 'vouchers.code', '=', 'harga_carts.voucher')
             ->where('carts.status', 'SUCCESS')
             ->where('carts.payment_type', 'cash')
             ->where('events.user_uid', $ownerId);
@@ -420,15 +466,14 @@ class PenyewaController extends Controller
         }
 
         // ==========================================================
-        // 4. EKSEKUSI DATA (TANPA LOOPING PHP FOREACH)
+        // 4. EKSEKUSI DATA
         // ==========================================================
         $cart = $cartQuery->get();
 
-        // Langsung jumlahkan dari database, sangat ringan!
-        $totalOmsetCash = $omsetQuery->sum('transactions.amount');
+        // Jumlahkan dengan menggunakan DB::raw
+        $totalOmsetCash = $omsetQuery->sum(DB::raw($rumusDasar));
         $totalTiketCash = $tiketQuery->sum('harga_carts.quantity');
 
-        // Ambil data detail tiket KHUSUS untuk cart yang tampil saja (Lebih hemat memori)
         $cartUids = $cart->pluck('uid');
         $qtyTiket = HargaCart::whereIn('uid', $cartUids)->get();
 
