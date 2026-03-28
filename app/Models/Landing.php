@@ -8,6 +8,5 @@ use Illuminate\Database\Eloquent\Model;
 class Landing extends Model
 {
     use HasFactory;
-    protected $fillable=['description', 'keyword', 'logo'];
-
+    protected $fillable = ['description', 'keyword', 'logo', 'icon'];
 }

@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ConfirmController;
+use App\Http\Controllers\Api\LandingController;
 use App\Http\Controllers\Api\ListTicketController;
 use App\Http\Controllers\Api\SlideController;
 use App\Http\Controllers\Dashboard\DashboardController;
@@ -28,6 +29,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/status/{data}', [ConfirmController::class, 'upKonfirmasi']);
     Route::get('/confirm/{data}', [ConfirmController::class, 'cekData']);
 
+
+
     Route::get('/verfikasi/{data?}', [ConfirmController::class, 'verfikasi']);
 
     // Route::post('/ticket/verify', [ConfirmController::class, 'prosesVerifikasiTiket']);
@@ -41,6 +44,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
 });
 Route::get('/slide/{data?}', [SlideController::class, 'slide']);
+Route::get('/landing', [LandingController::class, 'getLandingData']);
 
 
 
