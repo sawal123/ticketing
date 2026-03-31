@@ -196,7 +196,7 @@ class PenyewaController extends Controller
 
     public function login()
     {
-        return  view('penyewa.auth.login', [
+        return view('penyewa.auth.login', [
             'title' => 'Login',
         ]);
     }
@@ -220,22 +220,38 @@ class PenyewaController extends Controller
             ]);
         } elseif ($addEvent === 'eventDetail') {
             $eventDetail = Event::where('uid', $uid)->where('user_uid', $ownerId)->first();
+
+            if ($eventDetail === null) {
+                abort('403');
+            }
+
             $talent = Talent::where('uid', $uid)->get();
             $harga = Harga::where('uid', $uid)->get();
-            $hargaC = HargaCart::join('carts', 'carts.uid', '=', 'harga_carts.uid')->where('carts.event_uid', $eventDetail->uid)->where('carts.status', 'SUCCESS')->get();
             $cart = Cart::where('event_uid', $eventDetail->uid)->where('status', '=', 'SUCCESS')->get();
-            // dd($hargaC);
+
+            // =====================================================================
+            // MENGHITUNG TOTAL TERJUAL PER TIKET (SANGAT CEPAT)
+            // =====================================================================
+            // Kita hitung jumlah quantity berdasarkan harga_id, lalu jadikan Array
+            $terjualPerHarga = HargaCart::join('carts', 'carts.uid', '=', 'harga_carts.uid')
+                ->where('carts.event_uid', $eventDetail->uid)
+                ->where('carts.status', 'SUCCESS')
+                ->select('harga_carts.harga_id', DB::raw('SUM(harga_carts.quantity) as total_terjual'))
+                ->groupBy('harga_carts.harga_id')
+                ->pluck('total_terjual', 'harga_id');
+            // Hasilnya akan seperti: [ 1 => 50, 2 => 15 ] (ID 1 laku 50, ID 2 laku 15)
             if ($eventDetail === null) {
                 abort('403');
             }
             // dd($cart);
             return view('penyewa.eventSemi.eventDetail', [
-                'hargaC' => $hargaC,
+                // 'hargaC' => $hargaC,
                 'title' => 'Event Detail',
                 'eventDetail' => $eventDetail,
                 'talent' => $talent,
                 'harga' => $harga,
-                'cart' => $cart
+                'cart' => $cart,
+                'terjualPerHarga' => $terjualPerHarga
             ]);
         }
     }

@@ -11,10 +11,18 @@ class Harga extends Model
 
     use HasFactory;
     protected $fillable = [
-        'uid', 'kategori', 'qty', 'harga',
+        'uid',
+        'kategori',
+        'qty',
+        'harga',
     ];
 
-    public function event(){
+    public function event()
+    {
         return $this->belongsTo(Event::class);
+    }
+    public function hargaCarts()
+    {
+        return $this->hasMany(HargaCart::class, 'harga_id', 'id');
     }
 }

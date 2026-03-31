@@ -11,7 +11,7 @@ class HargaCart extends Model
 {
     use HasFactory, SoftDeletes;
 
-    protected $fillable = ['uid', 'orderBy', 'event_uid', 'quantity', 'harga_ticket', 'voucher', 'disc', 'kategori_harga'];
+    protected $fillable = ['uid', 'harga_id', 'orderBy', 'event_uid', 'quantity', 'harga_ticket', 'voucher', 'disc', 'kategori_harga'];
 
     public function cart()
     {
@@ -22,5 +22,10 @@ class HargaCart extends Model
     public function event() // Tambahan relasi langsung ke Event jika diperlukan
     {
         return $this->belongsTo(Event::class, 'event_uid', 'uid');
+    }
+
+    public function masterHarga()
+    {
+        return $this->belongsTo(Harga::class, 'harga_id', 'id');
     }
 }
