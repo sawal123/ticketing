@@ -15,6 +15,7 @@ class Harga extends Model
         'kategori',
         'qty',
         'harga',
+        'status',
     ];
 
     public function event()

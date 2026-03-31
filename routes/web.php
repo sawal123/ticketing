@@ -119,8 +119,8 @@ Route::prefix('dashboard')
 
             Route::get('/staff/delete/{uid}', [StaffController::class, 'destroy']);
             Route::resource('staff', StaffController::class);
-
-            Route::post('/dashboard/updatePassword', [PenyewaEditController::class, 'updatePassword']);
+            Route::post('/hargas/toggle-status/{id}', [PenyewaController::class, 'toggleStatusHarga']);
+            Route::post('/updatePassword', [PenyewaEditController::class, 'updatePassword']);
         });
 
         // =========================================================
@@ -144,7 +144,7 @@ Route::prefix('dashboard')
             Route::get('/delete/partner/{id}', [PenyewaDelete::class, 'deletePartner']);
 
             // Manajemen Staff
-
+    
 
 
             // Post Operasional (Input Data)

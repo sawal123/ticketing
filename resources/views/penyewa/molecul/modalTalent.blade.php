@@ -1,7 +1,3 @@
-<h4 class="mb-5 mt-3 fw-bold">
-    <button type="submit" class="modal-effect btn btn-primary" data-bs-target="#modaldemo8" data-bs-effect="effect-sign"
-        data-bs-toggle="modal">Add Talent</button>
-</h4>
 <div class="modal fade" id="modaldemo8">
     <div class="modal-dialog modal-dialog-centered text-center" role="document">
         <div class="modal-content modal-content-demo">
@@ -16,8 +12,7 @@
                     <div class="row mb-4">
                         <label class="col-md-3 form-label">Nama Talent :</label>
                         <div class="col-md-9">
-                            <input type="text" class="form-control" name="talent" placeholder="Nama Talent"
-                                required>
+                            <input type="text" class="form-control" name="talent" placeholder="Nama Talent" required>
                         </div>
                     </div>
 
@@ -50,8 +45,8 @@
                     <div class="row mb-4">
                         <label class="col-md-3 form-label">Nama Talent :</label>
                         <div class="col-md-9">
-                            <input type="text" class="form-control" name="talent" id="namaTalent" placeholder="Nama Talent"
-                                required>
+                            <input type="text" class="form-control" name="talent" id="namaTalent"
+                                placeholder="Nama Talent" required>
                         </div>
                     </div>
 

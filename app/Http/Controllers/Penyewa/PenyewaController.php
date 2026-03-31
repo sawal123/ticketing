@@ -256,6 +256,19 @@ class PenyewaController extends Controller
         }
     }
 
+    public function toggleStatusHarga($id)
+    {
+        // dd($id);
+        $harga = Harga::findOrFail($id);
+
+        // Membalikkan status secara otomatis
+        $harga->status = ($harga->status === 'active') ? 'inactive' : 'active';
+        $harga->save();
+
+        // Kembalikan ke halaman sebelumnya
+        return back()->with('editHarga', 'Status tiket berhasil diubah!');
+    }
+
 
     public function ubahEvents($uid)
     {

@@ -37,33 +37,25 @@ class landingController extends Controller
 
     public function ticket($slug)
     {
-        // Hapus error_reporting(0) karena kode kita sekarang sudah aman
-
-        // Ambil event beserta SEMUA relasinya (Talent & Hargas)
-        // firstOrFail() akan memunculkan halaman 404 otomatis jika event tidak ada
+        // 1. Hapus filter query 'active' agar tiket inactive tetap dikirim ke view
         $ticket = Event::with(['talents', 'hargas'])->where('slug', $slug)->firstOrFail();
 
-        // MENGHITUNG TIKET TERJUAL: Jauh lebih singkat dengan Query Builder Laravel
+        // MENGHITUNG TIKET TERJUAL
         $soldTickets = HargaCart::select('kategori_harga', DB::raw('SUM(quantity) as total_sold'))
             ->where('event_uid', $ticket->uid)
             ->whereHas('cart', function ($query) {
-                // Pastikan hanya menghitung yang status transaksinya SUCCESS
                 $query->where('status', 'SUCCESS');
             })
             ->groupBy('kategori_harga')
             ->pluck('total_sold', 'kategori_harga')
             ->toArray();
-        // Hasilnya langsung berbentuk array: ['VIP' => 10, 'Reguler' => 25]
 
         return view('frontend.page.ticket', [
-            'title'   => $ticket->event,
-            'ticket'  => $ticket,
-
-            // Variabel di bawah saya buat menyesuaikan view lama kamu agar tidak error.
-            // Walaupun sebenarnya di view kamu cukup panggil $ticket->talents dan $ticket->hargas
+            'title' => $ticket->event,
+            'ticket' => $ticket,
             'tickets' => $ticket->talents,
-            'list'    => $ticket->hargas,
-            'lists'   => $ticket->hargas,
+            'list' => $ticket->hargas,
+            'lists' => $ticket->hargas,
             'jmlhQty' => $soldTickets
         ]);
     }
