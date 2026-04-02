@@ -1,175 +1,152 @@
 <div class="modal fade" id="modalCash">
-    <div class="modal-dialog modal-dialog-centered text-center" role="document">
-        <div class="modal-content modal-content-demo">
-            <div class="modal-header">
-                <h6 class="modal-title">Jual Ticket Cash</h6><button aria-label="Close" class="btn-close"
-                    data-bs-dismiss="modal"><span aria-hidden="true">&times;</span></button>
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content modal-content-demo" style="border-radius: 16px; border: none;">
+            <div class="modal-header border-bottom-0 pb-0 pt-4 px-4">
+                <h5 class="modal-title fw-bold text-dark" style="font-size: 18px;">Jual Tiket Cash</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" style="opacity: 0.5;"></button>
             </div>
             <form action="{{ url('dashboard/addCash') }}" method="post" enctype="multipart/form-data">
                 @csrf
-                <div class="modal-body">
-
+                <div class="modal-body px-4 pt-3 pb-2">
                     <input type="hidden" name="user" value="{{ Auth::user()->uid }}">
-                    <div class="row mb-4">
-                        <label class="col-md-3 	d-none d-lg-block form-label">Partner</label>
-                        <div class="col-md-9">
-                            <select class="form-select" name="partner" aria-label="Default select example">
-                                <option selected>Pilih Partner</option>
-                                @foreach ($partner as $key => $partners)
-                                    <option value="{{ $partners->uid }}" class="{{ $key + 1 }}">
-                                        {{ $partners->name }}</option>
-                                @endforeach
-                            </select>
-                        </div>
+
+                    <style>
+                        .form-custom {
+                            background-color: #F8F9FA;
+                            border: none;
+                            border-radius: 8px;
+                            padding: 10px 15px;
+                            color: #495057;
+                            font-size: 14px;
+                            box-shadow: none !important;
+                            height: auto;
+                        }
+                        .form-custom:focus {
+                            background-color: #F1F3F5;
+                        }
+                        select.form-custom {
+                            appearance: none;
+                            -webkit-appearance: none;
+                            -moz-appearance: none;
+                            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236c757d' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+                            background-repeat: no-repeat;
+                            background-position: right 15px center;
+                            background-size: 16px 12px;
+                        }
+                    </style>
+
+                    <div class="mb-3">
+                        <select class="form-select form-custom" name="partner" aria-label="Partner">
+                            <option selected>Pilih Partner (optional)</option>
+                            @foreach ($partner as $key => $partners)
+                                <option value="{{ $partners->uid }}" class="{{ $key + 1 }}">
+                                    {{ $partners->name }}</option>
+                            @endforeach
+                        </select>
                     </div>
-                    <div class="row mb-4">
-                        <label class="col-md-3 	d-none d-lg-block form-label">Event</label>
-                        <div class="col-md-9">
-                            <select id="select-event" class="form-select" name="event"
-                                aria-label="Default select example">
-                                <option selected disabled>Pilih Event</option>
-                                @foreach ($event as $key => $e)
-                                    <option value="{{ $e['event'] }}" class="{{ $key + 1 }}"
-                                        data-fee="{{ $e['eventFee'] ?? 0 }}">
-                                        {{ $e['event'] }}
-                                    </option>
-                                @endforeach
-                            </select>
+
+                    <div class="mb-3">
+                        <select id="select-event" class="form-select form-custom fw-bold" style="color: #6c757d" name="event" aria-label="Event">
+                            <option selected disabled>PILIH EVENT</option>
+                            @foreach ($event as $key => $e)
+                                <option value="{{ $e['event'] }}" class="{{ $key + 1 }}" data-fee="{{ $e['eventFee'] ?? 0 }}">
+                                    {{ strtoupper($e['event']) }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div class="mb-3" id="ticket-select-container" style="display: none;">
+                        <select id="select-ticket" class="form-select form-custom" name="ticket" aria-label="Ticket">
+                            <option selected>Pilih tiket</option>
+                            <!-- Opsi tiket akan ditambahkan di sini -->
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <select id="select-jumlah" class="form-select form-custom" name="qty" aria-label="Qty">
+                            <option selected disabled>Qty tiket</option>
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="3">3</option>
+                            <option value="4">4</option>
+                            <option value="5">5</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <input type="text" class="form-control form-custom" name="name" placeholder="Nama lengkap" autocomplete="off" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <input type="email" class="form-control form-custom" name="email" placeholder="Email" autocomplete="off" required>
+                    </div>
+
+                    <div class="mb-3 d-none">
+                        <!-- Disembunyikan karena di referensi screenshot tidak ada field whatsapp, tapi jika wajib (required di form), kita sediakan text placeholder -->
+                        <input type="number" class="form-control form-custom" name="nomor" placeholder="WhatsApp (Optional)" autocomplete="off" value="0800000000">
+                    </div>
+
+                    <div class="mb-3 d-none">
+                        <!-- Disembunyikan karena di screenshot tidak telihat alamat, jika form butuh alamat biarkan terisi default -->
+                        <input type="text" class="form-control form-custom" name="alamat" placeholder="Alamat" autocomplete="off" value="-">
+                    </div>
+
+                    <div class="mb-3 position-relative">
+                        <input type="date" class="form-control form-custom" name="ttl" autocomplete="off" required>
+                    </div>
+
+                    <div class="mb-4">
+                        <select id="jenis" class="form-select form-custom" name="gender" aria-label="Gender">
+                            <option selected disabled>Jenis kelamin</option>
+                            <option value="wanita">Wanita</option>
+                            <option value="pria">Pria</option>
+                        </select>
+                    </div>
+
+                    <!-- Checkboxes -->
+                    <div class="d-flex justify-content-between mb-4 px-1">
+                        <div class="form-check d-flex align-items-center">
+                            <input class="form-check-input me-2 mt-0" type="checkbox" value="1" id="defaultCheck1" required name="check" style="width: 18px; height: 18px; border-radius: 4px; border: 1px solid #adb5bd;">
+                            <label class="form-check-label text-muted" for="defaultCheck1" style="font-size: 13px;">
+                                Sudah Bayar Cash ?
+                            </label>
+                        </div>
+                        <div class="form-check d-flex align-items-center">
+                            <input class="form-check-input me-2 mt-0" type="checkbox" value="1" id="defaultCheck2" name="konfirmasi" style="width: 18px; height: 18px; border-radius: 4px; border: 1px solid #adb5bd;">
+                            <label class="form-check-label text-muted" for="defaultCheck2" style="font-size: 13px;">
+                                Langsung Masuk?
+                            </label>
                         </div>
                     </div>
 
-                    <div class="row mb-4 d-flex" id="ticket-select-container" style="display: none;">
-                        <label class="col-md-3 	d-none d-lg-block form-label">Ticket</label>
-                        <div class="col-md-9">
-                            <select id="select-ticket" class="form-select" name="ticket"
-                                aria-label="Default select example">
-                                <option selected>Pilih Ticket</option>
-                                <!-- Opsi tiket akan ditambahkan di sini melalui JavaScript -->
-                            </select>
+                    <!-- Total Details -->
+                    <div class="px-1 mb-2">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted" style="font-size: 13px;">Sub total</span>
+                            <strong id="display-subtotal" class="text-dark" style="font-size: 14px;">Rp 0</strong>
+                        </div>
+                        <div class="d-flex justify-content-between mb-3">
+                            <span class="text-muted" id="label-pajak" style="font-size: 13px;">Pajak (0%)</span>
+                            <strong id="display-pajak" class="text-dark" style="font-size: 14px;">Rp 0</strong>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="fw-bold text-dark" style="font-size: 16px;">Total Akhir</span>
+                            <strong id="display-total" style="font-size: 18px; color: #5A67D8;">Rp 0</strong>
                         </div>
                     </div>
-
-                    <div class="row mb-4">
-                        <label class="col-md-3 	d-none d-lg-block form-label">Qty</label>
-                        <div class="col-md-9">
-                            <select id="select-jumlah" class="form-select" name="qty"
-                                aria-label="Default select example">
-                                <option selected disabled>Isi Qty</option>
-                                <option value="1">1</option>
-                                <option value="2">2</option>
-                                <option value="3">3</option>
-                                <option value="4">4</option>
-                                <option value="5">5</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="row mb-4">
-                        <label class="col-md-3 	d-none d-lg-block form-label">Name</label>
-                        <div class="col-md-9">
-                            <input type="text" class="form-control" name="name"
-                                placeholder="Masukan Nama Lengkap.." autocomplete="off" required>
-                        </div>
-                    </div>
-                    <div class="row mb-4">
-                        <label class="col-md-3 	d-none d-lg-block form-label">Email</label>
-                        <div class="col-md-9">
-                            <input type="email" class="form-control" name="email" placeholder="Masukan Email.."
-                                autocomplete="off" required>
-                        </div>
-                    </div>
-                    <div class="row mb-4">
-                        <label class="col-md-3 	d-none d-lg-block form-label" for="nomor">WhatsApp</label>
-                        <div class="col-md-9">
-                            <input type="number" class="form-control" name="nomor"
-                                placeholder="Masukan Nomor WhatsApp.." autocomplete="off" required>
-                        </div>
-                    </div>
-                    <div class="row mb-4">
-                        <label class="col-md-3 	d-none d-lg-block form-label">Alamat</label>
-                        <div class="col-md-9">
-                            <input type="text" class="form-control" name="alamat" placeholder="Masukan Alamat.."
-                                autocomplete="off" required>
-                        </div>
-                    </div>
-                    <div class="row mb-4">
-                        <label class="col-md-3 	d-none d-lg-block form-label">Tanggal Lahir</label>
-                        <div class="col-md-9">
-                            <input type="date" class="form-control" name="ttl" autocomplete="off" required>
-                        </div>
-                    </div>
-
-                    <div class="row mb-4">
-                        <label class="col-md-3 	d-none d-lg-block form-label" for="gender">Jenis Kelamin</label>
-                        <div class="col-md-9">
-                            <select id="jenis" class="form-select" name="gender"
-                                aria-label="Default select example">
-                                <option selected disabled>Jenis Kelamin</option>
-                                <option value="wanita">Wanita</option>
-                                <option value="pria">Pria</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="row">
-                        <div class="col-md-3"></div>
-                        <div class="col-md-9">
-                            <div class="row">
-                                <div class="col">
-                                    <input class="form-check-input" type="checkbox" value="1"
-                                        id="defaultCheck1" required name="check">
-                                    <label class="form-check-label" for="defaultCheck1">
-                                        Sudah Bayar Cash?
-                                    </label>
-                                </div>
-                                <div class="col">
-                                    <input class="form-check-input" type="checkbox" value="1"
-                                        id="defaultCheck2" name="konfirmasi">
-                                    <label class="form-check-label" for="defaultCheck2">
-                                        Langsung Masuk
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="row mt-4">
-                        <div class="col-md-3"></div>
-                        <div class="col-md-9">
-                            <div class=" text-start">
-                                <div class="d-flex justify-content-between mb-2">
-                                    <span class="text-muted">Subtotal:</span>
-                                    <strong id="display-subtotal">Rp 0</strong>
-                                </div>
-                                <div class="d-flex justify-content-between mb-2">
-                                    <span class="text-muted" id="label-pajak">Pajak (0%):</span>
-                                    <strong id="display-pajak">Rp 0</strong>
-                                </div>
-                                <hr class="my-2">
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <span class="fw-bold" style="font-size: 16px;">Total Akhir:</span>
-                                    <strong id="display-total" class="text-primary" style="font-size: 18px;">Rp
-                                        0</strong>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
                 </div>
-                <div class="modal-footer d-flex justify-content-between">
-                    <div>
-                        <input type="hidden" value="{{ Auth::user()->uid }}" name="uid" readonly>
-                        <input type="hidden" value="0" id="total" name="total" readonly>
-                    </div>
-                    <div>
-                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Close</button>
-                        <button type="submit" id="btn-submit"
-                            class="btn btn-primary d-inline-flex align-items-center gap-2">
-                            <span id="btn-text">Cash</span>
-                            <div id="btn-spinner" class="spinner-border spinner-border-sm d-none" role="status">
-                                <span class="visually-hidden">Loading...</span>
-                            </div>
-                        </button>
-                    </div>
+
+                <div class="modal-footer border-top-0 px-4 pb-4 pt-0">
+                    <input type="hidden" value="{{ Auth::user()->uid }}" name="uid" readonly>
+                    <input type="hidden" value="0" id="total" name="total" readonly>
+                    
+                    <button type="submit" id="btn-submit" class="btn btn-primary w-100 py-2 d-flex justify-content-center align-items-center gap-2" style="background-color: #5A67D8; border: none; border-radius: 8px; font-weight: 600; font-size: 15px;">
+                        <span id="btn-text">Check Out</span>
+                        <div id="btn-spinner" class="spinner-border spinner-border-sm d-none" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </button>
                 </div>
             </form>
         </div>

@@ -1,45 +1,50 @@
 @foreach ($paginate as $events)
-    <div class="col-md-6 col-xl-3 col-sm-6">
-        <div class="card">
-            <div class="product-grid6">
-                <div class="product-image6 p-1">
-                    <ul class="icons" style="right: 0; top: 10px">
-                        @if ($events->konfirmasi === null)
-                            <li>
-                                <a href="{{ url('dashboard/events/delete/' . $events->uid) }}"
-                                    class="delete btn btn-danger">
-                                    <i class="fe fe-trash"> </i> </a>
-                            </li>
-                        @endif
-
-                    </ul>
-                    <a href="{{ url('dashboard/event/eventDetail/' . $events->uid) }}">
-                        <img class="img-fluid br-7 w-100" src="{{ asset('storage/cover/' . $events->cover) }}"
-                            alt="img" style="height: 150px; object-fit: cover">
-                    </a>
-                </div>
-                <div class="card-body pt-2">
-                    <div class="product-content text-center">
-                        <h1 class="title fw-bold fs-20"><a
-                                href="{{ url('/dashboard/event/eventDetail/' . $events->uid) }}">{{ $events->event }}</a>
-                        </h1>
-                        @if ($events->konfirmasi === null)
-                            <button disabled="disabled " class="btn btn-success">Menunggu Persetujuan</button>
-                        @else
-                            <a href="{{ url('dashboard/transaksi/' . $events->uid) }}" class="btn btn-primary"> <i
-                                    class="fe fe-bar-chart-2"></i>E-Commerce</a>
-                            <a href="{{ url('dashboard/cash/' . $events->uid) }}" class="btn btn-secondary"> <i
-                                    class="fe fe-bar-chart-2"></i>Cash</a>
-                            <a href="{{ url('/dashboard/event/eventDetail/' . $events->uid) }}" class="btn btn-info"><i
-                                    class="fe fe-eye"></i> view</a>
-                        @endif
-
-
-
-
+    <div class="col-xl-4 col-lg-6 col-md-6 mb-4">
+        <div class="card shadow-sm border-0 d-flex flex-column h-100" style="border-radius: 12px; overflow: hidden;">
+            <div class="position-relative">
+                <a href="{{ url('dashboard/event/eventDetail/' . $events->uid) }}">
+                    <img src="{{ asset('storage/cover/' . $events->cover) }}" alt="{{ $events->event }}" class="w-100"
+                        style="height: 240px; object-fit: cover;">
+                </a>
+                @if ($events->konfirmasi === null)
+                    <div class="position-absolute" style="right: 15px; top: 15px;">
+                        <a href="{{ url('dashboard/events/delete/' . $events->uid) }}"
+                            class="btn btn-danger btn-sm rounded-circle shadow-sm"
+                            style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;">
+                            <i class="fe fe-trash"></i>
+                        </a>
                     </div>
-                </div>
+                @endif
+            </div>
+            <div class="card-body p-4 d-flex flex-column">
+                <h4 class="fw-bold mb-4 text-dark text-truncate" style="font-size: 18px; letter-spacing: -0.5px;">
+                    <a href="{{ url('/dashboard/event/eventDetail/' . $events->uid) }}"
+                        class="text-dark">{{ $events->event }}</a>
+                </h4>
 
+                <div class="mt-auto">
+                    @if ($events->konfirmasi === null)
+                        <button class="btn btn-warning text-white w-100 fw-bold" disabled style="border-radius: 8px;">Menunggu
+                            Persetujuan</button>
+                    @else
+                        <div class="d-flex gap-2">
+                            <a href="{{ url('/dashboard/event/eventDetail/' . $events->uid) }}"
+                                class="btn border shadow-none flex-grow-1"
+                                style="border-color: #e2e8f0; color: #1a1a1a; font-weight: 600; border-radius: 6px; font-size: 13px; padding: 8px 0;">
+                                Detail Event
+                            </a>
+                            <a href="{{ url('dashboard/transaksi/' . $events->uid) }}"
+                                class="btn text-white shadow-none flex-grow-1"
+                                style="background-color: #5b62e4; font-weight: 600; border-radius: 6px; font-size: 13px; padding: 8px 0;">
+                                Trx Online
+                            </a>
+                            <a href="{{ url('dashboard/cash/' . $events->uid) }}" class="btn text-white shadow-none flex-grow-1"
+                                style="background-color: #5b62e4; font-weight: 600; border-radius: 6px; font-size: 13px; padding: 8px 0;">
+                                Trx Cash
+                            </a>
+                        </div>
+                    @endif
+                </div>
             </div>
         </div>
     </div>

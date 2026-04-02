@@ -2,42 +2,33 @@
 
 namespace App\Jobs;
 
-use Illuminate\Bus\Queueable;
 use App\Mail\CashNotifikasiMail;
-use Illuminate\Support\Facades\Mail;
-use Illuminate\Queue\SerializesModels;
-use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
-use Illuminate\Contracts\Queue\ShouldBeUnique;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Mail;
 
 class sendEmailTrnsaksi implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    /**
-     * Create a new job instance.
-     */
+    public $user;
 
-    public $email;
-    public $nama;
+    public $carts;
+
     public $order_id;
-    public $events;
-    public function __construct($email, $nama, $order_id, $events)
+
+    public function __construct($user, $carts, $order_id)
     {
-        //
-        $this->email = $email;
-        $this->nama = $nama;
+        $this->user = $user;
+        $this->carts = $carts;
         $this->order_id = $order_id;
-        $this->events = $events;
     }
 
-    /**
-     * Execute the job.
-     */
     public function handle(): void
     {
-        //
-        Mail::to($this->email)->send(new CashNotifikasiMail($this->nama, $this->order_id, $this->events));
+        Mail::to($this->user)->send(new CashNotifikasiMail($this->user, $this->carts, $this->order_id));
     }
 }

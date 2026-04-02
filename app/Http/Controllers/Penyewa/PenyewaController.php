@@ -202,6 +202,12 @@ class PenyewaController extends Controller
         $dataUser = [$pria, $wanita, $persenPria, $persenWanita];
         $partner = Partner::where('referensi', $ownerId)->where('status', 'active')->get();
 
+        // 8. DATA 1 EVENT AKTIF UNTUK BANNER DASHBOARD
+        $events = Event::where('user_uid', $ownerId)
+            ->where('konfirmasi', '1')
+            ->latest()
+            ->first();
+
         return view('penyewa.page.dashboard', [
             'title' => 'Dashboard',
             'totalAmount' => $totalAmount,
@@ -220,6 +226,7 @@ class PenyewaController extends Controller
             'dataUser' => $dataUser,
             'birtday' => $birtday,
             'partner' => $partner,
+            'events' => $events,
         ]);
     }
 

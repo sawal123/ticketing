@@ -126,120 +126,126 @@
                                     <span class="input-group-text bg-light text-muted"><i
                                             class="zmdi zmdi-lock-outline"></i></span>
                                     <input class="input100 form-control" type="password"
-                                        name="new_password"iu655yj,,kyutrfgb.kuytrerh <div class="col-xl-8">
-                                    <div class="card shadow-sm">
-                                        <div class="card-header border-bottom-0">
-                                            <h3 class="card-title">Edit Data Diri</h3>
-                                        </div>
-                                        <form action="{{ url('dashboard/editProfile') }}" method="post"
-                                            enctype="multipart/form-data">
-                                            @csrf
-                                            <div class="card-body">
-                                                <input type="hidden" name="uid" value="{{ $profile->uid }}">
-
-                                                <div class="row">
-                                                    <div class="col-lg-6 col-md-12">
-                                                        <div class="form-group">
-                                                            <label for="namaLengkap" class="form-label">Nama
-                                                                Lengkap</label>
-                                                            <input type="text" class="form-control" id="namaLengkap"
-                                                                name="nama" value="{{ $profile->name }}"
-                                                                placeholder="Masukkan nama lengkap" required>
-                                                        </div>
-                                                    </div>
-                                                    <div class="col-lg-6 col-md-12">
-                                                        <div class="form-group">
-                                                            <label for="noHp" class="form-label">Nomor
-                                                                WhatsApp</label>
-                                                            <input type="number" class="form-control" id="noHp"
-                                                                value="{{ $profile->nomor }}" name="nomor"
-                                                                placeholder="Contoh: 0812345678" required>
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                <div class="row">
-                                                    <div class="col-lg-6 col-md-12">
-                                                        <div class="form-group">
-                                                            <label for="emailAddr" class="form-label">Alamat Email</label>
-                                                            <input type="email" class="form-control" id="emailAddr"
-                                                                value="{{ $profile->email }}" name="email"
-                                                                placeholder="email@contoh.com" required>
-                                                        </div>
-                                                    </div>
-                                                    <div class="col-lg-6 col-md-12">
-                                                        <div class="form-group">
-                                                            <label for="tglLahir" class="form-label">Tanggal Lahir</label>
-                                                            <input type="date" class="form-control"
-                                                                value="{{ $profile->birthday }}" id="tglLahir"
-                                                                name="date" required>
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                <div class="row">
-                                                    <div class="col-lg-6 col-md-12">
-                                                        <div class="form-group">
-                                                            <label class="form-label">Jenis Kelamin</label>
-                                                            <select class="form-control select2-show-search form-select"
-                                                                name="gender" required>
-                                                                <option value="" disabled>Pilih Gender</option>
-                                                                <option value="pria"
-                                                                    {{ $profile->gender == 'pria' ? 'selected' : '' }}>Pria
-                                                                    (Male)</option>
-                                                                <option value="wanita"
-                                                                    {{ $profile->gender == 'wanita' ? 'selected' : '' }}>
-                                                                    Wanita (Female)</option>
-                                                            </select>
-                                                        </div>
-                                                    </div>
-                                                    <div class="col-lg-6 col-md-12">
-                                                        <div class="form-group">
-                                                            <label class="form-label">Provinsi</label>
-                                                            <select class="form-control select2-show-search form-select"
-                                                                name="provinsi" required>
-                                                                <option value="" selected disabled>Pilih Provinsi
-                                                                </option>
-                                                                @if (!empty($pr))
-                                                                    @foreach ($pr as $prs)
-                                                                        <option value="{{ $prs['name'] }}"
-                                                                            {{ $prs['name'] == $profile->kota ? 'selected' : '' }}>
-                                                                            {{ $prs['name'] }}
-                                                                        </option>
-                                                                    @endforeach
-                                                                @else
-                                                                    <option value="{{ $profile->kota }}" selected>
-                                                                        {{ $profile->kota }}
-                                                                    </option>
-                                                                @endif
-                                                            </select>
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                <div class="form-group">
-                                                    <label for="alamatLengkap" class="form-label">Alamat Lengkap</label>
-                                                    <textarea class="form-control" id="alamatLengkap" name="alamat" rows="3"
-                                                        placeholder="Masukkan alamat lengkap" required>{{ $profile->alamat }}</textarea>
-                                                </div>
-
-                                                <div class="form-group mb-0">
-                                                    <label for="gambarProfile" class="form-label">Update Foto Profil
-                                                        (Opsional)</label>
-                                                    <input type="file" class="form-control" id="gambarProfile"
-                                                        name="img" accept="image/png, image/jpeg, image/jpg">
-                                                    <small class="text-muted">Format: JPG, JPEG, PNG. Maksimal ukuran
-                                                        2MB.</small>
-                                                </div>
-                                            </div>
-
-                                            <div class="card-footer text-end bg-light">
-                                                <button type="submit" class="btn btn-primary px-5"><i
-                                                        class="fe fe-check-circle me-2"></i>Simpan Perubahan</button>
-                                            </div>
-                                        </form>
-                                    </div>
+                                        name="new_password" placeholder="Masukkan password baru" required>
                                 </div>
                             </div>
                         </div>
-                    @endsection
+                        <div class="card-footer text-end bg-light">
+                            <button type="submit" class="btn btn-primary w-100"><i class="fe fe-save me-2"></i>Ubah Password</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="col-xl-8">
+                <div class="card shadow-sm">
+                    <div class="card-header border-bottom-0">
+                        <h3 class="card-title">Edit Data Diri</h3>
+                    </div>
+                    <form action="{{ url('dashboard/editProfile') }}" method="post"
+                        enctype="multipart/form-data">
+                        @csrf
+                        <div class="card-body">
+                            <input type="hidden" name="uid" value="{{ $profile->uid }}">
+
+                            <div class="row">
+                                <div class="col-lg-6 col-md-12">
+                                    <div class="form-group">
+                                        <label for="namaLengkap" class="form-label">Nama Lengkap</label>
+                                        <input type="text" class="form-control" id="namaLengkap"
+                                            name="nama" value="{{ $profile->name }}"
+                                            placeholder="Masukkan nama lengkap" required>
+                                    </div>
+                                </div>
+                                <div class="col-lg-6 col-md-12">
+                                    <div class="form-group">
+                                        <label for="noHp" class="form-label">Nomor WhatsApp</label>
+                                        <input type="number" class="form-control" id="noHp"
+                                            value="{{ $profile->nomor }}" name="nomor"
+                                            placeholder="Contoh: 0812345678" required>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-lg-6 col-md-12">
+                                    <div class="form-group">
+                                        <label for="emailAddr" class="form-label">Alamat Email</label>
+                                        <input type="email" class="form-control" id="emailAddr"
+                                            value="{{ $profile->email }}" name="email"
+                                            placeholder="email@contoh.com" required>
+                                    </div>
+                                </div>
+                                <div class="col-lg-6 col-md-12">
+                                    <div class="form-group">
+                                        <label for="tglLahir" class="form-label">Tanggal Lahir</label>
+                                        <input type="date" class="form-control"
+                                            value="{{ $profile->birthday }}" id="tglLahir"
+                                            name="date" required>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-lg-6 col-md-12">
+                                    <div class="form-group">
+                                        <label class="form-label">Jenis Kelamin</label>
+                                        <select class="form-control select2-show-search form-select"
+                                            name="gender" required>
+                                            <option value="" disabled>Pilih Gender</option>
+                                            <option value="pria"
+                                                {{ $profile->gender == 'pria' ? 'selected' : '' }}>Pria
+                                                (Male)</option>
+                                            <option value="wanita"
+                                                {{ $profile->gender == 'wanita' ? 'selected' : '' }}>
+                                                Wanita (Female)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-lg-6 col-md-12">
+                                    <div class="form-group">
+                                        <label class="form-label">Provinsi</label>
+                                        <select class="form-control select2-show-search form-select"
+                                            name="provinsi" required>
+                                            <option value="" selected disabled>Pilih Provinsi</option>
+                                            @if (!empty($pr))
+                                                @foreach ($pr as $prs)
+                                                    <option value="{{ $prs['name'] }}"
+                                                        {{ $prs['name'] == $profile->kota ? 'selected' : '' }}>
+                                                        {{ $prs['name'] }}
+                                                    </option>
+                                                @endforeach
+                                            @else
+                                                <option value="{{ $profile->kota }}" selected>
+                                                    {{ $profile->kota }}
+                                                </option>
+                                            @endif
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="alamatLengkap" class="form-label">Alamat Lengkap</label>
+                                <textarea class="form-control" id="alamatLengkap" name="alamat" rows="3"
+                                    placeholder="Masukkan alamat lengkap" required>{{ $profile->alamat }}</textarea>
+                            </div>
+
+                            <div class="form-group mb-0">
+                                <label for="gambarProfile" class="form-label">Update Foto Profil (Opsional)</label>
+                                <input type="file" class="form-control" id="gambarProfile"
+                                    name="img" accept="image/png, image/jpeg, image/jpg">
+                                <small class="text-muted">Format: JPG, JPEG, PNG. Maksimal ukuran 2MB.</small>
+                            </div>
+                        </div>
+
+                        <div class="card-footer text-end bg-light">
+                            <button type="submit" class="btn btn-primary px-5"><i
+                                    class="fe fe-check-circle me-2"></i>Simpan Perubahan</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+@endsection

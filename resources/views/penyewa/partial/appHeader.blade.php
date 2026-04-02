@@ -1,12 +1,14 @@
 <div class="app-header header sticky">
     <div class="container-fluid main-container">
         <div class="d-flex">
-            <a aria-label="Hide Sidebar" class="app-sidebar__toggle" data-bs-toggle="sidebar" href="javascript:void(0)"></a>
+            <a aria-label="Hide Sidebar" class="app-sidebar__toggle" data-bs-toggle="sidebar"
+                href="javascript:void(0)"></a>
             <!-- sidebar-toggle-->
             <a class="logo-horizontal " href="#">
-                <img src="{{ asset('storage/logo/' . $logo[0]->logo) }}" height="50" class="header-brand-img desktop-logo" alt="logo">
-                <img src="{{ asset('storage/logo/' . $logo[0]->logo) }}" height="50" class="header-brand-img light-logo1"
-                    alt="logo">
+                <img src="{{ asset('storage/logo/' . $logo[0]->logo) }}" height="50"
+                    class="header-brand-img desktop-logo" alt="logo">
+                <img src="{{ asset('storage/logo/' . $logo[0]->logo) }}" height="50"
+                    class="header-brand-img light-logo1" alt="logo">
             </a>
             <!-- LOGO -->
             {{-- <div class="main-header-center ms-3 d-none d-lg-block">
@@ -17,8 +19,7 @@
                 <!-- SEARCH -->
                 <button class="navbar-toggler navresponsive-toggler d-lg-none ms-auto" type="button"
                     data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent-4"
-                    aria-controls="navbarSupportedContent-4" aria-expanded="false"
-                    aria-label="Toggle navigation">
+                    aria-controls="navbarSupportedContent-4" aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon fe fe-more-vertical"></span>
                 </button>
                 <div class="navbar navbar-collapse responsive-navbar p-0">
@@ -43,8 +44,9 @@
                             </div>
 
                             <div class="dropdown d-flex profile-1">
-                                <a href="javascript:void(0)" data-bs-toggle="dropdown" class="nav-link leading-none d-flex">
-                                    <img src="{{asset('storage/user/'.Auth::user()->gambar)}}" alt="profile-user"
+                                <a href="javascript:void(0)" data-bs-toggle="dropdown"
+                                    class="nav-link leading-none d-flex">
+                                    <img src="{{asset('storage/user/' . Auth::user()->gambar)}}" alt="profile-user"
                                         class="avatar  profile-user brround cover-image">
                                 </a>
                                 <div class="dropdown-menu dropdown-menu-end dropdown-menu-arrow">

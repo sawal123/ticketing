@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Penyewa\BeliCash;
 
 use App\Http\Controllers\Controller;
 use App\Jobs\sendEmailTrnsaksi;
-use App\Mail\CashNotifikasiMail;
 use App\Models\Cart;
 use App\Models\Cash;
 use App\Models\Event;
@@ -15,7 +14,6 @@ use App\Models\User;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 
@@ -30,11 +28,11 @@ class CashController extends Controller
             'qty' => 'numeric|required',
             'name' => 'required|string',
             'email' => 'required|email',
-            'alamat' => 'required|string',
+            'alamat' => 'nullable|string',
             'ttl' => 'required|string',
-            'total' => 'required|numeric',
+            'total' => 'nullable|numeric',
             'gender' => 'required',
-            'nomor' => 'required|numeric'
+            'nomor' => 'nullable|numeric',
         ]);
         $validate->validate();
 
@@ -42,9 +40,9 @@ class CashController extends Controller
         $string2 = Str::random(2);
         $date = date('Ymd');
         $number = mt_rand(1000, 9999999999);
-        $invoice = str_pad($string . $number, 10, '0', STR_PAD_LEFT);
+        $invoice = str_pad($string.$number, 10, '0', STR_PAD_LEFT);
         $str = Str::uuid();
-        $order_id = 'CASH-' . $date . $invoice;
+        $order_id = 'CASH-'.$date.$invoice;
 
         $uid = $request->uid;
         $partner = $request->partner;
@@ -53,16 +51,18 @@ class CashController extends Controller
         $qty = (int) $request->qty;
         $nama = $request->name;
         $email = $request->email;
-        $alamat =  $request->alamat;
-        $ttl =  $request->ttl;
-        $total =  $request->total;
+        $alamat = $request->alamat ?? '-';
+        $ttl = $request->ttl;
+        $total = $request->total ?? 0;
         $gender = $request->gender;
-        $nomor = $request->nomor;
+        $nomor = $request->nomor ?? '080000000000';
         $konfirmasi = $request->konfirmasi;
 
         // 1. Ambil Data Event untuk dapet % Pajak
         $events = Event::where('event', $event_name)->first();
-        if (!$events) return back()->with('error', 'Event tidak ditemukan');
+        if (! $events) {
+            return back()->with('error', 'Event tidak ditemukan');
+        }
 
         // 2. Ambil Harga Tiket
         $kategoriTicket = Harga::where('uid', $events->uid)
@@ -77,7 +77,7 @@ class CashController extends Controller
 
         $str = Str::uuid();
         $date = date('Ymd');
-        $invoice = 'CASH-' . $date . Str::upper(Str::random(10));
+        $invoice = 'CASH-'.$date.Str::upper(Str::random(10));
 
         $cart = new Cart([
             'uid' => $str,
@@ -106,7 +106,7 @@ class CashController extends Controller
             'amount' => $totalFinal, // SIMPAN TOTAL YANG SUDAH TERMASUK PAJAK
             'invoice' => $invoice,
             'payment_type' => 'cash',
-            'status_transaksi' => 'SUCCESS'
+            'status_transaksi' => 'SUCCESS',
         ]);
 
         // ... (Proses simpan Cash, User, dan Email tetap sama)
@@ -126,7 +126,7 @@ class CashController extends Controller
 
         $cekEmail = User::where('email', $email)->first();
         // dd($cekEmail);
-        if (!$cekEmail) {
+        if (! $cekEmail) {
             $user = User::create([
                 'uid' => $str,
                 'name' => $nama,
@@ -138,8 +138,10 @@ class CashController extends Controller
                 'gender' => $gender,
                 'gambar' => '',
                 'role' => User::USER_ROLE,
-                'password' => "12345678"
+                'password' => '12345678',
             ]);
+        } else {
+            $user = $cekEmail;
         }
 
         try {
@@ -151,12 +153,13 @@ class CashController extends Controller
             $cash->save();
             DB::commit();
 
-            $send = new sendEmailTrnsaksi($email, $nama, $invoice, $events);
+            $send = new sendEmailTrnsaksi($user, $cart, $invoice);
             dispatch($send);
 
-            return redirect()->back()->with('success', 'Pembelian Cash Berhasil (Termasuk Pajak ' . $pajakPersen . '%)');
+            return redirect()->back()->with('success', 'Pembelian Cash Berhasil (Termasuk Pajak '.$pajakPersen.'%)');
         } catch (Exception $e) {
             DB::rollback();
+
             return back()->with('error', $e->getMessage());
         }
     }
