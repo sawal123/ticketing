@@ -2,23 +2,22 @@
 
 namespace App\Http\Controllers\Penyewa;
 
+use App\Http\Controllers\Controller;
+use App\Models\BankIndonesia;
 use App\Models\Cart;
-use App\Models\User;
 use App\Models\Event;
 use App\Models\Harga;
-use App\Models\Talent;
-use App\Models\Partner;
-use App\Models\Voucher;
 use App\Models\HargaCart;
+use App\Models\Partner;
 use App\Models\Penarikan;
-use App\Models\CartVoucher;
-use App\Models\Transaction;
-use Illuminate\Http\Request;
+use App\Models\Talent;
+use App\Models\User;
 // use Illuminate\Support\Facades\DB;
-use App\Models\BankIndonesia;
-use Illuminate\Support\Facades\DB;
-use App\Http\Controllers\Controller;
+use App\Models\Voucher;
+use Carbon\Carbon;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 
 class PenyewaController extends Controller
@@ -106,7 +105,7 @@ class PenyewaController extends Controller
         }
 
         // ==========================================================
-        // 6. SETUP DROPDOWN UNTUK MODAL CASH 
+        // 6. SETUP DROPDOWN UNTUK MODAL CASH
         // ==========================================================
         $e = Event::join('hargas', 'hargas.uid', '=', 'events.uid')
             ->select('events.event', 'events.fee', 'hargas.kategori', 'hargas.harga')
@@ -138,39 +137,69 @@ class PenyewaController extends Controller
         }
 
         // ==========================================================
-        // 7. DATA DEMOGRAFI (GENDER & UMUR)
+        // 7. DATA DEMOGRAFI (GENDER & UMUR) - SEMUA EVENT PENYEWA
         // ==========================================================
-        $genderCounts = Cart::join('users', 'users.uid', '=', 'carts.user_uid')
-            ->join('events', 'events.uid', '=', 'carts.event_uid')
-            ->select('users.gender', DB::raw('COUNT(*) as count'))
-            ->where('events.user_uid', $ownerId)
+        // dd($ownerId);
+        // Ambil SEMUA transaksi sukses dari SEMUA event milik penyewa/owner ini
+        $transaksiSukses = Cart::join('events', 'events.uid', '=', 'carts.event_uid')
+            ->where('events.user_uid', $ownerId) // Filter berdasarkan pemilik akun
             ->where('carts.status', 'SUCCESS')
-            ->groupBy('users.gender')
-            ->pluck('count', 'users.gender')
-            ->toArray();
+            ->with('users') // Eager load data user
+            ->select('carts.*') // Ambil kolom dari tabel carts saja
+            ->get()
+            ->unique('user_uid'); // Hitung setiap user cukup 1x
+        // dd($transaksiSukses);
+        $pria = 0;
+        $wanita = 0;
 
-        $pria = $genderCounts['pria'] ?? 0;
-        $wanita = $genderCounts['wanita'] ?? 0;
-        $totalUsers = $wanita + $pria;
-        $persenWanita = $totalUsers > 0 ? ($wanita / $totalUsers) * 100 : 0;
-        $persenPria = $totalUsers > 0 ? ($pria / $totalUsers) * 100 : 0;
+        $birtday = [
+            '18 s/d 25 tahun' => ['pria' => 0, 'wanita' => 0],
+            '25 tahun ke atas' => ['pria' => 0, 'wanita' => 0],
+            '18 thn ke bawah' => ['pria' => 0, 'wanita' => 0],
+        ];
 
-        $birtday = Cart::join('users', 'users.uid', '=', 'carts.user_uid')
-            ->join('events', 'events.uid', '=', 'carts.event_uid')
-            ->select(
-                DB::raw("CASE
-                    WHEN TIMESTAMPDIFF(YEAR, users.birthday, CURDATE()) < 18 THEN '18 thn ke bawah'
-                    WHEN TIMESTAMPDIFF(YEAR, users.birthday, CURDATE()) BETWEEN 18 AND 25 THEN '18 s/d 25 tahun'
-                    ELSE '25 tahun ke atas'
-                END AS age_group"),
-                'users.gender',
-                DB::raw('COUNT(*) as count')
-            )
-            ->where('events.user_uid', $ownerId)
-            ->where('carts.status', 'SUCCESS')
-            ->groupBy('age_group', 'users.gender')
-            ->get()->groupBy('age_group')->toArray();
+        foreach ($transaksiSukses as $c) {
+            $u = $c->users; // Hubungan (relationship) di model Cart bernama 'users'
+            if (! $u) {
+                continue;
+            }
 
+            // Normalisasi data gender agar tidak sensitif huruf besar/kecil, atau null
+            $genderRaw = strtolower($u->gender ?? '');
+            if ($genderRaw === 'pria') {
+                $pria++;
+                $genderKategori = 'pria';
+            } elseif ($genderRaw === 'wanita') {
+                $wanita++;
+                $genderKategori = 'wanita';
+            } else {
+                continue; // Jika gender tidak terdefinisi (bukan pria/wanita), abaikan dari hitungan demografi
+            }
+
+            // Hitung Usia menggunakan Carbon
+            if ($u->birthday) {
+                try {
+                    $usia = Carbon::parse($u->birthday)->age;
+
+                    if ($usia < 18) {
+                        $birtday['18 thn ke bawah'][$genderKategori]++;
+                    } elseif ($usia >= 18 && $usia <= 25) {
+                        $birtday['18 s/d 25 tahun'][$genderKategori]++;
+                    } else {
+                        $birtday['25 tahun ke atas'][$genderKategori]++;
+                    }
+                } catch (\Exception $e) {
+                    // Abaikan jika format tanggal lahir di DB error
+                }
+            }
+        }
+
+        // Hitung Persentase secara aman (menghindari pembagian nol)
+        $totalDemografi = $pria + $wanita;
+        $persenPria = $totalDemografi > 0 ? ($pria / $totalDemografi) * 100 : 0;
+        $persenWanita = $totalDemografi > 0 ? ($wanita / $totalDemografi) * 100 : 0;
+
+        $dataUser = [$pria, $wanita, $persenPria, $persenWanita];
         $partner = Partner::where('referensi', $ownerId)->where('status', 'active')->get();
 
         return view('penyewa.page.dashboard', [
@@ -188,9 +217,9 @@ class PenyewaController extends Controller
             'event' => $transformedEvents,
             'ticketEvent' => $ticketOptions,
             'hargaTicket' => $hargaOption,
-            'dataUser' => [$wanita, $pria, $persenWanita, $persenPria],
+            'dataUser' => $dataUser,
             'birtday' => $birtday,
-            'partner' => $partner
+            'partner' => $partner,
         ]);
     }
 
@@ -209,10 +238,11 @@ class PenyewaController extends Controller
         $event = Event::where('user_uid', $ownerId)->get();
         if ($addEvent === null) {
             $pagination = Event::where('user_uid', $ownerId)->paginate(12);
+
             return view('penyewa.page.event', [
                 'title' => 'Event',
                 'event' => $event,
-                'paginate' => $pagination
+                'paginate' => $pagination,
             ]);
         } elseif ($addEvent === 'addEvent') {
             return view('penyewa.eventSemi.addEvent', [
@@ -243,6 +273,7 @@ class PenyewaController extends Controller
             if ($eventDetail === null) {
                 abort('403');
             }
+
             // dd($cart);
             return view('penyewa.eventSemi.eventDetail', [
                 // 'hargaC' => $hargaC,
@@ -251,7 +282,7 @@ class PenyewaController extends Controller
                 'talent' => $talent,
                 'harga' => $harga,
                 'cart' => $cart,
-                'terjualPerHarga' => $terjualPerHarga
+                'terjualPerHarga' => $terjualPerHarga,
             ]);
         }
     }
@@ -269,7 +300,6 @@ class PenyewaController extends Controller
         return back()->with('editHarga', 'Status tiket berhasil diubah!');
     }
 
-
     public function ubahEvents($uid)
     {
         $user = Auth::user();
@@ -279,7 +309,7 @@ class PenyewaController extends Controller
         // dd($ubahEvent);
         return view('penyewa.eventSemi.addEvent', [
             'title' => 'Ubah Event',
-            'ubahEvent' => $ubahEvent
+            'ubahEvent' => $ubahEvent,
         ]);
     }
 
@@ -368,7 +398,7 @@ class PenyewaController extends Controller
             $tiketQuery->where('events.uid', $request->uid);
         }
 
-        if (!empty($filter)) {
+        if (! empty($filter)) {
             $cartQuery->whereDate('carts.created_at', $filter);
             $omsetQuery->whereDate('carts.created_at', $filter);
             $tiketQuery->whereDate('carts.created_at', $filter);
@@ -395,7 +425,7 @@ class PenyewaController extends Controller
             'totalPenjualan' => $totalOmsetOnline,
             'totalFee' => $totalTiketOnline,
             'filter' => $filter,
-            'uid' => $request->uid
+            'uid' => $request->uid,
         ]);
     }
 
@@ -488,7 +518,7 @@ class PenyewaController extends Controller
             $tiketQuery->where('events.uid', $request->uid);
         }
 
-        if (!empty($filter)) {
+        if (! empty($filter)) {
             $cartQuery->whereDate('carts.created_at', $filter);
             $omsetQuery->whereDate('carts.created_at', $filter);
             $tiketQuery->whereDate('carts.created_at', $filter);
@@ -515,11 +545,9 @@ class PenyewaController extends Controller
             'qtyTiket' => $qtyTiket,
             'sellTiket' => $totalTiketCash,
             'filter' => $filter,
-            'uid' => $request->uid
+            'uid' => $request->uid,
         ]);
     }
-
-
 
     public function voucher()
     {
@@ -528,11 +556,12 @@ class PenyewaController extends Controller
         $voucher = Voucher::where('vouchers.user_uid', $ownerId)
             ->get();
         $event = Event::where('user_uid', $ownerId)->get();
+
         // dd($event);
         return view('penyewa.page.voucher', [
             'title' => 'Voucher',
             'voucher' => $voucher,
-            'event' => $event
+            'event' => $event,
 
         ]);
     }
@@ -547,7 +576,7 @@ class PenyewaController extends Controller
             'harga_carts.harga_ticket',
             'harga_carts.quantity',
             'harga_carts.disc',
-            'vouchers.unit'
+            'vouchers.unit',
         ])
             ->join('harga_carts', 'harga_carts.uid', '=', 'carts.uid')
             ->leftJoin('vouchers', 'vouchers.code', '=', 'harga_carts.voucher')
@@ -597,10 +626,11 @@ class PenyewaController extends Controller
                 'totalMoney' => $totalCart,
                 'cash' => $ars,
                 'pending' => $arss,
-                'paid' => $sc
+                'paid' => $sc,
             ]
         );
     }
+
     public function partner()
     {
         $user = Auth::user();
@@ -613,8 +643,8 @@ class PenyewaController extends Controller
             $provinsi = ['null', 'data'];
         }
 
-
         $partner = Partner::where('referensi', $ownerId)->get();
+
         // dd($provinsi[]);
         return view(
             'penyewa.page.partner',
@@ -632,7 +662,7 @@ class PenyewaController extends Controller
         $user = Auth::user();
         $ownerId = ($user->role === 'staff') ? $user->parent_uid : $user->uid;
 
-        // 1. KUERI LEBIH AMAN: Gunakan alias agar nama kolom database kamu yang asli 
+        // 1. KUERI LEBIH AMAN: Gunakan alias agar nama kolom database kamu yang asli
         // ('bank', 'norek', 'nama') bisa dibaca oleh file Blade yang baru.
         $data = User::select(
             'users.*',
@@ -662,7 +692,7 @@ class PenyewaController extends Controller
             'title' => 'Profile',
             'profile' => $data,
             'bi' => $bi,
-            'pr' => $provinsi
+            'pr' => $provinsi,
         ]);
     }
 }

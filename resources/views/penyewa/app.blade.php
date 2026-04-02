@@ -26,7 +26,7 @@
 
     <!-- GLOBAL-LOADER -->
     <div id="global-loader">
-        <img src="{{ asset('/assets/images/loader.svg') }}" class="loader-img" alt="Loader">
+        <img src="{{ asset('assets/images/loader.svg') }}" class="loader-img" alt="Loader">
     </div>
     <!-- /GLOBAL-LOADER -->
 
@@ -73,25 +73,7 @@
         {{-- Js untuk button more --}}
         <script src="{{ asset('penyewa/js/styleMore.js') }}?v={{ time() }}"></script>
 
-        {{-- <script>
-            $(document).on("show.bs.modal", "#modalEditStaff", function(event) {
-                var button = $(event.relatedTarget);
 
-                var uid = button.data("uid");
-                var name = button.data("name");
-                var email = button.data("email");
-                var actionUrl = button.data("url"); // Ambil URL dari data-url
-
-                console.log("Data tertangkap:", name, actionUrl);
-
-                var modal = $(this);
-                modal.find("#edit_name").val(name);
-                modal.find("#edit_email").val(email);
-
-                // Langsung pasang URL yang dibawa tombol ke form action
-                modal.find("#formEditStaff").attr("action", actionUrl);
-            });
-        </script> --}}
 
 
 </body>
