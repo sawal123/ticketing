@@ -4,22 +4,20 @@ namespace App\Http\Controllers;
 
 use App\Models\Cart;
 use App\Models\CartVoucher;
-use Illuminate\Contracts\Validation\Rule;
-use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Str;
-use Illuminate\Http\Request;
-use App\Http\Controllers\Controller;
 use App\Models\Event;
 use App\Models\Harga;
 use App\Models\HargaCart;
 use App\Models\PaymentGateway;
 use App\Models\Voucher;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 
 class BuyTicketController extends Controller
 {
-
     protected $data_pay = 1;
+
     protected function payment()
     {
         $this->data_pay = PaymentGateway::where('is_active', '1')->get();
@@ -46,11 +44,7 @@ class BuyTicketController extends Controller
         $voucher = Voucher::where('code', $cartV->code)->first();
         // dd($voucher);
 
-
-
-
         $iFee = PaymentGateway::where('slug', $cart->payment_type)->first();
-
 
         $counts = [];
         foreach ($harga as $count) {
@@ -72,13 +66,13 @@ class BuyTicketController extends Controller
         }
         // dd($diskon);
 
-
         // 1. Hitung Subtotal (Jumlah Tiket - Diskon)
         $subtotal = $jumlah - $diskon;
 
         // 2. Ambil Pajak (Fee) dari tabel Event (asumsi dalam persen)
         $pajakPersen = $event->fee ?? 0;
         $nilaiPajak = ($pajakPersen / 100) * $subtotal;
+
         return view('frontend.page.bayartiket', [
             'title' => 'Detail Ticket',
             'event' => $event,
@@ -93,7 +87,7 @@ class BuyTicketController extends Controller
             'diskon' => $diskon,
             'pajakPersen' => $pajakPersen, // Kirim persen pajak
             'nilaiPajak' => $nilaiPajak,   // Kirim nominal pajak
-            'subtotal' => $subtotal
+            'subtotal' => $subtotal,
         ]);
     }
 
@@ -113,7 +107,7 @@ class BuyTicketController extends Controller
         $carts = HargaCart::where('uid', $cart)->first();
         // dd($voucher->event_uid .' + ' . $event);
         if ($voucher->event_uid !== $event) {
-            return redirect()->back()->with('vError', 'Voucher ' . $code . ' Invalid');
+            return redirect()->back()->with('vError', 'Voucher '.$code.' Invalid');
         }
         if ($code === null && $cVoucher) {
             $cVoucher->code = '';
@@ -121,6 +115,7 @@ class BuyTicketController extends Controller
             $carts->disc = '0';
             $cVoucher->save();
             $carts->save();
+
             return redirect()->back()->with('voucher', 'Voucher dihapus');
         }
         if ($voucher) {
@@ -130,6 +125,7 @@ class BuyTicketController extends Controller
                 $carts->disc = $voucher->nominal;
                 $cVoucher->save();
                 $carts->save();
+
                 return redirect()->back()->with('voucher', 'Voucher berhasil digunakan');
             }
             // dd($voucher->digunakan);
@@ -139,18 +135,20 @@ class BuyTicketController extends Controller
                     'uid_vouchers' => $voucher->uid,
                     'user_uid' => Auth::user()->uid,
                     'event_uid' => $request->event,
-                    'code' => $code
+                    'code' => $code,
                 ]);
                 $cartV->save();
+
                 return redirect()->back()->with('voucher', 'Voucher berhasil digunakan');
             } else {
                 // dd('Tidak Ada Voucher');
                 return redirect()->back()->with('vError', 'Voucher Expired');
             }
         } else {
-            return redirect()->back()->with('vError', 'Voucher ' . $code . ' Invalid');
+            return redirect()->back()->with('vError', 'Voucher '.$code.' Invalid');
         }
     }
+
     public function closeVoucher(Request $request)
     {
         $vali = Validator::make($request->all(), [
@@ -165,8 +163,10 @@ class BuyTicketController extends Controller
         // dd($cVoucher);
         $cVoucher->code = '';
         $cVoucher->save();
+
         return redirect()->back()->with('voucher', 'Voucher berhasil dihapus!');
     }
+
     public function checkout(Request $request)
     {
         // dd($request);
@@ -174,7 +174,7 @@ class BuyTicketController extends Controller
         $kode = Str::uuid();
         $str = Str::random(3);
         $number = mt_rand(1000, 9999999999);
-        $invoice = str_pad($str . $number, 10, '0', STR_PAD_LEFT);
+        $invoice = str_pad($str.$number, 10, '0', STR_PAD_LEFT);
         $ticketValue = [];
         $hargaValue = [];
         $kategoriValue = [];
@@ -182,10 +182,10 @@ class BuyTicketController extends Controller
         $req = [];
 
         for ($i = 0; $i < 10; $i++) {
-            $ticketValue[] = $request->input('ticket' . $i);
-            $hargaValue[] = $request->input('harga' . $i);
-            $kategoriValue[] = $request->input('kategori' . $i);
-            $orderByInput[] = $request->input('orderBy' . $i);
+            $ticketValue[] = $request->input('ticket'.$i);
+            $hargaValue[] = $request->input('harga'.$i);
+            $kategoriValue[] = $request->input('kategori'.$i);
+            $orderByInput[] = $request->input('orderBy'.$i);
         }
 
         $ticketValue = array_filter($ticketValue);
@@ -220,7 +220,7 @@ class BuyTicketController extends Controller
                 if ($harga_t->kategori === $HargaIndex[$index]) {
                     $cek = $ticketValue[$index] + $hargaCartsArray[$harga_t->kategori];
                     if ($cek <= $harga_t->qty) {
-                        true;
+
                     } else {
                         return redirect()->back()->with('error', 'Ticket Tidak Cukup!');
                     }
@@ -257,7 +257,8 @@ class BuyTicketController extends Controller
                 if ($hargaCarts->kategori_harga == $kategori) {
                     $newQuantity = $hargaCarts->quantity + $value;
                     $up = $hargaCarts->update(['quantity' => $newQuantity]);
-                    return redirect('/detail-ticket/' . $carts->uid . '/' . Auth::user()->uid);
+
+                    return redirect('/detail-ticket/'.$carts->uid.'/'.Auth::user()->uid);
                 }
 
                 if (isset($hargaArray[$index])) {
@@ -275,7 +276,7 @@ class BuyTicketController extends Controller
                             'harga_ticket' => $harga,
                             'voucher' => null,
                             'disc' => '0',
-                            'kategori_harga' => $kategori
+                            'kategori_harga' => $kategori,
                         ]);
                     }
                 } else {
@@ -288,19 +289,20 @@ class BuyTicketController extends Controller
                         'harga_ticket' => $harga,
                         'voucher' => null,
                         'disc' => '0',
-                        'kategori_harga' => $kategori
+                        'kategori_harga' => $kategori,
                     ]);
                 }
             }
-            return redirect('/detail-ticket/' . $carts->uid . '/' . Auth::user()->uid);
+
+            return redirect('/detail-ticket/'.$carts->uid.'/'.Auth::user()->uid);
 
         } else {
             Cart::create([
                 'uid' => $kode,
                 'user_uid' => Auth::user()->uid,
                 'event_uid' => $event->uid,
-                'invoice' => 'INV-' . $invoice,
-                'status' => 'UNPAID'
+                'invoice' => 'INV-'.$invoice,
+                'status' => 'UNPAID',
             ]);
 
             foreach ($ticketValue as $index => $value) {
@@ -322,10 +324,11 @@ class BuyTicketController extends Controller
                     'harga_ticket' => $harga,
                     'voucher' => null,
                     'disc' => '0',
-                    'kategori_harga' => $kategori
+                    'kategori_harga' => $kategori,
                 ]);
             }
-            return redirect('/detail-ticket/' . $kode . '/' . Auth::user()->uid);
+
+            return redirect('/detail-ticket/'.$kode.'/'.Auth::user()->uid);
         }
     }
 }

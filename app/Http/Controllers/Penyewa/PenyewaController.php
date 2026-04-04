@@ -424,11 +424,22 @@ class PenyewaController extends Controller
         $cartUids = $cart->pluck('uid');
         $qtyTiket = HargaCart::whereIn('uid', $cartUids)->get();
 
+        // Grouping untuk menghindari O(N^2) di Blade dan memperkecil DOM
+        $qtyTiketGrouped = $qtyTiket->groupBy('uid')->map(function ($items) {
+            return $items->map(function ($item) {
+                return [
+                    'kategori' => $item->kategori_harga ?? '-',
+                    'qty' => $item->quantity,
+                ];
+            });
+        });
+
         return view('penyewa.page.transaksi', [
             'title' => 'Transaksi',
             'event' => $event,
             'cart' => $cart,
             'qtyTiket' => $qtyTiket,
+            'qtyTiketGrouped' => $qtyTiketGrouped,
             'totalPenjualan' => $totalOmsetOnline,
             'totalFee' => $totalTiketOnline,
             'filter' => $filter,

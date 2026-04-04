@@ -91,37 +91,12 @@
                                         <td>{{ $carts->user_name }}</td>
 
                                         <td>
-                                            <a class="modal-effect btn btn-primary-light d-grid mb-3"
+                                            <a class="modal-effect btn btn-primary-light d-grid mb-3 btn-show-ticket"
                                                 data-bs-effect="effect-scale" data-bs-toggle="modal"
-                                                href="#modaldemo8{{ $key }}">
+                                                href="#modalDetailTicketGlobal"
+                                                data-tiket="{{ json_encode($qtyTiketGrouped[$carts->uid] ?? []) }}">
                                                 {{ $carts->total_quantity }} Ticket
                                             </a>
-                                            <div class="modal fade" id="modaldemo8{{ $key }}">
-                                                <div class="modal-dialog modal-dialog-centered text-center" role="document">
-                                                    <div class="modal-content modal-content-demo">
-                                                        <div class="modal-header">
-                                                            <h6 class="modal-title">Detail Ticket</h6>
-                                                            <button aria-label="Close" class="btn-close"
-                                                                data-bs-dismiss="modal"><span
-                                                                    aria-hidden="true">&times;</span></button>
-                                                        </div>
-                                                        <div class="modal-body">
-                                                            @foreach ($qtyTiket as $qt)
-                                                                @if ($qt->uid === $carts->uid)
-                                                                    <div class="d-flex justify-content-between">
-                                                                        <p>{{ $qt->kategori_harga }}</p>
-                                                                        <p>{{ $qt->quantity }}</p>
-                                                                    </div>
-                                                                @endif
-                                                            @endforeach
-                                                        </div>
-                                                        <div class="modal-footer">
-                                                            <button class="btn btn-light"
-                                                                data-bs-dismiss="modal">Close</button>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
                                         </td>
 
                                         <td>Rp {{ number_format($carts->subtotal_harga, 0, ',', '.') }}</td>
@@ -156,4 +131,48 @@
             </div>
         </div>
     </div>
+
+    <!-- Modal Global untuk Detail Ticket -->
+    <div class="modal fade" id="modalDetailTicketGlobal">
+        <div class="modal-dialog modal-dialog-centered text-center" role="document">
+            <div class="modal-content modal-content-demo">
+                <div class="modal-header">
+                    <h6 class="modal-title">Detail Ticket</h6>
+                    <button aria-label="Close" class="btn-close" data-bs-dismiss="modal">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body" id="modalGlobalTicketBody">
+                    <!-- Data injeksi via Javascript -->
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-light" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            // Event delegation untuk menangkap klik meskipun datatable di-paginate / render ulang
+            document.body.addEventListener('click', function(e) {
+                let target = e.target.closest('.btn-show-ticket');
+                if (target) {
+                    let tiketData = JSON.parse(target.getAttribute('data-tiket'));
+                    let html = '';
+                    if (tiketData && tiketData.length > 0) {
+                        tiketData.forEach(function(item) {
+                            html += '<div class="d-flex justify-content-between">';
+                            html += '<p>' + item.kategori + '</p>';
+                            html += '<p>x ' + item.qty + '</p>';
+                            html += '</div>';
+                        });
+                    } else {
+                        html = '<p>Data tidak ditemukan</p>';
+                    }
+                    document.getElementById('modalGlobalTicketBody').innerHTML = html;
+                }
+            });
+        });
+    </script>
 @endsection
