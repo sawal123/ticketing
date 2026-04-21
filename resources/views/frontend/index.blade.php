@@ -13,6 +13,7 @@
     <link rel="shortcut icon" href="{{ asset('storage/logo/' . $logo[0]->icon) }}" type="image/x-icon">
 
     <link rel="stylesheet" href="{{ asset('assets/css/styleMore.css') }}">
+
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Public+Sans:wght@500;600;700;800&display=swap"
         rel="stylesheet">
@@ -34,7 +35,7 @@
     <link rel="stylesheet" href="{{ asset('landing/css/animate.css') }}" />
     <link rel="stylesheet" href="{{ asset('assets/plugins/sweetalert2/dist/sweetalert2.min.css') }}">
 
-    <link href="{{ asset('/assets/css/icons.css') }}" rel="stylesheet">
+    <link href="{{ asset('assets/css/icons.css') }}" rel="stylesheet">
 
 
     <!-- Code Editor  -->
@@ -80,7 +81,8 @@
     <script src="{{ asset('assets/plugins/sweetalert2/dist/sweetalert2.min.js') }}"></script>
 
     <script src="{{ asset('landing/js/app.js') }}"></script>
-    {{-- <script src="{{ asset('penyewa/js/styleMore.js') }}"></script> --}}
+    {{--
+    <script src="{{ asset('penyewa/js/styleMore.js') }}"></script> --}}
 
     <script>
         document.addEventListener("DOMContentLoaded", function() {
@@ -101,12 +103,6 @@
             }
         });
     </script>
-
-
-
-
-    {{-- @vite([]) --}}
-
 
 </body>
 

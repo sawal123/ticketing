@@ -160,7 +160,7 @@ class PenyewaController extends Controller
 
         foreach ($transaksiSukses as $c) {
             $u = $c->users; // Hubungan (relationship) di model Cart bernama 'users'
-            if (! $u) {
+            if (!$u) {
                 continue;
             }
 
@@ -405,7 +405,7 @@ class PenyewaController extends Controller
             $tiketQuery->where('events.uid', $request->uid);
         }
 
-        if (! empty($filter)) {
+        if (!empty($filter)) {
             $cartQuery->whereDate('carts.created_at', $filter);
             $omsetQuery->whereDate('carts.created_at', $filter);
             $tiketQuery->whereDate('carts.created_at', $filter);
@@ -536,7 +536,7 @@ class PenyewaController extends Controller
             $tiketQuery->where('events.uid', $request->uid);
         }
 
-        if (! empty($filter)) {
+        if (!empty($filter)) {
             $cartQuery->whereDate('carts.created_at', $filter);
             $omsetQuery->whereDate('carts.created_at', $filter);
             $tiketQuery->whereDate('carts.created_at', $filter);
@@ -589,39 +589,38 @@ class PenyewaController extends Controller
         $user = Auth::user();
         $ownerId = ($user->role === 'staff') ? $user->parent_uid : $user->uid;
 
-        // 1. Hitung Total HC (Uang dari tiket non-cash) - Logic kamu sudah benar karena ada diskon
-        $TotalHC = Cart::select([
-            'harga_carts.harga_ticket',
-            'harga_carts.quantity',
-            'harga_carts.disc',
-            'vouchers.unit',
-        ])
-            ->join('harga_carts', 'harga_carts.uid', '=', 'carts.uid')
-            ->leftJoin('vouchers', 'vouchers.code', '=', 'harga_carts.voucher')
+        // Rumus Dasar Perhitungan (Sama dengan Dashboard)
+        $rumusDasar = "
+            (
+                (harga_carts.quantity * harga_carts.harga_ticket) - 
+                COALESCE(
+                    CASE 
+                        WHEN vouchers.unit = '%' OR vouchers.unit = 'persen' 
+                        THEN (harga_carts.quantity * harga_carts.harga_ticket) * (vouchers.nominal / 100)
+                        ELSE vouchers.nominal 
+                    END, 
+                0)
+            ) 
+            * (1 + (COALESCE(events.fee, 0) / 100))
+        ";
+
+        // 1. Hitung Total Saldo (Semua Payment Type KECUALI Cash)
+        $totalCart = HargaCart::join('carts', 'carts.uid', '=', 'harga_carts.uid')
             ->join('events', 'events.uid', '=', 'carts.event_uid')
+            ->leftJoin('vouchers', 'vouchers.code', '=', 'harga_carts.voucher')
             ->where('carts.status', 'SUCCESS')
             ->where('events.user_uid', $ownerId)
             ->where('carts.payment_type', '!=', 'cash')
-            ->get();
+            ->sum(DB::raw($rumusDasar));
 
-        $totalCart = 0;
-        foreach ($TotalHC as $item) {
-            $hargaTicket = $item->harga_ticket * $item->quantity;
-            if ($item->unit === 'rupiah') {
-                $hargaTicket -= $item->disc;
-            } elseif ($item->unit === 'persen') {
-                $hargaTicket -= ($hargaTicket * $item->disc / 100);
-            }
-            $totalCart += $hargaTicket;
-        }
-
-        // 2. Hitung Total Cash (LEBIH CEPAT TANPA FOREACH)
-        $ars = Cart::join('harga_carts', 'harga_carts.uid', '=', 'carts.uid')
+        // 2. Hitung Total Cash
+        $ars = HargaCart::join('carts', 'carts.uid', '=', 'harga_carts.uid')
             ->join('events', 'events.uid', '=', 'carts.event_uid')
-            ->where('carts.payment_type', '=', 'cash')
+            ->leftJoin('vouchers', 'vouchers.code', '=', 'harga_carts.voucher')
             ->where('carts.status', 'SUCCESS')
             ->where('events.user_uid', $ownerId)
-            ->sum(\DB::raw('harga_carts.harga_ticket * harga_carts.quantity'));
+            ->where('carts.payment_type', 'cash')
+            ->sum(DB::raw($rumusDasar));
 
         // 3. Ambil data Tabel Penarikan
         $penarikan = Penarikan::where('uid_user', $ownerId)->latest()->get();
