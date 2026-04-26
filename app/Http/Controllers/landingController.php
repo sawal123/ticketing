@@ -18,7 +18,9 @@ class landingController extends Controller
     {
         // AJAIBNYA ELOQUENT: Cukup panggil with(['harga', 'user']) 
         // Tidak perlu lagi join manual ke tabel users!
-        $events = Event::with(['harga', 'user'])
+        $events = Event::with(['harga' => function ($query) {
+            $query->where('status', 'active')->orderByRaw('CAST(harga AS UNSIGNED) ASC');
+        }, 'user'])
             ->where('konfirmasi', '1')
             ->orderBy('created_at', 'desc')
             ->take(9)
@@ -50,7 +52,7 @@ class landingController extends Controller
             ->pluck('total_sold', 'kategori_harga')
             ->toArray();
 
-        return view('frontend.page.ticket', [
+        return view('frontend.page.ticket-new', [
             'title' => $ticket->event,
             'ticket' => $ticket,
             'tickets' => $ticket->talents,
@@ -75,10 +77,15 @@ class landingController extends Controller
                 $cart->total_harga = $cart->hargaCarts->sum(function ($hc) {
                     return $hc->quantity * $hc->harga_ticket;
                 });
+
+                // Memastikan data event tersedia untuk view
+                $cart->event_name = $cart->event->event ?? 'Event Tidak Diketahui';
+                $cart->cover = $cart->event->cover ?? '';
+
                 return $cart;
             });
 
-        return view('frontend.page.transaksi.list-transaksi', [
+        return view('frontend.page.transaksi.list-transaksi-new', [
             'title' => 'Transaksi',
             'transaksi' => $transaksi
         ]);
@@ -92,6 +99,7 @@ class landingController extends Controller
         if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('event', 'LIKE', "%$search%")
+                   
                     ->orWhere('alamat', 'LIKE', "%$search%")
                     ->orWhere('slug', 'LIKE', "%$search%")
                     // Mencari berdasarkan nama talent menggunakan nama relasi yang baru: talents
@@ -101,7 +109,7 @@ class landingController extends Controller
             });
         }
 
-        $events = $query->get();
+        $events = $query->orderBy('created_at', 'desc')->get();
 
         return view('frontend.page.post.post', [
             'title' => 'Search Event',
@@ -111,8 +119,11 @@ class landingController extends Controller
 
     public function cari(Request $request)
     {
+
+    
         // Best practice Laravel: gunakan class Request daripada $_GET native php
         $cari = $request->input('cari');
+        // dd($cari);
         return redirect('/search/' . $cari)->withInput();
     }
 

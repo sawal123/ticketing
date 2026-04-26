@@ -1,58 +1,104 @@
-<div class="container mx-auto">
-    <div class="row">
-        <div class="col d-lg-flex d-block justify-content-center "
-            style="margin-right: auto; margin-left:auto; text-align: center">
-            @if (count($event))
-                @foreach ($event as $events)
-                <div class="card bg-dark border mx-2 my-2 d-inline-block " style="width: 18rem; border-radius: 4%; ">
-                    <div class="fugu--card-thumb">
-                        @if ($events->status === 'close')
-                            <div class="border"
-                                style="position: absolute; top: 0; left: 0; z-index: 99; border-radius: 10px 0 10px 0;  background-color: rgb(128, 0, 0); padding: 5px;">
-                                <p class="fw-bold" style="color: white">
-                                    Close
-                                </p>
-                            </div>
-                        @endif
+<section class="events-wrap">
 
-                        <img src="{{ asset('/storage/cover/' . $events->cover) }}"  class="card-img-top " loading="lazy"
-                            style="border-radius: 4%; object-fit:cover; height: 150px;  {{ $events->status === 'close' ? 'filter: grayscale(100%)' : '' }} "
-                            alt="...">
+    @if (count($event))
+        <div class="event-grid">
+            @foreach ($event as $events)
+                <a href="{{ url('/ticket/' . $events->slug) }}" class="event-card " style="transition-delay:.1s">
+
+                    <!-- IMAGE -->
+                    <div class="card-img">
+                        <div class="img-bg"
+                            style="background-image: url('{{ asset('/storage/cover/' . $events->cover) }}'); 
+                      filter: {{ $events->status === 'close' ? 'grayscale(100%)' : 'none' }};">
+                        </div>
+
+                        <div class="img-glow"></div>
+
+                        <!-- STATUS -->
+                        <span
+                            class="card-status 
+                {{ $events->status === 'close' ? 'status-close' : 'status-open' }}">
+                            {{ $events->status === 'close' ? 'Close' : 'On Sale' }}
+                        </span>
+
+                        <!-- LOKASI -->
+                        <div class="card-loc">
+                            <svg viewBox="0 0 16 16" fill="none">
+                                <path
+                                    d="M8 1.5C5.5 1.5 3.5 3.5 3.5 6c0 3.5 4.5 8.5 4.5 8.5S12.5 9.5 12.5 6c0-2.5-2-4.5-4.5-4.5z"
+                                    stroke="currentColor" stroke-width="1.4" />
+                                <circle cx="8" cy="6" r="1.5" stroke="currentColor"
+                                    stroke-width="1.4" />
+                            </svg>
+                            {{ $events->alamat }}
+                        </div>
                     </div>
-                    <div class="card-body fugu--card-data text-start">
-                        <h6 class="" style="color: white">{{ $events->event }}</h6>
-                        <a style="color: white; " class="mb-2" href="{{ $events->map }}"><p>{{ $events->alamat }}</p></a>
-                        <p>{{ date('Y-m-d H:i', strtotime($events->tanggal)) }}</p>
-                        <div class="fugu--card-footer mt-1">
-                            <div class="fugu--card-footer-data">
-                                <span>Start From:</span>
+
+                    <!-- BODY -->
+                    <div class="card-body">
+                        <div class="card-title">{{ $events->event }}</div>
+
+                        <div class="card-meta">
+                            <div class="meta-row">
+                                <svg viewBox="0 0 16 16" fill="none">
+                                    <path
+                                        d="M8 1.5C5.5 1.5 3.5 3.5 3.5 6c0 3.5 4.5 8.5 4.5 8.5S12.5 9.5 12.5 6c0-2.5-2-4.5-4.5-4.5z"
+                                        stroke="currentColor" stroke-width="1.4" />
+                                    <circle cx="8" cy="6" r="1.5" stroke="currentColor"
+                                        stroke-width="1.4" />
+                                </svg>
+                                {{ $events->alamat }}
+                            </div>
+
+                            <div class="meta-row">
+                                <svg viewBox="0 0 16 16" fill="none">
+                                    <rect x="2" y="3" width="12" height="11" rx="2" stroke="currentColor"
+                                        stroke-width="1.3" />
+                                    <path d="M5 1.5v3M11 1.5v3M2 7h12" stroke="currentColor" stroke-width="1.3"
+                                        stroke-linecap="round" />
+                                </svg>
+                                {{ date('Y-m-d H:i', strtotime($events->tanggal)) }}
+                            </div>
+                        </div>
+
+                        <!-- FOOTER -->
+                        <div class="card-footer">
+                            <div>
+                                <div class="price-from">Start From</div>
+
+                                @php $found = false; @endphp
+
                                 @foreach ($harga as $hargas)
                                     @if ($hargas->uid === $events->uid)
-                                        <h4>Rp {{ number_format($hargas->harga, 0, ',', '.') }}</h4>
-                                    @break
+                                        <div class="price-val">
+                                            Rp {{ number_format($hargas->harga, 0, ',', '.') }}
+                                        </div>
+                                        @php $found = true; @endphp
+                                        @break
+                                    @endif
+                                @endforeach
 
-                                    {{-- @else
-                                        <p>Ticket Belum Tersedia</p> --}}
+                                @if (!$found)
+                                    <div class="price-na">Ticket Belum Tersedia</div>
                                 @endif
-                            @endforeach
+
+                                <div class="card-by">By: {{ $events->name }}</div>
+                            </div>
+
+                            <span
+                                class="btn-beli 
+                  {{ $events->status === 'close' ? 'disabled' : '' }}">
+                                {{ $events->status === 'close' ? 'Close' : 'Beli' }}
+                            </span>
                         </div>
-                        <a class="fugu--btn btn-sm bg-white" href="{{ url('/ticket/' . $events->slug) }}">Beli</a>
                     </div>
-                    <hr class="my-2">
-                    <p>By: {{ $events->name }}</p>
-                </div>
-            </div>
-                @endforeach
-            @else
 
-            
+                </a>
+            @endforeach
         </div>
-        {{-- <h3 class="text-center">Event Tidak Ditemukan!</h3> --}}
-        <div class="d-flex justify-content-center align-items-center">
-
-            <img src="{{ asset('/storage/setting/nodata.svg') }}" class="text-center" 
-                alt="">
+    @else
+        <div style="text-align:center;">
+            <img src="{{ asset('/storage/setting/nodata.svg') }}" style="max-width:700px;">
         </div>
-        @endif
-    </div>
-</div>
+    @endif
+</section>

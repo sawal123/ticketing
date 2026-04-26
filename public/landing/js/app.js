@@ -68,7 +68,7 @@ function _defineProperty(obj, key, value) {
                 {
                     scrollTop: "0",
                 },
-                500
+                500,
             );
         });
         /*--------------------------------------------------------------
@@ -112,7 +112,7 @@ function _defineProperty(obj, key, value) {
                                 complete: function complete() {
                                     $this.text(this.countNum);
                                 },
-                            }
+                            },
                         );
                     });
                     a = 1;
@@ -326,7 +326,7 @@ function _defineProperty(obj, key, value) {
 
         $("#l5-pricing-btn .toggle-btn").on("click", function (e) {
             console.log(
-                $(e.target).parent().parent().hasClass("monthly-active")
+                $(e.target).parent().parent().hasClass("monthly-active"),
             );
             $(e.target).toggleClass("clicked");
 
@@ -417,7 +417,7 @@ function _defineProperty(obj, key, value) {
                             complete: function complete() {
                                 $this.text(this.countNum);
                             },
-                        }
+                        },
                     );
                 });
                 a = 1;
@@ -453,7 +453,7 @@ function _defineProperty(obj, key, value) {
                                 complete: function complete() {
                                     $this.text(this.countNum);
                                 },
-                            }
+                            },
                         );
                     });
                     a = 1;
@@ -482,12 +482,12 @@ function _defineProperty(obj, key, value) {
                 _defineProperty(
                     _nexto_slider_one$sli,
                     "prevArrow",
-                    '<button class="slide-arrow prev-arrow"></button>'
+                    '<button class="slide-arrow prev-arrow"></button>',
                 ),
                 _defineProperty(
                     _nexto_slider_one$sli,
                     "nextArrow",
-                    '<button class="slide-arrow fugu--arrow"></button>'
+                    '<button class="slide-arrow fugu--arrow"></button>',
                 ),
                 _defineProperty(_nexto_slider_one$sli, "responsive", [
                     {
@@ -513,7 +513,7 @@ function _defineProperty(obj, key, value) {
                         },
                     },
                 ]),
-                _nexto_slider_one$sli)
+                _nexto_slider_one$sli),
             );
         }
         /*--------------------------------------------------------------
@@ -1311,59 +1311,96 @@ $(document).ready(function () {
     });
 });
 
-$(document).ready(function () {
-    const totalDisplay = $(".total");
-    const button = $(".checkButton");
-    let cart = {};
+// $(document).ready(function () {
+//     const totalDisplay = $(".total");
+//     const button = $(".checkButton");
+//     let cart = {};
 
-    function updateTotal() {
-        let total = 0;
-        for (const productId in cart) {
-            total += cart[productId].quantity * cart[productId].price;
-        }
-        totalDisplay.text("Rp " + total.toLocaleString("id-ID"));
+//     function updateTotal() {
+//         let total = 0;
+//         for (const productId in cart) {
+//             total += cart[productId].quantity * cart[productId].price;
+//         }
+//         totalDisplay.text("Rp " + total.toLocaleString("id-ID"));
+//     }
+
+//     // Initialize cart data with the price from the input
+//     $(".input-wrapper").each(function () {
+//         const productId = $(this).find(".btn-plus").data("target");
+//         const price = parseFloat($(this).find(".price-input").val()) || 0;
+//         cart[productId] = {
+//             quantity: 0,
+//             price: price,
+//         };
+//     });
+
+//     $(".btn-plus").on("click", function () {
+//         $(".checkButton").removeAttr("disabled");
+//         const targetId = $(this).data("target");
+//         if (!cart[targetId]) {
+//             cart[targetId] = {
+//                 quantity: 0,
+//                 price: 0,
+//             };
+//         }
+//         if (cart[targetId].quantity < 5) {
+//             cart[targetId].quantity++;
+//             $("." + targetId).val(cart[targetId].quantity);
+//             updateTotal();
+//             console.log(updateTotal());
+//         }
+//     });
+//     $(".btn-minus").on("click", function () {
+//         const targetId = $(this).data("target");
+//         if (cart[targetId].quantity > 0) {
+//             cart[targetId].quantity--;
+//             $("." + targetId).val(cart[targetId].quantity);
+//             updateTotal();
+//         }
+//         const anyItemInCart = Object.values(cart).some(
+//             (item) => item.quantity > 0
+//         );
+//         if (!anyItemInCart) {
+//             $(".checkButton").attr("disabled", true);
+//         } else {
+//             $(".checkButton").removeAttr("disabled");
+//         }
+//     });
+// });
+
+//
+function toggleDescription() {
+    const descText = document.getElementById("descText");
+    const btn = document.getElementById("readMoreBtn");
+
+    // Toggle class 'expanded' pada elemen teks
+    descText.classList.toggle("expanded");
+
+    // Cek apakah class 'expanded' aktif atau tidak untuk mengubah teks tombol
+    if (descText.classList.contains("expanded")) {
+        btn.innerHTML = "Lebih Sedikit ↑";
+    } else {
+        btn.innerHTML = "Baca Selengkapnya ↓";
     }
+}
 
-    // Initialize cart data with the price from the input
-    $(".input-wrapper").each(function () {
-        const productId = $(this).find(".btn-plus").data("target");
-        const price = parseFloat($(this).find(".price-input").val()) || 0;
-        cart[productId] = {
-            quantity: 0,
-            price: price,
-        };
-    });
-
-    $(".btn-plus").on("click", function () {
-        $(".checkButton").removeAttr("disabled");
-        const targetId = $(this).data("target");
-        if (!cart[targetId]) {
-            cart[targetId] = {
-                quantity: 0,
-                price: 0,
-            };
-        }
-        if (cart[targetId].quantity < 5) {
-            cart[targetId].quantity++;
-            $("." + targetId).val(cart[targetId].quantity);
-            updateTotal();
-            console.log(updateTotal());
-        }
-    });
-    $(".btn-minus").on("click", function () {
-        const targetId = $(this).data("target");
-        if (cart[targetId].quantity > 0) {
-            cart[targetId].quantity--;
-            $("." + targetId).val(cart[targetId].quantity);
-            updateTotal();
-        }
-        const anyItemInCart = Object.values(cart).some(
-            (item) => item.quantity > 0
-        );
-        if (!anyItemInCart) {
-            $(".checkButton").attr("disabled", true);
-        } else {
-            $(".checkButton").removeAttr("disabled");
-        }
-    });
+// navbar-baru
+// Dropdown nav
+function toggleDropdown() {
+    const btn = document.getElementById("avatarBtn");
+    const dd = document.getElementById("userDropdown");
+    const open = dd.classList.toggle("open");
+    btn.classList.toggle("open", open);
+}
+document.addEventListener("click", (e) => {
+    const wrap = document.querySelector(".nav-avatar-wrap");
+    if (wrap && !wrap.contains(e.target)) {
+        document.getElementById("avatarBtn").classList.remove("open");
+        document.getElementById("userDropdown").classList.remove("open");
+    }
 });
+
+
+
+
+

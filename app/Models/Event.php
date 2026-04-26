@@ -26,7 +26,9 @@ class Event extends Model
 
     public function harga()
     {
-        return $this->hasOne(Harga::class, 'uid', 'uid')->orderBy('harga', 'asc');
+        return $this->hasOne(Harga::class, 'uid', 'uid')
+            ->where('status', 'active')
+            ->orderByRaw('CAST(harga AS UNSIGNED) ASC');
     }
 
     public function talents() // Ubah nama jadi plural (talents)

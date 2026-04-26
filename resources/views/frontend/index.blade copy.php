@@ -25,15 +25,30 @@
         }
     </style> --}}
 
-      <link rel="stylesheet" href="{{ asset('landing/css/bootstrap.min.css') }}" />
+    <link rel="stylesheet" href="{{ asset('landing/css/bootstrap.min.css') }}" />
+    <link rel="stylesheet" href="{{ asset('landing/css/fontawesome.css') }}" />
+    <link rel="stylesheet" href="{{ asset('landing/css/slick.css') }}" />
+    <link rel="stylesheet" href="{{ asset('landing/css/magnific-popup.css') }}" />
+    <link rel="stylesheet" href="{{ asset('landing/css/swiper-bundle.min.css') }}" />
+    <link rel="stylesheet" href="{{ asset('landing/css/icomoon-font.css') }}" />
+    <link rel="stylesheet" href="{{ asset('landing/css/animate.css') }}" />
     <link rel="stylesheet" href="{{ asset('assets/plugins/sweetalert2/dist/sweetalert2.min.css') }}">
+
     <link href="{{ asset('/assets/css/icons.css') }}" rel="stylesheet">
+
+
+    <!-- Code Editor  -->
+    {{--  --}}
+
     <link rel="stylesheet" href="{{ asset('landing/css/main-new.css') }}" />
+
+    {{-- <link rel="stylesheet" href="{{ asset('landing/css/app.min.css') }}" /> --}}
     <style>
         a {
             text-decoration: none;
         }
     </style>
+    {{--  --}}
 </head>
 
 <body>
@@ -63,8 +78,14 @@
     </script>
 
     <script src="{{ asset('landing/js/jquery-3.6.0.min.js') }}"></script>
-   
+    <script src="{{ asset('landing/js/bootstrap.bundle.min.js') }}"></script>
+    {{-- <script src="{{ asset('landing/js/menu/menu.js') }}"></script> --}}
+    <script src="{{ asset('landing/js/slick.js') }}"></script>
+    <script src="{{ asset('landing/js/isotope.pkgd.min.js') }}"></script>
+    <script src="{{ asset('landing/js/jquery.magnific-popup.min.js') }}"></script>
+    <script src="{{ asset('landing/js/swiper-bundle.min.js') }}"></script>
     <script src="{{ asset('landing/js/countdown.js') }}"></script>
+    <script src="{{ asset('landing/js/wow.min.js') }}"></script>
     <script src="https://maps.googleapis.com/maps/api/js?v=3&key=AIzaSyArZVfNvjnLNwJZlLJKuOiWHZ6vtQzzb1Y"></script>
 
     <script src="{{ asset('assets/plugins/sweetalert2/dist/sweetalert2.min.js') }}"></script>
