@@ -1,8 +1,11 @@
 {
     "name": "laravel/laravel",
     "type": "project",
-    "description": "The skeleton application for the Laravel framework.",
-    "keywords": ["laravel", "framework"],
+    "description": "Jual Beli Ticket Event",
+    "keywords": [
+        "laravel",
+        "framework"
+    ],
     "license": "MIT",
     "require": {
         "php": "^7.3|^8.1",
@@ -12,6 +15,7 @@
         "laravel/passport": "^11.8",
         "laravel/sanctum": "^3.3",
         "laravel/tinker": "^2.8",
+        "livewire/livewire": "^4.2",
         "midtrans/midtrans-php": "^2.5",
         "milon/barcode": "^10.0",
         "simplesoftwareio/simple-qrcode": "^4.2"

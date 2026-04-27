@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ConfirmController;
 use App\Http\Controllers\Api\LandingController;
 use App\Http\Controllers\Api\ListTicketController;
+use App\Http\Controllers\Api\MidtransController;
 use App\Http\Controllers\Api\SlideController;
 use App\Http\Controllers\Dashboard\DashboardController;
 use App\Http\Controllers\TransactionController;
@@ -49,4 +50,5 @@ Route::get('/landing', [LandingController::class, 'getLandingData']);
 
 
 Route::post('/callback', [TransactionController::class, 'callback']);
-Route::get('/finishMidtrans', [SlideController::class, 'finishMidtrans']);
+Route::get('/finishMidtrans', [MidtransController::class, 'finish']);
+Route::get('/pendingMidtrans', [MidtransController::class, 'pending']);

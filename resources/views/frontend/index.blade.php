@@ -34,6 +34,11 @@
             text-decoration: none;
         }
     </style>
+
+    <!-- Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+    @livewireStyles
 </head>
 
 <body>
@@ -63,13 +68,14 @@
     </script>
 
     <script src="{{ asset('landing/js/jquery-3.6.0.min.js') }}"></script>
-   
+   <script src="{{ asset('landing/js/wow.min.js') }}"></script>
     <script src="{{ asset('landing/js/countdown.js') }}"></script>
     <script src="https://maps.googleapis.com/maps/api/js?v=3&key=AIzaSyArZVfNvjnLNwJZlLJKuOiWHZ6vtQzzb1Y"></script>
 
     <script src="{{ asset('assets/plugins/sweetalert2/dist/sweetalert2.min.js') }}"></script>
 
-    <script src="{{ asset('landing/js/app.js') }}"></script>
+    <script src="{{ asset('landing/js/menu/togle.js') }}"></script>
+    <!-- <script src="{{ asset('landing/js/app.js') }}"></script> -->
     {{-- <script src="{{ asset('penyewa/js/styleMore.js') }}"></script> --}}
 
 
@@ -78,8 +84,7 @@
 
 
     {{-- @vite([]) --}}
-
-
+    @livewireScripts
 </body>
 
 </html>
