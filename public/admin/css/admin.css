@@ -1,0 +1,141 @@
+/**
+ * Admin Panel CSS
+ * Custom styles not covered by Tailwind
+ */
+
+ :root {
+    --sidebar-width: 256px;
+}
+
+* {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+html {
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+html, body {
+    scroll-behavior: smooth;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #94a3b8;
+    border-radius: 3px;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+    background: #475569;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #64748b;
+}
+
+/* Sidebar transition for mobile */
+.sidebar-transition {
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Tabel hover yang lembut */
+.table-row-hover {
+    transition: background-color 0.15s ease;
+}
+
+.table-row-hover:hover {
+    background-color: rgba(241, 245, 249, 0.6);
+}
+
+.dark .table-row-hover:hover {
+    background-color: rgba(51, 65, 85, 0.25);
+}
+
+.btn-ripple {
+    position: relative;
+    overflow: hidden;
+}
+
+.btn-ripple::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at center, rgba(255, 255, 255, 0.3) 0%, transparent 70%);
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.btn-ripple:active::after {
+    opacity: 1;
+    transition: opacity 0s;
+}
+
+.page-active {
+    pointer-events: none;
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.35);
+}
+
+.card-lift {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card-lift:hover {
+    transform: translateY(-2px);
+}
+
+/* Dropdown profil */
+.dropdown-profile {
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: all 0.2s ease;
+}
+
+.dropdown-profile.active {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+/* Sidebar link active state (menyesuaikan tema) */
+.sidebar-link.active {
+    background-color: rgba(99, 102, 241, 0.1);
+    color: #4f46e5;
+    font-weight: 500;
+}
+
+.dark .sidebar-link.active {
+    background-color: rgba(99, 102, 241, 0.2);
+    color: #a5b4fc;
+}
+
+.sidebar-link.active:hover {
+    background-color: rgba(99, 102, 241, 0.15);
+}
+
+.dark .sidebar-link.active:hover {
+    background-color: rgba(99, 102, 241, 0.3);
+}
+
+/* Modal overlay transisi */
+.modal-overlay {
+    transition: opacity 0.2s ease;
+}
+
+.modal-overlay.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.modal-overlay:not(.hidden) {
+    opacity: 1;
+}

@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html lang="id" class="">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Admin Pro - Template</title>
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com">
+    </script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+        }
+    </script>
+
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest">
+    </script>
+
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js">
+    </script>
+
+    <!-- Custom Font (Inter) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --sidebar-width: 256px;
+        }
+        * {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        }
+        html {
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+        html, body {
+            scroll-behavior: smooth;
+        }
+        /* Scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #94a3b8;
+            border-radius: 3px;
+        }
+        .dark ::-webkit-scrollbar-thumb {
+            background: #475569;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+        }
+        /* Sidebar transition for mobile */
+        .sidebar-transition {
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        /* Tabel hover yang lembut */
+        .table-row-hover {
+            transition: background-color 0.15s ease;
+        }
+        .table-row-hover:hover {
+            background-color: rgba(241, 245, 249, 0.6);
+        }
+        .dark .table-row-hover:hover {
+            background-color: rgba(51, 65, 85, 0.25);
+        }
+        .btn-ripple {
+            position: relative;
+            overflow: hidden;
+        }
+        .btn-ripple::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at center, rgba(255, 255, 255, 0.3) 0%, transparent 70%);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .btn-ripple:active::after {
+            opacity: 1;
+            transition: opacity 0s;
+        }
+        .page-active {
+            pointer-events: none;
+            box-shadow: 0 2px 8px rgba(99, 102, 241, 0.35);
+        }
+        .card-lift {
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .card-lift:hover {
+            transform: translateY(-2px);
+        }
+        /* Dropdown profil */
+        .dropdown-profile {
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-10px);
+            transition: all 0.2s ease;
+        }
+        .dropdown-profile.active {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+        /* Sidebar link active state (menyesuaikan tema) */
+        .sidebar-link.active {
+            background-color: rgba(99, 102, 241, 0.1);
+            color: #4f46e5;
+            font-weight: 500;
+        }
+        .dark .sidebar-link.active {
+            background-color: rgba(99, 102, 241, 0.2);
+            color: #a5b4fc;
+        }
+        .sidebar-link.active:hover {
+            background-color: rgba(99, 102, 241, 0.15);
+        }
+        .dark .sidebar-link.active:hover {
+            background-color: rgba(99, 102, 241, 0.3);
+        }
+        /* Modal overlay transisi */
+        .modal-overlay {
+            transition: opacity 0.2s ease;
+        }
+        .modal-overlay.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        .modal-overlay:not(.hidden) {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 h-screen overflow-hidden">
+
+    <!-- ==================== MAIN LAYOUT: flex h-full ==================== -->
+    <div class="flex h-full">
+
+        <!-- ==================== SIDEBAR OVERLAY (MOBILE) ==================== -->
+        <div id="sidebarOverlay" class="fixed inset-0 bg-black/50 z-40 hidden lg:hidden sidebar-transition opacity-0 pointer-events-none" onclick="closeSidebar()" aria-hidden="true"></div>
+
+        <!-- ==================== SIDEBAR ==================== -->
+        <aside id="sidebar" class="fixed lg:sticky top-0 left-0 z-50 w-64 h-full flex flex-col shadow-lg lg:shadow-none sidebar-transition -translate-x-full lg:translate-x-0 transition-colors duration-300 border-r border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300" aria-label="Sidebar navigasi">
+            <!-- Logo / Brand -->
+            <div class="flex items-center gap-3 px-5 py-5 border-b border-slate-200 dark:border-slate-700 flex-shrink-0">
+                <div class="w-9 h-9 bg-indigo-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <i data-lucide="layers" class="w-5 h-5 text-white"></i>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <h1 class="text-slate-900 dark:text-white font-bold text-lg leading-tight truncate">AdminPanel Pro</h1>
+                    <p class="text-slate-500 dark:text-slate-400 text-xs">Dashboard v2.5</p>
+                </div>
+                <button onclick="closeSidebar()" class="lg:hidden p-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-white transition-colors flex-shrink-0" aria-label="Tutup sidebar">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <!-- Navigation Menu (scrollable) -->
+            <nav class="flex-1 overflow-y-auto py-4 px-3 space-y-1" aria-label="Menu utama">
+                <p class="px-3 text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">Menu Utama</p>
+                <a href="#" onclick="event.preventDefault(); setActiveSidebar(this); closeSidebar()" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-all duration-200 active">
+                    <i data-lucide="layout-dashboard" class="w-5 h-5 flex-shrink-0"></i>
+                    <span class="text-sm font-medium">Dashboard</span>
+                </a>
+                <a href="#" onclick="event.preventDefault(); setActiveSidebar(this); closeSidebar()" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-all duration-200">
+                    <i data-lucide="chart-bar" class="w-5 h-5 flex-shrink-0"></i>
+                    <span class="text-sm font-medium">Analytics</span>
+                    <span class="ml-auto bg-rose-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">New</span>
+                </a>
+                <a href="#" onclick="event.preventDefault(); setActiveSidebar(this); closeSidebar()" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-all duration-200">
+                    <i data-lucide="users" class="w-5 h-5 flex-shrink-0"></i>
+                    <span class="text-sm font-medium">Pengguna</span>
+                </a>
+                <a href="#" onclick="event.preventDefault(); setActiveSidebar(this); closeSidebar()" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-all duration-200">
+                    <i data-lucide="shopping-cart" class="w-5 h-5 flex-shrink-0"></i>
+                    <span class="text-sm font-medium">Pesanan</span>
+                    <span class="ml-auto bg-amber-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center">12</span>
+                </a>
+                <a href="#" onclick="event.preventDefault(); setActiveSidebar(this); closeSidebar()" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-all duration-200">
+                    <i data-lucide="package" class="w-5 h-5 flex-shrink-0"></i>
+                    <span class="text-sm font-medium">Produk</span>
+                </a>
+                <hr class="border-slate-200 dark:border-slate-700 my-3">
+                <p class="px-3 text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">Lainnya</p>
+                <a href="#" onclick="event.preventDefault(); setActiveSidebar(this); closeSidebar()" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-all duration-200">
+                    <i data-lucide="calendar" class="w-5 h-5 flex-shrink-0"></i>
+                    <span class="text-sm font-medium">Kalender</span>
+                </a>
+                <a href="#" onclick="event.preventDefault(); setActiveSidebar(this); closeSidebar()" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-all duration-200">
+                    <i data-lucide="settings" class="w-5 h-5 flex-shrink-0"></i>
+                    <span class="text-sm font-medium">Pengaturan</span>
+                </a>
+                <a href="#" onclick="event.preventDefault(); setActiveSidebar(this); closeSidebar()" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-all duration-200">
+                    <i data-lucide="help-circle" class="w-5 h-5 flex-shrink-0"></i>
+                    <span class="text-sm font-medium">Bantuan</span>
+                </a>
+            </nav>
+
+            <!-- Sidebar Footer -->
+            <div class="p-4 border-t border-slate-200 dark:border-slate-700 flex-shrink-0">
+                <div class="flex items-center gap-3 px-2 py-2 rounded-lg bg-slate-100 dark:bg-slate-800">
+                    <div class="w-8 h-8 bg-slate-300 dark:bg-slate-600 rounded-full flex items-center justify-center flex-shrink-0">
+                        <i data-lucide="user" class="w-4 h-4 text-slate-600 dark:text-slate-300"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-xs text-slate-700 dark:text-slate-200 font-medium truncate">John Doe</p>
+                        <p class="text-[10px] text-slate-500 dark:text-slate-400 truncate">Administrator</p>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- ==================== MAIN CONTENT AREA (scrollable) ==================== -->
+        <div class="flex-1 flex flex-col min-w-0 overflow-y-auto">
+
+            <!-- ==================== HEADER (sticky) ==================== -->
+            <header class="sticky top-0 z-30 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 shadow-sm flex-shrink-0">
+                <div class="flex items-center justify-between px-4 lg:px-6 py-3">
+                    <div class="flex items-center gap-3 flex-1 min-w-0">
+                        <button onclick="openSidebar()" class="lg:hidden p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors flex-shrink-0" aria-label="Buka sidebar">
+                            <i data-lucide="menu" class="w-5 h-5"></i>
+                        </button>
+                        <div class="relative max-w-md w-full hidden sm:block">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <i data-lucide="search" class="w-4 h-4 text-slate-400"></i>
+                            </div>
+                            <input type="text" placeholder="Cari apa saja..." class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200" aria-label="Pencarian">
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-2 flex-shrink-0">
+                        <button class="relative p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-all duration-200" aria-label="Notifikasi">
+                            <i data-lucide="bell" class="w-5 h-5"></i>
+                            <span class="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full ring-2 ring-white dark:ring-slate-800"></span>
+                        </button>
+                        <button id="themeToggle" onclick="toggleTheme()" class="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-all duration-200" aria-label="Toggle tema">
+                            <i data-lucide="sun" id="iconSun" class="w-5 h-5 hidden"></i>
+                            <i data-lucide="moon" id="iconMoon" class="w-5 h-5"></i>
+                        </button>
+
+                        <!-- Profile Avatar with Dropdown -->
+                        <div class="relative ml-1">
+                            <button id="profileBtn" onclick="toggleProfileDropdown()" class="flex items-center gap-2 p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 transition-all duration-200" aria-label="Profil pengguna">
+                                <div class="w-8 h-8 bg-indigo-500 rounded-full flex items-center justify-center text-white font-semibold text-sm flex-shrink-0 ring-2 ring-indigo-200 dark:ring-indigo-800">JD</div>
+                                <span class="text-sm font-medium text-slate-700 dark:text-slate-200 hidden md:inline">John Doe</span>
+                                <i data-lucide="chevron-down" id="chevronProfile" class="w-4 h-4 text-slate-400 hidden md:block transition-transform duration-200"></i>
+                            </button>
+                            <!-- Dropdown Menu -->
+                            <div id="profileDropdown" class="dropdown-profile absolute right-0 mt-2 w-48 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg py-1 z-50">
+                                <a href="#" onclick="event.preventDefault()" class="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+                                    <i data-lucide="user" class="w-4 h-4"></i> Profil Saya
+                                </a>
+                                <a href="#" onclick="event.preventDefault()" class="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+                                    <i data-lucide="settings" class="w-4 h-4"></i> Pengaturan
+                                </a>
+                                <a href="#" onclick="event.preventDefault()" class="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+                                    <i data-lucide="help-circle" class="w-4 h-4"></i> Bantuan
+                                </a>
+                                <hr class="border-slate-200 dark:border-slate-700 my-1">
+                                <a href="#" onclick="event.preventDefault()" class="flex items-center gap-2 px-4 py-2 text-sm text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/30 transition-colors">
+                                    <i data-lucide="log-out" class="w-4 h-4"></i> Keluar
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- ==================== MAIN CONTENT ==================== -->
+            <main class="flex-1 p-4 lg:p-6">
+
+                <!-- Page Title -->
+                <div class="mb-6">
+                    <h2 class="text-2xl font-bold text-slate-800 dark:text-white">Dashboard</h2>
+                    <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Selamat datang kembali, John. Berikut ringkasan aktivitas hari ini.</p>
+                </div>
+
+                <!-- Stat Cards -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                    <div class="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-slate-200 dark:border-slate-700 shadow-sm card-lift">
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="w-10 h-10 bg-indigo-100 dark:bg-indigo-900/40 rounded-xl flex items-center justify-center">
+                                <i data-lucide="users" class="w-5 h-5 text-indigo-600 dark:text-indigo-400"></i>
+                            </div>
+                            <span class="text-xs font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 px-2 py-1 rounded-full">+12.5%</span>
+                        </div>
+                        <p class="text-2xl font-bold text-slate-800 dark:text-white">24,521</p>
+                        <p class="text-sm text-slate-500 dark:text-slate-400">Total Pengguna</p>
+                    </div>
+                    <div class="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-slate-200 dark:border-slate-700 shadow-sm card-lift">
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="w-10 h-10 bg-emerald-100 dark:bg-emerald-900/40 rounded-xl flex items-center justify-center">
+                                <i data-lucide="dollar-sign" class="w-5 h-5 text-emerald-600 dark:text-emerald-400"></i>
+                            </div>
+                            <span class="text-xs font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 px-2 py-1 rounded-full">+8.2%</span>
+                        </div>
+                        <p class="text-2xl font-bold text-slate-800 dark:text-white">Rp 142,5M</p>
+                        <p class="text-sm text-slate-500 dark:text-slate-400">Total Pendapatan</p>
+                    </div>
+                    <div class="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-slate-200 dark:border-slate-700 shadow-sm card-lift">
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="w-10 h-10 bg-amber-100 dark:bg-amber-900/40 rounded-xl flex items-center justify-center">
+                                <i data-lucide="shopping-cart" class="w-5 h-5 text-amber-600 dark:text-amber-400"></i>
+                            </div>
+                            <span class="text-xs font-medium text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-900/30 px-2 py-1 rounded-full">-3.1%</span>
+                        </div>
+                        <p class="text-2xl font-bold text-slate-800 dark:text-white">1,842</p>
+                        <p class="text-sm text-slate-500 dark:text-slate-400">Pesanan Aktif</p>
+                    </div>
+                    <div class="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-slate-200 dark:border-slate-700 shadow-sm card-lift">
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="w-10 h-10 bg-rose-100 dark:bg-rose-900/40 rounded-xl flex items-center justify-center">
+                                <i data-lucide="trending-up" class="w-5 h-5 text-rose-600 dark:text-rose-400"></i>
+                            </div>
+                            <span class="text-xs font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 px-2 py-1 rounded-full">+5.7%</span>
+                        </div>
+                        <p class="text-2xl font-bold text-slate-800 dark:text-white">3.24%</p>
+                        <p class="text-sm text-slate-500 dark:text-slate-400">Tingkat Konversi</p>
+                    </div>
+                </div>
+
+                <!-- Chart Section -->
+                <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-5 mb-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-base font-semibold text-slate-800 dark:text-white">Grafik Pendapatan Bulanan</h3>
+                        <div class="flex gap-2">
+                            <button class="text-xs px-3 py-1 rounded-lg bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 font-medium">2024</button>
+                        </div>
+                    </div>
+                    <canvas id="revenueChart" height="80"></canvas>
+                </div>
+
+                <!-- Filter Bar -->
+                <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-4 mb-6">
+                    <div class="flex flex-wrap items-end gap-3">
+                        <div class="flex-1 min-w-[200px]">
+                            <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5 uppercase">Pencarian</label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <i data-lucide="search" class="w-4 h-4 text-slate-400"></i>
+                                </div>
+                                <input type="text" id="tableSearch" placeholder="Cari nama atau email..." class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200" oninput="filterTable()">
+                            </div>
+                        </div>
+                        <div class="min-w-[150px]">
+                            <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5 uppercase">Tanggal Mulai</label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <i data-lucide="calendar" class="w-4 h-4 text-slate-400"></i>
+                                </div>
+                                <input type="date" class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-800 dark:text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 appearance-none">
+                            </div>
+                        </div>
+                        <div class="min-w-[150px]">
+                            <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5 uppercase">Tanggal Akhir</label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <i data-lucide="calendar" class="w-4 h-4 text-slate-400"></i>
+                                </div>
+                                <input type="date" class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-800 dark:text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 appearance-none">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-transparent mb-1.5 pointer-events-none">Action</label>
+                            <button onclick="filterTable()" class="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-sm rounded-xl transition-all duration-200 shadow-md shadow-indigo-200 dark:shadow-indigo-900/30 hover:shadow-lg btn-ripple">
+                                <i data-lucide="filter" class="w-4 h-4"></i> Filter
+                            </button>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-transparent mb-1.5 pointer-events-none">Reset</label>
+                            <button onclick="resetFilter()" class="flex items-center gap-2 px-5 py-2.5 border border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-medium text-sm rounded-xl transition-all duration-200">
+                                <i data-lucide="rotate-ccw" class="w-4 h-4"></i> Reset
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Buttons Showcase -->
+                <div class="flex flex-wrap items-center gap-2 mb-6">
+                    <button class="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-sm rounded-xl transition-all duration-200 shadow-md shadow-indigo-200 dark:shadow-indigo-900/30 hover:shadow-lg btn-ripple">
+                        <i data-lucide="plus" class="w-4 h-4"></i> Tambah Data
+                    </button>
+                    <button class="flex items-center gap-2 px-4 py-2.5 border border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-medium text-sm rounded-xl transition-all duration-200">
+                        <i data-lucide="download" class="w-4 h-4"></i> Export CSV
+                    </button>
+                    <button class="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-sm rounded-xl transition-all duration-200 shadow-md shadow-emerald-200 dark:shadow-emerald-900/30 hover:shadow-lg btn-ripple">
+                        <i data-lucide="check-circle" class="w-4 h-4"></i> Simpan
+                    </button>
+                    <button class="flex items-center gap-2 px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-medium text-sm rounded-xl transition-all duration-200 shadow-md shadow-rose-200 dark:shadow-rose-900/30 hover:shadow-lg btn-ripple">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i> Hapus
+                    </button>
+                    <button class="p-2.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 rounded-xl transition-all duration-200" aria-label="Edit">
+                        <i data-lucide="pencil" class="w-4 h-4"></i>
+                    </button>
+                    <button class="flex items-center gap-2 px-4 py-2.5 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400 font-medium text-sm rounded-xl transition-all duration-200">
+                        <i data-lucide="more-horizontal" class="w-4 h-4"></i> Lainnya
+                    </button>
+                </div>
+
+                <!-- Table Section -->
+                <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden mb-6">
+                    <div class="flex items-center justify-between px-5 py-4 border-b border-slate-200 dark:border-slate-700">
+                        <div>
+                            <h3 class="text-base font-semibold text-slate-800 dark:text-white">Daftar Pengguna</h3>
+                            <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Klik ikon edit atau hapus untuk aksi</p>
+                        </div>
+                        <span class="text-xs text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-700 px-2.5 py-1 rounded-full" id="tableCount">12 data</span>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm" aria-label="Tabel daftar pengguna">
+                            <thead>
+                                <tr class="bg-slate-50 dark:bg-slate-700/50 text-left">
+                                    <th class="px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider whitespace-nowrap">#</th>
+                                    <th class="px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider whitespace-nowrap">Nama</th>
+                                    <th class="px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider whitespace-nowrap">Email</th>
+                                    <th class="px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider whitespace-nowrap">Role</th>
+                                    <th class="px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider whitespace-nowrap">Status</th>
+                                    <th class="px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider whitespace-nowrap">Tanggal Daftar</th>
+                                    <th class="px-5 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider whitespace-nowrap text-center">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tableBody" class="divide-y divide-slate-100 dark:divide-slate-700"></tbody>
+                        </table>
+                    </div>
+                    <div id="noResults" class="hidden text-center py-12 px-5">
+                        <div class="w-16 h-16 bg-slate-100 dark:bg-slate-700 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i data-lucide="search-x" class="w-7 h-7 text-slate-400"></i>
+                        </div>
+                        <p class="text-slate-600 dark:text-slate-300 font-medium">Tidak ada data ditemukan</p>
+                        <p class="text-sm text-slate-400 dark:text-slate-500 mt-1">Coba ubah kata kunci pencarian Anda.</p>
+                    </div>
+
+                    <!-- Pagination -->
+                    <div class="flex flex-col sm:flex-row items-center justify-between gap-4 px-5 py-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50">
+                        <p class="text-xs text-slate-500 dark:text-slate-400" id="paginationInfo">Menampilkan <span class="font-medium text-slate-700 dark:text-slate-300">1-5</span> dari <span class="font-medium text-slate-700 dark:text-slate-300">12</span> data</p>
+                        <nav class="flex items-center gap-1" aria-label="Pagination">
+                            <button id="btnPrev" onclick="changePage(currentPage - 1)" class="p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400 transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed" aria-label="Halaman sebelumnya">
+                                <i data-lucide="chevron-left" class="w-5 h-5"></i>
+                            </button>
+                            <div id="pageNumbers" class="flex items-center gap-1"></div>
+                            <button id="btnNext" onclick="changePage(currentPage + 1)" class="p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400 transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed" aria-label="Halaman selanjutnya">
+                                <i data-lucide="chevron-right" class="w-5 h-5"></i>
+                            </button>
+                        </nav>
+                    </div>
+                </div>
+
+                <!-- Image Cards Grid -->
+                <div class="mb-6">
+                    <h3 class="text-lg font-semibold text-slate-800 dark:text-white mb-4">Produk Unggulan</h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <!-- Card 1 -->
+                        <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden card-lift">
+                            <img src="https://picsum.photos/400/200?random=1" alt="Produk A" class="w-full h-40 object-cover">
+                            <div class="p-4">
+                                <h4 class="font-semibold text-slate-800 dark:text-white mb-1">Paket Premium</h4>
+                                <p class="text-xs text-slate-500 dark:text-slate-400 mb-3">Akses penuh ke semua fitur dengan dukungan prioritas.</p>
+                                <button class="w-full flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-xl transition-all duration-200">
+                                    <i data-lucide="shopping-cart" class="w-4 h-4"></i> Beli Sekarang
+                                </button>
+                            </div>
+                        </div>
+                        <!-- Card 2 -->
+                        <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden card-lift">
+                            <img src="https://picsum.photos/400/200?random=2" alt="Produk B" class="w-full h-40 object-cover">
+                            <div class="p-4">
+                                <h4 class="font-semibold text-slate-800 dark:text-white mb-1">Starter Kit</h4>
+                                <p class="text-xs text-slate-500 dark:text-slate-400 mb-3">Cocok untuk pemula yang ingin mencoba layanan kami.</p>
+                                <button class="w-full flex items-center justify-center gap-2 px-4 py-2 border border-indigo-300 dark:border-indigo-600 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 text-sm font-medium rounded-xl transition-all duration-200">
+                                    <i data-lucide="info" class="w-4 h-4"></i> Pelajari
+                                </button>
+                            </div>
+                        </div>
+                        <!-- Card 3 -->
+                        <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden card-lift">
+                            <img src="https://picsum.photos/400/200?random=3" alt="Produk C" class="w-full h-40 object-cover">
+                            <div class="p-4">
+                                <h4 class="font-semibold text-slate-800 dark:text-white mb-1">Enterprise Suite</h4>
+                                <p class="text-xs text-slate-500 dark:text-slate-400 mb-3">Solusi lengkap untuk tim besar dengan keamanan maksimal.</p>
+                                <button class="w-full flex items-center justify-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-xl transition-all duration-200">
+                                    <i data-lucide="arrow-right" class="w-4 h-4"></i> Coba Gratis
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- ==================== MODAL EDIT ==================== -->
+    <div id="editModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 hidden modal-overlay">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-md p-6 relative">
+            <button onclick="closeEditModal()" class="absolute top-3 right-3 p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400 transition-colors">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+            <h3 class="text-lg font-semibold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
+                <i data-lucide="pencil" class="w-5 h-5 text-indigo-500"></i> Edit Pengguna
+            </h3>
+            <form id="editForm" onsubmit="submitEdit(event)">
+                <input type="hidden" id="editId">
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Nama</label>
+                        <input type="text" id="editName" required class="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-800 dark:text-slate-200 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Email</label>
+                        <input type="email" id="editEmail" required class="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-800 dark:text-slate-200 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Role</label>
+                        <select id="editRole" class="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-800 dark:text-slate-200 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                            <option value="Admin">Admin</option>
+                            <option value="Editor">Editor</option>
+                            <option value="Viewer">Viewer</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">Status</label>
+                        <select id="editStatus" class="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-800 dark:text-slate-200 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                            <option value="Aktif">Aktif</option>
+                            <option value="Nonaktif">Nonaktif</option>
+                            <option value="Pending">Pending</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="flex justify-end gap-2 mt-6">
+                    <button type="button" onclick="closeEditModal()" class="px-4 py-2 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 rounded-xl text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">Batal</button>
+                    <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-medium transition-colors flex items-center gap-2">
+                        <i data-lucide="save" class="w-4 h-4"></i> Simpan
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ==================== MODAL DELETE ==================== -->
+    <div id="deleteModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 hidden modal-overlay">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-sm p-6 relative">
+            <button onclick="closeDeleteModal()" class="absolute top-3 right-3 p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400 transition-colors">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+            <div class="text-center">
+                <div class="w-12 h-12 bg-rose-100 dark:bg-rose-900/40 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <i data-lucide="alert-triangle" class="w-6 h-6 text-rose-500"></i>
+                </div>
+                <h3 class="text-lg font-semibold text-slate-800 dark:text-white mb-2">Konfirmasi Hapus</h3>
+                <p class="text-sm text-slate-500 dark:text-slate-400 mb-4">Anda yakin ingin menghapus pengguna <strong id="deleteUserName" class="text-slate-700 dark:text-slate-300"></strong>? Tindakan ini tidak dapat dibatalkan.</p>
+                <div class="flex justify-center gap-2">
+                    <button onclick="closeDeleteModal()" class="px-4 py-2 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 rounded-xl text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">Batal</button>
+                    <button id="confirmDeleteBtn" class="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-sm font-medium transition-colors flex items-center gap-2">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i> Hapus
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== SCRIPTS ==================== -->
+    <script>
+        (function() {
+            // Data
+            const tableData = [
+                { id: 1, name: 'Andi Pratama', email: 'andi@example.com', role: 'Admin', status: 'Aktif', date: '2024-01-15' },
+                { id: 2, name: 'Budi Santoso', email: 'budi@example.com', role: 'Editor', status: 'Aktif', date: '2024-02-20' },
+                { id: 3, name: 'Cindy Wijaya', email: 'cindy@example.com', role: 'Viewer', status: 'Nonaktif', date: '2024-03-10' },
+                { id: 4, name: 'Dedi Kurniawan', email: 'dedi@example.com', role: 'Editor', status: 'Aktif', date: '2024-04-05' },
+                { id: 5, name: 'Eka Putri', email: 'eka@example.com', role: 'Admin', status: 'Pending', date: '2024-05-18' },
+                { id: 6, name: 'Fajar Gumilang', email: 'fajar@example.com', role: 'Viewer', status: 'Aktif', date: '2024-06-22' },
+                { id: 7, name: 'Gita Anggraini', email: 'gita@example.com', role: 'Editor', status: 'Nonaktif', date: '2024-07-14' },
+                { id: 8, name: 'Hadi Sucipto', email: 'hadi@example.com', role: 'Viewer', status: 'Aktif', date: '2024-08-30' },
+                { id: 9, name: 'Indah Permata', email: 'indah@example.com', role: 'Admin', status: 'Pending', date: '2024-09-11' },
+                { id: 10, name: 'Joko Widodo', email: 'joko@example.com', role: 'Editor', status: 'Aktif', date: '2024-10-02' },
+                { id: 11, name: 'Kartika Sari', email: 'kartika@example.com', role: 'Viewer', status: 'Nonaktif', date: '2024-11-19' },
+                { id: 12, name: 'Lutfi Hakim', email: 'lutfi@example.com', role: 'Admin', status: 'Aktif', date: '2024-12-25' }
+            ];
+
+            const ITEMS_PER_PAGE = 5;
+            let currentPage = 1;
+            let filteredData = [...tableData];
+            let deleteTargetId = null;
+
+            function formatDate(dateStr) {
+                const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+                const [year, month, day] = dateStr.split('-');
+                return `${parseInt(day)} ${months[parseInt(month) - 1]} ${year}`;
+            }
+
+            function renderTable(data = filteredData) {
+                const tbody = document.getElementById('tableBody');
+                const noResults = document.getElementById('noResults');
+                const tableCount = document.getElementById('tableCount');
+                tableCount.textContent = `${data.length} data`;
+
+                if (data.length === 0) {
+                    tbody.innerHTML = '';
+                    noResults.classList.remove('hidden');
+                } else {
+                    noResults.classList.add('hidden');
+                    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+                    const end = start + ITEMS_PER_PAGE;
+                    const pageData = data.slice(start, end);
+
+                    tbody.innerHTML = pageData.map((item, index) => {
+                        const statusClasses = {
+                            'Aktif': 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-700',
+                            'Nonaktif': 'bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-700',
+                            'Pending': 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-700',
+                        };
+                        const statusDot = {
+                            'Aktif': 'bg-emerald-500',
+                            'Nonaktif': 'bg-rose-500',
+                            'Pending': 'bg-amber-500',
+                        };
+                        const roleBadge = {
+                            'Admin': 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400',
+                            'Editor': 'bg-sky-50 dark:bg-sky-900/30 text-sky-700 dark:text-sky-400',
+                            'Viewer': 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400',
+                        };
+                        const globalIndex = start + index + 1;
+                        return `
+                            <tr class="table-row-hover transition-colors">
+                                <td class="px-5 py-3.5 text-slate-500 dark:text-slate-400 font-medium text-xs">${globalIndex}</td>
+                                <td class="px-5 py-3.5 font-medium text-slate-800 dark:text-slate-200 whitespace-nowrap">${item.name}</td>
+                                <td class="px-5 py-3.5 text-slate-600 dark:text-slate-400 whitespace-nowrap">${item.email}</td>
+                                <td class="px-5 py-3.5"><span class="inline-block px-2.5 py-1 rounded-full text-xs font-medium ${roleBadge[item.role]}">${item.role}</span></td>
+                                <td class="px-5 py-3.5"><span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${statusClasses[item.status]}"><span class="w-1.5 h-1.5 rounded-full ${statusDot[item.status]}"></span>${item.status}</span></td>
+                                <td class="px-5 py-3.5 text-slate-600 dark:text-slate-400 whitespace-nowrap text-xs">${formatDate(item.date)}</td>
+                                <td class="px-5 py-3.5">
+                                    <div class="flex items-center justify-center gap-1">
+                                        <button onclick='openEditModal(${JSON.stringify(item).replace(/'/g, "&#39;")})' class="p-1.5 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 transition-colors" title="Edit">
+                                            <i data-lucide="pencil" class="w-4 h-4"></i>
+                                        </button>
+                                        <button onclick='openDeleteModal(${item.id}, "${item.name.replace(/"/g, '&quot;')}")' class="p-1.5 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-900/30 text-rose-600 dark:text-rose-400 transition-colors" title="Hapus">
+                                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        `;
+                    }).join('');
+                }
+                lucide.createIcons();
+                updatePagination(data.length);
+            }
+
+            function updatePagination(totalItems) {
+                const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
+                const pageNumbersContainer = document.getElementById('pageNumbers');
+                const btnPrev = document.getElementById('btnPrev');
+                const btnNext = document.getElementById('btnNext');
+                const paginationInfo = document.getElementById('paginationInfo');
+
+                if (totalItems === 0) {
+                    paginationInfo.innerHTML = 'Menampilkan <span class="font-medium text-slate-700 dark:text-slate-300">0</span> data';
+                } else {
+                    const start = (currentPage - 1) * ITEMS_PER_PAGE + 1;
+                    const end = Math.min(currentPage * ITEMS_PER_PAGE, totalItems);
+                    paginationInfo.innerHTML = `Menampilkan <span class="font-medium text-slate-700 dark:text-slate-300">${start}-${end}</span> dari <span class="font-medium text-slate-700 dark:text-slate-300">${totalItems}</span> data`;
+                }
+
+                let pageHTML = '';
+                for (let i = 1; i <= totalPages; i++) {
+                    const isActive = i === currentPage;
+                    pageHTML += `<button onclick="changePage(${i})" class="w-9 h-9 rounded-lg text-sm font-medium transition-all duration-200 flex items-center justify-center ${isActive ? 'bg-indigo-600 text-white page-active' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'}" aria-label="Halaman ${i}" ${isActive ? 'aria-current="page"' : ''}>${i}</button>`;
+                }
+                pageNumbersContainer.innerHTML = pageHTML;
+
+                btnPrev.disabled = currentPage <= 1;
+                btnNext.disabled = currentPage >= totalPages;
+                btnPrev.classList.toggle('opacity-40', btnPrev.disabled);
+                btnPrev.classList.toggle('cursor-not-allowed', btnPrev.disabled);
+                btnNext.classList.toggle('opacity-40', btnNext.disabled);
+                btnNext.classList.toggle('cursor-not-allowed', btnNext.disabled);
+            }
+
+            window.changePage = function(page) {
+                const totalPages = Math.ceil(filteredData.length / ITEMS_PER_PAGE);
+                if (page < 1 || page > totalPages) return;
+                currentPage = page;
+                renderTable(filteredData);
+            };
+
+            window.filterTable = function() {
+                const keyword = document.getElementById('tableSearch')?.value.toLowerCase().trim() || '';
+                filteredData = tableData.filter(item =>
+                    item.name.toLowerCase().includes(keyword) ||
+                    item.email.toLowerCase().includes(keyword) ||
+                    item.role.toLowerCase().includes(keyword) ||
+                    item.status.toLowerCase().includes(keyword)
+                );
+                currentPage = 1;
+                renderTable(filteredData);
+            };
+
+            window.resetFilter = function() {
+                document.getElementById('tableSearch').value = '';
+                document.querySelectorAll('input[type="date"]').forEach(i => i.value = '');
+                filteredData = [...tableData];
+                currentPage = 1;
+                renderTable(filteredData);
+            };
+
+            window.openSidebar = function() {
+                document.getElementById('sidebar').classList.remove('-translate-x-full');
+                const overlay = document.getElementById('sidebarOverlay');
+                overlay.classList.remove('hidden', 'opacity-0', 'pointer-events-none');
+                overlay.classList.add('opacity-100');
+                document.body.style.overflow = 'hidden';
+            };
+            window.closeSidebar = function() {
+                document.getElementById('sidebar').classList.add('-translate-x-full');
+                const overlay = document.getElementById('sidebarOverlay');
+                overlay.classList.add('opacity-0', 'pointer-events-none');
+                overlay.classList.remove('opacity-100');
+                setTimeout(() => overlay.classList.add('hidden'), 300);
+                document.body.style.overflow = '';
+            };
+            window.setActiveSidebar = function(el) {
+                document.querySelectorAll('.sidebar-link').forEach(link => link.classList.remove('active'));
+                el.classList.add('active');
+            };
+
+            function updateThemeIcons() {
+                const isDark = document.documentElement.classList.contains('dark');
+                document.getElementById('iconSun').classList.toggle('hidden', !isDark);
+                document.getElementById('iconMoon').classList.toggle('hidden', isDark);
+            }
+            window.toggleTheme = function() {
+                const html = document.documentElement;
+                html.classList.toggle('dark');
+                localStorage.setItem('theme', html.classList.contains('dark') ? 'dark' : 'light');
+                updateThemeIcons();
+            };
+            function initTheme() {
+                const saved = localStorage.getItem('theme');
+                const prefers = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                if (saved === 'dark' || (!saved && prefers)) {
+                    document.documentElement.classList.add('dark');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                }
+                updateThemeIcons();
+            }
+
+            window.toggleProfileDropdown = function() {
+                const dropdown = document.getElementById('profileDropdown');
+                const chevron = document.getElementById('chevronProfile');
+                dropdown.classList.toggle('active');
+                if (chevron) chevron.style.transform = dropdown.classList.contains('active') ? 'rotate(180deg)' : 'rotate(0deg)';
+            };
+            document.addEventListener('click', function(e) {
+                const profileBtn = document.getElementById('profileBtn');
+                const dropdown = document.getElementById('profileDropdown');
+                if (profileBtn && dropdown && !profileBtn.contains(e.target) && !dropdown.contains(e.target)) {
+                    dropdown.classList.remove('active');
+                    const chevron = document.getElementById('chevronProfile');
+                    if (chevron) chevron.style.transform = 'rotate(0deg)';
+                }
+            });
+
+            window.openEditModal = function(item) {
+                document.getElementById('editId').value = item.id;
+                document.getElementById('editName').value = item.name;
+                document.getElementById('editEmail').value = item.email;
+                document.getElementById('editRole').value = item.role;
+                document.getElementById('editStatus').value = item.status;
+                const modal = document.getElementById('editModal');
+                modal.classList.remove('hidden');
+                lucide.createIcons();
+            };
+            window.closeEditModal = function() {
+                document.getElementById('editModal').classList.add('hidden');
+            };
+            window.submitEdit = function(e) {
+                e.preventDefault();
+                const id = parseInt(document.getElementById('editId').value);
+                const name = document.getElementById('editName').value;
+                const email = document.getElementById('editEmail').value;
+                const role = document.getElementById('editRole').value;
+                const status = document.getElementById('editStatus').value;
+                const index = tableData.findIndex(d => d.id === id);
+                if (index !== -1) {
+                    tableData[index] = { ...tableData[index], name, email, role, status };
+                }
+                filteredData = [...tableData];
+                document.getElementById('tableSearch').value = '';
+                closeEditModal();
+                renderTable();
+            };
+
+            window.openDeleteModal = function(id, name) {
+                deleteTargetId = id;
+                document.getElementById('deleteUserName').textContent = name;
+                document.getElementById('deleteModal').classList.remove('hidden');
+                lucide.createIcons();
+            };
+            window.closeDeleteModal = function() {
+                document.getElementById('deleteModal').classList.add('hidden');
+                deleteTargetId = null;
+            };
+            document.getElementById('confirmDeleteBtn').addEventListener('click', function() {
+                if (deleteTargetId !== null) {
+                    const index = tableData.findIndex(d => d.id === deleteTargetId);
+                    if (index !== -1) tableData.splice(index, 1);
+                    filteredData = [...tableData];
+                    closeDeleteModal();
+                    renderTable();
+                }
+            });
+
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    closeEditModal();
+                    closeDeleteModal();
+                    closeSidebar();
+                }
+            });
+
+            function initChart() {
+                const ctx = document.getElementById('revenueChart')?.getContext('2d');
+                if (!ctx) return;
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'],
+                        datasets: [{
+                            label: 'Pendapatan (juta Rp)',
+                            data: [42, 58, 65, 73, 85, 92, 78, 88, 95, 102, 115, 130],
+                            backgroundColor: 'rgba(99, 102, 241, 0.6)',
+                            borderColor: 'rgba(99, 102, 241, 1)',
+                            borderWidth: 1,
+                            borderRadius: 6,
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                grid: { color: 'rgba(148, 163, 184, 0.2)' },
+                                ticks: { callback: (v) => 'Rp ' + v + 'M' }
+                            },
+                            x: { grid: { display: false } }
+                        }
+                    }
+                });
+            }
+
+            window.addEventListener('DOMContentLoaded', () => {
+                initTheme();
+                renderTable();
+                lucide.createIcons();
+                initChart();
+            });
+        })();
+    </script>
+</body>
+</html>

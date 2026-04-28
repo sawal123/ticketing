@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Controllers\Api\ConfirmController;
 use App\Http\Controllers\Api\SlideController;
 use App\Http\Controllers\Auth\UserLoginController;
 use App\Http\Controllers\Auth\UserRegisterController;
@@ -24,6 +23,14 @@ use App\Http\Controllers\Penyewa\EditController as PenyewaEditController;
 use App\Http\Controllers\Penyewa\PenyewaController;
 use App\Http\Controllers\Penyewa\StaffController;
 use App\Http\Controllers\TransactionController;
+use App\Livewire\Admin\DashboardDemo;
+use App\Livewire\Admin\EventIndex;
+use App\Livewire\Admin\EventDetail;
+use App\Livewire\Admin\TransaksiIndex;
+use App\Livewire\Admin\PenarikanIndex;
+use App\Livewire\Admin\PaymentGatewayIndex;
+use App\Livewire\Admin\SettingIndex;
+use App\Livewire\Admin\UserIndex;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
@@ -40,7 +47,6 @@ use Illuminate\Support\Facades\Route;
 
 // Route::get('/api/slide', [SlideController::class, 'slide']);
 // Route::post('/api/callback', [TransactionController::class, 'callback']);
-
 
 // ============================================================================
 // ============================================================================
@@ -66,8 +72,6 @@ Route::get('/term', [landingController::class, 'term']);
 
 Route::get('/contact', [landingController::class, 'contact']);
 
-
-
 Route::get('/invoice/{uid}', [Controller::class, 'invoice']);
 
 Route::get('/confir/data/{data}', [Controller::class, 'confir']);
@@ -89,10 +93,12 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/detail-ticket/delete/{uid}/{user_uid}', [DeleteController::class, 'deteleListTransaksi']);
     Route::get('/logout', function () {
         Auth::logout();
+
         return redirect('/');
     });
     Route::get('/out', function () {
         Auth::logout();
+
         return redirect('/signin');
     });
 });
@@ -144,8 +150,6 @@ Route::prefix('dashboard')
             Route::get('/delete/partner/{id}', [PenyewaDelete::class, 'deletePartner']);
 
             // Manajemen Staff
-    
-
 
             // Post Operasional (Input Data)
             Route::post('/addEvents', [PenyewaAddController::class, 'addEvent'])->name('dashboard.addEvent');
@@ -168,6 +172,14 @@ Route::prefix('dashboard')
 Route::get('/staff/verify/{uid}', [StaffController::class, 'verify'])->name('staff.verify');
 Route::post('/staff/complete-profile/{uid}', [StaffController::class, 'completeProfile']);
 
+Route::get('admin/demo', DashboardDemo::class)->middleware(['auth', 'admin'])->name('admin.demo');
+Route::get('admin/demo/event', EventIndex::class)->middleware(['auth', 'admin'])->name('admin.event');
+Route::get('admin/demo/event/{uid}', EventDetail::class)->middleware(['auth', 'admin'])->name('admin.event.detail');
+Route::get('admin/demo/transaksi', TransaksiIndex::class)->middleware(['auth', 'admin'])->name('admin.transaksi');
+Route::get('admin/demo/penarikan', PenarikanIndex::class)->middleware(['auth', 'admin'])->name('admin.penarikan');
+Route::get('admin/demo/payment-gateway', PaymentGatewayIndex::class)->middleware(['auth', 'admin'])->name('admin.payments');
+Route::get('admin/demo/setting', SettingIndex::class)->middleware(['auth', 'admin'])->name('admin.setting');
+Route::get('admin/demo/user', UserIndex::class)->middleware(['auth', 'admin'])->name('admin.user');
 
 Route::prefix('admin')
     ->namespace('Dashboard')
@@ -183,22 +195,17 @@ Route::prefix('admin')
 
         Route::get('t/online/{uid?}', [TController::class, 'tonline'])->name('tonline');
 
-
-
         // Route::get('/transaksi/filter', [DashboardController::class, 'transaksi']);
         Route::get('/user/{data?}', [DashboardController::class, 'user']);
         Route::get('/event/{addEvent?}/{uid?}', [DashboardController::class, 'event']);
         Route::get('/ubahEvents/{uid}', [DashboardController::class, 'ubahEvents']);
         Route::get('/penarikan', [DashboardController::class, 'penarikan']);
 
-
-
         Route::get('/setting/slide', [DashboardController::class, 'landing']);
         Route::get('/setting/seo', [DashboardController::class, 'seo']);
         Route::get('/setting/term', [DashboardController::class, 'term']);
 
         Route::get('/profile', [DashboardController::class, 'profile']);
-
 
         // Route::get('/event', [DashboardController::class, 'event']);
         // ROUTE ADD
@@ -218,8 +225,6 @@ Route::prefix('admin')
         Route::post('/editSlide', [editController::class, 'editSlide']);
         Route::post('/editTerm', [editController::class, 'editTerm']);
 
-
-
         Route::post('/user/editUser', [editController::class, 'editUser']);
         Route::post('/user/editCashes', [editController::class, 'editCashes']);
         Route::get('/setujuiEvent/{data}', [editController::class, 'setujuiEvent']);
@@ -235,7 +240,6 @@ Route::prefix('admin')
         Route::post('/editPro', [editController::class, 'editPro']);
         Route::post('/editRekening', [editController::class, 'editRekening']);
 
-
         // ROUTE DELETE
         Route::get('/delete/{id}', [DeleteController::class, 'deleteTalent']);
         Route::get('/deleteTransksi/{uid}', [DeleteController::class, 'deleteTransaksi']);
@@ -247,16 +251,12 @@ Route::prefix('admin')
         Route::get('/user/delete/{id}', [DeleteController::class, 'deleteUser']);
         Route::get('/cashes/delete/{id}', [DeleteController::class, 'deleteCashes']);
         Route::get('/deletePen/{data}', [DeleteController::class, 'deletePenarikan']);
-        route::get('/delete/contact/{data}', [DeleteController::class, 'deleteContact']);
-
+        Route::get('/delete/contact/{data}', [DeleteController::class, 'deleteContact']);
 
         Route::get('/payment-gateway', [PaymentGatewayController::class, 'index'])->name('payments');
         Route::post('/payment-gateway/store', [PaymentGatewayController::class, 'store'])->name('payments.store');
         Route::post('/payment-gateway/update/{paymentGateway}', [PaymentGatewayController::class, 'update'])->name('payments.update');
         Route::delete('/payment-gateway/delete/{paymentGateway}', [PaymentGatewayController::class, 'destroy'])->name('payments.destroy');
     });
-
-
-
 
 // ====================

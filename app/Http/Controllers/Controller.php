@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Bank;
 use App\Models\Cart;
 use App\Models\User;
+use App\Models\Event;
 use App\Models\HargaCart;
 use App\Models\Penarikan;
 use Illuminate\Http\Request;
@@ -61,49 +62,59 @@ class Controller extends BaseController
         if($uid === null){
             return redirect()->back();
         }
-        // dd($uid);
+
+        // 1. Cek apakah ini penarikan
         $penarikan = Penarikan::join('users', 'users.uid', '=', 'penarikans.uid_user')
-        ->select(
-            'penarikans.uid',
-            'penarikans.uid_user',
-            'penarikans.amount',
-            'penarikans.kwitansi',
-            'penarikans.status',
-            'penarikans.created_at',
-            'penarikans.updated_at',
-            'users.name',
-            'users.email',
-            'users.gambar'
-        )
-        ->where('penarikans.uid', $uid)
-        ->first();
-        if(!$penarikan){
-            return redirect()->back();
-        }
+            ->select(
+                'penarikans.uid',
+                'penarikans.uid_user',
+                'penarikans.amount',
+                'penarikans.kwitansi',
+                'penarikans.status',
+                'penarikans.created_at',
+                'penarikans.updated_at',
+                'users.name',
+                'users.email',
+                'users.gambar'
+            )
+            ->where('penarikans.uid', $uid)
+            ->first();
 
-        $bank = Bank::where('uid', $penarikan->uid_user)->first();
-        $cekBank = Bank::all();
-
-        $user =User::all();
-        $sbank =[];
-        foreach ($user as $key => $value) {
-            if($value->role ==='admin'){
-                // dd($value);
-                foreach ($cekBank as $key2 => $value2) {
-                    // dd($value);
-                    if($value->uid === $value2->uid){
-                        $sbank[] = Bank::where('uid', $value2->uid)->first();
-                        // exit;
+        if($penarikan){
+            $bank = Bank::where('uid', $penarikan->uid_user)->first();
+            $cekBank = Bank::all();
+            $user = User::all();
+            $sbank = [];
+            foreach ($user as $value) {
+                if($value->role === 'admin'){
+                    foreach ($cekBank as $value2) {
+                        if($value->uid === $value2->uid){
+                            $sbank[] = Bank::where('uid', $value2->uid)->first();
+                        }
                     }
                 }
             }
+            
+            return view('invoice',[
+                'title' => 'Invoice Penarikan',
+                'type' => 'penarikan',
+                'penarikan' => $penarikan,
+                'bankPenyewa' => $bank,
+                'bankPengirim' => $sbank
+            ]);
         }
-        // dd($sbank);
-        return view('invoice',[
-            'title'=>'Invoice',
-            'penarikan'=>$penarikan,
-            'bankPenyewa'=> $bank,
-            'bankPengirim'=> $sbank
-        ]);
+
+        // 2. Jika bukan penarikan, cek apakah ini transaksi (Cart)
+        $cart = Cart::with(['users', 'event', 'hargaCarts.masterHarga'])->where('uid', $uid)->first();
+        
+        if($cart){
+            return view('invoice', [
+                'title' => 'Invoice Transaksi',
+                'type' => 'transaksi',
+                'cart' => $cart,
+            ]);
+        }
+
+        return redirect()->back();
     }
 }

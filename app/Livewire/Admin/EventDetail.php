@@ -1,0 +1,243 @@
+<?php
+
+namespace App\Livewire\Admin;
+
+use App\Models\Event;
+use App\Models\Cart;
+use App\Models\Harga;
+use App\Models\HargaCart;
+use Livewire\Component;
+use Livewire\WithPagination;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
+
+class EventDetail extends Component
+{
+    use WithPagination;
+
+    public $eventUid;
+    public $activeTab = 'umum'; // umum, tiket, transaksi
+    public $searchTransaction = '';
+    public $showFullDescription = false;
+
+    // Filters for Transactions
+    public $filterPayment = 'all'; // all, cash, non-cash
+    public $filterRange; // Format: "YYYY-MM-DD to YYYY-MM-DD"
+
+    // For Edit Ticket Modal
+    public $editingHargaId;
+    public $editingHarga = [
+        'kategori' => '',
+        'qty' => 0,
+        'harga' => 0,
+        'status' => 'active'
+    ];
+
+    // For Delete Modal
+    public $deletingHargaId;
+
+    // For Transaction Detail Modal
+    public $selectedTransactionId;
+
+    protected $queryString = [
+        'activeTab' => ['except' => 'umum'],
+        'searchTransaction' => ['except' => ''],
+        'filterPayment' => ['except' => 'all'],
+        'filterRange' => ['except' => null],
+    ];
+
+    public function mount($uid)
+    {
+        $this->eventUid = $uid;
+    }
+
+    protected function getEventData()
+    {
+        return Event::with([
+            'talents', 
+            'hargas' => function($query) {
+                $query->withCount(['hargaCarts as sold_count' => function($q) {
+                    $q->whereHas('cart', function($c) {
+                        $c->where('status', 'SUCCESS');
+                    });
+                }]);
+            }
+        ])->where('uid', $this->eventUid)->firstOrFail();
+    }
+
+    protected function getMetricsData()
+    {
+        $query = Cart::where('event_uid', $this->eventUid)->where('status', 'SUCCESS');
+        $query = $this->applyFilters($query);
+
+        $transactionIds = $query->pluck('uid');
+        $totalTransactions = $transactionIds->count();
+        
+        $hargaCarts = HargaCart::whereIn('uid', $transactionIds)->get();
+        
+        $totalRevenue = $hargaCarts->sum(fn($item) => $item->quantity * $item->harga_ticket);
+        $totalTicketsSold = $hargaCarts->sum('quantity');
+
+        return [
+            'total_transactions' => $totalTransactions,
+            'total_revenue' => $totalRevenue,
+            'total_tickets' => $totalTicketsSold,
+        ];
+    }
+
+    protected function applyFilters($query)
+    {
+        return $query->when($this->filterPayment !== 'all', function ($q) {
+                if ($this->filterPayment === 'cash') {
+                    $q->where('payment_type', 'cash');
+                } else {
+                    $q->where('payment_type', '!=', 'cash');
+                }
+            })
+            ->when($this->filterRange, function ($q) {
+                $dates = explode(' to ', $this->filterRange);
+                if (count($dates) === 2) {
+                    $q->whereBetween('created_at', [
+                        Carbon::parse($dates[0])->startOfDay(),
+                        Carbon::parse($dates[1])->endOfDay()
+                    ]);
+                } else {
+                    $q->whereDate('created_at', Carbon::parse($dates[0]));
+                }
+            })
+            ->when($this->searchTransaction, function ($q) {
+                $q->where(function($sub) {
+                    $sub->where('invoice', 'like', '%' . $this->searchTransaction . '%')
+                      ->orWhereHas('users', function ($u) {
+                          $u->where('name', 'like', '%' . $this->searchTransaction . '%');
+                      });
+                });
+            });
+    }
+
+    public function setTab($tab)
+    {
+        $this->activeTab = $tab;
+        $this->resetPage();
+    }
+
+    public function resetFilters()
+    {
+        $this->filterPayment = 'all';
+        $this->filterRange = null;
+        $this->searchTransaction = '';
+        $this->resetPage();
+    }
+
+    public function toggleDescription()
+    {
+        $this->showFullDescription = !$this->showFullDescription;
+    }
+
+    public function toggleTicketStatus($id)
+    {
+        $harga = Harga::findOrFail($id);
+        $harga->status = $harga->status === 'active' ? 'inactive' : 'active';
+        $harga->save();
+        session()->flash('message', 'Status tiket berhasil diperbarui.');
+    }
+
+    public function confirmDeleteTicket($id)
+    {
+        $harga = Harga::findOrFail($id);
+        $hasTransactions = $harga->hargaCarts()->whereHas('cart', function($q) {
+            $q->where('status', 'SUCCESS');
+        })->exists();
+
+        if ($hasTransactions) {
+            $this->dispatch('open-modal', name: 'forbidden-delete-modal');
+            return;
+        }
+
+        $this->deletingHargaId = $id;
+        $this->dispatch('open-modal', name: 'delete-ticket-modal');
+    }
+
+    public function deleteTicket()
+    {
+        if ($this->deletingHargaId) {
+            $harga = Harga::findOrFail($this->deletingHargaId);
+            $harga->delete();
+            $this->dispatch('close-modal', name: 'delete-ticket-modal');
+            $this->deletingHargaId = null;
+            session()->flash('message', 'Tiket berhasil dihapus.');
+        }
+    }
+
+    public function editTicket($id)
+    {
+        $harga = Harga::findOrFail($id);
+        $this->editingHargaId = $id;
+        $this->editingHarga = [
+            'kategori' => $harga->kategori,
+            'qty' => $harga->qty,
+            'harga' => $harga->harga,
+            'status' => $harga->status
+        ];
+        
+        $this->dispatch('open-modal', name: 'edit-ticket-modal');
+    }
+
+    public function updateTicket()
+    {
+        $this->validate([
+            'editingHarga.kategori' => 'required',
+            'editingHarga.qty' => 'required|numeric',
+            'editingHarga.harga' => 'required|numeric',
+        ]);
+
+        $harga = Harga::findOrFail($this->editingHargaId);
+        $harga->update($this->editingHarga);
+
+        $this->dispatch('close-modal', name: 'edit-ticket-modal');
+        session()->flash('message', 'Data tiket berhasil diperbarui.');
+    }
+
+    public function showTransactionDetail($uid)
+    {
+        $this->selectedTransactionId = $uid;
+        $this->dispatch('open-modal', name: 'transaction-detail-modal');
+    }
+
+    public function updated($propertyName)
+    {
+        if (in_array($propertyName, ['filterPayment', 'filterRange', 'searchTransaction'])) {
+            $this->resetPage();
+        }
+    }
+
+    public function render()
+    {
+        $event = $this->getEventData();
+        $metrics = $this->getMetricsData();
+        
+        $transactions = [];
+        if ($this->activeTab === 'transaksi') {
+            $transactions = Cart::query()
+                ->with(['users'])
+                ->where('event_uid', $this->eventUid)
+                ->where('status', 'SUCCESS');
+            
+            $transactions = $this->applyFilters($transactions)
+                ->orderBy('created_at', 'desc')
+                ->paginate(10);
+        }
+
+        $selectedTransaction = null;
+        if ($this->selectedTransactionId) {
+            $selectedTransaction = Cart::with(['users', 'hargaCarts.masterHarga'])->where('uid', $this->selectedTransactionId)->first();
+        }
+
+        return view('livewire.admin.event-detail', [
+            'event' => $event,
+            'metrics' => $metrics,
+            'transactions' => $transactions,
+            'selectedTransaction' => $selectedTransaction
+        ])->layout('admin.layout', ['title' => 'Detail Event: ' . $event->event]);
+    }
+}
