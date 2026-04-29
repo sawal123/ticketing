@@ -15,23 +15,41 @@
         <span style="color:var(--gold);">Checkout</span>
     </div>
 
-    <!-- EMAIL ALERT -->
-    <div class="email-alert">
-        <div class="email-alert-inner">
-            @if ($cart->status === 'SUCCESS')
-                <div class="alert alert-info" role="alert">
-                    <small>Barcode telah dikirim ke email Anda (periksa juga folder SPAM)!</small>
+    <!-- SUCCESS BANNER (Show only when status is SUCCESS) -->
+    @if ($cart->status === 'SUCCESS')
+        <div class="success-hero">
+            <div class="success-hero-inner">
+                <div class="success-icon-large">✅</div>
+                <div class="success-content">
+                    <h2 class="success-title">Pembayaran Berhasil!</h2>
+                    <p class="success-desc">
+                        Selamat, tiket Anda telah terkonfirmasi. E-Ticket & Barcode telah dikirim ke email:
+                        <strong>{{ Auth::user()->email }}</strong>.<br>
+                        <small>(Silakan periksa kotak masuk atau folder SPAM Anda)</small>
+                    </p>
                 </div>
-            @endif
-            <span class="alert-icon">✉️</span>
-            <span class="alert-text">Pastikan email Anda aktif: <span
-                    class="alert-email">{{ Auth::user()->email }}</span></span>
+                <div class="success-actions">
+                    <a href="{{ url('/transaksi') }}" class="btn-success-action primary">
+                        <span>🎫</span>
+                        <span>Lihat Tiket Saya</span>
+                    </a>
+                </div>
+            </div>
         </div>
-    </div>
+    @else
+        <!-- EMAIL ALERT (Show only when status is NOT SUCCESS) -->
+        <div class="email-alert">
+            <div class="email-alert-inner">
+                <span class="alert-icon">✉️</span>
+                <span class="alert-text">Pastikan email Anda aktif: <span
+                        class="alert-email">{{ Auth::user()->email }}</span></span>
+            </div>
+        </div>
+    @endif
 
     <!-- MAIN -->
     <div class="checkout-layout">
-        @if (session('success'))
+        @if (session('success') && !str_contains(session('success'), 'Pembayaran Berhasil'))
             <div class="alert alert-primary">
                 {{ session('success') }}
             </div>
@@ -167,27 +185,22 @@
                 </div>
 
                 <div class="card-body">
-                    <div class="voucher-input-wrap">
-
-                        <form action="{{ url('/checkVoucer') }}" method="post" style="display:flex; width:100%;"
-                            class="voucher-input-wrap">
+                    @if ($cart->status !== 'SUCCESS')
+                        <form action="{{ url('/checkVoucer') }}" method="post" class="voucher-input-wrap">
                             @csrf
+                            <input type="hidden" name="event" value="{{ $event->uid }}">
+                            <input type="hidden" name="cartUid" value="{{ $cart->uid }}">
 
-                            @if ($cart->status !== 'SUCCESS')
-                                <input type="hidden" name="event" value="{{ $event->uid }}">
-                                <input type="hidden" name="cartUid" value="{{ $cart->uid }}">
+                            <input type="text" class="voucher-input" id="voucherInput" name="code"
+                                placeholder="Masukan Code Voucher.." value="{{ $voucher->code }}"
+                                {{ $cart->link ? 'readonly' : '' }}>
 
-                                <input type="text" class="voucher-input form-control" id="voucherInput " name="code"
-                                    placeholder="Masukan Code Voucher.." value="{{ $voucher->code }}"
-                                    {{ $cart->link ? 'readonly' : '' }}>
-
-                                <button type="submit" class="btn-voucher" {{ $cart->link ? 'disabled' : '' }}>
-                                    Gunakan
-                                </button>
-                            @endif
+                            <button type="submit" class="btn-voucher" {{ $cart->link ? 'disabled' : '' }}>
+                                Gunakan
+                            </button>
                         </form>
+                    @endif
 
-                    </div>
 
                     <!-- MESSAGE -->
                     <div id="voucherMsg" style="margin-top:10px;font-size:12px;">
@@ -240,13 +253,22 @@
                 <div class="card-body">
                     <div class="payment-detail-rows">
 
-                        {{-- VOUCHER (jika SUCCESS) --}}
-                        @if ($cart->status === 'SUCCESS')
+                        {{-- PAYMENT METHOD --}}
+                        <div class="detail-row">
+                            <span class="label">Metode Pembayaran</span>
+                            <span class="value" style="text-transform: uppercase;">
+                                {{ $iFee->payment ?? str_replace('_', ' ', $cart->payment_type) }}
+                            </span>
+                        </div>
+
+                        {{-- VOUCHER --}}
+                        @if ($voucher && $voucher->code)
                             <div class="detail-row">
                                 <span class="label">Voucher</span>
                                 <span class="value">{{ $voucher->code }}</span>
                             </div>
                         @endif
+
 
                         {{-- TICKET --}}
                         <div class="detail-row">
@@ -267,7 +289,10 @@
                         {{-- INTERNET FEE --}}
                         <div class="detail-row">
                             <span class="label">Internet Fee</span>
-                            <span class="value" id="fee-display">Rp 0</span>
+                            <span class="value" id="fee-display">
+                                Rp {{ number_format($selectInternetFee ?? 0, 0, ',', '.') }}
+                            </span>
+
                         </div>
 
                         {{-- PAJAK --}}
@@ -284,9 +309,24 @@
                     <div class="total-row">
                         <div class="total-label">Grand Total</div>
                         <div class="total-value" id="grand-total">
-                            Rp {{ number_format($total, 0, ',', '.') }}
+                            Rp {{ number_format($total - $diskon + $nilaiPajak + ($selectInternetFee ?? 0), 0, ',', '.') }}
                         </div>
+
                     </div>
+
+                    {{-- STATUS BADGE (Jika SUCCESS) --}}
+                    @if ($cart->status === 'SUCCESS')
+                        <div
+                            style="margin-top: 15px; padding: 10px; background: rgba(61, 217, 196, 0.1); border-radius: 10px; border: 1px solid rgba(61, 217, 196, 0.2); display: flex; align-items: center; gap: 10px;">
+                            <div
+                                style="width: 8px; height: 8px; background: #3dd9c4; border-radius: 50%; box-shadow: 0 0 10px #3dd9c4;">
+                            </div>
+                            <span style="color: #3dd9c4; font-weight: 600; font-size: 13px; letter-spacing: 0.5px;">
+                                TRANSAKSI SELESAI
+                            </span>
+                        </div>
+                    @endif
+
 
                     {{-- BUTTON --}}
                     @if ($cart->status === 'UNPAID' || $cart->status === 'PENDING')
@@ -339,7 +379,6 @@
         }
 
         function selectPayment(paymentId, biaya, biayaType, card) {
-
             // set payment id ke form
             document.getElementById('selectedPayment').value = paymentId;
 
@@ -350,11 +389,10 @@
             document.querySelectorAll('.pay-option').forEach(c => c.classList.remove('selected'));
             card.classList.add('selected');
 
-            // ambil subtotal dari UI baru
+            // ambil subtotal dari UI
             let total = parseRupiah(document.getElementById('subtotal-display').textContent);
 
             let fee = 0;
-
             if (biayaType === 'rupiah') {
                 fee = biaya;
             } else if (biayaType === 'persen') {
@@ -364,42 +402,35 @@
             // TOTAL AKHIR
             let totalAkhir = (total - diskon) + nilaiPajak + fee;
 
-            // update UI baru
+            // update UI
             document.getElementById('fee-display').textContent = formatRupiah(fee);
             document.getElementById('grand-total').textContent = formatRupiah(totalAkhir);
         }
 
         document.addEventListener('DOMContentLoaded', function() {
+            @if ($cart->status === 'UNPAID')
+                // Hanya inisialisasi jika status UNPAID
+                // Jika iFee sudah ada (kembali dari pilihan sebelumnya), hitung ulang
+                @if ($iFee)
+                    let total = parseRupiah(document.getElementById('subtotal-display').textContent);
+                    let diskon = {{ $diskon ?? 0 }};
+                    let nilaiPajak = {{ $nilaiPajak ?? 0 }};
+                    let biaya = {{ $iFee->biaya ?? 0 }};
+                    let biayaType = '{{ $iFee->biaya_type ?? 'rupiah' }}';
+                    
+                    let fee = 0;
+                    if (biayaType === 'rupiah') {
+                        fee = biaya;
+                    } else if (biayaType === 'persen') {
+                        fee = (biaya / 100) * total;
+                    }
 
-            let diskon = {{ $diskon ?? 0 }};
-            let nilaiPajak = {{ $nilaiPajak ?? 0 }};
-
-            let paymentId = {{ $iFee->id ?? 0 }};
-            let biaya = {{ $iFee->biaya ?? 0 }};
-            let biayaType = '{{ $iFee->biaya_type ?? 'rupiah' }}';
-
-            let firstPaymentCard = document.querySelector('.pay-option');
-
-            let total = parseRupiah(document.getElementById('subtotal-display').textContent);
-
-            let fee = 0;
-
-            if (biayaType === 'rupiah') {
-                fee = biaya;
-            } else if (biayaType === 'persen') {
-                fee = (biaya / 100) * total;
-            }
-
-            let totalAkhir = (total - diskon) + nilaiPajak + fee;
-
-            // set awal
-            document.getElementById('fee-display').textContent = formatRupiah(fee);
-            document.getElementById('grand-total').textContent = formatRupiah(totalAkhir);
-
-            // auto select pertama
-            if (firstPaymentCard) {
-                selectPayment(paymentId, biaya, biayaType, firstPaymentCard);
-            }
+                    let totalAkhir = (total - diskon) + nilaiPajak + fee;
+                    document.getElementById('fee-display').textContent = formatRupiah(fee);
+                    document.getElementById('grand-total').textContent = formatRupiah(totalAkhir);
+                @endif
+            @endif
         });
     </script>
+
 @endsection

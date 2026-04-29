@@ -51,24 +51,20 @@
 
                                 @if ($sold < $qty && $hargaItem->status === 'active')
                                     <div class="qty-control ticket-quantity-control input-wrapper"
-                                        data-target="quantity{{ $loop->index }}" data-price="{{ $hargaItem->harga }}"
-                                        data-max="5">
+                                        data-target="quantity{{ $loop->index }}" data-price="{{ $hargaItem->harga }}" data-max="5">
 
-                                        <input type="hidden" class="ticket-price-input price-input"
-                                            name="harga{{ $loop->index }}" value="{{ $hargaItem->harga }}">
-                                        <input type="hidden" name="kategori{{ $loop->index }}"
-                                            value="{{ $hargaItem->kategori }}">
+                                        <input type="hidden" class="ticket-price-input price-input" name="harga{{ $loop->index }}"
+                                            value="{{ $hargaItem->harga }}">
+                                        <input type="hidden" name="kategori{{ $loop->index }}" value="{{ $hargaItem->kategori }}">
 
                                         <button type="button" class="qty-btn btn-minus"
                                             data-target="quantity{{ $loop->index }}">−</button>
 
                                         <input type="text"
                                             class="form-control qty-num p-0 qty-input text-center border-0 bg-transparent quantity{{ $loop->index }}"
-                                            value="0" max="5" step="1" name="ticket{{ $loop->index }}"
-                                            readonly>
+                                            value="0" max="5" step="1" name="ticket{{ $loop->index }}" readonly>
 
-                                        <input type="hidden" name="orderBy{{ $loop->index }}"
-                                            value="{{ $loop->index + 1 }}">
+                                        <input type="hidden" name="orderBy{{ $loop->index }}" value="{{ $loop->index + 1 }}">
 
                                         <button type="button" class="qty-btn btn-plus"
                                             data-target="quantity{{ $loop->index }}">+</button>
@@ -143,9 +139,9 @@
             </div>
 
             {{-- <p class="description-highlight">
-                    PURNAMA BERSANTAI 2026 is back — we won't stop, we will continue the journey to be your favorite
-                    next-level Music Festival in Medan!!!
-                </p> --}}
+                PURNAMA BERSANTAI 2026 is back — we won't stop, we will continue the journey to be your favorite
+                next-level Music Festival in Medan!!!
+            </p> --}}
 
             <!-- TALENT -->
             <div class="talent-section">
@@ -158,82 +154,54 @@
 
                             <div>
                                 <div class="talent-name">{{ $talent->talent }}</div>
-                                <div class="talent-tag">Pop · Indie</div>
+                                {{-- <div class="talent-tag">Pop · Indie</div> --}}
                             </div>
                         </div>
                     @endforeach
 
-                    {{-- <div class="talent-card">
-                        <div class="talent-avatar"
-                            style="background:linear-gradient(135deg,#5c6bc0,#26c6da);font-size:24px;display:flex;align-items:center;justify-content:center;">
-                            🥁</div>
-                        <div>
-                            <div class="talent-name">Perunggu</div>
-                            <div class="talent-tag">Alternative · Rock</div>
-                        </div>
-                    </div>
-                    <div class="talent-card" style="opacity:0.5;cursor:default;">
-                        <div class="talent-avatar"
-                            style="background:var(--surface2);font-size:24px;display:flex;align-items:center;justify-content:center;">
-                            🎵</div>
-                        <div>
-                            <div class="talent-name">Soon...</div>
-                            <div class="talent-tag">TBA</div>
-                        </div>
-                    </div>
-                    <div class="talent-card" style="opacity:0.5;cursor:default;">
-                        <div class="talent-avatar"
-                            style="background:var(--surface2);font-size:24px;display:flex;align-items:center;justify-content:center;">
-                            🎵</div>
-                        <div>
-                            <div class="talent-name">Soon...</div>
-                            <div class="talent-tag">TBA</div>
-                        </div>
-                    </div> --}}
+
                 </div>
             </div>
         </div>
 
-        <!-- SIDEBAR -->
-        {{-- <div class="sidebar-extra">
-            <div class="location-card">
-                <div class="section-label">Lokasi Event</div>
-                <div class="map-placeholder">
-                    @if ($ticket->map)
-                        <iframe src="https://www.google.com/maps?q={{ urlencode($ticket->alamat) }}&output=embed"
-                            loading="lazy" allowfullscreen>
-                        </iframe>
-                    @else
-                        🗺️
-                    @endif
-                </div>
-                <div class="talent-name" style="margin-bottom:4px;">{{ $ticket->alamat }}</div>
-                <a href="{{ $ticket->map }}" class="map-label">Lihat di Google Map →</a>
-            </div> --}}
+        <div class="location-card">
+            <div class="section-label">Lokasi Event</div>
+            <div class="map-placeholder">
+                @if ($ticket->map)
+                    <iframe src="https://www.google.com/maps?q={{ urlencode($ticket->alamat) }}&output=embed" loading="lazy"
+                        allowfullscreen>
+                    </iframe>
+                @else
+                    🗺️
+                @endif
+            </div>
+            <div class="talent-name" style="margin-bottom:4px;">{{ $ticket->alamat }}</div>
+            <a href="{{ $ticket->map }}" class="map-label">Lihat di Google Map →</a>
+        </div> --}}
 
         {{-- <div class="location-card">
-                <div class="section-label">Informasi Event</div>
-                <div style="display:flex;flex-direction:column;gap:14px;margin-top:4px;">
-                    <div style="display:flex;justify-content:space-between;align-items:center;">
-                        <span style="color:var(--muted);font-size:13px;">Tanggal</span>
-                        <span style="font-family:'Space Mono',monospace;font-size:12px;color:var(--text);">21 Agu
-                            2026</span>
-                    </div>
-                    <div style="display:flex;justify-content:space-between;align-items:center;">
-                        <span style="color:var(--muted);font-size:13px;">Waktu Mulai</span>
-                        <span style="font-family:'Space Mono',monospace;font-size:12px;color:var(--text);">15:00 WIB</span>
-                    </div>
-                    <div style="display:flex;justify-content:space-between;align-items:center;">
-                        <span style="color:var(--muted);font-size:13px;">Kategori</span>
-                        <span style="font-family:'Space Mono',monospace;font-size:12px;color:var(--gold);">Music
-                            Festival</span>
-                    </div>
-                    <div style="display:flex;justify-content:space-between;align-items:center;">
-                        <span style="color:var(--muted);font-size:13px;">Status</span>
-                        <div class="status-pill">● Active</div>
-                    </div>
+            <div class="section-label">Informasi Event</div>
+            <div style="display:flex;flex-direction:column;gap:14px;margin-top:4px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <span style="color:var(--muted);font-size:13px;">Tanggal</span>
+                    <span style="font-family:'Space Mono',monospace;font-size:12px;color:var(--text);">21 Agu
+                        2026</span>
                 </div>
-            </div> --}}
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <span style="color:var(--muted);font-size:13px;">Waktu Mulai</span>
+                    <span style="font-family:'Space Mono',monospace;font-size:12px;color:var(--text);">15:00 WIB</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <span style="color:var(--muted);font-size:13px;">Kategori</span>
+                    <span style="font-family:'Space Mono',monospace;font-size:12px;color:var(--gold);">Music
+                        Festival</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <span style="color:var(--muted);font-size:13px;">Status</span>
+                    <div class="status-pill">● Active</div>
+                </div>
+            </div>
+        </div> --}}
     </div>
     </div>
 
@@ -283,30 +251,25 @@
 
                                 @if ($soldMob < $qtyMob && $hargaItemMobile->status === 'active')
                                     <div class="qty-control ticket-quantity-control input-wrapper"
-                                        data-target="quantity{{ $loop->index }}"
-                                        data-price="{{ $hargaItemMobile->harga }}" data-max="5">
+                                        data-target="quantity{{ $loop->index }}" data-price="{{ $hargaItemMobile->harga }}"
+                                        data-max="5">
 
-                                        <input type="hidden" class="ticket-price-input price-input"
-                                            name="harga{{ $loop->index }}" value="{{ $hargaItemMobile->harga }}">
+                                        <input type="hidden" class="ticket-price-input price-input" name="harga{{ $loop->index }}"
+                                            value="{{ $hargaItemMobile->harga }}">
 
-                                        <input type="hidden" name="kategori{{ $loop->index }}"
-                                            value="{{ $hargaItemMobile->kategori }}">
+                                        <input type="hidden" name="kategori{{ $loop->index }}" value="{{ $hargaItemMobile->kategori }}">
 
-                                        <button type="button" class="qty-btn btn-minus"
-                                            data-target="quantity{{ $loop->index }}">
+                                        <button type="button" class="qty-btn btn-minus" data-target="quantity{{ $loop->index }}">
                                             <i class="fa fa-minus"></i>
                                         </button>
 
                                         <input type="text"
                                             class="qty-num qty-input text-center border-0 bg-transparent quantity{{ $loop->index }}"
-                                            min="0" max="5" step="1" value="0"
-                                            name="ticket{{ $loop->index }}" readonly>
+                                            min="0" max="5" step="1" value="0" name="ticket{{ $loop->index }}" readonly>
 
-                                        <input type="hidden" name="orderBy{{ $loop->index }}"
-                                            value="{{ $loop->index + 1 }}">
+                                        <input type="hidden" name="orderBy{{ $loop->index }}" value="{{ $loop->index + 1 }}">
 
-                                        <button type="button" class="qty-btn btn-plus"
-                                            data-target="quantity{{ $loop->index }}">
+                                        <button type="button" class="qty-btn btn-plus" data-target="quantity{{ $loop->index }}">
                                             <i class="fa fa-plus"></i>
                                         </button>
                                     </div>
@@ -379,27 +342,22 @@
         const totalDisplays = document.querySelectorAll(".total");
         const checkButtons = document.querySelectorAll(".checkButton");
 
-        // 🔥 FUNGSI HITUNG TOTAL (DIJAMIN TIDAK AKAN 0 JIKA ADA ITEM)
+        // 🔥 FUNGSI HITUNG TOTAL
         function calculateGrandTotal() {
             let grandTotal = 0;
+            let totalQty = 0;
 
-            // Kita gunakan Map untuk memastikan tiap kategori hanya dihitung 1x 
-            // meskipun ada 2 input (Desktop & Mobile)
             const categories = new Map();
 
-            // Cari semua input quantity
             document.querySelectorAll(".qty-input").forEach(input => {
-                // Ambil nama kategori/target dari class-nya (misal: quantity0)
                 const classList = Array.from(input.classList);
                 const targetClass = classList.find(c => c.startsWith('quantity'));
 
                 if (targetClass) {
                     const qty = parseInt(input.value) || 0;
-                    // Cari wrapper terdekat untuk ambil harga
                     const wrapper = input.closest(".input-wrapper");
                     const price = wrapper ? parseFloat(wrapper.getAttribute("data-price")) : 0;
 
-                    // Simpan nilai terbaru (Desktop & Mobile akan selalu sinkron angkanya)
                     categories.set(targetClass, {
                         qty,
                         price
@@ -407,25 +365,35 @@
                 }
             });
 
-            // Hitung total dari Map
             categories.forEach(item => {
                 grandTotal += (item.qty * item.price);
+                totalQty += item.qty;
             });
 
-            // Update semua tampilan total (Desktop & Mobile)
             const formattedTotal = "Rp " + grandTotal.toLocaleString("id-ID");
             totalDisplays.forEach(el => {
                 el.textContent = formattedTotal;
             });
 
-            // Aktifkan/Matikan tombol checkout
             checkButtons.forEach(btn => {
                 btn.disabled = (grandTotal <= 0);
             });
+
+            // Update state tombol plus berdasarkan totalQty
+            const plusButtons = document.querySelectorAll(".btn-plus");
+            plusButtons.forEach(btn => {
+                if (totalQty >= 5) {
+                    btn.classList.add("opacity-50", "cursor-not-allowed");
+                } else {
+                    btn.classList.remove("opacity-50", "cursor-not-allowed");
+                }
+            });
+
+            return totalQty;
         }
 
         // 🔥 EVENT LISTENER UNTUK KLIK (DELEGASI)
-        document.addEventListener("click", function(e) {
+        document.addEventListener("click", function (e) {
             const btnPlus = e.target.closest(".btn-plus");
             const btnMinus = e.target.closest(".btn-minus");
 
@@ -433,14 +401,26 @@
                 const targetId = btnPlus.getAttribute("data-target");
                 const inputs = document.querySelectorAll("." + targetId);
 
-                // Ambil nilai saat ini dari salah satu input
-                let currentQty = parseInt(inputs[0].value) || 0;
+                // Hitung total saat ini sebelum menambah
+                let currentTotal = 0;
+                const categories = new Set();
+                document.querySelectorAll(".qty-input").forEach(input => {
+                    const classList = Array.from(input.classList);
+                    const tClass = classList.find(c => c.startsWith('quantity'));
+                    if (tClass && !categories.has(tClass)) {
+                        currentTotal += parseInt(input.value) || 0;
+                        categories.add(tClass);
+                    }
+                });
 
-                if (currentQty < 5) {
+                if (currentTotal < 5) {
+                    let currentQty = parseInt(inputs[0].value) || 0;
                     currentQty++;
-                    // Update semua input dengan class tersebut (Desktop & Mobile)
                     inputs.forEach(input => input.value = currentQty);
                     calculateGrandTotal();
+                } else {
+                    // Optional: SweetAlert atau toast jika ada
+                    // alert('Maksimal total pemesanan adalah 5 tiket.');
                 }
             }
 
@@ -460,5 +440,6 @@
 
         // Inisialisasi awal
         calculateGrandTotal();
+
     </script>
 @endsection

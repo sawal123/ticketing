@@ -13,7 +13,9 @@ class Talent extends Model
         'uid',
         'talent',
         'gambar',
+        'link',
     ];
+
 
     public function event()
     {

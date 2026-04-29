@@ -11,6 +11,7 @@ class Event extends Model
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
+        'category_id',
         'uid',
         'user_uid',
         'event',
@@ -23,6 +24,17 @@ class Event extends Model
         'slug',
         'konfirmasi'
     ];
+
+    public function category()
+    {
+        return $this->belongsTo(Category::class, 'category_id', 'id');
+    }
+
+    public function fasilitas()
+    {
+        return $this->belongsToMany(Fasilitas::class, 'event_fasilitas', 'event_uid', 'fasilitas_id', 'uid', 'id');
+    }
+
 
     public function harga()
     {

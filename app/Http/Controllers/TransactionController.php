@@ -110,7 +110,12 @@ class TransactionController extends Controller
             $cart->link = $paymentUrl;
             $cart->status = 'PENDING';
             $cart->payment_type = $feePayment->slug;
+            $cart->internet_fee = $internetFee;
+            $cart->pajak = $nilaiPajak;
+            $cart->pajak_persen = $pajakPersen;
             $cart->save();
+
+
 
             $trans = Transaction::where('invoice', $invoice)->first();
             if (!$trans) {
@@ -164,13 +169,11 @@ class TransactionController extends Controller
             if ($type === 'credit_card') {
                 if ($fraud === 'challenge') {
                     $transaction->payment_type = $type;
-                    $carts->payment_type = $type;
                     $transaction->status_transaksi = 'PENDING';
                     $carts->status = 'PENDING';
                 } else {
                     $transaction->status_transaksi = 'SUCCESS';
                     $transaction->payment_type = $type;
-                    $carts->payment_type = $type;
                     $carts->status = 'SUCCESS';
                     if ($voucher !== null) {
                         $voucher->digunakan += 1;
@@ -181,7 +184,6 @@ class TransactionController extends Controller
         } else if ($status === 'settlement') {
             $transaction->status_transaksi = 'SUCCESS';
             $transaction->payment_type = $type;
-            $carts->payment_type = $type;
             $carts->status = 'SUCCESS';
 
             if ($voucher !== null) {
@@ -191,22 +193,17 @@ class TransactionController extends Controller
         } else if ($status === 'pending') {
             $transaction->status_transaksi = 'PENDING';
             $transaction->payment_type = $type;
-            $carts->payment_type = $type;
-            $carts->link = $carts->link . '/' . $type;
             $carts->status = 'PENDING';
         } else if ($status === 'deny') {
             $transaction->payment_type = $type;
-            $carts->payment_type = $type;
             $transaction->status_transaksi = 'CANCELLED';
             $carts->status = 'CANCELLED';
         } else if ($status === 'expire') {
             $transaction->payment_type = $type;
-            $carts->payment_type = $type;
             $transaction->status_transaksi = 'CANCELLED';
             $carts->status = 'CANCELLED';
         } else if ($status === 'cancel') {
             $transaction->payment_type = $type;
-            $carts->payment_type = $type;
             $transaction->status_transaksi = 'CANCELLED';
             $carts->status = 'CANCELLED';
         }
