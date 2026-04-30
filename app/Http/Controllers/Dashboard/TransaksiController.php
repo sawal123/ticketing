@@ -2,14 +2,13 @@
 
 namespace App\Http\Controllers\Dashboard;
 
+use App\Http\Controllers\Controller;
 use App\Models\Cart;
-use App\Models\User;
 use App\Models\Event;
 use App\Models\HargaCart;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use App\Http\Controllers\Controller;
-use Defuse\Crypto\Key;
 
 class TransaksiController extends Controller
 {
@@ -23,7 +22,7 @@ class TransaksiController extends Controller
             $nameEvent = Event::where('uid', $request->uid)->firstOrFail();
             $use = User::all();
 
-            #Query Untuk Table
+            // Query Untuk Table
             $cartQuery = Cart::with('event', 'hargaCarts')
                 ->select(
                     'carts.uid',
@@ -58,9 +57,9 @@ class TransaksiController extends Controller
             } else {
                 $cart = $cartQuery->whereDate('carts.created_at', $filter)->where('carts.status', $status)->get();
             }
-            #End Query
+            // End Query
 
-            #Query Untuk Penghitungan 
+            // Query Untuk Penghitungan
             $Thc = Cart::select(['harga_carts.uid', 'harga_carts.harga_ticket', 'harga_carts.quantity', 'harga_carts.disc', 'vouchers.unit', 'kategori_harga'])
                 ->join('harga_carts', 'harga_carts.uid', '=', 'carts.uid')
                 ->leftJoin('vouchers', 'vouchers.code', '=', 'harga_carts.voucher')
@@ -73,9 +72,9 @@ class TransaksiController extends Controller
             } else {
                 $dataTiket = $Thc->whereDate('carts.created_at', '=', $filter)->get();
             }
-            #End Query
+            // End Query
 
-            #Menghitung Total Uang Penjualan Tiket
+            // Menghitung Total Uang Penjualan Tiket
             $totalPenjualan = 0;
             foreach ($dataTiket as $item) {
                 $hargaTicket = $item->harga_ticket * $item->quantity;
@@ -88,9 +87,9 @@ class TransaksiController extends Controller
 
                 $totalPenjualan += $hargaTicket;
             }
-            #End Penghitungan
+            // End Penghitungan
 
-            #Query Uang Fee & Perhitungan
+            // Query Uang Fee & Perhitungan
             $tfe = Event::join('carts', 'carts.event_uid', '=', 'events.uid')
                 ->join('harga_carts', 'harga_carts.uid', '=', 'carts.uid')
                 ->select(DB::raw('SUM(events.fee * harga_carts.quantity) as total_fee'))->where('carts.status', 'SUCCESS')
@@ -105,7 +104,7 @@ class TransaksiController extends Controller
             foreach ($totalFee as $key => $tfe) {
                 $fe += $totalFee[$key]->total_fee;
             }
-            #End Perhitungan Dan Query
+            // End Perhitungan Dan Query
 
             $user = [];
             foreach ($use as $users) {
@@ -126,12 +125,11 @@ class TransaksiController extends Controller
             }
 
             foreach ($harga_cart as $hs) {
-                $jml += (int)$hs->quantity;
+                $jml += (int) $hs->quantity;
             }
         } else {
             return abort('403');
         }
-
 
         // dd($cart);
         return view(
@@ -147,7 +145,7 @@ class TransaksiController extends Controller
                 'uidEvent' => $request->uid,
                 'jmlh' => $jml,
                 'nameEvent' => $nameEvent,
-                'status' => $request->status
+                'status' => $request->status,
             ]
         );
     }

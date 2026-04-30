@@ -100,8 +100,16 @@ class BuyTicketController extends Controller
             $nilaiPajak = $cart->pajak;
             $pajakPersen = $cart->pajak_persen;
         } else {
-            $pajakPersen = $event->fee ?? 0;
-            $nilaiPajak = ($pajakPersen / 100) * $subtotal;
+            $eventFee = $event->fee ?? 0;
+            if ($eventFee > 100) {
+                // Legacy nominal fee (Pajak/Fee Rupiah)
+                $pajakPersen = 0;
+                $nilaiPajak = $eventFee;
+            } else {
+                // New percentage tax
+                $pajakPersen = $eventFee;
+                $nilaiPajak = ($pajakPersen / 100) * $subtotal;
+            }
         }
 
         return view('frontend.page.bayartiket', [

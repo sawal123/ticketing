@@ -109,6 +109,11 @@ Route::post('/signin/cekLogin', [LoginController::class, 'index'])->name('cekLog
 Route::prefix('dashboard')
     ->middleware(['auth']) // Pastikan login dulu
     ->group(function () {
+        Route::get('/demo', \App\Livewire\Dashboard\DemoIndex::class)->name('dashboard.demo');
+        Route::get('/demo/event', \App\Livewire\Dashboard\EventIndex::class)->name('dashboard.demo.event');
+        Route::get('/demo/event/create', \App\Livewire\Dashboard\EventCreate::class)->name('dashboard.demo.event.create');
+        Route::get('/demo/event/edit/{uid}', \App\Livewire\Dashboard\EventCreate::class)->name('dashboard.demo.event.edit');
+        Route::get('/demo/event/{uid}', \App\Livewire\Dashboard\EventDetail::class)->name('dashboard.demo.event.detail');
 
         // =========================================================
         // 1. AKSES BERSAMA (PENYEWA & STAFF)
@@ -125,6 +130,7 @@ Route::prefix('dashboard')
 
             Route::get('/staff/delete/{uid}', [StaffController::class, 'destroy']);
             Route::resource('staff', StaffController::class);
+            Route::post('/event/toggle-status/{uid}', [PenyewaController::class, 'toggleStatusEvent']);
             Route::post('/hargas/toggle-status/{id}', [PenyewaController::class, 'toggleStatusHarga']);
             Route::post('/updatePassword', [PenyewaEditController::class, 'updatePassword']);
         });

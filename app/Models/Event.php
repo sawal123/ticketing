@@ -21,6 +21,8 @@ class Event extends Model
         'fee',
         'deskripsi',
         'map',
+        'pajak',
+        'start_sale',
         'slug',
         'konfirmasi'
     ];

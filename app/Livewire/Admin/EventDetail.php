@@ -39,6 +39,9 @@ class EventDetail extends Component
     // For Transaction Detail Modal
     public $selectedTransactionId;
 
+    // For Resend Email Confirmation
+    public $resendEmailUid;
+
     protected $queryString = [
         'activeTab' => ['except' => 'umum'],
         'searchTransaction' => ['except' => ''],
@@ -77,13 +80,19 @@ class EventDetail extends Component
         
         $totalRevenue = $hargaCarts->sum(fn($item) => $item->quantity * $item->harga_ticket);
         $totalTicketsSold = $hargaCarts->sum('quantity');
+        
+        $totalPajak = $query->sum('pajak');
+        $totalInternetFee = $query->sum('internet_fee');
 
         return [
             'total_transactions' => $totalTransactions,
             'total_revenue' => $totalRevenue,
             'total_tickets' => $totalTicketsSold,
+            'total_pajak' => $totalPajak,
+            'total_internet_fee' => $totalInternetFee,
         ];
     }
+
 
     protected function applyFilters($query)
     {
@@ -229,15 +238,88 @@ class EventDetail extends Component
         }
 
         $selectedTransaction = null;
+        $discount = 0;
+        $voucherCode = null;
+        
         if ($this->selectedTransactionId) {
             $selectedTransaction = Cart::with(['users', 'hargaCarts.masterHarga'])->where('uid', $this->selectedTransactionId)->first();
+            
+            if ($selectedTransaction) {
+                $cartVoucher = \App\Models\CartVoucher::where('uid', $this->selectedTransactionId)->first();
+                if ($cartVoucher) {
+                    $voucherCode = $cartVoucher->code;
+                    $voucher = \App\Models\Voucher::where('code', $voucherCode)->first();
+                    if ($voucher) {
+                        $totalTickets = $selectedTransaction->hargaCarts->sum(fn($i) => $i->quantity * $i->harga_ticket);
+                        if ($voucher->unit === 'rupiah') {
+                            $discount = $voucher->nominal;
+                        } elseif ($voucher->unit === 'persen') {
+                            $discount = ($voucher->nominal / 100) * $totalTickets;
+                        }
+                    }
+                }
+            }
         }
 
         return view('livewire.admin.event-detail', [
             'event' => $event,
             'metrics' => $metrics,
             'transactions' => $transactions,
-            'selectedTransaction' => $selectedTransaction
+            'selectedTransaction' => $selectedTransaction,
+            'discount' => $discount,
+            'voucherCode' => $voucherCode
         ])->layout('admin.layout', ['title' => 'Detail Event: ' . $event->event]);
     }
+
+    public function confirmResendEmail($uid)
+    {
+        $this->resendEmailUid = $uid;
+        $this->dispatch('open-modal', name: 'resend-email-modal');
+    }
+
+    /**
+     * Resend the ticket barcode email to the buyer
+     */
+    public function resendEmail()
+    {
+        $uid = $this->resendEmailUid;
+        if (!$uid) return;
+
+        $cart = Cart::where('uid', $uid)->first();
+        if (!$cart) return;
+
+        if ($cart->status !== 'SUCCESS') {
+            session()->flash('error', 'Email hanya dapat dikirim ulang untuk transaksi yang sukses.');
+            return;
+        }
+
+        $barcode = $cart->invoice;
+
+        try {
+            if ($cart->payment_type === 'cash') {
+                $cash = \App\Models\Cash::where('uid', $uid)->first();
+                if ($cash) {
+                    dispatch(new \App\Jobs\sendEmailTrnsaksi($cash->email, $cash->name, $barcode));
+                } else {
+                     session()->flash('error', 'Data pembeli tunai tidak ditemukan.');
+                     return;
+                }
+            } else {
+                $user = \App\Models\User::where('uid', $cart->user_uid)->first();
+                if ($user) {
+                    dispatch(new \App\Jobs\sendEmailETransaksi($user, $cart, $barcode));
+                } else {
+                    session()->flash('error', 'Data pembeli tidak ditemukan.');
+                    return;
+                }
+            }
+
+            $this->dispatch('close-modal', name: 'resend-email-modal');
+            $this->resendEmailUid = null;
+            session()->flash('message', 'Barcode tiket berhasil dikirim ulang ke email pembeli.');
+        } catch (\Exception $e) {
+            session()->flash('error', 'Gagal mengirim email: ' . $e->getMessage());
+        }
+    }
+
 }

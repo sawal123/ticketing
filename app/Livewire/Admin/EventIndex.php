@@ -20,6 +20,15 @@ class EventIndex extends Component
         $this->resetPage();
     }
 
+    public function toggleStatus($uid)
+    {
+        $event = Event::where('uid', $uid)->first();
+        if ($event) {
+            $event->status = $event->status === 'active' ? 'close' : 'active';
+            $event->save();
+        }
+    }
+
     public function render()
     {
         $events = Event::query()

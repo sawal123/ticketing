@@ -297,7 +297,12 @@
 
                         {{-- PAJAK --}}
                         <div class="detail-row">
-                            <span class="label">Pajak ({{ $pajakPersen }}%)</span>
+                            <span class="label">
+                                Pajak / Fee 
+                                @if($pajakPersen > 0)
+                                    ({{ $pajakPersen }}%)
+                                @endif
+                            </span>
                             <span class="value tax">
                                 Rp {{ number_format($nilaiPajak, 0, ',', '.') }}
                             </span>
@@ -340,7 +345,7 @@
                             <input type="hidden" name="cartUid" value="{{ $cart->uid }}">
 
                             @if ($cart->status === 'UNPAID')
-                                <button type="submit" class="btn-pay">
+                                <button type="button" class="btn-pay" onclick="showConfirmModal(event)">
                                     <span>🔐</span>
                                     <span>Bayar Sekarang</span>
                                 </button>
@@ -366,6 +371,8 @@
             </div>
 
         </div>
+    </div>
+
     </div>
 
 
@@ -431,6 +438,107 @@
                 @endif
             @endif
         });
+
+        function showConfirmModal(e) {
+            e.preventDefault();
+
+            // Check if payment selected
+            const paymentId = document.getElementById('selectedPayment').value;
+            if (!paymentId) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Metode Pembayaran Belum Dipilih',
+                    text: 'Silakan pilih salah satu metode pembayaran yang tersedia terlebih dahulu.',
+                    background: '#1a1a1a',
+                    color: '#fff',
+                    confirmButtonColor: '#6c5ce7',
+                    customClass: {
+                        popup: 'swal-dark-popup'
+                    }
+                });
+                return;
+            }
+
+            // Prepare Data for SweetAlert
+            const ticketRows = document.querySelectorAll('.ticket-row');
+            let ticketHtml = '<div style="text-align: left; background: #252525; padding: 15px; border-radius: 12px; margin-top: 15px; font-size: 14px; border: 1px solid #333;">';
+            
+            ticketRows.forEach(row => {
+                const category = row.querySelector('.ticket-tier-badge').textContent;
+                const qtyInfo = row.querySelector('.ticket-qty-info').textContent;
+                const total = row.querySelector('.ticket-total-cell').textContent;
+                const qty = qtyInfo.split(' × ')[1];
+                
+                ticketHtml += `
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px; border-bottom: 1px solid #333; padding-bottom: 8px;">
+                        <span style="color: #aaa;">${category} (${qty}x)</span>
+                        <span style="font-weight: 600; color: #fff;">${total}</span>
+                    </div>`;
+            });
+
+            const selectedPayElement = document.querySelector('.pay-option.selected .pay-name');
+            const paymentName = selectedPayElement ? selectedPayElement.textContent : 'N/A';
+            const grandTotal = document.getElementById('grand-total').textContent;
+
+            ticketHtml += `
+                <div style="margin-top: 15px; padding-top: 10px; border-top: 2px dashed #444;">
+                    <div style="display: flex; justify-content: space-between; font-weight: 800; font-size: 18px; color: #6c5ce7;">
+                        <span>Total Bayar</span>
+                        <span>${grandTotal}</span>
+                    </div>
+                </div>
+            </div>`;
+
+            Swal.fire({
+                title: 'Konfirmasi Pesanan',
+                html: `
+                    <div style="text-align: left;">
+                        <p style="font-size: 13px; color: #aaa; margin-bottom: 15px;">Mohon periksa kembali detail pesanan Anda sebelum melanjutkan pembayaran.</p>
+                        <div style="margin-bottom: 15px;">
+                            <label style="font-size: 10px; text-transform: uppercase; font-weight: 800; color: #666; letter-spacing: 1px; display: block; margin-bottom: 5px;">Email Pembeli</label>
+                            <div style="background: #252525; padding: 10px; border-radius: 10px; color: #eee; font-weight: 600;">{{ Auth::user()->email }}</div>
+                            <small style="color: #f5c842; font-size: 11px; margin-top: 4px; display: block;">*E-Ticket akan dikirim ke email ini</small>
+                        </div>
+                        <div style="margin-bottom: 15px;">
+                            <label style="font-size: 10px; text-transform: uppercase; font-weight: 800; color: #666; letter-spacing: 1px; display: block; margin-bottom: 5px;">Metode Pembayaran</label>
+                            <div style="background: #252525; padding: 10px; border-radius: 10px; color: #eee; font-weight: 600;">${paymentName}</div>
+                        </div>
+                        <label style="font-size: 10px; text-transform: uppercase; font-weight: 800; color: #666; letter-spacing: 1px; display: block;">Item Tiket</label>
+                        ${ticketHtml}
+                    </div>
+                `,
+                showCancelButton: true,
+                confirmButtonText: 'Lanjutkan Pembayaran',
+                cancelButtonText: 'Batal',
+                reverseButtons: true,
+                background: '#1a1a1a',
+                color: '#fff',
+                confirmButtonColor: '#6c5ce7',
+                cancelButtonColor: '#252525',
+                width: '450px',
+                customClass: {
+                    popup: 'swal-dark-popup',
+                    confirmButton: 'swal-confirm-btn',
+                    cancelButton: 'swal-cancel-btn'
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    Swal.fire({
+                        title: 'Memproses...',
+                        text: 'Harap tunggu sebentar',
+                        allowOutsideClick: false,
+                        showConfirmButton: false,
+                        background: '#1a1a1a',
+                        color: '#fff',
+                        willOpen: () => {
+                            Swal.showLoading();
+                        }
+                    });
+                    const form = document.querySelector('form[action="{{ url('/paynow') }}"]');
+                    if (form) form.submit();
+                }
+            });
+        }
     </script>
 
 @endsection

@@ -1,0 +1,65 @@
+use App\Models\Cart;
+use App\Models\Event;
+use App\Models\HargaCart;
+use App\Models\CartVoucher;
+use App\Models\Voucher;
+
+// Script untuk memperbaiki data transaksi lama (Production Patch)
+$successCarts = Cart::where('status', 'SUCCESS')
+    ->where(function($query) {
+        $query->whereNull('internet_fee')
+              ->orWhere('internet_fee', 0);
+    })->get();
+
+echo "Memulai proses patching data untuk " . $successCarts->count() . " transaksi...\n";
+
+foreach ($successCarts as $cart) {
+    try {
+        $event = Event::where('uid', $cart->event_uid)->first();
+        $hargaItems = HargaCart::where('uid', $cart->uid)->get();
+        
+        $jumlah = 0;
+        foreach ($hargaItems as $item) {
+            $jumlah += ($item->harga_ticket * $item->quantity);
+        }
+        
+        $diskon = 0;
+        $cartV = CartVoucher::where('uid', $cart->uid)->first();
+        if ($cartV) {
+            $voucher = Voucher::where('code', $cartV->code)->first();
+            if ($voucher) {
+                if ($voucher->unit === 'rupiah') {
+                    $diskon = $voucher->nominal;
+                } elseif ($voucher->unit === 'persen') {
+                    $diskon = ($voucher->nominal / 100) * $jumlah;
+                }
+            }
+        }
+        
+        $subtotal = $jumlah - $diskon;
+        
+        $internetFee = 0;
+        $pType = strtolower($cart->payment_type ?? '');
+        
+        if (str_contains($pType, 'qris') || str_contains($pType, 'gopay')) {
+            $internetFee = (int) round(0.05 * $jumlah);
+        } elseif (str_contains($pType, 'transfer') || str_contains($pType, 'va') || str_contains($pType, 'echannel') || str_contains($pType, 'bank')) {
+            $internetFee = 7200;
+        }
+        
+        $pajakPersen = $event->fee ?? 0;
+        $nilaiPajak = (int) round(($pajakPersen / 100) * $subtotal);
+        
+        $cart->update([
+            'internet_fee' => $internetFee,
+            'pajak' => $nilaiPajak,
+            'pajak_persen' => $pajakPersen
+        ]);
+        
+        echo "Invoice: " . $cart->invoice . " OK\n";
+    } catch (\Exception $e) {
+        echo "Error Invoice: " . $cart->invoice . " - " . $e->getMessage() . "\n";
+    }
+}
+echo "Selesai!\n";
+

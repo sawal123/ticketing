@@ -1,0 +1,21 @@
+use App\Models\Cart;
+
+$affectedCarts = Cart::where('pajak_persen', '>', 100)->get();
+echo "Memperbaiki " . $affectedCarts->count() . " transaksi terdampak (fee nominal jadi persen)...\n";
+
+foreach ($affectedCarts as $cart) {
+    // $cart->pajak_persen saat ini menyimpan nilai nominal (misal 10000)
+    // $cart->pajak saat ini menyimpan nilai salah yang dikalikan subtotal
+    
+    $nominalFee = $cart->pajak_persen;
+    
+    $cart->update([
+        'pajak' => $nominalFee, // Kembalikan ke nominal asli
+        'pajak_persen' => 0     // Set 0 persen karena ini nominal
+    ]);
+    
+    echo "Invoice " . $cart->invoice . " diperbaiki. Pajak: " . $nominalFee . "\n";
+}
+
+echo "Selesai memperbaiki data!\n";
+

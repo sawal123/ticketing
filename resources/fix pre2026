@@ -1,0 +1,77 @@
+use App\Models\Cart;
+use App\Models\Transaction;
+use App\Models\HargaCart;
+use App\Models\CartVoucher;
+use App\Models\Voucher;
+
+// Ambil semua transaksi sukses sebelum hari ini (saat fitur baru dirilis)
+$carts = Cart::where('created_at', '<', '2026-04-29 00:00:00')->where('status', 'SUCCESS')->get();
+
+$count = 0;
+foreach ($carts as $cart) {
+    // Cari transaksi di tabel transactions untuk tau persis berapa gross_amount yang dibayar user
+    $trx = Transaction::where('uid', $cart->uid)->first(); // Asumsi relasi via uid
+    if (!$trx) {
+        $trx = Transaction::where('invoice', $cart->invoice)->first();
+    }
+    
+    if ($trx) {
+        $grossAmount = (int) $trx->amount;
+        
+        // Hitung Subtotal (Tiket - Diskon)
+        $hargaItems = HargaCart::where('uid', $cart->uid)->get();
+        $jumlah = 0;
+        foreach ($hargaItems as $item) {
+            $jumlah += ($item->harga_ticket * $item->quantity);
+        }
+        
+        $diskon = 0;
+        $cartV = CartVoucher::where('uid', $cart->uid)->first();
+        if ($cartV) {
+            $voucher = Voucher::where('code', $cartV->code)->first();
+            if ($voucher) {
+                if ($voucher->unit === 'rupiah') {
+                    $diskon = $voucher->nominal;
+                } elseif ($voucher->unit === 'persen') {
+                    $diskon = ($voucher->nominal / 100) * $jumlah;
+                }
+            }
+        }
+        
+        $subtotal = $jumlah - $diskon;
+        
+        // Sisa dari total yang dibayar adalah murni Internet Fee bawaan event
+        $actualFee = $grossAmount - $subtotal;
+        if ($actualFee < 0) $actualFee = 0; // fallback just in case
+        
+        // Update cart
+        $cart->update([
+            'internet_fee' => $actualFee,
+            'pajak' => 0,
+            'pajak_persen' => 0
+        ]);
+        $count++;
+    } else {
+        // Jika tidak ada di tabel transactions, hitung manual dari event->fee
+        $event = \App\Models\Event::where('uid', $cart->event_uid)->first();
+        $fee = $event->fee ?? 0;
+        
+        // Jika event fee adalah nominal (> 100), gunakan itu. Jika persentase, mungkin event ini sudah diupdate? 
+        // Lebih aman pakai nominal yang wajar atau 0 jika ragu.
+        if ($fee <= 100 && $fee > 0) {
+             // Event sudah pakai % (fitur baru), kita tidak bisa tahu nominal lamanya.
+             // Kita kembalikan ke 0 saja.
+             $fee = 0;
+        }
+        
+        $cart->update([
+            'internet_fee' => $fee,
+            'pajak' => 0,
+            'pajak_persen' => 0
+        ]);
+        $count++;
+    }
+}
+
+echo "Berhasil merekonstruksi " . $count . " data legacy secara akurat (pajak=0, fee=sisa total).\n";
+

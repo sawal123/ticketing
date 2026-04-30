@@ -1,0 +1,10 @@
+tunnel: <TUNNEL_ID>
+credentials-file: C:\Users\MSI\.cloudflared\<TUNNEL_ID>.json
+
+ingress:
+  - hostname: ://domainanda.com
+    service: http://localhost:80
+    originRequest:
+      httpHostHeader: tiketkonser.test
+      noTLSVerify: true
+  - service: http_status:404

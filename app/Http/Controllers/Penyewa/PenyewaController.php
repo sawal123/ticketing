@@ -294,6 +294,24 @@ class PenyewaController extends Controller
         }
     }
 
+    public function toggleStatusEvent($uid)
+    {
+        $event = Event::where('uid', $uid)->first();
+
+        if ($event) {
+            $event->status = $event->status === 'active' ? 'close' : 'active';
+            $event->save();
+
+            return response()->json([
+                'success' => true,
+                'status' => $event->status,
+                'message' => 'Status event berhasil diperbarui'
+            ]);
+        }
+
+        return response()->json(['success' => false, 'message' => 'Event tidak ditemukan'], 404);
+    }
+
     public function toggleStatusHarga($id)
     {
         // dd($id);
