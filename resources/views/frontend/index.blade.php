@@ -7,7 +7,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="keywords" content="{{ $seo[0]->keyword }}">
     <meta name="description" content="{{ $seo[0]->description }}">
-    <title>GOTIK {{ $title }}</title>
+    @stack('meta')
+    <title>@yield('title', 'GOTIK ' . $title)</title>
     <link rel="shortcut icon" href="{{ asset('storage/logo/' . $logo[0]->icon) }}" type="image/x-icon">
 
     {{-- <link rel="stylesheet" href="{{ asset('assets/css/styleMore.css') }}"> --}}

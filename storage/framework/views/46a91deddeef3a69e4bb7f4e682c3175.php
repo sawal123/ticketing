@@ -7,7 +7,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="keywords" content="<?php echo e($seo[0]->keyword); ?>">
     <meta name="description" content="<?php echo e($seo[0]->description); ?>">
-    <title>GOTIK <?php echo e($title); ?></title>
+    <?php echo $__env->yieldPushContent('meta'); ?>
+    <title><?php echo $__env->yieldContent('title', 'GOTIK ' . $title); ?></title>
     <link rel="shortcut icon" href="<?php echo e(asset('storage/logo/' . $logo[0]->icon)); ?>" type="image/x-icon">
 
     

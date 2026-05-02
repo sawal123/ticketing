@@ -1,21 +1,21 @@
-@extends('frontend.index')
-@section('title', $ticket->event . ' - GOTIK')
 
-@push('meta')
-    <meta property="og:title" content="{{ $ticket->event }}">
-    <meta property="og:description" content="{{ Str::limit(strip_tags($ticket->deskripsi), 160) }}">
-    <meta property="og:image" content="{{ asset('storage/cover/' . $ticket->cover) }}">
-    <meta property="og:url" content="{{ url()->current() }}">
+<?php $__env->startSection('title', $ticket->event . ' - GOTIK'); ?>
+
+<?php $__env->startPush('meta'); ?>
+    <meta property="og:title" content="<?php echo e($ticket->event); ?>">
+    <meta property="og:description" content="<?php echo e(Str::limit(strip_tags($ticket->deskripsi), 160)); ?>">
+    <meta property="og:image" content="<?php echo e(asset('storage/cover/' . $ticket->cover)); ?>">
+    <meta property="og:url" content="<?php echo e(url()->current()); ?>">
     <meta property="og:type" content="website">
     
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="{{ $ticket->event }}">
-    <meta name="twitter:description" content="{{ Str::limit(strip_tags($ticket->deskripsi), 160) }}">
-    <meta name="twitter:image" content="{{ asset('storage/cover/' . $ticket->cover) }}">
-@endpush
+    <meta name="twitter:title" content="<?php echo e($ticket->event); ?>">
+    <meta name="twitter:description" content="<?php echo e(Str::limit(strip_tags($ticket->deskripsi), 160)); ?>">
+    <meta name="twitter:image" content="<?php echo e(asset('storage/cover/' . $ticket->cover)); ?>">
+<?php $__env->stopPush(); ?>
 
-@section('content')
-    <link rel="stylesheet" href="{{ asset('landing/css/ticket.css') }}">
+<?php $__env->startSection('content'); ?>
+    <link rel="stylesheet" href="<?php echo e(asset('landing/css/ticket.css')); ?>">
 
     <div style="height:50px;"></div>
     <!-- HERO -->
@@ -24,7 +24,7 @@
             <!-- Using a gradient + art placeholder since no external img -->
             <div
                 style="width:100%;height:100%;background:linear-gradient(135deg,#1a0050 0%,#3b006b 30%,#0d3b8c 60%,#0a2060 100%);display:flex;align-items:center;justify-content:center;position:relative;">
-                <img src="{{ asset('/storage/cover/' . $ticket->cover) }}" alt="" class="hero-img ">
+                <img src="<?php echo e(asset('/storage/cover/' . $ticket->cover)); ?>" alt="" class="hero-img ">
             </div>
 
         </div>
@@ -34,61 +34,64 @@
         <div class="ticket-panel gap-2">
             <div class="panel-header">✦ Ticket Kategori</div>
 
-            @if (session('error'))
+            <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(session('error')): ?>
                 <div class="alert alert-danger">
-                    {{ session('error') }}
+                    <?php echo e(session('error')); ?>
+
                 </div>
-            @endif
+            <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
-            <form action="{{ url('/checkout') }}" method="post" class="ticket-purchase-form">
-                @csrf
-                <input type="hidden" name="eventUid" value="{{ $ticket->uid }}">
+            <form action="<?php echo e(url('/checkout')); ?>" method="post" class="ticket-purchase-form">
+                <?php echo csrf_field(); ?>
+                <input type="hidden" name="eventUid" value="<?php echo e($ticket->uid); ?>">
 
-                @if ($list->count() > 0)
+                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($list->count() > 0): ?>
                     <div class="panel-body" style="overflow-y: scroll; max-height: 300px;">
-                        @foreach ($list as $key => $hargaItem)
-                            @php
+                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::openLoop(); ?><?php endif; ?><?php $__currentLoopData = $list; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $key => $hargaItem): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::startLoopIteration(); ?><?php endif; ?>
+                            <?php
                                 $kategori = $hargaItem->kategori;
                                 $qty = $hargaItem->qty;
                                 $sold = $jmlhQty[$kategori] ?? 0;
-                            @endphp
+                            ?>
 
                             <div class="ticket-tier">
                                 <div class="tier-info">
                                     <div class="tier-name">
-                                        {{ $hargaItem->kategori }}
+                                        <?php echo e($hargaItem->kategori); ?>
+
                                     </div>
                                     <div class="tier-price">
                                         <span class="currency">Rp</span>
-                                        {{ number_format($hargaItem->harga, 0, ',', '.') }}
+                                        <?php echo e(number_format($hargaItem->harga, 0, ',', '.')); ?>
+
                                     </div>
                                 </div>
 
-                                @if ($sold < $qty && $hargaItem->status === 'active')
+                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($sold < $qty && $hargaItem->status === 'active'): ?>
                                     <div class="qty-control ticket-quantity-control input-wrapper"
-                                        data-target="quantity{{ $loop->index }}" data-price="{{ $hargaItem->harga }}" data-max="5">
+                                        data-target="quantity<?php echo e($loop->index); ?>" data-price="<?php echo e($hargaItem->harga); ?>" data-max="5">
 
-                                        <input type="hidden" class="ticket-price-input price-input" name="harga{{ $loop->index }}"
-                                            value="{{ $hargaItem->harga }}">
-                                        <input type="hidden" name="kategori{{ $loop->index }}" value="{{ $hargaItem->kategori }}">
+                                        <input type="hidden" class="ticket-price-input price-input" name="harga<?php echo e($loop->index); ?>"
+                                            value="<?php echo e($hargaItem->harga); ?>">
+                                        <input type="hidden" name="kategori<?php echo e($loop->index); ?>" value="<?php echo e($hargaItem->kategori); ?>">
 
                                         <button type="button" class="qty-btn btn-minus"
-                                            data-target="quantity{{ $loop->index }}">−</button>
+                                            data-target="quantity<?php echo e($loop->index); ?>">−</button>
 
                                         <input type="text"
-                                            class="form-control qty-num p-0 qty-input text-center border-0 bg-transparent quantity{{ $loop->index }}"
-                                            value="0" max="5" step="1" name="ticket{{ $loop->index }}" readonly>
+                                            class="form-control qty-num p-0 qty-input text-center border-0 bg-transparent quantity<?php echo e($loop->index); ?>"
+                                            value="0" max="5" step="1" name="ticket<?php echo e($loop->index); ?>" readonly>
 
-                                        <input type="hidden" name="orderBy{{ $loop->index }}" value="{{ $loop->index + 1 }}">
+                                        <input type="hidden" name="orderBy<?php echo e($loop->index); ?>" value="<?php echo e($loop->index + 1); ?>">
 
                                         <button type="button" class="qty-btn btn-plus"
-                                            data-target="quantity{{ $loop->index }}">+</button>
+                                            data-target="quantity<?php echo e($loop->index); ?>">+</button>
                                     </div>
-                                @else
+                                <?php else: ?>
                                     <div class="sold-out-badge">Sold Out</div>
-                                @endif
+                                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                             </div>
-                        @endforeach
+                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::endLoop(); ?><?php endif; ?><?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::closeLoop(); ?><?php endif; ?>
                     </div>
 
                     <div class="panel-total text-muted">
@@ -100,9 +103,9 @@
                             Checkout →
                         </button>
                     </div>
-                @else
+                <?php else: ?>
                     <p>Ticket Belum Tersedia...</p>
-                @endif
+                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
             </form>
 
         </div>
@@ -117,22 +120,22 @@
             <div class="section-block">
                 <div
                     style="display:flex;align-items:flex-center;justify-content:space-between;gap:16px;margin-bottom:14px;">
-                    <h1 class="event-title">{{ $ticket->event }}</h1>
+                    <h1 class="event-title"><?php echo e($ticket->event); ?></h1>
                     <div style="padding-top:12px;">
-                        <div class="status-pill">{{ $ticket->status === 'active' ? 'Active' : 'Close' }}</div>
+                        <div class="status-pill"><?php echo e($ticket->status === 'active' ? 'Active' : 'Close'); ?></div>
                     </div>
                 </div>
                 <div class="event-meta">
                     <div class="meta-item">
                         <div class="meta-icon">📅</div>
-                        <span>{{ date('Y-m-d H:i', strtotime($ticket->tanggal)) }}</span>
+                        <span><?php echo e(date('Y-m-d H:i', strtotime($ticket->tanggal))); ?></span>
                     </div>
                     <div class="meta-item">
                         <div class="meta-icon">📍</div>
-                        <span>{{ $ticket->alamat }}</span>
+                        <span><?php echo e($ticket->alamat); ?></span>
                     </div>
                 </div>
-                <a href="{{ $ticket->map }}" class="btn-location">🗺 View Location</a>
+                <a href="<?php echo e($ticket->map); ?>" class="btn-location">🗺 View Location</a>
             </div>
 
             <style>
@@ -144,7 +147,8 @@
 
 
                 <div class="description-text" id="descText">
-                    {!! $ticket->deskripsi !!}
+                    <?php echo $ticket->deskripsi; ?>
+
                 </div>
 
 
@@ -153,26 +157,23 @@
                 </button>
             </div>
 
-            {{-- <p class="description-highlight">
-                PURNAMA BERSANTAI 2026 is back — we won't stop, we will continue the journey to be your favorite
-                next-level Music Festival in Medan!!!
-            </p> --}}
+            
 
             <!-- TALENT -->
             <div class="talent-section">
                 <div class="section-label">Lineup Talent</div>
                 <div class="talent-grid">
-                    @foreach ($tickets as $talent)
+                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::openLoop(); ?><?php endif; ?><?php $__currentLoopData = $tickets; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $talent): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::startLoopIteration(); ?><?php endif; ?>
                         <div class="talent-card">
-                            <img src="{{ asset('/storage/talent/' . $talent->gambar) }}" class="talent-avatar"
-                                style="width: 100px; height:100px; object-fit: cover" alt="{{ $talent->talent }}">
+                            <img src="<?php echo e(asset('/storage/talent/' . $talent->gambar)); ?>" class="talent-avatar"
+                                style="width: 100px; height:100px; object-fit: cover" alt="<?php echo e($talent->talent); ?>">
 
                             <div>
-                                <div class="talent-name">{{ $talent->talent }}</div>
-                                {{-- <div class="talent-tag">Pop · Indie</div> --}}
+                                <div class="talent-name"><?php echo e($talent->talent); ?></div>
+                                
                             </div>
                         </div>
-                    @endforeach
+                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::endLoop(); ?><?php endif; ?><?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::closeLoop(); ?><?php endif; ?>
 
 
                 </div>
@@ -182,41 +183,19 @@
         <div class="location-card">
             <div class="section-label">Lokasi Event</div>
             <div class="map-placeholder">
-                @if ($ticket->map)
-                    <iframe src="https://www.google.com/maps?q={{ urlencode($ticket->alamat) }}&output=embed" loading="lazy"
+                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($ticket->map): ?>
+                    <iframe src="https://www.google.com/maps?q=<?php echo e(urlencode($ticket->alamat)); ?>&output=embed" loading="lazy"
                         allowfullscreen>
                     </iframe>
-                @else
+                <?php else: ?>
                     🗺️
-                @endif
+                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
             </div>
-            <div class="talent-name" style="margin-bottom:4px;">{{ $ticket->alamat }}</div>
-            <a href="{{ $ticket->map }}" class="map-label">Lihat di Google Map →</a>
+            <div class="talent-name" style="margin-bottom:4px;"><?php echo e($ticket->alamat); ?></div>
+            <a href="<?php echo e($ticket->map); ?>" class="map-label">Lihat di Google Map →</a>
         </div> --}}
 
-        {{-- <div class="location-card">
-            <div class="section-label">Informasi Event</div>
-            <div style="display:flex;flex-direction:column;gap:14px;margin-top:4px;">
-                <div style="display:flex;justify-content:space-between;align-items:center;">
-                    <span style="color:var(--muted);font-size:13px;">Tanggal</span>
-                    <span style="font-family:'Space Mono',monospace;font-size:12px;color:var(--text);">21 Agu
-                        2026</span>
-                </div>
-                <div style="display:flex;justify-content:space-between;align-items:center;">
-                    <span style="color:var(--muted);font-size:13px;">Waktu Mulai</span>
-                    <span style="font-family:'Space Mono',monospace;font-size:12px;color:var(--text);">15:00 WIB</span>
-                </div>
-                <div style="display:flex;justify-content:space-between;align-items:center;">
-                    <span style="color:var(--muted);font-size:13px;">Kategori</span>
-                    <span style="font-family:'Space Mono',monospace;font-size:12px;color:var(--gold);">Music
-                        Festival</span>
-                </div>
-                <div style="display:flex;justify-content:space-between;align-items:center;">
-                    <span style="color:var(--muted);font-size:13px;">Status</span>
-                    <div class="status-pill">● Active</div>
-                </div>
-            </div>
-        </div> --}}
+        
     </div>
     </div>
 
@@ -240,59 +219,61 @@
             </div>
 
             <div class="offcanvas-body small text-start">
-                <form action="{{ url('/checkout') }}" method="post" class="ticket-purchase-form">
-                    <input type="hidden" name="eventUid" value="{{ $ticket->uid }}">
+                <form action="<?php echo e(url('/checkout')); ?>" method="post" class="ticket-purchase-form">
+                    <input type="hidden" name="eventUid" value="<?php echo e($ticket->uid); ?>">
 
-                    @if ($lists->count() > 0)
-                        @csrf
+                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($lists->count() > 0): ?>
+                        <?php echo csrf_field(); ?>
 
-                        @foreach ($lists as $key => $hargaItemMobile)
-                            @php
+                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::openLoop(); ?><?php endif; ?><?php $__currentLoopData = $lists; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $key => $hargaItemMobile): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::startLoopIteration(); ?><?php endif; ?>
+                            <?php
                                 $kategoriMob = $hargaItemMobile->kategori;
                                 $qtyMob = $hargaItemMobile->qty;
                                 $soldMob = $jmlhQty[$kategoriMob] ?? 0;
-                            @endphp
+                            ?>
 
                             <div class="sheet-tier">
                                 <div class="tier-info">
                                     <div class="tier-name">
-                                        {{ $hargaItemMobile->kategori }}
+                                        <?php echo e($hargaItemMobile->kategori); ?>
+
                                     </div>
                                     <div class="tier-price">
                                         <span class="currency">Rp</span>
-                                        {{ number_format($hargaItemMobile->harga, 0, ',', '.') }}
+                                        <?php echo e(number_format($hargaItemMobile->harga, 0, ',', '.')); ?>
+
                                     </div>
                                 </div>
 
-                                @if ($soldMob < $qtyMob && $hargaItemMobile->status === 'active')
+                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($soldMob < $qtyMob && $hargaItemMobile->status === 'active'): ?>
                                     <div class="qty-control ticket-quantity-control input-wrapper"
-                                        data-target="quantity{{ $loop->index }}" data-price="{{ $hargaItemMobile->harga }}"
+                                        data-target="quantity<?php echo e($loop->index); ?>" data-price="<?php echo e($hargaItemMobile->harga); ?>"
                                         data-max="5">
 
-                                        <input type="hidden" class="ticket-price-input price-input" name="harga{{ $loop->index }}"
-                                            value="{{ $hargaItemMobile->harga }}">
+                                        <input type="hidden" class="ticket-price-input price-input" name="harga<?php echo e($loop->index); ?>"
+                                            value="<?php echo e($hargaItemMobile->harga); ?>">
 
-                                        <input type="hidden" name="kategori{{ $loop->index }}" value="{{ $hargaItemMobile->kategori }}">
+                                        <input type="hidden" name="kategori<?php echo e($loop->index); ?>" value="<?php echo e($hargaItemMobile->kategori); ?>">
 
-                                        <button type="button" class="qty-btn btn-minus" data-target="quantity{{ $loop->index }}">
+                                        <button type="button" class="qty-btn btn-minus" data-target="quantity<?php echo e($loop->index); ?>">
                                             <i class="fa fa-minus"></i>
                                         </button>
 
                                         <input type="text"
-                                            class="qty-num qty-input text-center border-0 bg-transparent quantity{{ $loop->index }}"
-                                            min="0" max="5" step="1" value="0" name="ticket{{ $loop->index }}" readonly>
+                                            class="qty-num qty-input text-center border-0 bg-transparent quantity<?php echo e($loop->index); ?>"
+                                            min="0" max="5" step="1" value="0" name="ticket<?php echo e($loop->index); ?>" readonly>
 
-                                        <input type="hidden" name="orderBy{{ $loop->index }}" value="{{ $loop->index + 1 }}">
+                                        <input type="hidden" name="orderBy<?php echo e($loop->index); ?>" value="<?php echo e($loop->index + 1); ?>">
 
-                                        <button type="button" class="qty-btn btn-plus" data-target="quantity{{ $loop->index }}">
+                                        <button type="button" class="qty-btn btn-plus" data-target="quantity<?php echo e($loop->index); ?>">
                                             <i class="fa fa-plus"></i>
                                         </button>
                                     </div>
-                                @else
+                                <?php else: ?>
                                     <div class="sold-out-badge">Sold Out</div>
-                                @endif
+                                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                             </div>
-                        @endforeach
+                        <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::endLoop(); ?><?php endif; ?><?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::closeLoop(); ?><?php endif; ?>
 
                         <div class="sheet-total">
                             <div>
@@ -303,9 +284,9 @@
                                 Check Out →
                             </button>
                         </div>
-                    @else
+                    <?php else: ?>
                         <p>Ticket Belum Tersedia...</p>
-                    @endif
+                    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
                 </form>
 
 
@@ -457,4 +438,5 @@
         calculateGrandTotal();
 
     </script>
-@endsection
+<?php $__env->stopSection(); ?>
+<?php echo $__env->make('frontend.index', \Illuminate\Support\Arr::except(get_defined_vars(), ['__data', '__path']))->render(); ?><?php /**PATH F:\PROJECT\GOTIK\TiketKonser\resources\views/frontend/page/ticket-new.blade.php ENDPATH**/ ?>
