@@ -1,4 +1,4 @@
-<div class="p-6 space-y-6">
+<div class="space-y-6">
     <!-- Header Section -->
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -117,7 +117,7 @@
         <form wire:submit.prevent="save" class="space-y-4">
             <div class="bg-indigo-50 dark:bg-indigo-900/20 p-4 rounded-2xl border border-indigo-100 dark:border-indigo-800 mb-4">
                 <p class="text-xs text-indigo-700 dark:text-indigo-400 leading-relaxed">
-                    Undangan akan dikirim via email. Staff harus melakukan verifikasi dan melengkapi profil (termasuk password) sebelum dapat masuk ke dashboard.
+                    Undangan akan dikirim via email. Jika email sudah terdaftar sebagai User biasa, maka akun tersebut akan otomatis diubah menjadi Staff. Roles Admin dan Penyewa tidak dapat diubah menjadi Staff.
                 </p>
             </div>
 

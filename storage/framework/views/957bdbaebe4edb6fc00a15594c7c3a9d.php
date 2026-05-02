@@ -34,10 +34,10 @@
                 </button>
                 <!-- Dropdown Menu -->
                 <div id="profileDropdown" class="dropdown-profile absolute right-0 mt-2 w-48 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg py-1 z-50">
-                    <a href="#" class="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+                    <a href="<?php echo e(route('dashboard.settings')); ?>" wire:navigate class="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
                         <i data-lucide="user" class="w-4 h-4"></i> Profil Saya
                     </a>
-                    <a href="#" class="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+                    <a href="<?php echo e(route('dashboard.settings')); ?>" wire:navigate class="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
                         <i data-lucide="settings" class="w-4 h-4"></i> Pengaturan
                     </a>
                     <hr class="border-slate-200 dark:border-slate-700 my-1">

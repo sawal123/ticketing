@@ -44,15 +44,15 @@ class StaffIndex extends Component
 
     public function save()
     {
-        $this->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email' . ($this->isEditMode ? ',' . $this->staff_id : ''),
-        ]);
-
         $user = Auth::user();
         $ownerId = ($user->role === 'staff') ? $user->parent_uid : $user->uid;
 
         if ($this->isEditMode) {
+            $this->validate([
+                'name' => 'required|string|max:255',
+                'email' => 'required|email|unique:users,email,' . $this->staff_id,
+            ]);
+
             $staff = User::findOrFail($this->staff_id);
             $staff->update([
                 'name' => $this->name,
@@ -60,21 +60,50 @@ class StaffIndex extends Component
             ]);
             session()->flash('success', 'Data staff berhasil diperbarui.');
         } else {
-            // Create staff user
-            $staff = User::create([
-                'uid' => (string) Str::uuid(),
-                'parent_uid' => $ownerId,
-                'name' => $this->name,
-                'email' => $this->email,
-                'role' => 'staff',
-                'password' => bcrypt(Str::random(16)),
-                'birthday' => '2000-01-01',
-                'nomor' => '-',
-                'alamat' => '-',
-                'kota' => '-',
-                'gender' => 'pria',
-                'gambar' => 'default.png',
-            ]);
+            // Create or Convert staff user
+            $existingUser = User::where('email', $this->email)->first();
+
+            if ($existingUser) {
+                if (in_array($existingUser->role, ['admin', 'penyewa'])) {
+                    $this->addError('email', 'Email ini sudah terdaftar sebagai ' . $existingUser->role . ' dan tidak dapat dijadikan staff.');
+                    return;
+                }
+
+                if ($existingUser->role === 'staff') {
+                    $this->addError('email', 'Email ini sudah terdaftar sebagai staff.');
+                    return;
+                }
+
+                // If role is 'user', convert to 'staff'
+                $existingUser->update([
+                    'role' => 'staff',
+                    'parent_uid' => $ownerId,
+                    'name' => $this->name, // Update name to the one provided in the form
+                ]);
+                $staff = $existingUser;
+                $message = 'User dengan email ini telah berhasil diubah menjadi staff.';
+            } else {
+                $this->validate([
+                    'name' => 'required|string|max:255',
+                    'email' => 'required|email|unique:users,email',
+                ]);
+
+                $staff = User::create([
+                    'uid' => (string) Str::uuid(),
+                    'parent_uid' => $ownerId,
+                    'name' => $this->name,
+                    'email' => $this->email,
+                    'role' => 'staff',
+                    'password' => bcrypt(Str::random(16)),
+                    'birthday' => '2000-01-01',
+                    'nomor' => '-',
+                    'alamat' => '-',
+                    'kota' => '-',
+                    'gender' => 'pria',
+                    'gambar' => 'default.png',
+                ]);
+                $message = 'Undangan staff berhasil dikirim ke ' . $staff->email;
+            }
 
             // Create verification URL
             $verifyUrl = URL::temporarySignedRoute(
@@ -86,7 +115,7 @@ class StaffIndex extends Component
             // Send invitation email
             dispatch(new SendStaffInvitationJob($staff->email, $staff->name, $verifyUrl));
 
-            session()->flash('success', 'Undangan staff berhasil dikirim ke ' . $staff->email);
+            session()->flash('success', $message);
         }
 
         $this->dispatch('close-modal', name: 'staff-modal');

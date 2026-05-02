@@ -1,9 +1,9 @@
 <?php $attributes ??= new \Illuminate\View\ComponentAttributeBag; ?>
-<?php foreach($attributes->onlyProps(['name', 'title', 'icon' => 'info']) as $__key => $__value) {
+<?php foreach($attributes->onlyProps(['name', 'title', 'icon' => 'info', 'maxWidth' => 'md']) as $__key => $__value) {
     $$__key = $$__key ?? $__value;
 } ?>
-<?php $attributes = $attributes->exceptProps(['name', 'title', 'icon' => 'info']); ?>
-<?php foreach (array_filter((['name', 'title', 'icon' => 'info']), 'is_string', ARRAY_FILTER_USE_KEY) as $__key => $__value) {
+<?php $attributes = $attributes->exceptProps(['name', 'title', 'icon' => 'info', 'maxWidth' => 'md']); ?>
+<?php foreach (array_filter((['name', 'title', 'icon' => 'info', 'maxWidth' => 'md']), 'is_string', ARRAY_FILTER_USE_KEY) as $__key => $__value) {
     $$__key = $$__key ?? $__value;
 } ?>
 <?php $__defined_vars = get_defined_vars(); ?>
@@ -32,7 +32,7 @@
 
     <!-- Modal Card -->
     <div 
-        class="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl w-full max-w-md p-6 relative z-10 border border-slate-200 dark:border-slate-700"
+        class="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl w-full max-w-<?php echo e($maxWidth); ?> p-6 relative z-10 border border-slate-200 dark:border-slate-700"
         x-transition:enter="transition ease-out duration-300 transform"
         x-transition:enter-start="opacity-0 scale-95 translate-y-4"
         x-transition:enter-end="opacity-100 scale-100 translate-y-0"

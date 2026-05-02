@@ -130,6 +130,7 @@ Route::prefix('dashboard')
             Route::get('/ubahEvents/{uid}', [PenyewaController::class, 'ubahEvents']);
             Route::get('/voucher', [PenyewaController::class, 'voucher']);
             Route::get('/partner', \App\Livewire\Dashboard\PartnerIndex::class)->name('dashboard.demo.partner');
+            Route::get('/settings', \App\Livewire\Dashboard\SettingsIndex::class)->name('dashboard.settings');
 
             Route::get('/staff/delete/{uid}', [StaffController::class, 'destroy']);
             Route::resource('staff', StaffController::class);
@@ -178,8 +179,8 @@ Route::prefix('dashboard')
         });
     });
 
-Route::get('/staff/verify/{uid}', [StaffController::class, 'verify'])->name('staff.verify');
-Route::post('/staff/complete-profile/{uid}', [StaffController::class, 'completeProfile']);
+Route::get('/staff/verify/{uid}', \App\Livewire\Auth\StaffVerify::class)->name('staff.verify');
+// Route::post('/staff/complete-profile/{uid}', [StaffController::class, 'completeProfile']);
 
 Route::get('admin/demo', DashboardDemo::class)->middleware(['auth', 'admin'])->name('admin.demo');
 Route::get('admin/demo/event', EventIndex::class)->middleware(['auth', 'admin'])->name('admin.event');
