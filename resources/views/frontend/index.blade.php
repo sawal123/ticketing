@@ -9,7 +9,7 @@
     <meta name="description" content="{{ $seo[0]->description }}">
     @stack('meta')
     <title>@yield('title', 'GOTIK ' . $title)</title>
-    <link rel="shortcut icon" href="{{ asset('storage/logo/' . $logo[0]->icon) }}" type="image/x-icon">
+    <link rel="shortcut icon" href="{{ asset('storage/icon/' . ($logo[0]->icon ?? '')) }}" type="image/x-icon">
 
     {{-- <link rel="stylesheet" href="{{ asset('assets/css/styleMore.css') }}"> --}}
     <link
@@ -24,7 +24,7 @@
         }
     </style> --}}
 
-      <link rel="stylesheet" href="{{ asset('landing/css/bootstrap.min.css') }}" />
+    <link rel="stylesheet" href="{{ asset('landing/css/bootstrap.min.css') }}" />
     <link rel="stylesheet" href="{{ asset('assets/plugins/sweetalert2/dist/sweetalert2.min.css') }}">
     <link href="{{ asset('/assets/css/icons.css') }}" rel="stylesheet">
     <link rel="stylesheet" href="{{ asset('landing/css/main-new.css') }}" />

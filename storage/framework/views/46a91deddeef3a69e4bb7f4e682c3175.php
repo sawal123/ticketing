@@ -9,7 +9,7 @@
     <meta name="description" content="<?php echo e($seo[0]->description); ?>">
     <?php echo $__env->yieldPushContent('meta'); ?>
     <title><?php echo $__env->yieldContent('title', 'GOTIK ' . $title); ?></title>
-    <link rel="shortcut icon" href="<?php echo e(asset('storage/logo/' . $logo[0]->icon)); ?>" type="image/x-icon">
+    <link rel="shortcut icon" href="<?php echo e(asset('storage/icon/' . ($logo[0]->icon ?? ''))); ?>" type="image/x-icon">
 
     
     <link

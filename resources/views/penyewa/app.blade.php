@@ -11,7 +11,7 @@
     <meta name="description" content="{{ $seo[0]->description }}">
     <meta name="author" content="Gotik">
     <!-- FAVICON -->
-    <link rel="shortcut icon" type="image/x-icon" href="{{ asset('storage/logo/' . $logo[0]->icon) }}">
+    <link rel="shortcut icon" type="image/x-icon" href="{{ asset('storage/icon/' . ($logo[0]->icon ?? '')) }}">
     <link rel="stylesheet" href="https://drive.google.com/uc?export=view&id=1yTLwNiCZhIdCWolQldwq4spHQkgZDqkG">
 
     <title>{{ $title }}</title>

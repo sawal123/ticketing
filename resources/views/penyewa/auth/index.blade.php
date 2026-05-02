@@ -8,7 +8,7 @@
 	<meta name="description" content="">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<!-- Favicon -->
-	<link rel="shortcut icon" href="{{ asset('storage/logo/' . $logo[0]->icon) }}" type="image/x-icon">
+	<link rel="shortcut icon" href="{{ asset('storage/icon/' . ($logo[0]->icon ?? '')) }}" type="image/x-icon">
 	<!-- Bootstrap CSS -->
 	<link rel="stylesheet" href="{{asset('penyewa/css/bootstrap.min.css')}}">
 	<!-- Fontawesome CSS -->
