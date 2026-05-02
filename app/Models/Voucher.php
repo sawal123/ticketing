@@ -17,4 +17,14 @@ class Voucher extends Model
     {
         return $this->hasMany(CartVoucher::class, 'code', 'code');
     }
+
+    public function hargaCart()
+    {
+        return $this->hasMany(HargaCart::class, 'voucher', 'code');
+    }
+
+    public function event()
+    {
+        return $this->belongsTo(Event::class, 'event_uid', 'uid');
+    }
 }

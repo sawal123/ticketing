@@ -114,6 +114,9 @@ Route::prefix('dashboard')
         Route::get('/demo/event/create', \App\Livewire\Dashboard\EventCreate::class)->name('dashboard.demo.event.create');
         Route::get('/demo/event/edit/{uid}', \App\Livewire\Dashboard\EventCreate::class)->name('dashboard.demo.event.edit');
         Route::get('/demo/event/{uid}', \App\Livewire\Dashboard\EventDetail::class)->name('dashboard.demo.event.detail');
+        Route::get('/demo/voucher', \App\Livewire\Dashboard\VoucherIndex::class)->name('dashboard.demo.voucher');
+        Route::get('/demo/penarikan', \App\Livewire\Dashboard\PenarikanIndex::class)->name('dashboard.demo.penarikan');
+        Route::get('/demo/staff', \App\Livewire\Dashboard\StaffIndex::class)->name('dashboard.demo.staff');
 
         // =========================================================
         // 1. AKSES BERSAMA (PENYEWA & STAFF)
@@ -126,7 +129,7 @@ Route::prefix('dashboard')
             Route::get('/event/{addEvent?}/{uid?}', [PenyewaController::class, 'event']);
             Route::get('/ubahEvents/{uid}', [PenyewaController::class, 'ubahEvents']);
             Route::get('/voucher', [PenyewaController::class, 'voucher']);
-            Route::get('/partner', [PenyewaController::class, 'partner']);
+            Route::get('/partner', \App\Livewire\Dashboard\PartnerIndex::class)->name('dashboard.demo.partner');
 
             Route::get('/staff/delete/{uid}', [StaffController::class, 'destroy']);
             Route::resource('staff', StaffController::class);

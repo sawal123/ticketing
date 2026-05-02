@@ -1,0 +1,110 @@
+
+
+<?php $__env->startSection('content'); ?>
+    <div class="page-header">
+        <h1 class="page-title">Dashboard Partner</h1>
+        <div>
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="javascript:void(0)">Dashboard</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Partner</li>
+            </ol>
+        </div>
+    </div>
+    <!-- PAGE-HEADER END -->
+    <div class="row row-sm">
+
+
+    </div>
+    <!-- ROW-1 OPEN -->
+    <div class="row row-sm">
+        <div class="col-lg-12">
+            <div class="card">
+                <div class="card-header " style="display: inline">
+                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(session('success')): ?>
+                        <div class="alert alert-primary">
+                            <?php echo e(session('success')); ?>
+
+                        </div>
+                    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                    <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(session('error')): ?>
+                        <div class="alert alert-primary">
+                            <?php echo e(session('error')); ?>
+
+                        </div>
+                    <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
+                    <div class="row">
+                        <div class="col">
+                            <div class="d-flex justify-content-between align-items-center w-full">
+                                <h3 class="card-title">File Export</h3>
+                                <button type="submit" class="btn btn-primary  my-2" data-bs-target="#modalPartner"
+                                    data-bs-effect="effect-sign" data-bs-toggle="modal"><i
+                                        class="fa fa-plus-square me-2"></i>Partner</button>
+                                <?php echo $__env->make('penyewa.molecul.modalPartner', \Illuminate\Support\Arr::except(get_defined_vars(), ['__data', '__path']))->render(); ?>
+                            </div>
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table id="tablePartner" class="table table-bordered text-nowrap key-buttons border-bottom">
+                            <thead>
+                                <tr>
+                                    <th class="border-bottom-0">No</th>
+                                    <th class="border-bottom-0">Nama</th>
+                                    <th class="border-bottom-0" style="width: 10%">Email</th>
+                                    <th class="border-bottom-0" style="width: 10%">City</th>
+                                    <th class="border-bottom-0" style="width: 10%">Alamat</th>
+                                    <th class="border-bottom-0">No Hp</th>
+                                    <th class="border-bottom-0">Status</th>
+                                    <th class="border-bottom-0">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::openLoop(); ?><?php endif; ?><?php $__currentLoopData = $partner; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $key => $ps): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::startLoopIteration(); ?><?php endif; ?>
+                                    <tr>
+                                        <td><?php echo e($key += 1); ?></td>
+                                        <td><?php echo e($ps->name); ?></td>
+                                        <td><?php echo e($ps->email); ?>
+
+                                        <td><?php echo e($ps->city); ?>
+
+                                        <td><?php echo e($ps->alamat); ?>
+
+                                        </td>
+                                        <td><?php echo e($ps->hp); ?></td>
+                                        <td><?php echo e($ps->status); ?></td>
+                                        <td>
+                                            <div class="g-2">
+                                                <button type="submit" class="btn text-primary btn-sm"
+                                                    data-bs-toggle="modal" data-bs-target="#upPartner"
+                                                    data-bs-original-title="Edit" data-uid="<?php echo e($ps->uid); ?>" data-name="<?php echo e($ps->name); ?>"
+                                                    data-email="<?php echo e($ps->email); ?>" data-city="<?php echo e($ps->city); ?>"
+                                                    data-alamat="<?php echo e($ps->alamat); ?>"
+                                                    data-nomor="<?php echo e($ps->hp); ?>"><span
+                                                        class="fe fe-edit fs-14"></span></button>
+
+                                                <a class="btn text-danger btn-sm delete"
+                                                    href="<?php echo e(url('dashboard/delete/partner/' . $ps->uid)); ?>"
+                                                    data-bs-toggle="tooltip" data-bs-original-title="Delete"><span
+                                                        class="fe fe-trash-2 fs-14"></span>
+                                            </div>
+                                        </td>
+
+
+                                    </tr>
+                                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::endLoop(); ?><?php endif; ?><?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::closeLoop(); ?><?php endif; ?>
+
+                            </tbody>
+
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+<?php $__env->stopSection(); ?>
+
+<?php echo $__env->make('penyewa.app', \Illuminate\Support\Arr::except(get_defined_vars(), ['__data', '__path']))->render(); ?><?php /**PATH J:\PROJECT\GOTIK\TiketKonser\resources\views/penyewa/page/partner.blade.php ENDPATH**/ ?>

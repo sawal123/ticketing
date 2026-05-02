@@ -1,4 +1,4 @@
-@props(['name', 'title', 'icon' => 'info'])
+@props(['name', 'title', 'icon' => 'info', 'maxWidth' => 'md'])
 
 <div 
     x-data="{ show: false }" 
@@ -20,7 +20,7 @@
 
     <!-- Modal Card -->
     <div 
-        class="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl w-full max-w-md p-6 relative z-10 border border-slate-200 dark:border-slate-700"
+        class="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl w-full max-w-{{ $maxWidth }} p-6 relative z-10 border border-slate-200 dark:border-slate-700"
         x-transition:enter="transition ease-out duration-300 transform"
         x-transition:enter-start="opacity-0 scale-95 translate-y-4"
         x-transition:enter-end="opacity-100 scale-100 translate-y-0"

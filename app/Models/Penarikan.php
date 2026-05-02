@@ -9,7 +9,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Penarikan extends Model
 {
     use HasFactory, SoftDeletes;
-    protected $fillable=['uid', 'uid_user', 'amount', 'note', 'kwitansi', 'status'];
+
+    protected $fillable = ['uid', 'uid_user', 'amount', 'note', 'kwitansi', 'status'];
 
     public function user()
     {

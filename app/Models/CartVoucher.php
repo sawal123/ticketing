@@ -15,5 +15,10 @@ class CartVoucher extends Model
     {
         return $this->belongsTo(Voucher::class, 'code', 'code');
     }
+
+    public function cart()
+    {
+        return $this->belongsTo(Cart::class, 'uid', 'uid');
+    }
     
 }

@@ -172,23 +172,27 @@ class TransactionController extends Controller
                     $transaction->status_transaksi = 'PENDING';
                     $carts->status = 'PENDING';
                 } else {
-                    $transaction->status_transaksi = 'SUCCESS';
-                    $transaction->payment_type = $type;
-                    $carts->status = 'SUCCESS';
-                    if ($voucher !== null) {
-                        $voucher->digunakan += 1;
-                        $voucher->save();
+                    if ($carts->status !== 'SUCCESS') {
+                        $transaction->status_transaksi = 'SUCCESS';
+                        $transaction->payment_type = $type;
+                        $carts->status = 'SUCCESS';
+                        if ($voucher !== null) {
+                            $voucher->digunakan += 1;
+                            $voucher->save();
+                        }
                     }
                 }
             }
         } else if ($status === 'settlement') {
-            $transaction->status_transaksi = 'SUCCESS';
-            $transaction->payment_type = $type;
-            $carts->status = 'SUCCESS';
+            if ($carts->status !== 'SUCCESS') {
+                $transaction->status_transaksi = 'SUCCESS';
+                $transaction->payment_type = $type;
+                $carts->status = 'SUCCESS';
 
-            if ($voucher !== null) {
-                $voucher->digunakan += 1;
-                $voucher->save();
+                if ($voucher !== null) {
+                    $voucher->digunakan += 1;
+                    $voucher->save();
+                }
             }
         } else if ($status === 'pending') {
             $transaction->status_transaksi = 'PENDING';
