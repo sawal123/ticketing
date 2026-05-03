@@ -22,9 +22,12 @@ class CheckRole
         }
 
         $user = Auth::user();
+        $userRole = strtolower($user->role);
 
         // 2. Cek apakah role user ada dalam daftar yang diizinkan (...$roles)
-        if (in_array($user->role, $roles)) {
+        $allowedRoles = array_map('strtolower', $roles);
+
+        if (in_array($userRole, $allowedRoles)) {
             return $next($request);
         }
 

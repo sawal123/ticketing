@@ -23,10 +23,12 @@ class Login extends Component
         if (Auth::attempt(['email' => $this->email, 'password' => $this->password], $this->remember)) {
             session()->regenerate();
 
-            if (Auth::user()->role === 'admin') {
+            $role = strtolower(Auth::user()->role);
+
+            if ($role === 'admin') {
                 return redirect('/admin');
             }
-            if (Auth::user()->role === 'penyewa' || Auth::user()->role === 'staff') {
+            if ($role === 'penyewa' || $role === 'staff') {
                 return redirect('/dashboard');
             }
             

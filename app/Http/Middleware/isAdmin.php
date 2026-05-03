@@ -17,7 +17,7 @@ class isAdmin
     public function handle(Request $request, Closure $next): Response
     {
         if (Auth::check()) {
-            if (Auth::user()->role === 'admin') {
+            if (strtolower(Auth::user()->role) === 'admin') {
                 return $next($request);
             }
             // Jika sudah login tapi bukan admin, lempar 403
