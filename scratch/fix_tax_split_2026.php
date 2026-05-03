@@ -13,15 +13,19 @@ echo 'Menganalisis '.$carts->count()." transaksi sejak 27 Maret 2026...\n";
 
 $count = 0;
 foreach ($carts as $cart) {
-    // 1. Hitung Subtotal
-    $subtotal = HargaCart::where('uid', $cart->uid)->sum(DB::raw('quantity * harga_ticket'));
+    // 1. Hitung Subtotal Gross & Discount
+    $items = HargaCart::where('uid', $cart->uid)->get();
+    $subtotalGross = $items->sum(fn($i) => $i->quantity * $i->harga_ticket);
+    $totalDisc = $items->sum('disc');
+    
+    $subtotalNet = $subtotalGross - $totalDisc;
 
-    if ($subtotal <= 0) {
+    if ($subtotalGross <= 0) {
         continue;
     }
 
-    // 2. Hitung Pajak (10%)
-    $newPajak = $subtotal * 0.1;
+    // 2. Hitung Pajak (10% dari Net)
+    $newPajak = $subtotalNet * 0.1;
 
     // 3. Hitung Internet Fee (Sisa dari total fee yang tersimpan)
     // Saat ini kemungkinan besar: current_pajak = 0, current_internet_fee = (Pajak + Fee Asli)
@@ -45,7 +49,7 @@ foreach ($carts as $cart) {
     ]);
 
     $count++;
-    echo 'Fixed ['.$cart->invoice.']: Subtotal '.number_format($subtotal).' | Pajak 10%: '.number_format($newPajak).' | Fee: '.number_format($newInternetFee)."\n";
+    echo 'Fixed ['.$cart->invoice.']: Subtotal '.number_format($subtotalGross).' | Pajak 10%: '.number_format($newPajak).' | Fee: '.number_format($newInternetFee)."\n";
 }
 
 echo "\nSelesai! Berhasil memperbaiki ".$count." data transaksi.\n";

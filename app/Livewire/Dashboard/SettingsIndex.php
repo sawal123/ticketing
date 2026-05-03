@@ -50,7 +50,9 @@ class SettingsIndex extends Component
 
     public function loadBanks()
     {
-        $this->banks = Bank::where('uid_user', Auth::user()->uid)->get();
+        $user = Auth::user();
+        $ownerId = ($user->role === 'staff') ? $user->parent_uid : $user->uid;
+        $this->banks = Bank::where('uid_user', $ownerId)->get();
     }
 
     public function setTab($tab)
@@ -142,12 +144,23 @@ class SettingsIndex extends Component
             'nomor_rekening' => 'required|numeric',
         ]);
 
+        $user = Auth::user();
+        $ownerId = ($user->role === 'staff') ? $user->parent_uid : $user->uid;
+
         if ($this->isEditBank) {
             $bank = Bank::find($this->bank_id);
         } else {
+            // Check if account already exists
+            $existingCount = Bank::where('uid_user', $ownerId)->count();
+            if ($existingCount >= 1) {
+                session()->flash('error', 'Maksimal hanya diperbolehkan 1 rekening bank.');
+                $this->dispatch('close-modal', name: 'bank-modal');
+                return;
+            }
+
             $bank = new Bank();
             $bank->uid = strtolower(\Illuminate\Support\Str::random(10));
-            $bank->uid_user = Auth::user()->uid;
+            $bank->uid_user = $ownerId;
         }
 
         $bank->nama = $this->nama_rekening;

@@ -139,7 +139,10 @@
                 <div class="space-y-6">
                     <div class="flex items-center justify-between">
                         <h3 class="text-lg font-bold text-slate-800 dark:text-white">Rekening Bank</h3>
-                        <x-admin.button wire:click="openBankModal" icon="plus" variant="primary">
+                        <x-admin.button wire:click="openBankModal" icon="plus" variant="primary" 
+                            disabled="{{ count($banks) >= 1 }}" 
+                            title="{{ count($banks) >= 1 ? 'Maksimal 1 rekening diperbolehkan' : 'Tambah Bank' }}"
+                            class="{{ count($banks) >= 1 ? 'opacity-50 cursor-not-allowed' : '' }}">
                             Tambah Bank
                         </x-admin.button>
                     </div>

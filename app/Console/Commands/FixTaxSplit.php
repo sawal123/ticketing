@@ -51,19 +51,21 @@ class FixTaxSplit extends Command
 
         $count = 0;
         foreach ($carts as $cart) {
-            // 1. Hitung Subtotal
+            // 1. Hitung Subtotal Gross
             $subtotal = HargaCart::where('uid', $cart->uid)->sum(DB::raw('quantity * harga_ticket'));
 
             if ($subtotal <= 0) {
                 $bar->advance();
-
                 continue;
             }
 
-            // 2. Hitung Pajak (10%)
-            $newPajak = $subtotal * 0.1;
+            // 2. Hitung Diskon (Total disc dari HargaCart)
+            $diskon = (int) HargaCart::where('uid', $cart->uid)->sum('disc');
 
-            // 3. Rekonstruksi Total Fee dari tabel transactions
+            // 3. Hitung Pajak (10% dari Net Revenue)
+            $newPajak = ($subtotal - $diskon) * 0.1;
+
+            // 4. Rekonstruksi Total Fee dari tabel transactions
             $trx = Transaction::where('uid', $cart->uid)
                 ->orWhere('invoice', $cart->invoice)
                 ->first();
@@ -71,16 +73,8 @@ class FixTaxSplit extends Command
             $totalRecordedFee = 0;
 
             if ($trx) {
-                // Gross Amount - Subtotal = Total Fee (Pajak + Internet Fee)
+                // Gross Amount - Net Ticket = Total Fee (Pajak + Internet Fee)
                 $grossAmount = (int) $trx->amount;
-
-                // Kurangi diskon voucher jika ada
-                $diskon = 0;
-                $cartV = CartVoucher::where('uid', $cart->uid)->first();
-                if ($cartV) {
-                    $diskon = $cartV->nominal; // Asumsikan nominal sudah dihitung
-                }
-
                 $totalRecordedFee = $grossAmount - ($subtotal - $diskon);
             } else {
                 // Fallback jika tidak ada di tabel transaction (misal: Cash)
@@ -93,7 +87,7 @@ class FixTaxSplit extends Command
                 }
             }
 
-            // 4. Hitung Internet Fee Asli
+            // 5. Hitung Internet Fee Asli
             $newInternetFee = $totalRecordedFee - $newPajak;
 
             // Pastikan tidak negatif akibat presisi / data legacy
@@ -101,7 +95,7 @@ class FixTaxSplit extends Command
                 $newInternetFee = 0;
             }
 
-            // 5. Update data
+            // 6. Update data
             $cart->update([
                 'pajak' => $newPajak,
                 'pajak_persen' => 10,
