@@ -1,0 +1,51 @@
+<?php
+
+namespace App\Livewire\Auth;
+
+use App\Models\User;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
+use Livewire\Component;
+
+class Register extends Component
+{
+    public $name;
+    public $email;
+    public $password;
+    public $password_confirmation;
+
+    protected $rules = [
+        'name' => 'required|string|max:255',
+        'email' => 'required|email|unique:users,email',
+        'password' => 'required|min:8|confirmed|regex:/^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]+$/',
+    ];
+
+    protected $messages = [
+        'password.regex' => 'Password harus mengandung huruf dan angka.',
+    ];
+
+    public function register()
+    {
+        $this->validate();
+
+        $user = User::create([
+            'uid' => Str::uuid(),
+            'name' => $this->name,
+            'email' => $this->email,
+            'password' => Hash::make($this->password),
+            'role' => User::USER_ROLE,
+            'birthday' => now()->format('Y-m-d'), // Default for simplified register
+            'gender' => 'Other', // Default
+        ]);
+
+        Auth::login($user);
+
+        return redirect('/');
+    }
+
+    public function render()
+    {
+        return view('livewire.auth.register')->layout('layouts.auth', ['title' => 'Sign Up']);
+    }
+}

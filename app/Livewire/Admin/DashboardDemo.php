@@ -59,11 +59,12 @@ class DashboardDemo extends Component
             }
         }
 
-        // 3. Trend Data for Sparklines (Last 7 days)
+        // 3. Trend Data (Last 7 days)
         $last7Days = collect(range(6, 0))->map(function ($days) {
             return Carbon::now()->subDays($days)->format('Y-m-d');
         });
 
+        // Revenue Trend
         $dailyRevenue = Cart::where('carts.status', 'SUCCESS')
             ->where('carts.created_at', '>=', Carbon::now()->subDays(7))
             ->join('harga_carts', 'carts.uid', '=', 'harga_carts.uid')
@@ -75,7 +76,36 @@ class DashboardDemo extends Component
             ->get()
             ->pluck('revenue', 'date');
 
-        $trendData = $last7Days->map(fn ($date) => $dailyRevenue->get($date, 0))->toArray();
+        // Cash Tickets Trend (Quantity)
+        $dailyCash = Cart::where('carts.status', 'SUCCESS')
+            ->where('payment_type', 'cash')
+            ->where('carts.created_at', '>=', Carbon::now()->subDays(7))
+            ->join('harga_carts', 'carts.uid', '=', 'harga_carts.uid')
+            ->select(
+                DB::raw('DATE(carts.created_at) as date'),
+                DB::raw('SUM(harga_carts.quantity) as count')
+            )
+            ->groupBy('date')
+            ->get()
+            ->pluck('count', 'date');
+
+        // Non-Cash Tickets Trend (Quantity)
+        $dailyNonCash = Cart::where('carts.status', 'SUCCESS')
+            ->where('payment_type', '!=', 'cash')
+            ->where('carts.created_at', '>=', Carbon::now()->subDays(7))
+            ->join('harga_carts', 'carts.uid', '=', 'harga_carts.uid')
+            ->select(
+                DB::raw('DATE(carts.created_at) as date'),
+                DB::raw('SUM(harga_carts.quantity) as count')
+            )
+            ->groupBy('date')
+            ->get()
+            ->pluck('count', 'date');
+
+        $revenueTrend = $last7Days->map(fn ($date) => (int)$dailyRevenue->get($date, 0))->toArray();
+        $cashTrend = $last7Days->map(fn ($date) => (int)$dailyCash->get($date, 0))->toArray();
+        $nonCashTrend = $last7Days->map(fn ($date) => (int)$dailyNonCash->get($date, 0))->toArray();
+        $chartLabels = $last7Days->map(fn ($date) => Carbon::parse($date)->format('d M'))->toArray();
 
         // 4. Recent Transactions for Table
         $recentTransactions = Transaction::with(['user', 'event'])
@@ -90,7 +120,10 @@ class DashboardDemo extends Component
             'totalTransactions' => $totalTransactions,
             'genderData' => $genderData,
             'ageData' => $ageData,
-            'trendData' => $trendData,
+            'revenueTrend' => $revenueTrend,
+            'cashTrend' => $cashTrend,
+            'nonCashTrend' => $nonCashTrend,
+            'chartLabels' => $chartLabels,
             'recentTransactions' => $recentTransactions,
         ])->layout('admin.layout', ['title' => 'Dashboard Demo']);
     }

@@ -453,6 +453,84 @@
             }
         });
 
+        // 🛡️ PENGECEKAN TRANSAKSI UNPAID
+        const hasUnpaid = {{ $hasUnpaid ? 'true' : 'false' }};
+        const unpaidUid = "{{ $unpaidUid }}";
+        const userUid = "{{ Auth::check() ? Auth::user()->uid : '' }}";
+
+        const checkoutForms = document.querySelectorAll('.ticket-purchase-form');
+        const checkBtns = document.querySelectorAll('.checkButton');
+        
+        function showUnpaidWarning(e) {
+            if (hasUnpaid) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                const currentForm = e.target.closest('form');
+
+                Swal.fire({
+                    title: 'Transaksi Tertunda!',
+                    text: 'Anda masih memiliki tiket yang belum dibayar. Pilih aksi untuk melanjutkan.',
+                    icon: 'warning',
+                    showDenyButton: true,
+                    showCancelButton: true,
+                    confirmButtonText: 'Lanjut Bayar Tiket Lama',
+                    denyButtonText: 'Hapus & Buat Baru',
+                    cancelButtonText: 'Tutup',
+                    confirmButtonColor: '#6366f1', // Indigo
+                    denyButtonColor: '#ef4444',    // Rose
+                    background: '#16152a',
+                    color: '#fff',
+                    customClass: {
+                        popup: 'rounded-[2rem] border border-white/10 shadow-2xl',
+                        title: 'text-xl font-bold',
+                        htmlContainer: 'text-slate-400'
+                    }
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        // Lanjut ke riwayat transaksi
+                        window.location.href = '/transaksi';
+                    } else if (result.isDenied) {
+                        // Hapus transaksi lama & Lanjut checkout baru
+                        Swal.fire({
+                            title: 'Memproses...',
+                            html: 'Menghapus transaksi lama Anda',
+                            allowOutsideClick: false,
+                            didOpen: () => {
+                                Swal.showLoading();
+                            },
+                            background: '#16152a',
+                            color: '#fff'
+                        });
+
+                        fetch(`/detail-ticket/delete/${unpaidUid}/${userUid}`)
+                            .then(() => {
+                                // Submit form yang sekarang setelah hapus berhasil
+                                if (currentForm) {
+                                    currentForm.submit();
+                                }
+                            })
+                            .catch(err => {
+                                console.error('Gagal menghapus:', err);
+                                Swal.fire('Error', 'Gagal menghapus transaksi lama', 'error');
+                            });
+                    }
+                });
+                
+                return false;
+            }
+        }
+
+        // Daftarkan listener ke semua tombol checkout (Desktop & Mobile)
+        checkBtns.forEach(btn => {
+            btn.addEventListener('click', showUnpaidWarning);
+        });
+
+        // Daftarkan listener ke semua form checkout (Desktop & Mobile)
+        checkoutForms.forEach(form => {
+            form.addEventListener('submit', showUnpaidWarning);
+        });
+
         // Inisialisasi awal
         calculateGrandTotal();
 

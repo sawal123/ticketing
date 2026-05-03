@@ -22,10 +22,21 @@
 
             <div class="flex flex-col">
                 <p class="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Total Users</p>
-                <div class="flex items-end justify-between">
+                <div class="flex items-end justify-between" x-data="{
+                    init() {
+                        new Chart(this.$refs.spark, {
+                            type: 'line',
+                            data: {
+                                labels: ['', '', '', '', '', '', ''],
+                                datasets: [{ data: [1, 5, 2, 8, 4, 9, 3], borderColor: '#6366f1' }]
+                            },
+                            options: sparklineOptions
+                        });
+                    }
+                }">
                     <h3 class="text-3xl font-extrabold text-slate-800 dark:text-white"><?php echo e(number_format($totalUsers)); ?></h3>
                     <div class="w-24 h-10">
-                        <canvas id="usersSparkline"></canvas>
+                        <canvas x-ref="spark"></canvas>
                     </div>
                 </div>
             </div>
@@ -55,10 +66,22 @@
 
             <div class="flex flex-col">
                 <p class="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Total Omset</p>
-                <div class="flex items-end justify-between">
+                <div class="flex items-end justify-between" x-data="{
+                    revenue: <?php echo \Illuminate\Support\Js::from($revenueTrend)->toHtml() ?>,
+                    init() {
+                        new Chart(this.$refs.spark, {
+                            type: 'line',
+                            data: {
+                                labels: ['', '', '', '', '', '', ''],
+                                datasets: [{ data: this.revenue, borderColor: '#10b981' }]
+                            },
+                            options: sparklineOptions
+                        });
+                    }
+                }">
                     <h3 class="text-3xl font-extrabold text-slate-800 dark:text-white">Rp <?php echo e(number_format($totalOmset, 0, ',', '.')); ?></h3>
                     <div class="w-24 h-10">
-                        <canvas id="omsetSparkline"></canvas>
+                        <canvas x-ref="spark"></canvas>
                     </div>
                 </div>
             </div>
@@ -88,12 +111,154 @@
 
             <div class="flex flex-col">
                 <p class="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Total Transaction</p>
-                <div class="flex items-end justify-between">
+                <div class="flex items-end justify-between" x-data="{
+                    init() {
+                        new Chart(this.$refs.spark, {
+                            type: 'line',
+                            data: {
+                                labels: ['', '', '', '', '', '', ''],
+                                datasets: [{ data: [10, 15, 8, 20, 12, 25, 18], borderColor: '#f59e0b' }]
+                            },
+                            options: sparklineOptions
+                        });
+                    }
+                }">
                     <h3 class="text-3xl font-extrabold text-slate-800 dark:text-white"><?php echo e(number_format($totalTransactions)); ?></h3>
                     <div class="w-24 h-10">
-                        <canvas id="transSparkline"></canvas>
+                        <canvas x-ref="spark"></canvas>
                     </div>
                 </div>
+            </div>
+         <?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginalad5130b5347ab6ecc017d2f5a278b926)): ?>
+<?php $attributes = $__attributesOriginalad5130b5347ab6ecc017d2f5a278b926; ?>
+<?php unset($__attributesOriginalad5130b5347ab6ecc017d2f5a278b926); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginalad5130b5347ab6ecc017d2f5a278b926)): ?>
+<?php $component = $__componentOriginalad5130b5347ab6ecc017d2f5a278b926; ?>
+<?php unset($__componentOriginalad5130b5347ab6ecc017d2f5a278b926); ?>
+<?php endif; ?>
+    </div>
+
+    <script>
+        window.sparklineOptions = {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false }, tooltip: { enabled: false } },
+            scales: { x: { display: false }, y: { display: false } },
+            elements: { 
+                line: { tension: 0.4, borderWidth: 2 },
+                point: { radius: 0 }
+            }
+        };
+    </script>
+
+    <!-- Main Trend Chart -->
+    <div class="mb-8" x-data="{
+        labels: <?php echo \Illuminate\Support\Js::from($chartLabels)->toHtml() ?>,
+        revenue: <?php echo \Illuminate\Support\Js::from($revenueTrend)->toHtml() ?>,
+        cash: <?php echo \Illuminate\Support\Js::from($cashTrend)->toHtml() ?>,
+        nonCash: <?php echo \Illuminate\Support\Js::from($nonCashTrend)->toHtml() ?>,
+        init() {
+            this.renderChart();
+        },
+        renderChart() {
+            new Chart(this.$refs.mainChart, {
+                type: 'line',
+                data: {
+                    labels: this.labels,
+                    datasets: [
+                        {
+                            label: 'Total Uang (Rp)',
+                            data: this.revenue,
+                            borderColor: '#10b981',
+                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                            borderWidth: 3,
+                            fill: true,
+                            tension: 0.4,
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: 'Tiket Cash',
+                            data: this.cash,
+                            borderColor: '#6366f1',
+                            backgroundColor: 'transparent',
+                            borderWidth: 2,
+                            borderDash: [5, 5],
+                            tension: 0.4,
+                            yAxisID: 'y1'
+                        },
+                        {
+                            label: 'Tiket Non-Cash',
+                            data: this.nonCash,
+                            borderColor: '#f59e0b',
+                            backgroundColor: 'transparent',
+                            borderWidth: 2,
+                            tension: 0.4,
+                            yAxisID: 'y1'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: { position: 'top', align: 'end' },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) label += ': ';
+                                    if (context.datasetIndex === 0) {
+                                        label += 'Rp ' + new Intl.NumberFormat('id-ID').format(context.parsed.y);
+                                    } else {
+                                        label += context.parsed.y + ' Tiket';
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            grid: { drawOnChartArea: false },
+                            ticks: {
+                                callback: (value) => 'Rp ' + new Intl.NumberFormat('id-ID', { notation: 'compact' }).format(value)
+                            }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            grid: { color: 'rgba(0,0,0,0.05)' },
+                            ticks: {
+                                callback: (value) => value + ' Tkt'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    }">
+        <?php if (isset($component)) { $__componentOriginalad5130b5347ab6ecc017d2f5a278b926 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginalad5130b5347ab6ecc017d2f5a278b926 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.admin.card','data' => ['title' => 'Tren Penjualan (7 Hari Terakhir)','icon' => 'trending-up','iconColor' => 'indigo']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? (array) $attributes->getIterator() : [])); ?>
+<?php $component->withName('admin.card'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag && $constructor = (new ReflectionClass(Illuminate\View\AnonymousComponent::class))->getConstructor()): ?>
+<?php $attributes = $attributes->except(collect($constructor->getParameters())->map->getName()->all()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['title' => 'Tren Penjualan (7 Hari Terakhir)','icon' => 'trending-up','iconColor' => 'indigo']); ?>
+<?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::processComponentKey($component); ?>
+
+            <div class="h-80 w-full">
+                <canvas x-ref="mainChart"></canvas>
             </div>
          <?php echo $__env->renderComponent(); ?>
 <?php endif; ?>
@@ -122,9 +287,30 @@
 <?php $component->withAttributes(['title' => 'Demografi Gender','icon' => 'pie-chart','iconColor' => 'indigo']); ?>
 <?php \Livewire\Features\SupportCompiledWireKeys\SupportCompiledWireKeys::processComponentKey($component); ?>
 
-            <div class="flex flex-col md:flex-row items-center justify-around py-4">
+            <div class="flex flex-col md:flex-row items-center justify-around py-4" x-data="{
+                genderData: <?php echo \Illuminate\Support\Js::from(array_values($genderData))->toHtml() ?>,
+                init() {
+                    new Chart(this.$refs.genderChart, {
+                        type: 'doughnut',
+                        data: {
+                            labels: ['Pria', 'Wanita'],
+                            datasets: [{
+                                data: this.genderData,
+                                backgroundColor: ['#6366f1', '#f472b6'],
+                                borderWidth: 0
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            cutout: '70%',
+                            plugins: { legend: { display: false } }
+                        }
+                    });
+                }
+            }">
                 <div class="w-48 h-48 mb-4 md:mb-0">
-                    <canvas id="genderChart"></canvas>
+                    <canvas x-ref="genderChart"></canvas>
                 </div>
                 <div class="space-y-4 w-full md:w-auto">
                     <div class="flex items-center justify-between gap-8">
@@ -224,7 +410,7 @@
                     </div>
                 </td>
                 <td class="px-5 py-4 text-slate-600 dark:text-slate-400 whitespace-nowrap">
-                    <?php echo e(Str::limit($transaction->event->nama ?? 'N/A', 25)); ?>
+                    <?php echo e(Str::limit($transaction->event->event ?? 'N/A', 25)); ?>
 
                 </td>
                 <td class="px-5 py-4 font-bold text-slate-800 dark:text-slate-200 whitespace-nowrap">
@@ -276,83 +462,5 @@
 <?php $component = $__componentOriginal53cf72b3da4b8700c9115c02c0eead10; ?>
 <?php unset($__componentOriginal53cf72b3da4b8700c9115c02c0eead10); ?>
 <?php endif; ?>
-
-    <?php $__env->startPush('scripts'); ?>
-    <script>
-        document.addEventListener('livewire:navigated', () => {
-            const trendData = <?php echo json_encode($trendData, 15, 512) ?>;
-            const genderData = <?php echo json_encode(array_values($genderData), 15, 512) ?>;
-
-            const sparklineOptions = {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: false }, tooltip: { enabled: false } },
-                scales: { x: { display: false }, y: { display: false } },
-                elements: { 
-                    line: { tension: 0.4, borderWidth: 2 },
-                    point: { radius: 0 }
-                }
-            };
-
-            // Users Sparkline
-            new Chart(document.getElementById('usersSparkline'), {
-                type: 'line',
-                data: {
-                    labels: ['', '', '', '', '', '', ''],
-                    datasets: [{
-                        data: [1, 5, 2, 8, 4, 9, 3], // Example random trend
-                        borderColor: '#6366f1',
-                    }]
-                },
-                options: sparklineOptions
-            });
-
-            // Omset Sparkline
-            new Chart(document.getElementById('omsetSparkline'), {
-                type: 'line',
-                data: {
-                    labels: ['', '', '', '', '', '', ''],
-                    datasets: [{
-                        data: trendData,
-                        borderColor: '#10b981',
-                    }]
-                },
-                options: sparklineOptions
-            });
-
-            // Transactions Sparkline
-            new Chart(document.getElementById('transSparkline'), {
-                type: 'line',
-                data: {
-                    labels: ['', '', '', '', '', '', ''],
-                    datasets: [{
-                        data: [10, 15, 8, 20, 12, 25, 18], // Example random trend
-                        borderColor: '#f59e0b',
-                    }]
-                },
-                options: sparklineOptions
-            });
-
-            // Gender Chart
-            new Chart(document.getElementById('genderChart'), {
-                type: 'doughnut',
-                data: {
-                    labels: ['Pria', 'Wanita'],
-                    datasets: [{
-                        data: genderData,
-                        backgroundColor: ['#6366f1', '#f472b6'],
-                        borderWidth: 0
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    cutout: '70%',
-                    plugins: { legend: { display: false } }
-                }
-            });
-        });
-    </script>
-    <?php $__env->stopPush(); ?>
 </div>
 <?php /**PATH F:\PROJECT\GOTIK\TiketKonser\resources\views/livewire/admin/dashboard-demo.blade.php ENDPATH**/ ?>

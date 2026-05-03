@@ -85,7 +85,7 @@
             @forelse($activeEvents->take(2) as $event)
                 <x-admin.card class="p-4 rounded-[2rem] group">
                     <div class="aspect-[16/10] rounded-2xl overflow-hidden mb-4 relative">
-                        <img src="{{ asset('storage/cover/' . $event->cover) }}" alt="{{ $event->event }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+                        <img src="{{ asset('storage/cover/' . $event->cover) }}" alt="{{ $event->event }}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 {{ $event->status !== 'active' ? 'grayscale opacity-75' : '' }}">
                     </div>
 
                     <h4 class="text-lg font-extrabold text-slate-800 dark:text-white mb-6 uppercase tracking-tight line-clamp-1 px-1">
@@ -93,17 +93,17 @@
                     </h4>
 
                     <div class="grid grid-cols-3 gap-2">
-                        <a href="{{ route('dashboard.demo.event.detail', $event->uid) }}" wire:navigate>
+                        <a href="{{ route('dashboard.event.detail', $event->uid) }}" wire:navigate>
                             <x-admin.button variant="secondary" class="w-full !px-1 !text-[10px] uppercase font-extrabold">
                                 Detail Event
                             </x-admin.button>
                         </a>
-                        <a href="{{ route('dashboard.demo.event.detail', $event->uid) }}?activeTab=transaksi" wire:navigate>
+                        <a href="{{ route('dashboard.event.detail', $event->uid) }}?activeTab=transaksi" wire:navigate>
                             <x-admin.button variant="primary" class="w-full !px-1 !text-[10px] uppercase font-extrabold">
                                 Trx Online
                             </x-admin.button>
                         </a>
-                        <a href="{{ route('dashboard.demo.event.detail', $event->uid) }}?activeTab=transaksi&filterPayment=cash" wire:navigate>
+                        <a href="{{ route('dashboard.event.detail', $event->uid) }}?activeTab=transaksi&filterPayment=cash" wire:navigate>
                             <x-admin.button variant="primary" class="w-full !px-1 !text-[10px] uppercase font-extrabold">
                                 Trx Cash
                             </x-admin.button>
@@ -118,29 +118,115 @@
         </div>
     </div>
 
-    <!-- Analytic Section (Footer) -->
-    <x-admin.card class="p-6 mt-6">
-        <div class="flex items-center justify-between mb-6">
-            <h3 class="font-bold text-slate-800 dark:text-white">Graphic Sales Analytic</h3>
-            <div class="flex items-center gap-4">
-                <div class="flex items-center gap-1.5">
-                    <div class="w-2 h-2 rounded-full bg-indigo-600"></div>
-                    <span class="text-[10px] font-bold text-slate-400 uppercase">Online</span>
-                </div>
-                <div class="flex items-center gap-1.5">
-                    <div class="w-2 h-2 rounded-full bg-emerald-500"></div>
-                    <span class="text-[10px] font-bold text-slate-400 uppercase">Cash</span>
-                </div>
-                <div class="flex items-center gap-1.5">
-                    <div class="w-2 h-2 rounded-full bg-amber-500"></div>
-                    <span class="text-[10px] font-bold text-slate-400 uppercase">Tickets</span>
-                </div>
+    <!-- Main Trend Chart -->
+    <div class="mb-8" x-data="{
+        labels: @js($chart['labels']),
+        revenue: @js($chart['revenue']),
+        cash: @js($chart['cash']),
+        nonCash: @js($chart['nonCash']),
+        init() {
+            let arrLabels = Object.values(this.labels || {});
+            let arrRevenue = Object.values(this.revenue || {});
+            let arrCash = Object.values(this.cash || {});
+            let arrNonCash = Object.values(this.nonCash || {});
+
+            this.labels = arrLabels;
+            this.revenue = arrRevenue;
+            this.cash = arrCash;
+            this.nonCash = arrNonCash;
+
+            this.$nextTick(() => {
+                this.renderChart();
+            });
+        },
+        renderChart() {
+            new Chart(this.$refs.mainChart, {
+                type: 'line',
+                data: {
+                    labels: this.labels,
+                    datasets: [
+                        {
+                            label: 'Total Uang (Rp)',
+                            data: this.revenue,
+                            borderColor: '#10b981',
+                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                            borderWidth: 3,
+                            fill: true,
+                            tension: 0.4,
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: 'Tiket Cash',
+                            data: this.cash,
+                            borderColor: '#6366f1',
+                            backgroundColor: 'transparent',
+                            borderWidth: 2,
+                            borderDash: [5, 5],
+                            tension: 0.4,
+                            yAxisID: 'y1'
+                        },
+                        {
+                            label: 'Tiket Non-Cash',
+                            data: this.nonCash,
+                            borderColor: '#f59e0b',
+                            backgroundColor: 'transparent',
+                            borderWidth: 2,
+                            tension: 0.4,
+                            yAxisID: 'y1'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: { position: 'top', align: 'end' },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) label += ': ';
+                                    if (context.datasetIndex === 0) {
+                                        label += 'Rp ' + new Intl.NumberFormat('id-ID').format(context.parsed.y);
+                                    } else {
+                                        label += context.parsed.y + ' Tiket';
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            grid: { drawOnChartArea: false },
+                            ticks: {
+                                callback: (value) => 'Rp ' + new Intl.NumberFormat('id-ID', { notation: 'compact' }).format(value)
+                            }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            grid: { color: 'rgba(0,0,0,0.05)' },
+                            ticks: {
+                                callback: (value) => value + ' Tkt'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    }">
+        <x-admin.card title="Tren Penjualan (7 Hari Terakhir)" icon="trending-up" iconColor="indigo">
+            <div class="h-80 w-full">
+                <canvas x-ref="mainChart"></canvas>
             </div>
-        </div>
-        <div class="h-[300px]">
-            <canvas id="salesChart"></canvas>
-        </div>
-    </x-admin.card>
+        </x-admin.card>
+    </div>
 
     <!-- MODAL JUAL TIKET (POS SYSTEM) -->
     <x-admin.modal name="sell-modal" title="{{ $selectedEventId ? 'Jual Tiket - ' . $selectedEvent->event : 'Pilih Event' }}" icon="shopping-cart">
@@ -344,67 +430,4 @@
         </div>
     </x-admin.modal>
 
-    @push('scripts')
-        <script>
-            document.addEventListener('livewire:init', () => {
-                const ctxSales = document.getElementById('salesChart');
-                new Chart(ctxSales, {
-                    type: 'line',
-                    data: {
-                        labels: @json($chart['labels']),
-                        datasets: [
-                            {
-                                label: 'Online',
-                                data: @json($chart['online']),
-                                borderColor: '#4f46e5',
-                                backgroundColor: 'transparent',
-                                borderWidth: 3,
-                                pointRadius: 0,
-                                tension: 0.4
-                            },
-                            {
-                                label: 'Cash',
-                                data: @json($chart['cash']),
-                                borderColor: '#10b981',
-                                backgroundColor: 'transparent',
-                                borderWidth: 3,
-                                pointRadius: 0,
-                                tension: 0.4
-                            },
-                            {
-                                label: 'Tickets',
-                                data: @json($chart['qty']),
-                                type: 'bar',
-                                backgroundColor: 'rgba(245, 158, 11, 0.2)',
-                                borderRadius: 8,
-                                yAxisID: 'y1'
-                            }
-                        ]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: { legend: { display: false } },
-                        scales: {
-                            y: {
-                                beginAtZero: true,
-                                grid: { color: 'rgba(0,0,0,0.03)' },
-                                ticks: { font: { size: 10, weight: '600' } }
-                            },
-                            y1: {
-                                beginAtZero: true,
-                                position: 'right',
-                                grid: { display: false },
-                                ticks: { font: { size: 10, weight: '600' } }
-                            },
-                            x: {
-                                grid: { display: false },
-                                ticks: { font: { size: 10, weight: '600' } }
-                            }
-                        }
-                    }
-                });
-            });
-        </script>
-    @endpush
 </div>

@@ -36,8 +36,11 @@ class EventCreate extends Component
             $this->editingEventUid = $uid;
             $eventData = Event::where('uid', $uid)->firstOrFail();
 
+            $user = auth()->user();
+            $ownerId = ($user->role === 'staff') ? $user->parent_uid : $user->uid;
+
             // Check ownership
-            if ($eventData->user_uid !== auth()->user()->uid && auth()->user()->role !== 'admin') {
+            if ($eventData->user_uid !== $ownerId && $user->role !== 'admin') {
                 abort(403);
             }
 
@@ -107,8 +110,11 @@ class EventCreate extends Component
         ];
 
         if (!$this->editingEventUid) {
+            $user = auth()->user();
+            $ownerId = ($user->role === 'staff') ? $user->parent_uid : $user->uid;
+
             $data['uid'] = $uid;
-            $data['user_uid'] = auth()->user()->uid;
+            $data['user_uid'] = $ownerId;
             $data['status'] = 'inactive';
             $data['fee'] = 0;
             $data['slug'] = $slug;

@@ -59,8 +59,9 @@ class EventDetail extends Component
 
     protected function getEventData()
     {
-        $ownerId = auth()->user()->id;
-        $isAdmin = auth()->user()->role === 'admin';
+        $user = auth()->user();
+        $isAdmin = $user->role === 'admin';
+        $ownerId = ($user->role === 'staff') ? $user->parent_uid : $user->uid;
         
         $query = Event::with([
             'talents', 
@@ -74,7 +75,7 @@ class EventDetail extends Component
         ])->where('uid', $this->eventUid);
         
         if (!$isAdmin) {
-            $query->where('user_uid', auth()->user()->uid);
+            $query->where('user_uid', $ownerId);
         }
 
         return $query->firstOrFail();

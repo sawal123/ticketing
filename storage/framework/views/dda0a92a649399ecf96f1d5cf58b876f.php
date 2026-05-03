@@ -5,7 +5,7 @@
             <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Daftar semua event yang terdaftar di platform.
             </p>
         </div>
-        <a href="<?php echo e(route('dashboard.demo.event.create')); ?>" wire:navigate>
+        <a href="<?php echo e(route('dashboard.event.create')); ?>" wire:navigate>
             <?php if (isset($component)) { $__componentOriginal60a020e5340f3f52bbc4501dc9f93102 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal60a020e5340f3f52bbc4501dc9f93102 = $attributes; } ?>
 <?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.admin.button','data' => ['variant' => 'primary','size' => 'lg','icon' => 'plus']] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? (array) $attributes->getIterator() : [])); ?>
@@ -82,7 +82,7 @@
                 <!-- Cover Image -->
                 <div class="w-full aspect-[4/3] relative overflow-hidden bg-slate-100 dark:bg-slate-900">
                     <img src="<?php echo e(asset('storage/cover/' . $event->cover)); ?>" alt="<?php echo e($event->event); ?>"
-                        class="w-full rounded-2xl h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        class="w-full rounded-2xl h-full object-cover group-hover:scale-105 transition-transform duration-500 <?php echo e($event->status !== 'active' ? 'grayscale opacity-75' : ''); ?>"
                         onerror="this.src='https://placehold.co/800x600?text=No+Cover'">
 
                     <!-- Toggle Switch Overlay -->
@@ -120,7 +120,7 @@
                     <div class="mt-auto space-y-3">
                         <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($event->konfirmasi !== null): ?>
                             <div class="grid grid-cols-5 gap-3">
-                                <a href="<?php echo e(route('dashboard.demo.event.detail', $event->uid)); ?>" wire:navigate
+                                <a href="<?php echo e(route('dashboard.event.detail', $event->uid)); ?>" wire:navigate
                                     class="col-span-4">
                                     <?php if (isset($component)) { $__componentOriginal60a020e5340f3f52bbc4501dc9f93102 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal60a020e5340f3f52bbc4501dc9f93102 = $attributes; } ?>
@@ -146,7 +146,7 @@
 <?php unset($__componentOriginal60a020e5340f3f52bbc4501dc9f93102); ?>
 <?php endif; ?>
                                 </a>
-                                <a href="<?php echo e(route('dashboard.demo.event.edit', $event->uid)); ?>" wire:navigate
+                                <a href="<?php echo e(route('dashboard.event.edit', $event->uid)); ?>" wire:navigate
                                     class="col-span-1">
                                     <?php if (isset($component)) { $__componentOriginal60a020e5340f3f52bbc4501dc9f93102 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal60a020e5340f3f52bbc4501dc9f93102 = $attributes; } ?>
@@ -175,7 +175,7 @@
                             </div>
 
                             <div class="grid grid-cols-2 gap-3">
-                                <a href="<?php echo e(route('dashboard.demo.event.detail', $event->uid)); ?>?activeTab=transaksi"
+                                <a href="<?php echo e(route('dashboard.event.detail', $event->uid)); ?>?activeTab=transaksi"
                                     wire:navigate>
                                     <?php if (isset($component)) { $__componentOriginal60a020e5340f3f52bbc4501dc9f93102 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal60a020e5340f3f52bbc4501dc9f93102 = $attributes; } ?>
@@ -201,7 +201,7 @@
 <?php unset($__componentOriginal60a020e5340f3f52bbc4501dc9f93102); ?>
 <?php endif; ?>
                                 </a>
-                                <a href="<?php echo e(route('dashboard.demo.event.detail', $event->uid)); ?>?activeTab=transaksi&filterPayment=cash"
+                                <a href="<?php echo e(route('dashboard.event.detail', $event->uid)); ?>?activeTab=transaksi&filterPayment=cash"
                                     wire:navigate>
                                     <?php if (isset($component)) { $__componentOriginal60a020e5340f3f52bbc4501dc9f93102 = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal60a020e5340f3f52bbc4501dc9f93102 = $attributes; } ?>
@@ -305,4 +305,5 @@
         <?php echo e($events->links('components.admin.pagination')); ?>
 
     </div>
-</div><?php /**PATH F:\PROJECT\GOTIK\TiketKonser\resources\views/livewire/dashboard/event-index.blade.php ENDPATH**/ ?>
+</div>
+<?php /**PATH F:\PROJECT\GOTIK\TiketKonser\resources\views/livewire/dashboard/event-index.blade.php ENDPATH**/ ?>

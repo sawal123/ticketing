@@ -25,9 +25,9 @@
                     
                     <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if($event->cover): ?>
                         <img src="<?php echo e(asset('storage/cover/' . $event->cover)); ?>" class="img-bg" alt="cover"
-                            style="object-fit:cover; height: 100% !important; ">
+                            style="object-fit:cover; height: 100% !important; <?php echo e($event->status === 'close' ? 'filter: grayscale(1); opacity: 0.8;' : ''); ?>">
                     <?php else: ?>
-                        <div class="img-bg bg-<?php echo e(($key % 3) + 1); ?>"></div>
+                        <div class="img-bg bg-<?php echo e(($key % 3) + 1); ?>" style="<?php echo e($event->status === 'close' ? 'filter: grayscale(1); opacity: 0.8;' : ''); ?>"></div>
                     <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
 
                     <div class="img-glow"></div>

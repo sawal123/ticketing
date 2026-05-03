@@ -251,23 +251,27 @@ class DemoIndex extends Component
 
         $activeEvents = (clone $totalEvent)->where('konfirmasi', '1')->latest()->get();
 
-        // GRAPHIC ANALYTIC (Last 14 Days) - Multi Metric
+        // GRAPHIC ANALYTIC (Last 7 Days) - Like Admin Dashboard
+        $last7Days = collect(range(6, 0))->map(function ($days) {
+            return Carbon::now()->subDays($days)->format('Y-m-d');
+        });
+
         $dailyData = (clone $queryBase)
-            ->where('carts.created_at', '>=', now()->subDays(14))
+            ->where('carts.created_at', '>=', now()->subDays(7))
             ->select(
                 DB::raw('DATE(carts.created_at) as date'),
-                DB::raw("SUM(CASE WHEN carts.payment_type = 'cash' THEN $rumusDasar ELSE 0 END) as cash_amount"),
-                DB::raw("SUM(CASE WHEN carts.payment_type != 'cash' THEN $rumusDasar ELSE 0 END) as online_amount"),
-                DB::raw("SUM(harga_carts.quantity) as total_qty")
+                DB::raw("SUM($rumusDasar) as revenue"),
+                DB::raw("SUM(CASE WHEN carts.payment_type = 'cash' THEN harga_carts.quantity ELSE 0 END) as cash_qty"),
+                DB::raw("SUM(CASE WHEN carts.payment_type != 'cash' THEN harga_carts.quantity ELSE 0 END) as noncash_qty")
             )
             ->groupBy('date')
-            ->orderBy('date')
-            ->get();
+            ->get()
+            ->keyBy('date');
 
-        $chartLabels = $dailyData->pluck('date')->map(fn($d) => Carbon::parse($d)->format('d M'))->toArray();
-        $chartCash = $dailyData->pluck('cash_amount')->toArray();
-        $chartOnline = $dailyData->pluck('online_amount')->toArray();
-        $chartQty = $dailyData->pluck('total_qty')->toArray();
+        $chartLabels = $last7Days->map(fn ($date) => Carbon::parse($date)->format('d M'))->toArray();
+        $chartRevenue = $last7Days->map(fn ($date) => (int) ($dailyData->has($date) ? $dailyData[$date]->revenue : 0))->toArray();
+        $chartCashQty = $last7Days->map(fn ($date) => (int) ($dailyData->has($date) ? $dailyData[$date]->cash_qty : 0))->toArray();
+        $chartNonCashQty = $last7Days->map(fn ($date) => (int) ($dailyData->has($date) ? $dailyData[$date]->noncash_qty : 0))->toArray();
 
         // GENDER & AGE DEMOGRAPHICS
         $demographics = (clone $queryBase)
@@ -299,9 +303,9 @@ class DemoIndex extends Component
             'availablePartners' => $availablePartners,
             'chart' => [
                 'labels' => $chartLabels,
-                'cash' => $chartCash,
-                'online' => $chartOnline,
-                'qty' => $chartQty,
+                'revenue' => $chartRevenue,
+                'cash' => $chartCashQty,
+                'nonCash' => $chartNonCashQty,
             ],
             'gender' => $genderStats
         ]);

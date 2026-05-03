@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
     <title><?php echo e($title ?? 'Dashboard Admin'); ?> - AdminPanel Pro</title>
+    <link rel="shortcut icon" href="<?php echo e(asset('storage/icon/' . ($logo[0]->icon ?? ''))); ?>" type="image/x-icon">
 
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com" data-navigate-once></script>

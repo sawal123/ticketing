@@ -38,6 +38,7 @@ class Kernel extends HttpKernel
             \App\Http\Middleware\VerifyCsrfToken::class,
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
             \App\Http\Middleware\GlobalDataMiddleware::class,
+            \App\Http\Middleware\LogActivityMiddleware::class,
             // \App\Http\Middleware\isAdmin::class,
             // \App\Http\Middleware\isPenyewa::class,
         ],

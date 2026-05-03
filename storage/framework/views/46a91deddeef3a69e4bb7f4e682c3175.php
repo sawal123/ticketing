@@ -18,7 +18,7 @@
     <!-- End google font  -->
     
 
-      <link rel="stylesheet" href="<?php echo e(asset('landing/css/bootstrap.min.css')); ?>" />
+    <link rel="stylesheet" href="<?php echo e(asset('landing/css/bootstrap.min.css')); ?>" />
     <link rel="stylesheet" href="<?php echo e(asset('assets/plugins/sweetalert2/dist/sweetalert2.min.css')); ?>">
     <link href="<?php echo e(asset('/assets/css/icons.css')); ?>" rel="stylesheet">
     <link rel="stylesheet" href="<?php echo e(asset('landing/css/main-new.css')); ?>" />

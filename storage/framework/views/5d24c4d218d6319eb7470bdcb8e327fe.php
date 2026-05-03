@@ -1,11 +1,12 @@
 <!DOCTYPE html>
-<html lang="<?php echo e(str_replace('_', '-', app()->getLocale())); ?>" class="h-full bg-slate-50">
+<html lang="<?php echo e(str_replace('_', '-', app()->getLocale())); ?>" class="h-full bg-[#0b0a1a]">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
 
     <title><?php echo e(config('app.name', 'Laravel')); ?></title>
+    <link rel="shortcut icon" href="<?php echo e(asset('storage/icon/' . ($logo[0]->icon ?? ''))); ?>" type="image/x-icon">
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">

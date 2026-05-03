@@ -11,10 +11,21 @@
         <x-admin.card icon="users" iconColor="indigo" padding="p-6">
             <div class="flex flex-col">
                 <p class="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Total Users</p>
-                <div class="flex items-end justify-between">
+                <div class="flex items-end justify-between" x-data="{
+                    init() {
+                        new Chart(this.$refs.spark, {
+                            type: 'line',
+                            data: {
+                                labels: ['', '', '', '', '', '', ''],
+                                datasets: [{ data: [1, 5, 2, 8, 4, 9, 3], borderColor: '#6366f1' }]
+                            },
+                            options: sparklineOptions
+                        });
+                    }
+                }">
                     <h3 class="text-3xl font-extrabold text-slate-800 dark:text-white">{{ number_format($totalUsers) }}</h3>
                     <div class="w-24 h-10">
-                        <canvas id="usersSparkline"></canvas>
+                        <canvas x-ref="spark"></canvas>
                     </div>
                 </div>
             </div>
@@ -24,10 +35,22 @@
         <x-admin.card icon="dollar-sign" iconColor="emerald" padding="p-6">
             <div class="flex flex-col">
                 <p class="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Total Omset</p>
-                <div class="flex items-end justify-between">
+                <div class="flex items-end justify-between" x-data="{
+                    revenue: @js($revenueTrend),
+                    init() {
+                        new Chart(this.$refs.spark, {
+                            type: 'line',
+                            data: {
+                                labels: ['', '', '', '', '', '', ''],
+                                datasets: [{ data: this.revenue, borderColor: '#10b981' }]
+                            },
+                            options: sparklineOptions
+                        });
+                    }
+                }">
                     <h3 class="text-3xl font-extrabold text-slate-800 dark:text-white">Rp {{ number_format($totalOmset, 0, ',', '.') }}</h3>
                     <div class="w-24 h-10">
-                        <canvas id="omsetSparkline"></canvas>
+                        <canvas x-ref="spark"></canvas>
                     </div>
                 </div>
             </div>
@@ -37,12 +60,134 @@
         <x-admin.card icon="shopping-cart" iconColor="amber" padding="p-6">
             <div class="flex flex-col">
                 <p class="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Total Transaction</p>
-                <div class="flex items-end justify-between">
+                <div class="flex items-end justify-between" x-data="{
+                    init() {
+                        new Chart(this.$refs.spark, {
+                            type: 'line',
+                            data: {
+                                labels: ['', '', '', '', '', '', ''],
+                                datasets: [{ data: [10, 15, 8, 20, 12, 25, 18], borderColor: '#f59e0b' }]
+                            },
+                            options: sparklineOptions
+                        });
+                    }
+                }">
                     <h3 class="text-3xl font-extrabold text-slate-800 dark:text-white">{{ number_format($totalTransactions) }}</h3>
                     <div class="w-24 h-10">
-                        <canvas id="transSparkline"></canvas>
+                        <canvas x-ref="spark"></canvas>
                     </div>
                 </div>
+            </div>
+        </x-admin.card>
+    </div>
+
+    <script>
+        window.sparklineOptions = {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false }, tooltip: { enabled: false } },
+            scales: { x: { display: false }, y: { display: false } },
+            elements: { 
+                line: { tension: 0.4, borderWidth: 2 },
+                point: { radius: 0 }
+            }
+        };
+    </script>
+
+    <!-- Main Trend Chart -->
+    <div class="mb-8" x-data="{
+        labels: @js($chartLabels),
+        revenue: @js($revenueTrend),
+        cash: @js($cashTrend),
+        nonCash: @js($nonCashTrend),
+        init() {
+            this.renderChart();
+        },
+        renderChart() {
+            new Chart(this.$refs.mainChart, {
+                type: 'line',
+                data: {
+                    labels: this.labels,
+                    datasets: [
+                        {
+                            label: 'Total Uang (Rp)',
+                            data: this.revenue,
+                            borderColor: '#10b981',
+                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                            borderWidth: 3,
+                            fill: true,
+                            tension: 0.4,
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: 'Tiket Cash',
+                            data: this.cash,
+                            borderColor: '#6366f1',
+                            backgroundColor: 'transparent',
+                            borderWidth: 2,
+                            borderDash: [5, 5],
+                            tension: 0.4,
+                            yAxisID: 'y1'
+                        },
+                        {
+                            label: 'Tiket Non-Cash',
+                            data: this.nonCash,
+                            borderColor: '#f59e0b',
+                            backgroundColor: 'transparent',
+                            borderWidth: 2,
+                            tension: 0.4,
+                            yAxisID: 'y1'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: { position: 'top', align: 'end' },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) label += ': ';
+                                    if (context.datasetIndex === 0) {
+                                        label += 'Rp ' + new Intl.NumberFormat('id-ID').format(context.parsed.y);
+                                    } else {
+                                        label += context.parsed.y + ' Tiket';
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            grid: { drawOnChartArea: false },
+                            ticks: {
+                                callback: (value) => 'Rp ' + new Intl.NumberFormat('id-ID', { notation: 'compact' }).format(value)
+                            }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            grid: { color: 'rgba(0,0,0,0.05)' },
+                            ticks: {
+                                callback: (value) => value + ' Tkt'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    }">
+        <x-admin.card title="Tren Penjualan (7 Hari Terakhir)" icon="trending-up" iconColor="indigo">
+            <div class="h-80 w-full">
+                <canvas x-ref="mainChart"></canvas>
             </div>
         </x-admin.card>
     </div>
@@ -51,9 +196,30 @@
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         <!-- Gender Distribution -->
         <x-admin.card title="Demografi Gender" icon="pie-chart" iconColor="indigo">
-            <div class="flex flex-col md:flex-row items-center justify-around py-4">
+            <div class="flex flex-col md:flex-row items-center justify-around py-4" x-data="{
+                genderData: @js(array_values($genderData)),
+                init() {
+                    new Chart(this.$refs.genderChart, {
+                        type: 'doughnut',
+                        data: {
+                            labels: ['Pria', 'Wanita'],
+                            datasets: [{
+                                data: this.genderData,
+                                backgroundColor: ['#6366f1', '#f472b6'],
+                                borderWidth: 0
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            cutout: '70%',
+                            plugins: { legend: { display: false } }
+                        }
+                    });
+                }
+            }">
                 <div class="w-48 h-48 mb-4 md:mb-0">
-                    <canvas id="genderChart"></canvas>
+                    <canvas x-ref="genderChart"></canvas>
                 </div>
                 <div class="space-y-4 w-full md:w-auto">
                     <div class="flex items-center justify-between gap-8">
@@ -116,7 +282,7 @@
                     </div>
                 </td>
                 <td class="px-5 py-4 text-slate-600 dark:text-slate-400 whitespace-nowrap">
-                    {{ Str::limit($transaction->event->nama ?? 'N/A', 25) }}
+                    {{ Str::limit($transaction->event->event ?? 'N/A', 25) }}
                 </td>
                 <td class="px-5 py-4 font-bold text-slate-800 dark:text-slate-200 whitespace-nowrap">
                     Rp {{ number_format($transaction->amount, 0, ',', '.') }}
@@ -135,82 +301,4 @@
             </tr>
         @endforeach
     </x-admin.table>
-
-    @push('scripts')
-    <script>
-        document.addEventListener('livewire:navigated', () => {
-            const trendData = @json($trendData);
-            const genderData = @json(array_values($genderData));
-
-            const sparklineOptions = {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: false }, tooltip: { enabled: false } },
-                scales: { x: { display: false }, y: { display: false } },
-                elements: { 
-                    line: { tension: 0.4, borderWidth: 2 },
-                    point: { radius: 0 }
-                }
-            };
-
-            // Users Sparkline
-            new Chart(document.getElementById('usersSparkline'), {
-                type: 'line',
-                data: {
-                    labels: ['', '', '', '', '', '', ''],
-                    datasets: [{
-                        data: [1, 5, 2, 8, 4, 9, 3], // Example random trend
-                        borderColor: '#6366f1',
-                    }]
-                },
-                options: sparklineOptions
-            });
-
-            // Omset Sparkline
-            new Chart(document.getElementById('omsetSparkline'), {
-                type: 'line',
-                data: {
-                    labels: ['', '', '', '', '', '', ''],
-                    datasets: [{
-                        data: trendData,
-                        borderColor: '#10b981',
-                    }]
-                },
-                options: sparklineOptions
-            });
-
-            // Transactions Sparkline
-            new Chart(document.getElementById('transSparkline'), {
-                type: 'line',
-                data: {
-                    labels: ['', '', '', '', '', '', ''],
-                    datasets: [{
-                        data: [10, 15, 8, 20, 12, 25, 18], // Example random trend
-                        borderColor: '#f59e0b',
-                    }]
-                },
-                options: sparklineOptions
-            });
-
-            // Gender Chart
-            new Chart(document.getElementById('genderChart'), {
-                type: 'doughnut',
-                data: {
-                    labels: ['Pria', 'Wanita'],
-                    datasets: [{
-                        data: genderData,
-                        backgroundColor: ['#6366f1', '#f472b6'],
-                        borderWidth: 0
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    cutout: '70%',
-                    plugins: { legend: { display: false } }
-                }
-            });
-        });
-    </script>
-    @endpush
 </div>

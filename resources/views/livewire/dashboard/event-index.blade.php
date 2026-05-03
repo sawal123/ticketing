@@ -5,7 +5,7 @@
             <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Daftar semua event yang terdaftar di platform.
             </p>
         </div>
-        <a href="{{ route('dashboard.demo.event.create') }}" wire:navigate>
+        <a href="{{ route('dashboard.event.create') }}" wire:navigate>
             <x-admin.button variant="primary" size="lg" icon="plus">
                 Tambah Event
             </x-admin.button>
@@ -32,7 +32,7 @@
                 <!-- Cover Image -->
                 <div class="w-full aspect-[4/3] relative overflow-hidden bg-slate-100 dark:bg-slate-900">
                     <img src="{{ asset('storage/cover/' . $event->cover) }}" alt="{{ $event->event }}"
-                        class="w-full rounded-2xl h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        class="w-full rounded-2xl h-full object-cover group-hover:scale-105 transition-transform duration-500 {{ $event->status !== 'active' ? 'grayscale opacity-75' : '' }}"
                         onerror="this.src='https://placehold.co/800x600?text=No+Cover'">
 
                     <!-- Toggle Switch Overlay -->
@@ -68,14 +68,14 @@
                     <div class="mt-auto space-y-3">
                         @if ($event->konfirmasi !== null)
                             <div class="grid grid-cols-5 gap-3">
-                                <a href="{{ route('dashboard.demo.event.detail', $event->uid) }}" wire:navigate
+                                <a href="{{ route('dashboard.event.detail', $event->uid) }}" wire:navigate
                                     class="col-span-4">
                                     <x-admin.button variant="secondary"
                                         class="w-full uppercase text-[11px] font-black tracking-widest border-slate-200 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-600 hover:text-indigo-600 transition-colors">
                                         Detail Event
                                     </x-admin.button>
                                 </a>
-                                <a href="{{ route('dashboard.demo.event.edit', $event->uid) }}" wire:navigate
+                                <a href="{{ route('dashboard.event.edit', $event->uid) }}" wire:navigate
                                     class="col-span-1">
                                     <x-admin.button variant="secondary"
                                         class="w-full !px-0 flex items-center justify-center border-slate-200 dark:border-slate-700 hover:border-amber-300 dark:hover:border-amber-600 hover:text-amber-600 transition-colors"
@@ -86,14 +86,14 @@
                             </div>
 
                             <div class="grid grid-cols-2 gap-3">
-                                <a href="{{ route('dashboard.demo.event.detail', $event->uid) }}?activeTab=transaksi"
+                                <a href="{{ route('dashboard.event.detail', $event->uid) }}?activeTab=transaksi"
                                     wire:navigate>
                                     <x-admin.button variant="primary"
                                         class="w-full !px-0 uppercase text-[10px] font-black tracking-widest shadow-indigo-200 dark:shadow-none">
                                         Trx Online
                                     </x-admin.button>
                                 </a>
-                                <a href="{{ route('dashboard.demo.event.detail', $event->uid) }}?activeTab=transaksi&filterPayment=cash"
+                                <a href="{{ route('dashboard.event.detail', $event->uid) }}?activeTab=transaksi&filterPayment=cash"
                                     wire:navigate>
                                     <x-admin.button variant="primary"
                                         class="w-full !px-0 uppercase text-[10px] font-black tracking-widest shadow-indigo-200 dark:shadow-none">

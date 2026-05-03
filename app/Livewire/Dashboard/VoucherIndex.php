@@ -135,8 +135,11 @@ class VoucherIndex extends Component
             $this->max_disc = $this->nominal;
         }
 
+        $user = Auth::user();
+        $ownerId = ($user->role === 'staff') ? $user->parent_uid : $user->uid;
+
         $data = [
-            'user_uid' => Auth::user()->uid,
+            'user_uid' => $ownerId,
             'event_uid' => $this->selected_event_uid,
             'code' => $this->code,
             'unit' => $this->unit,

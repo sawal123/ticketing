@@ -32,8 +32,9 @@ class EventIndex extends Component
 
     public function render()
     {
-        $ownerId = auth()->user();
-        $isAdmin = auth()->user()->role === 'admin';
+        $user = auth()->user();
+        $isAdmin = $user->role === 'admin';
+        $ownerId = ($user->role === 'staff') ? $user->parent_uid : $user->uid;
 
         $query = Event::query()
             ->when($this->search, function ($q) {
@@ -41,7 +42,7 @@ class EventIndex extends Component
             });
 
         if (! $isAdmin) {
-            $query->where('user_uid', $ownerId->uid);
+            $query->where('user_uid', $ownerId);
         }
 
         $events = $query->orderBy('created_at', 'desc')->paginate(12);

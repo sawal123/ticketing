@@ -7,7 +7,7 @@
         <div>
             <nav class="flex text-sm text-slate-500 mb-1" aria-label="Breadcrumb">
                 <ol class="flex items-center space-x-2">
-                    <li><a href="{{ route('dashboard.demo.event') }}" wire:navigate class="hover:text-indigo-600">Event</a></li>
+                    <li><a href="{{ route('dashboard.event') }}" wire:navigate class="hover:text-indigo-600">Event</a></li>
                     <li><i data-lucide="chevron-right" class="w-3 h-3"></i></li>
                     <li class="text-slate-800 dark:text-white font-medium">Detail</li>
                 </ol>
@@ -61,7 +61,7 @@
                 <div class="lg:col-span-2 space-y-6">
                     <x-admin.card title="Informasi Event">
                         <x-slot name="headerAction">
-                            <a href="{{ route('dashboard.demo.event.edit', $event->uid) }}" wire:navigate class="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-indigo-600 hover:text-indigo-700 transition-colors bg-indigo-50 dark:bg-indigo-900/30 px-3 py-1.5 rounded-lg border border-indigo-100 dark:border-indigo-800">
+                            <a href="{{ route('dashboard.event.edit', $event->uid) }}" wire:navigate class="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-indigo-600 hover:text-indigo-700 transition-colors bg-indigo-50 dark:bg-indigo-900/30 px-3 py-1.5 rounded-lg border border-indigo-100 dark:border-indigo-800">
                                 <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
                                 Edit Event
                             </a>

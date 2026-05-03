@@ -25,9 +25,9 @@
                     {{-- Background / Image --}}
                     @if ($event->cover)
                         <img src="{{ asset('storage/cover/' . $event->cover) }}" class="img-bg" alt="cover"
-                            style="object-fit:cover; height: 100% !important; ">
+                            style="object-fit:cover; height: 100% !important; {{ $event->status === 'close' ? 'filter: grayscale(1); opacity: 0.8;' : '' }}">
                     @else
-                        <div class="img-bg bg-{{ ($key % 3) + 1 }}"></div>
+                        <div class="img-bg bg-{{ ($key % 3) + 1 }}" style="{{ $event->status === 'close' ? 'filter: grayscale(1); opacity: 0.8;' : '' }}"></div>
                     @endif
 
                     <div class="img-glow"></div>

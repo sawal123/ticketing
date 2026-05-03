@@ -23,5 +23,22 @@ class AppServiceProvider extends ServiceProvider
         //
         Carbon::setLocale('id');
         date_default_timezone_set('Asia/Jakarta');
+
+        view()->composer(['layouts.partials.sidebar', 'admin.sidebar'], function ($view) {
+            $query = \App\Models\Event::where('status', 'active');
+            
+            if (auth()->check()) {
+                $user = auth()->user();
+                if ($user->role === 'penyewa') {
+                    $query->where('user_uid', $user->uid);
+                } elseif ($user->role === 'staff') {
+                    $query->where('user_uid', $user->parent_uid);
+                }
+                // Admin role sees all active events
+            }
+            
+            $activeEvents = $query->get();
+            $view->with('activeEvents', $activeEvents);
+        });
     }
 }

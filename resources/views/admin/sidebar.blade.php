@@ -17,7 +17,7 @@
     <nav class="flex-1 overflow-y-auto py-4 px-3 space-y-1" aria-label="Menu utama">
         <p class="px-3 text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">Menu Utama</p>
         
-        <a href="{{ route('admin.demo') }}" wire:navigate class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-all duration-200 {{ request()->routeIs('admin.demo') ? 'active' : '' }}">
+        <a href="{{ route('admin') }}" wire:navigate class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-all duration-200 {{ request()->routeIs('admin') ? 'active' : '' }}">
             <i data-lucide="layout-dashboard" class="w-5 h-5 flex-shrink-0"></i>
             <span class="text-sm font-medium">Dashboard</span>
         </a>
@@ -53,6 +53,21 @@
         <a href="{{ route('admin.setting') }}" wire:navigate class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-all duration-200 {{ request()->routeIs('admin.setting') ? 'active' : '' }}">
             <i data-lucide="settings" class="w-5 h-5 flex-shrink-0"></i>
             <span class="text-sm font-medium">Pengaturan</span>
+        </a>
+
+        <a href="{{ route('admin.term') }}" wire:navigate class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-all duration-200 {{ request()->routeIs('admin.term') ? 'active' : '' }}">
+            <i data-lucide="file-text" class="w-5 h-5 flex-shrink-0"></i>
+            <span class="text-sm font-medium">Terms & Conditions</span>
+        </a>
+
+        <a href="{{ route('admin.slider') }}" wire:navigate class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-all duration-200 {{ request()->routeIs('admin.slider') ? 'active' : '' }}">
+            <i data-lucide="image" class="w-5 h-5 flex-shrink-0"></i>
+            <span class="text-sm font-medium">Home Slider</span>
+        </a>
+
+        <a href="{{ route('admin.activity') }}" wire:navigate class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-all duration-200 {{ request()->routeIs('admin.activity') ? 'active' : '' }}">
+            <i data-lucide="history" class="w-5 h-5 flex-shrink-0"></i>
+            <span class="text-sm font-medium">Log Aktivitas</span>
         </a>
     </nav>
 

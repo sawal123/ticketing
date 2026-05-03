@@ -52,13 +52,22 @@ class landingController extends Controller
             ->pluck('total_sold', 'kategori_harga')
             ->toArray();
 
+        $unpaidTx = null;
+        if (Auth::check()) {
+            $unpaidTx = Cart::where('user_uid', Auth::user()->uid)
+                ->whereIn('status', ['UNPAID', 'unpaid', 'PENDING', 'pending'])
+                ->first();
+        }
+
         return view('frontend.page.ticket-new', [
             'title' => $ticket->event,
             'ticket' => $ticket,
             'tickets' => $ticket->talents,
             'list' => $ticket->hargas,
             'lists' => $ticket->hargas,
-            'jmlhQty' => $soldTickets
+            'jmlhQty' => $soldTickets,
+            'hasUnpaid' => $unpaidTx ? true : false,
+            'unpaidUid' => $unpaidTx->uid ?? null
         ]);
     }
 

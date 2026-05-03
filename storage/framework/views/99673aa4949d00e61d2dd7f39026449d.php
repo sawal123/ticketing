@@ -11,7 +11,7 @@
     <meta name="description" content="<?php echo e($seo[0]->description); ?>">
     <meta name="author" content="Gotik">
     <!-- FAVICON -->
-    <link rel="shortcut icon" type="image/x-icon" href="<?php echo e(asset('storage/logo/' . $logo[0]->icon)); ?>">
+    <link rel="shortcut icon" type="image/x-icon" href="<?php echo e(asset('storage/icon/' . ($logo[0]->icon ?? ''))); ?>">
     <link rel="stylesheet" href="https://drive.google.com/uc?export=view&id=1yTLwNiCZhIdCWolQldwq4spHQkgZDqkG">
 
     <title><?php echo e($title); ?></title>
