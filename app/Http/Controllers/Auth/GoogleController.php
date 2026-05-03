@@ -31,8 +31,8 @@ class GoogleController extends Controller
 
             if ($finduser) {
                 $finduser->update([
-                    'google_token' => $user->token,
-                    'google_refresh_token' => $user->refreshToken,
+                    // 'google_token' => $user->token,
+                    // 'google_refresh_token' => $user->refreshToken,
                 ]);
 
                 Auth::login($finduser);
@@ -44,8 +44,8 @@ class GoogleController extends Controller
                 if ($existingUser) {
                     $existingUser->update([
                         'google_id' => $user->id,
-                        'google_token' => $user->token,
-                        'google_refresh_token' => $user->refreshToken,
+                        // 'google_token' => $user->token,
+                        // 'google_refresh_token' => $user->refreshToken,
                     ]);
                     Auth::login($existingUser);
                 } else {
@@ -54,8 +54,8 @@ class GoogleController extends Controller
                         'name' => $user->name,
                         'email' => $user->email,
                         'google_id' => $user->id,
-                        'google_token' => $user->token,
-                        'google_refresh_token' => $user->refreshToken,
+                        // 'google_token' => $user->token,
+                        // 'google_refresh_token' => $user->refreshToken,
                         'password' => Hash::make(Str::random(16)),
                         'role' => User::USER_ROLE,
                         'birthday' => now()->format('Y-m-d'),
