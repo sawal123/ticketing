@@ -13,9 +13,7 @@ use Laravel\Socialite\Facades\Socialite;
 class GoogleController extends Controller
 {
     /**
-     * Create a new controller instance.
-     *
-     * @return void
+     * Redirect to Google for authentication.
      */
     public function redirectToGoogle()
     {
@@ -23,9 +21,7 @@ class GoogleController extends Controller
     }
 
     /**
-     * Create a new controller instance.
-     *
-     * @return void
+     * Handle the callback from Google.
      */
     public function handleGoogleCallback()
     {
@@ -63,8 +59,8 @@ class GoogleController extends Controller
                         'password' => Hash::make(Str::random(16)),
                         'role' => User::USER_ROLE,
                         'birthday' => now()->format('Y-m-d'),
-                        'gender' => 'pria', // Menggunakan nilai yang umum di DB Anda
-                        'nomor' => '',      // Menghindari error NOT NULL
+                        'gender' => 'pria', 
+                        'nomor' => '',      
                         'gambar' => $user->avatar,
                     ]);
 
@@ -74,7 +70,6 @@ class GoogleController extends Controller
                 return redirect()->intended('/');
             }
         } catch (Exception $e) {
-            // Log error untuk debug
             \Illuminate\Support\Facades\Log::error('Google Login Error: ' . $e->getMessage());
             return redirect('login')->with('error', 'Gagal login: ' . $e->getMessage());
         }
