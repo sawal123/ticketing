@@ -61,6 +61,8 @@ class GoogleController extends Controller
                         'birthday' => now()->format('Y-m-d'),
                         'gender' => 'pria', 
                         'nomor' => '',      
+                        'alamat' => '',     // Menghindari error NOT NULL
+                        'kota' => '',       // Menghindari error NOT NULL
                         'gambar' => $user->avatar,
                     ]);
 
