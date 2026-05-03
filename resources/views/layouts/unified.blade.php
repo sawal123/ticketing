@@ -27,10 +27,10 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="{{ asset('admin/css/admin.css') }}" data-navigate-track>
+    <link rel="stylesheet" href="{{ asset('admin_assets/css/admin.css') }}" data-navigate-track>
 
     <!-- Custom JS -->
-    <script src="{{ asset('admin/js/admin.js') }}" data-navigate-once defer></script>
+    <script src="{{ asset('admin_assets/js/admin.js') }}" data-navigate-once defer></script>
 
     <!-- Flatpickr CDN -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
