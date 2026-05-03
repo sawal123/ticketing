@@ -24,13 +24,13 @@ class Login extends Component
             session()->regenerate();
 
             if (Auth::user()->role === 'admin') {
-                return redirect()->intended('/admin');
+                return redirect('/admin');
             }
-            if (Auth::user()->role === 'penyewa') {
-                return redirect()->intended('/dashboard');
+            if (Auth::user()->role === 'penyewa' || Auth::user()->role === 'staff') {
+                return redirect('/dashboard');
             }
             
-            return redirect()->intended('/');
+            return redirect('/');
         }
 
         session()->flash('error', 'Email atau password yang Anda masukkan salah.');

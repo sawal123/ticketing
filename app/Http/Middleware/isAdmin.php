@@ -16,10 +16,14 @@ class isAdmin
      */
     public function handle(Request $request, Closure $next): Response
     {
-        if(Auth::user() && Auth::user()->role == 'admin')
-        {
-            return $next($request);
+        if (Auth::check()) {
+            if (Auth::user()->role === 'admin') {
+                return $next($request);
+            }
+            // Jika sudah login tapi bukan admin, lempar 403
+            abort(403, 'Anda tidak memiliki akses ke halaman administrator.');
         }
+
         return redirect('/login');
     }
 }
