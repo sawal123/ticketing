@@ -66,11 +66,11 @@ class EventDetail extends Component
         $query = Event::with([
             'talents', 
             'hargas' => function($query) {
-                $query->withCount(['hargaCarts as sold_count' => function($q) {
+                $query->withSum(['hargaCarts as sold_count' => function($q) {
                     $q->whereHas('cart', function($c) {
                         $c->where('status', 'SUCCESS');
                     });
-                }]);
+                }], 'quantity');
             }
         ])->where('uid', $this->eventUid);
         
@@ -86,23 +86,59 @@ class EventDetail extends Component
         $query = Cart::where('event_uid', $this->eventUid)->where('status', 'SUCCESS');
         $query = $this->applyFilters($query);
 
-        $transactionIds = $query->pluck('uid');
+        $transactionIds = (clone $query)->distinct()->pluck('uid');
         $totalTransactions = $transactionIds->count();
         
         $hargaCarts = HargaCart::whereIn('uid', $transactionIds)->get();
         
-        $totalRevenue = $hargaCarts->sum(fn($item) => $item->quantity * $item->harga_ticket);
+        $grossRevenue = $hargaCarts->sum(fn($item) => $item->quantity * $item->harga_ticket);
         $totalTicketsSold = $hargaCarts->sum('quantity');
         
-        $totalPajak = $query->sum('pajak');
-        $totalInternetFee = $query->sum('internet_fee');
+        $totalPajak = (clone $query)->sum('pajak');
+        $totalInternetFee = (clone $query)->sum('internet_fee');
+
+        // Calculate Total Discount based on HargaCart to sync with UI "Terpakai" count
+        $totalDiscount = 0;
+        
+        $hargaCartsWithVoucher = $hargaCarts->whereNotNull('voucher');
+        
+        foreach ($hargaCartsWithVoucher as $hc) {
+            $voucher = \App\Models\Voucher::where('code', $hc->voucher)
+                ->where('event_uid', $this->eventUid)
+                ->first();
+                
+            if ($voucher) {
+                $itemTotal = $hc->quantity * $hc->harga_ticket;
+                $discountValue = 0;
+                
+                if (strtolower($voucher->unit) === 'rupiah') {
+                    $discountValue = $voucher->nominal;
+                } elseif (strtolower($voucher->unit) === 'persen' || $voucher->unit === '%') {
+                    $discountValue = ($voucher->nominal / 100) * $itemTotal;
+                    if ($voucher->max_disc > 0 && $discountValue > $voucher->max_disc) {
+                        $discountValue = $voucher->max_disc;
+                    }
+                }
+                
+                $totalDiscount += $discountValue;
+            }
+        }
+
+        $event = $this->getEventData();
+        $feePercent = $event->fee ?? 0;
+        
+        // Calculate Total Pajak based on net revenue (after discount) 
+        // to match the Dashboard Omset formula: (Gross - Discount) * (1 + Fee%)
+        $totalPajak = ($grossRevenue - $totalDiscount) * ($feePercent / 100);
+        $totalInternetFee = (clone $query)->sum('internet_fee');
 
         return [
             'total_transactions' => $totalTransactions,
-            'total_revenue' => $totalRevenue,
+            'total_revenue' => $grossRevenue,
             'total_tickets' => $totalTicketsSold,
             'total_pajak' => $totalPajak,
             'total_internet_fee' => $totalInternetFee,
+            'total_discount' => $totalDiscount,
         ];
     }
 
@@ -258,16 +294,21 @@ class EventDetail extends Component
             $selectedTransaction = Cart::with(['users', 'hargaCarts.masterHarga'])->where('uid', $this->selectedTransactionId)->first();
             
             if ($selectedTransaction) {
-                $cartVoucher = \App\Models\CartVoucher::where('uid', $this->selectedTransactionId)->first();
-                if ($cartVoucher) {
-                    $voucherCode = $cartVoucher->code;
-                    $voucher = \App\Models\Voucher::where('code', $voucherCode)->first();
+                $hargaCartWithVoucher = $selectedTransaction->hargaCarts->whereNotNull('voucher')->first();
+                if ($hargaCartWithVoucher) {
+                    $voucherCode = $hargaCartWithVoucher->voucher;
+                    $voucher = \App\Models\Voucher::where('code', $voucherCode)
+                        ->where('event_uid', $this->eventUid)
+                        ->first();
                     if ($voucher) {
                         $totalTickets = $selectedTransaction->hargaCarts->sum(fn($i) => $i->quantity * $i->harga_ticket);
-                        if ($voucher->unit === 'rupiah') {
+                        if (strtolower($voucher->unit) === 'rupiah') {
                             $discount = $voucher->nominal;
-                        } elseif ($voucher->unit === 'persen') {
+                        } elseif (strtolower($voucher->unit) === 'persen' || $voucher->unit === '%') {
                             $discount = ($voucher->nominal / 100) * $totalTickets;
+                            if ($voucher->max_disc > 0 && $discount > $voucher->max_disc) {
+                                $discount = $voucher->max_disc;
+                            }
                         }
                     }
                 }

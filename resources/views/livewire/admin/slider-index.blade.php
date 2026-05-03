@@ -145,7 +145,7 @@
                 </x-admin.button>
                 <x-admin.button type="submit" variant="primary" wire:loading.attr="disabled">
                     <span wire:loading.remove>{{ $isEdit ? 'Simpan Perubahan' : 'Tambah Baru' }}</span>
-                    <span wire:loading class="flex items-center gap-2">
+                    <span wire:loading.flex class="items-center gap-2">
                         <i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i>
                         Memproses...
                     </span>

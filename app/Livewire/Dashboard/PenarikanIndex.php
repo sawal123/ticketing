@@ -55,8 +55,13 @@ class PenarikanIndex extends Component
                 (harga_carts.quantity * harga_carts.harga_ticket) - 
                 COALESCE(
                     CASE 
-                        WHEN vouchers.unit = '%' OR vouchers.unit = 'persen' 
-                        THEN (harga_carts.quantity * harga_carts.harga_ticket) * (vouchers.nominal / 100)
+                        WHEN LOWER(vouchers.unit) = '%' OR LOWER(vouchers.unit) = 'persen' 
+                        THEN 
+                            CASE 
+                                WHEN vouchers.max_disc > 0 AND ((harga_carts.quantity * harga_carts.harga_ticket) * (vouchers.nominal / 100)) > vouchers.max_disc
+                                THEN vouchers.max_disc
+                                ELSE (harga_carts.quantity * harga_carts.harga_ticket) * (vouchers.nominal / 100)
+                            END
                         ELSE vouchers.nominal 
                     END, 
                 0)
@@ -66,7 +71,10 @@ class PenarikanIndex extends Component
 
         $this->totalSaldo = \App\Models\HargaCart::join('carts', 'carts.uid', '=', 'harga_carts.uid')
             ->join('events', 'events.uid', '=', 'carts.event_uid')
-            ->leftJoin('vouchers', 'vouchers.code', '=', 'harga_carts.voucher')
+            ->leftJoin('vouchers', function($join) {
+                $join->on('vouchers.code', '=', 'harga_carts.voucher')
+                     ->on('vouchers.event_uid', '=', 'events.uid');
+            })
             ->where('carts.status', 'SUCCESS')
             ->where('events.user_uid', $ownerId)
             ->where('carts.payment_type', '!=', 'cash')

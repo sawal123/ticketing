@@ -13,10 +13,10 @@
         </div>
 
         <div class="flex items-center gap-2 flex-shrink-0">
-            <button class="relative p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-all duration-200" aria-label="Notifikasi">
+            <!-- <button class="relative p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-all duration-200" aria-label="Notifikasi">
                 <i data-lucide="bell" class="w-5 h-5"></i>
                 <span class="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full ring-2 ring-white dark:ring-slate-800"></span>
-            </button>
+            </button> -->
             <button id="themeToggle" onclick="toggleTheme()" class="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-all duration-200" aria-label="Toggle tema">
                 <i data-lucide="sun" id="iconSun" class="w-5 h-5 hidden"></i>
                 <i data-lucide="moon" id="iconMoon" class="w-5 h-5"></i>

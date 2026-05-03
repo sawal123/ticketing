@@ -180,10 +180,16 @@
             <div class="grid grid-cols-2 gap-4">
                 <x-admin.input label="Min. Pembelian" type="number" wire:model.live="min_beli" min="0" placeholder="0"
                     error="{{ $errors->first('min_beli') }}" />
-                <x-admin.input label="Maks. Diskon (Rp)" type="number" wire:model.live="max_disc" min="0"
-                    placeholder="0" readonly="{{ $unit == 'rupiah' }}"
-                    class="{{ $unit == 'rupiah' ? 'bg-slate-100 opacity-70 cursor-not-allowed' : '' }}"
-                    error="{{ $errors->first('max_disc') }}" />
+                @if($unit == 'rupiah')
+                    <x-admin.input label="Maks. Diskon (Rp)" type="number" wire:model.live="max_disc" min="0"
+                        placeholder="0" readonly
+                        class="bg-slate-100 opacity-70 cursor-not-allowed"
+                        error="{{ $errors->first('max_disc') }}" />
+                @else
+                    <x-admin.input label="Maks. Diskon (Rp)" type="number" wire:model.live="max_disc" min="0"
+                        placeholder="0"
+                        error="{{ $errors->first('max_disc') }}" />
+                @endif
             </div>
 
             <x-admin.input label="Limit Penggunaan" type="number" wire:model.live="limit" min="1" placeholder="100"
@@ -197,7 +203,7 @@
                     <span wire:loading.remove>
                         {{ $isEditMode ? 'Simpan Perubahan' : 'Buat Voucher' }}
                     </span>
-                    <span wire:loading class="flex items-center gap-2">
+                    <span wire:loading.flex class="items-center gap-2">
                         <i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i>
                         Memproses...
                     </span>
@@ -247,7 +253,7 @@
                         <tr @click="expandedTrx = (expandedTrx === '{{ $trx->uid }}' ? null : '{{ $trx->uid }}')"
                             class="group cursor-pointer bg-slate-50/50 dark:bg-slate-700/30 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-all duration-200">
                             <td class="px-4 py-3 rounded-l-xl font-medium text-slate-700 dark:text-slate-300">
-                                {{ $trx->uid }}</td>
+                                {{ $trx->invoice }}</td>
                             <td class="px-4 py-3">
                                 <div class="font-semibold text-slate-800 dark:text-slate-200">
                                     {{ $trx->users->name ?? 'User' }}</div>

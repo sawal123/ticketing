@@ -57,6 +57,7 @@
             <span class="text-sm font-medium">Partner</span>
         </a>
 
+
         <!-- NEW: Ticket & Transaksi with Modal -->
         <div class="pt-2">
             <p class="px-3 text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">Operasional</p>
@@ -110,6 +111,7 @@
             <i data-lucide="monitor" class="w-5 h-5 flex-shrink-0"></i>
             <span class="text-sm font-medium">Landing Page</span>
         </a>
+
 
         <!-- MODAL PILIH EVENT -->
         <x-admin.modal name="select-event-modal" title="Pilih Event" icon="shopping-cart">

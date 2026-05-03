@@ -217,8 +217,7 @@
             </x-admin.table>
 
         @elseif($activeTab === 'transaksi')
-            <!-- Metrics Cards -->
-            <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6 mb-8">
+            <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-{{ auth()->user()->role === 'admin' ? '6' : '5' }} gap-6 mb-8">
                 <div
                     class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex items-center gap-4">
                     <div class="w-12 h-12 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center">
@@ -255,7 +254,18 @@
                 <div
                     class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex items-center gap-4">
                     <div class="w-12 h-12 rounded-xl bg-rose-50 dark:bg-rose-900/30 flex items-center justify-center">
-                        <i data-lucide="pie-chart" class="w-6 h-6 text-rose-600 dark:text-rose-400"></i>
+                        <i data-lucide="percent" class="w-6 h-6 text-rose-600 dark:text-rose-400"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Diskon</p>
+                        <p class="text-2xl font-extrabold text-slate-800 dark:text-white">Rp
+                            {{ number_format($metrics['total_discount'], 0, ',', '.') }}</p>
+                    </div>
+                </div>
+                <div
+                    class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-xl bg-fuchsia-50 dark:bg-fuchsia-900/30 flex items-center justify-center">
+                        <i data-lucide="pie-chart" class="w-6 h-6 text-fuchsia-600 dark:text-fuchsia-400"></i>
                     </div>
                     <div>
                         <p class="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Pajak</p>
@@ -534,13 +544,11 @@
                                 <span class="font-bold text-emerald-600">-Rp {{ number_format($discount, 0, ',', '.') }}</span>
                             </div>
                         @endif
-                        @if(auth()->user()->role === 'admin')
                         <div class="flex justify-between text-sm">
                             <span class="text-slate-500">Internet Fee</span>
                             <span class="font-bold text-slate-800 dark:text-white">Rp
                                 {{ number_format($selectedTransaction->internet_fee ?? 0, 0, ',', '.') }}</span>
                         </div>
-                        @endif
                         <div class="flex justify-between text-sm">
                             <span class="text-slate-500">
                                 Pajak / Fee

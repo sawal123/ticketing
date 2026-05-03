@@ -110,7 +110,7 @@
                         <button type="submit" wire:loading.attr="disabled"
                             class="w-full flex justify-center py-4 px-4 border border-transparent rounded-2xl shadow-lg text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98]">
                             <span wire:loading.remove>Simpan & Aktifkan Akun</span>
-                            <span wire:loading class="flex items-center gap-2">
+                            <span wire:loading.flex class="items-center gap-2">
                                 <i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i>
                                 Memproses...
                             </span>

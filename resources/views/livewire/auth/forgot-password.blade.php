@@ -43,7 +43,7 @@
                 <div>
                     <button type="submit" class="w-full flex justify-center py-4 px-4 border border-transparent rounded-2xl shadow-lg text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200 transform active:scale-[0.98] shadow-indigo-500/20">
                         <span wire:loading.remove>Kirim Tautan Reset</span>
-                        <span wire:loading class="flex items-center gap-2">
+                        <span wire:loading.flex class="items-center gap-2">
                             <i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i>
                             Memproses...
                         </span>

@@ -102,7 +102,7 @@
                         <div class="flex justify-end">
                             <x-admin.button type="submit" variant="primary" wire:loading.attr="disabled">
                                 <span wire:loading.remove>Simpan Perubahan</span>
-                                <span wire:loading class="flex items-center gap-2">
+                                <span wire:loading.flex class="items-center gap-2">
                                     <i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i>
                                     Memproses...
                                 </span>
@@ -125,7 +125,7 @@
                         <div class="flex justify-end">
                             <x-admin.button type="submit" variant="primary" wire:loading.attr="disabled">
                                 <span wire:loading.remove>Update Password</span>
-                                <span wire:loading class="flex items-center gap-2">
+                                <span wire:loading.flex class="items-center gap-2">
                                     <i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i>
                                     Memproses...
                                 </span>
@@ -215,7 +215,7 @@
                     <span wire:loading.remove>
                         {{ $isEditBank ? 'Simpan Perubahan' : 'Tambah Rekening' }}
                     </span>
-                    <span wire:loading class="flex items-center gap-2">
+                    <span wire:loading.flex class="items-center gap-2">
                         <i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i>
                         Memproses...
                     </span>

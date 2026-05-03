@@ -65,6 +65,11 @@ Route::get('/forgot-password', \App\Livewire\Auth\ForgotPassword::class)->name('
 Route::post('/email', [UserLoginController::class, 'email'])->name('email');
 Route::get('/reset-password/{data}', \App\Livewire\Auth\ResetPassword::class)->name('password.reset');
 Route::post('/new-password', [UserLoginController::class, 'newPassword']);
+use App\Http\Controllers\Auth\GoogleController;
+
+Route::get('auth/google', [GoogleController::class, 'redirectToGoogle'])->name('auth.google');
+Route::get('auth/google/callback', [GoogleController::class, 'handleGoogleCallback']);
+
 Route::get('/login', \App\Livewire\Auth\Login::class)->name('login');
 // Route::post('/loginUser', [UserLoginController::class, 'loginUser']);
 
@@ -191,6 +196,8 @@ Route::prefix('admin')
         Route::get('/slider', SliderIndex::class)->name('admin.slider');
         Route::get('/activity', ActivityIndex::class)->name('admin.activity');
         Route::get('/user', UserIndex::class)->name('admin.user');
+        Route::get('/category', \App\Livewire\Admin\CategoryIndex::class)->name('admin.category');
+        Route::get('/fasilitas', \App\Livewire\Admin\FasilitasIndex::class)->name('admin.fasilitas');
 
         // =========================================================
         // LEGACY ADMIN (MOVED TO /old)

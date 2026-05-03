@@ -41,6 +41,9 @@ class User extends Authenticatable
         'role',
         'password',
         'parent_uid',
+        'google_id',
+        'google_token',
+        'google_refresh_token',
     ];
 
     /**

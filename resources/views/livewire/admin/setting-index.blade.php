@@ -71,7 +71,7 @@
                                 <div class="pt-4">
                                     <x-admin.button type="submit" variant="primary" wire:loading.attr="disabled">
                                         <span wire:loading.remove>Simpan Logo</span>
-                                        <span wire:loading class="flex items-center gap-2">
+                                        <span wire:loading.flex class="items-center gap-2">
                                             <i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i>
                                             Memproses...
                                         </span>
@@ -116,7 +116,7 @@
                                 <div class="pt-4">
                                     <x-admin.button type="submit" variant="primary" wire:loading.attr="disabled">
                                         <span wire:loading.remove>Simpan Icon</span>
-                                        <span wire:loading class="flex items-center gap-2">
+                                        <span wire:loading.flex class="items-center gap-2">
                                             <i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i>
                                             Memproses...
                                         </span>
@@ -154,7 +154,7 @@
                         <div class="flex justify-end pt-4">
                             <x-admin.button type="submit" variant="primary" wire:loading.attr="disabled">
                                 <span wire:loading.remove>Simpan Pengaturan SEO</span>
-                                <span wire:loading class="flex items-center gap-2">
+                                <span wire:loading.flex class="items-center gap-2">
                                     <i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i>
                                     Memproses...
                                 </span>
