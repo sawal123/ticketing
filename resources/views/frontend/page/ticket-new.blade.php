@@ -64,6 +64,7 @@
                                     </div>
                                 </div>
 
+
                                 @if ($sold < $qty && $hargaItem->status === 'active' && $ticket->status === 'active')
                                     <div class="qty-control ticket-quantity-control input-wrapper"
                                         data-target="quantity{{ $loop->index }}" data-price="{{ $hargaItem->harga }}" data-max="5">
