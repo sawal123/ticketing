@@ -7,7 +7,7 @@
     <meta property="og:image" content="{{ asset('storage/cover/' . $ticket->cover) }}">
     <meta property="og:url" content="{{ url()->current() }}">
     <meta property="og:type" content="website">
-    
+
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="{{ $ticket->event }}">
     <meta name="twitter:description" content="{{ Str::limit(strip_tags($ticket->deskripsi), 160) }}">
@@ -64,7 +64,7 @@
                                     </div>
                                 </div>
 
-                                @if ($sold < $qty && $hargaItem->status === 'active')
+                                @if ($sold < $qty && $hargaItem->status === 'active' && $ticket->status === 'active')
                                     <div class="qty-control ticket-quantity-control input-wrapper"
                                         data-target="quantity{{ $loop->index }}" data-price="{{ $hargaItem->harga }}" data-max="5">
 
@@ -264,7 +264,7 @@
                                     </div>
                                 </div>
 
-                                @if ($soldMob < $qtyMob && $hargaItemMobile->status === 'active')
+                                @if ($soldMob < $qtyMob && $hargaItemMobile->status === 'active' && $ticket->status === 'active')
                                     <div class="qty-control ticket-quantity-control input-wrapper"
                                         data-target="quantity{{ $loop->index }}" data-price="{{ $hargaItemMobile->harga }}"
                                         data-max="5">
@@ -460,12 +460,12 @@
 
         const checkoutForms = document.querySelectorAll('.ticket-purchase-form');
         const checkBtns = document.querySelectorAll('.checkButton');
-        
+
         function showUnpaidWarning(e) {
             if (hasUnpaid) {
                 e.preventDefault();
                 e.stopPropagation();
-                
+
                 const currentForm = e.target.closest('form');
 
                 Swal.fire({
@@ -516,7 +516,7 @@
                             });
                     }
                 });
-                
+
                 return false;
             }
         }
