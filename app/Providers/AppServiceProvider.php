@@ -12,7 +12,14 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // Shim for Livewire compatibility with Ignition
+        if (! class_exists('Livewire\Mechanisms\ComponentRegistry')) {
+            require_once app_path('Shims/ComponentRegistry.php');
+            
+            $this->app->singleton('Livewire\Mechanisms\ComponentRegistry', function () {
+                return new \Livewire\Mechanisms\ComponentRegistry();
+            });
+        }
     }
 
     /**

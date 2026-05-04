@@ -132,6 +132,12 @@
                         <div class="meta-icon">📍</div>
                         <span>{{ $ticket->alamat }}</span>
                     </div>
+                    @if($ticket->category)
+                        <div class="meta-item">
+                            <div class="meta-icon">🏷️</div>
+                            <span>{{ $ticket->category->name }}</span>
+                        </div>
+                    @endif
                 </div>
                 <a href="{{ $ticket->map }}" class="btn-location">🗺 View Location</a>
             </div>
@@ -178,6 +184,32 @@
 
                 </div>
             </div>
+
+            @if($ticket->fasilitas->count() > 0)
+                <!-- FASILITAS -->
+                <div class="talent-section" style="margin-top: 32px;">
+                    <div class="section-label">Fasilitas Event</div>
+                    <div class="talent-grid">
+                        @foreach ($ticket->fasilitas as $fas)
+                            <div class="talent-card" style="padding: 12px; border-radius: 14px;">
+                                <div class="talent-avatar"
+                                    style="width: 44px; height: 44px; flex-shrink: 0; background: var(--surface2); border-radius: 10px; display: flex; align-items: center; justify-content: center; overflow: hidden;">
+                                    @if($fas->icon)
+                                        <img src="{{ asset('storage/' . $fas->icon) }}" alt="{{ $fas->name }}"
+                                            style="width: 100%; height: 100%; object-fit: contain; padding: 8px;">
+                                    @else
+                                        <span style="font-size: 16px; opacity: 0.5;">✦</span>
+                                    @endif
+                                </div>
+                                <div>
+                                    <div class="talent-name" style="font-size: 14px;">{{ $fas->name }}</div>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
+
         </div>
 
         <div class="location-card">

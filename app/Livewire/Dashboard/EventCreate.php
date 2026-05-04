@@ -19,15 +19,25 @@ class EventCreate extends Component
     public $editingEventUid = null;
 
     public $event;
+
     public $pajak = 0;
+
     public $start_sale;
+
     public $tanggal; // End Date / Event Date
+
     public $alamat;
+
     public $map;
+
     public $cover;
+
     public $existingCover = null;
+
     public $deskripsi;
+
     public $category_id;
+
     public $selectedFasilitas = [];
 
     public function mount($uid = null)
@@ -87,13 +97,13 @@ class EventCreate extends Component
             $slug = $event->slug;
         } else {
             $uid = (string) Str::uuid();
-            $slug = Str::slug($this->event) . '-' . Str::random(5);
+            $slug = Str::slug($this->event).'-'.Str::random(5);
         }
 
         // Handle Cover Upload
         $coverName = $this->existingCover;
         if ($this->cover) {
-            $coverName = $uid . '.' . $this->cover->getClientOriginalExtension();
+            $coverName = $uid.'.'.$this->cover->getClientOriginalExtension();
             $this->cover->storeAs('public/cover', $coverName);
         }
 
@@ -109,7 +119,7 @@ class EventCreate extends Component
             'cover' => $coverName,
         ];
 
-        if (!$this->editingEventUid) {
+        if (! $this->editingEventUid) {
             $user = auth()->user();
             $ownerId = ($user->role === 'staff') ? $user->parent_uid : $user->uid;
 
@@ -130,7 +140,7 @@ class EventCreate extends Component
 
         session()->flash('message', $this->editingEventUid ? 'Event berhasil diperbarui.' : 'Event berhasil diajukan dan sedang menunggu persetujuan admin.');
 
-        return redirect()->route('dashboard.demo.event');
+        return redirect()->route('dashboard.event.edit', $uid);
     }
 
     public function render()

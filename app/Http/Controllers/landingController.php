@@ -40,7 +40,7 @@ class landingController extends Controller
     public function ticket($slug)
     {
         // 1. Hapus filter query 'active' agar tiket inactive tetap dikirim ke view
-        $ticket = Event::with(['talents', 'hargas'])->where('slug', $slug)->firstOrFail();
+        $ticket = Event::with(['talents', 'hargas', 'fasilitas'])->where('slug', $slug)->firstOrFail();
 
         // MENGHITUNG TIKET TERJUAL
         $soldTickets = HargaCart::select('kategori_harga', DB::raw('SUM(quantity) as total_sold'))

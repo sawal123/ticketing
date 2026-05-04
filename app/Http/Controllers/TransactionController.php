@@ -73,6 +73,7 @@ class TransactionController extends Controller
         }
 
         // 7. TOTAL AKHIR (Inilah yang dikirim ke Midtrans)
+        // Pastikan grossAmount sudah termasuk subtotal, pajak, dan internet_fee (7200 atau 5%)
         $grossAmount = (int) ($subtotal + $nilaiPajak + $internetFee);
 
         $cart = Cart::where('user_uid', $user_uid)->where('invoice', $invoice)->first();
@@ -88,6 +89,7 @@ class TransactionController extends Controller
         konfig::$is3ds = config('services.midtrans.is3ds');
 
         // Mapping Payment Method untuk Midtrans
+        // Gunakan echannel khusus untuk Mandiri VA agar tidak error
         $paymentMethod = $feePayment->slug.($feePayment->category === 'ewallet' ? '' : '_va');
         if ($feePayment->slug === 'mandiri') {
             $paymentMethod = 'echannel';
@@ -96,7 +98,7 @@ class TransactionController extends Controller
         $snapPayload = [
             'transaction_details' => [
                 'order_id' => $invoice,
-                'gross_amount' => $grossAmount, // Nilai Akhir yang sudah termasuk Pajak & Internet Fee
+                'gross_amount' => $grossAmount, 
             ],
             'customer_details' => [
                 'first_name' => Auth::user()->name,

@@ -25,7 +25,7 @@ class FasilitasIndex extends Component
 
     protected $rules = [
         'name' => 'required|string|max:255|unique:fasilitas,name',
-        'icon_file' => 'nullable|image|mimes:png,jpg,jpeg,svg|max:1024',
+        'icon_file' => 'nullable|image|mimes:png,jpg,jpeg,svg,webp|max:1024',
     ];
 
     public function resetForm()
@@ -57,7 +57,7 @@ class FasilitasIndex extends Component
         if ($this->isEditMode) {
             $rules['name'] = 'required|string|max:255|unique:fasilitas,name,' . $this->fasilitas_id;
         } else {
-            $rules['icon_file'] = 'required|image|mimes:png,jpg,jpeg,svg|max:1024';
+            $rules['icon_file'] = 'required|image|mimes:png,jpg,jpeg,svg,webp|max:1024';
         }
 
         $this->validate($rules);
