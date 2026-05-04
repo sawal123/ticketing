@@ -19,3 +19,5 @@ yarn-error.log
 /.vscode
 /client_secret_*.json
 /git_test.txt
+/bootstrap/cache/*.php
+!/bootstrap/cache/.gitignore
