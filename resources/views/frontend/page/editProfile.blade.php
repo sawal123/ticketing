@@ -76,7 +76,7 @@
                 </div>
 
                 <!-- STATS -->
-                <div class="stats-row">
+                {{-- <div class="stats-row">
                     <div class="stat-item">
                         <div class="stat-num">12</div>
                         <div class="stat-label">Event</div>
@@ -89,7 +89,7 @@
                         <div class="stat-num">3</div>
                         <div class="stat-label">Transaksi</div>
                     </div>
-                </div>
+                </div> --}}
 
             </aside>
 
