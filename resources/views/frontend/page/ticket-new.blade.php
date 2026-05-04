@@ -193,7 +193,7 @@
             </div>
             <div class="talent-name" style="margin-bottom:4px;">{{ $ticket->alamat }}</div>
             <a href="{{ $ticket->map }}" class="map-label">Lihat di Google Map →</a>
-        </div> --}}
+        </div>
 
         {{-- <div class="location-card">
             <div class="section-label">Informasi Event</div>
