@@ -1,30 +1,27 @@
 <?php
 
 namespace App\Http\Controllers;
+
 // namespace Midtrans;
 
-use Exception;
-use Midtrans\Snap;
-use App\Models\Cart;
-use App\Models\User;
-use App\Models\Event;
-use Midtrans\CoreApi;
-use App\Models\Voucher;
-use App\Models\HargaCart;
-use Midtrans\Notification;
-use App\Models\CartVoucher;
-use App\Models\Transaction;
-use Illuminate\Support\Str;
-use Illuminate\Http\Request;
-use App\Models\PaymentGateway;
-use Midtrans\Config as konfig;
-use App\Jobs\sendEmailTrnsaksi;
 use App\Jobs\sendEmailETransaksi;
-use App\Http\Controllers\Controller;
+use App\Mail\MidtransPaymentNotification;
+use App\Models\Cart;
+use App\Models\CartVoucher;
+use App\Models\Event;
+use App\Models\HargaCart;
+use App\Models\PaymentGateway;
+use App\Models\Transaction;
+use App\Models\User;
+use App\Models\Voucher;
+use Exception;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
-use App\Mail\MidtransPaymentNotification;
-use SimpleSoftwareIO\QrCode\Facades\QrCode;
+use Midtrans\Config as konfig;
+use Midtrans\Notification;
+use Midtrans\Snap;
+
 // use Midtrans\CallbackService;
 
 class TransactionController extends Controller
@@ -39,7 +36,7 @@ class TransactionController extends Controller
 
         // 1. Ambil Data Payment Gateway
         $feePayment = PaymentGateway::find($payment_id);
-        if (!$feePayment) {
+        if (! $feePayment) {
             return back()->withErrors(['msg' => 'Metode pembayaran tidak ditemukan.']);
         }
 
@@ -71,14 +68,15 @@ class TransactionController extends Controller
         if ($feePayment->biaya_type === 'rupiah') {
             $internetFee = $feePayment->biaya;
         } else {
-            $internetFee = round(($feePayment->biaya / 100) * $totalTiket);
+            // Internet fee dihitung dari subtotal (tiket - diskon)
+            $internetFee = round(($feePayment->biaya / 100) * $subtotal);
         }
 
         // 7. TOTAL AKHIR (Inilah yang dikirim ke Midtrans)
         $grossAmount = (int) ($subtotal + $nilaiPajak + $internetFee);
 
         $cart = Cart::where('user_uid', $user_uid)->where('invoice', $invoice)->first();
-        if (!$cart) {
+        if (! $cart) {
             return back()->withErrors(['msg' => 'Cart tidak ditemukan.']);
         }
 
@@ -89,17 +87,23 @@ class TransactionController extends Controller
         konfig::$isSanitized = config('services.midtrans.isSanitized');
         konfig::$is3ds = config('services.midtrans.is3ds');
 
+        // Mapping Payment Method untuk Midtrans
+        $paymentMethod = $feePayment->slug.($feePayment->category === 'ewallet' ? '' : '_va');
+        if ($feePayment->slug === 'mandiri') {
+            $paymentMethod = 'echannel';
+        }
+
         $snapPayload = [
             'transaction_details' => [
-                'order_id'     => $invoice,
-                'gross_amount' => $grossAmount, // Nilai Akhir yang sudah termasuk Pajak
+                'order_id' => $invoice,
+                'gross_amount' => $grossAmount, // Nilai Akhir yang sudah termasuk Pajak & Internet Fee
             ],
             'customer_details' => [
                 'first_name' => Auth::user()->name,
-                'email'      => Auth::user()->email
+                'email' => Auth::user()->email,
             ],
             'enabled_payments' => [
-                $feePayment->slug . ($feePayment->category === 'ewallet' ? '' : '_va')
+                $paymentMethod,
             ],
         ];
 
@@ -115,24 +119,22 @@ class TransactionController extends Controller
             $cart->pajak_persen = $pajakPersen;
             $cart->save();
 
-
-
             $trans = Transaction::where('invoice', $invoice)->first();
-            if (!$trans) {
+            if (! $trans) {
                 Transaction::create([
-                    'uid'              => $cart->uid,
-                    'user_uid'         => $user_uid,
-                    'event_uid'        => $event_uid,
-                    'amount'           => $grossAmount, // Simpan total yang sudah termasuk pajak
+                    'uid' => $cart->uid,
+                    'user_uid' => $user_uid,
+                    'event_uid' => $event_uid,
+                    'amount' => $grossAmount, // Simpan total yang sudah termasuk pajak
                     'status_transaksi' => 'PENDING',
-                    'invoice'          => $invoice,
-                    'payment_type'     => $feePayment->slug,
+                    'invoice' => $invoice,
+                    'payment_type' => $feePayment->slug,
                 ]);
             }
 
             return redirect($paymentUrl);
-        } catch (\Exception $e) {
-            return back()->withErrors(['msg' => 'Gagal membuat transaksi: ' . $e->getMessage()]);
+        } catch (Exception $e) {
+            return back()->withErrors(['msg' => 'Gagal membuat transaksi: '.$e->getMessage()]);
         }
     }
 
@@ -146,14 +148,13 @@ class TransactionController extends Controller
         konfig::$isSanitized = config('services.midtrans.isSanitized');
         konfig::$is3ds = config('services.midtrans.is3ds');
 
-        $notificationData = new Notification();
+        $notificationData = new Notification;
         // $notificationData = $notif->getResponse();
 
         $status = $notificationData->transaction_status;
         $type = $notificationData->payment_type;
         $fraud = $notificationData->fraud_status;
         $order_id = $notificationData->order_id;
-
 
         $transaction = Transaction::where('invoice', $order_id)->first();
         $carts = Cart::where('invoice', $order_id)->first();
@@ -183,7 +184,7 @@ class TransactionController extends Controller
                     }
                 }
             }
-        } else if ($status === 'settlement') {
+        } elseif ($status === 'settlement') {
             if ($carts->status !== 'SUCCESS') {
                 $transaction->status_transaksi = 'SUCCESS';
                 $transaction->payment_type = $type;
@@ -194,19 +195,19 @@ class TransactionController extends Controller
                     $voucher->save();
                 }
             }
-        } else if ($status === 'pending') {
+        } elseif ($status === 'pending') {
             $transaction->status_transaksi = 'PENDING';
             $transaction->payment_type = $type;
             $carts->status = 'PENDING';
-        } else if ($status === 'deny') {
+        } elseif ($status === 'deny') {
             $transaction->payment_type = $type;
             $transaction->status_transaksi = 'CANCELLED';
             $carts->status = 'CANCELLED';
-        } else if ($status === 'expire') {
+        } elseif ($status === 'expire') {
             $transaction->payment_type = $type;
             $transaction->status_transaksi = 'CANCELLED';
             $carts->status = 'CANCELLED';
-        } else if ($status === 'cancel') {
+        } elseif ($status === 'cancel') {
             $transaction->payment_type = $type;
             $transaction->status_transaksi = 'CANCELLED';
             $carts->status = 'CANCELLED';
@@ -215,7 +216,6 @@ class TransactionController extends Controller
         $carts->save();
         $transaction->save();
 
-
         // Kirimkan email
         if ($transaction) {
             if ($status === 'capture' && $fraud == 'accept') {
@@ -223,31 +223,31 @@ class TransactionController extends Controller
                 $send = new sendEmailETransaksi($user, $carts, $order_id);
                 dispatch($send);
                 //
-            } else if ($status === 'settlement') {
+            } elseif ($status === 'settlement') {
                 // Mail::to($user->email)->send(new MidtransPaymentNotification($user, $carts, $order_id));
                 $send = new sendEmailETransaksi($user, $carts, $order_id);
                 dispatch($send);
-            } else if ($status === 'capture' && $fraud == 'challenge') {
+            } elseif ($status === 'capture' && $fraud == 'challenge') {
                 return response()->json([
                     'meta' => [
                         'code' => 200,
-                        'message' => 'Midtrans Payment Challenge'
-                    ]
+                        'message' => 'Midtrans Payment Challenge',
+                    ],
                 ]);
             } else {
                 return response()->json([
                     'meta' => [
                         'code' => 200,
-                        'message' => 'Midtrans Payment not Settlement'
-                    ]
+                        'message' => 'Midtrans Payment not Settlement',
+                    ],
                 ]);
             }
 
             return response()->json([
                 'meta' => [
                     'code' => 200,
-                    'message' => 'Midtrans Notification Success'
-                ]
+                    'message' => 'Midtrans Notification Success',
+                ],
             ]);
         }
     }
