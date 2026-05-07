@@ -68,15 +68,13 @@
                     <div class="mt-auto space-y-3">
                         @if ($event->konfirmasi !== null)
                             <div class="grid grid-cols-5 gap-3">
-                                <a href="{{ route('dashboard.event.detail', $event->uid) }}" wire:navigate
-                                    class="col-span-4">
+                                <a href="{{ route('dashboard.event.detail', $event->uid) }}" wire:navigate class="col-span-4">
                                     <x-admin.button variant="secondary"
                                         class="w-full uppercase text-[11px] font-black tracking-widest border-slate-200 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-600 hover:text-indigo-600 transition-colors">
                                         Detail Event
                                     </x-admin.button>
                                 </a>
-                                <a href="{{ route('dashboard.event.edit', $event->uid) }}" wire:navigate
-                                    class="col-span-1">
+                                <a href="{{ route('dashboard.event.edit', $event->uid) }}" wire:navigate class="col-span-1">
                                     <x-admin.button variant="secondary"
                                         class="w-full !px-0 flex items-center justify-center border-slate-200 dark:border-slate-700 hover:border-amber-300 dark:hover:border-amber-600 hover:text-amber-600 transition-colors"
                                         title="Edit Event">
@@ -86,8 +84,7 @@
                             </div>
 
                             <div class="grid grid-cols-2 gap-3">
-                                <a href="{{ route('dashboard.event.detail', $event->uid) }}?activeTab=transaksi"
-                                    wire:navigate>
+                                <a href="{{ route('dashboard.event.detail', $event->uid) }}?activeTab=transaksi" wire:navigate>
                                     <x-admin.button variant="primary"
                                         class="w-full !px-0 uppercase text-[10px] font-black tracking-widest shadow-indigo-200 dark:shadow-none">
                                         Trx Online

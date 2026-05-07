@@ -18,7 +18,7 @@
         </div>
     </x-admin.card>
 
-    <x-admin.table title="Daftar Event" :headers="['Gambar', 'Nama Event', 'Total Transaksi', 'Total Omset', 'Status', 'Aksi']" :count="$events->total()">
+    <x-admin.table title="Daftar Event" :headers="['Gambar', 'Nama Event', 'Tiket Terjual', 'Total Omset', 'Status', 'Aksi']" :count="$events->total()">
         @foreach($events as $event)
             <tr class="table-row-hover transition-colors">
                 <td class="px-5 py-4 whitespace-nowrap">
@@ -33,8 +33,11 @@
                             class="text-xs text-slate-500 dark:text-slate-400">{{ \Carbon\Carbon::parse($event->tanggal)->format('d M Y') }}</span>
                     </div>
                 </td>
-                <td class="px-5 py-4 font-semibold text-slate-700 dark:text-slate-300">
-                    {{ number_format($event->total_transaksi) }} Transaksi
+                <td class="px-5 py-4">
+                    <div class="flex flex-col">
+                        <span class="font-bold text-emerald-600">{{ number_format($event->total_tiket_terjual ?? 0) }} Tiket</span>
+                        <span class="text-[10px] text-slate-400 uppercase font-bold">{{ number_format($event->total_transaksi) }} Transaksi</span>
+                    </div>
                 </td>
                 <td class="px-5 py-4">
                     <span class="text-lg font-extrabold text-indigo-600 dark:text-indigo-400">

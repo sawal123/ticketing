@@ -2,9 +2,9 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
 use App\Models\Category;
 use App\Models\Fasilitas;
+use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
 
 class MasterDataSeeder extends Seeder
@@ -28,10 +28,10 @@ class MasterDataSeeder extends Seeder
 
         foreach ($categories as $category) {
             Category::updateOrCreate(
-                ['name' => $category['name']], 
+                ['name' => $category['name']],
                 [
                     'name' => $category['name'],
-                    'slug' => Str::slug($category['name'])
+                    'slug' => Str::slug($category['name']),
                 ]
             );
         }

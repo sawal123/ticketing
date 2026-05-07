@@ -49,6 +49,7 @@ class EventIndex extends Component
                 'events.status',
                 'events.created_at',
                 DB::raw('COUNT(DISTINCT carts.uid) as total_transaksi'),
+                DB::raw('SUM(harga_carts.quantity) as total_tiket_terjual'),
                 DB::raw('SUM(harga_carts.quantity * harga_carts.harga_ticket) as total_omset')
             )
             ->groupBy('events.id', 'events.uid', 'events.event', 'events.cover', 'events.tanggal', 'events.status', 'events.created_at')

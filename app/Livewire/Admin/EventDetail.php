@@ -59,11 +59,11 @@ class EventDetail extends Component
         return Event::with([
             'talents', 
             'hargas' => function($query) {
-                $query->withCount(['hargaCarts as sold_count' => function($q) {
+                $query->withSum(['hargaCarts as sold_count' => function($q) {
                     $q->whereHas('cart', function($c) {
                         $c->where('status', 'SUCCESS');
                     });
-                }]);
+                }], 'quantity');
             }
         ])->where('uid', $this->eventUid)->firstOrFail();
     }
