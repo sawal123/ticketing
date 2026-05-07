@@ -115,7 +115,8 @@
             </div>
             <div class="flex-1 min-w-0">
                 <p class="text-xs text-slate-700 dark:text-slate-200 font-medium truncate">
-                    {{ auth()->user()->name ?? 'Administrator' }}</p>
+                    {{ auth()->user()->name ?? 'Administrator' }}
+                </p>
                 <p class="text-[10px] text-slate-500 dark:text-slate-400 truncate">{{ auth()->user()->email ??
                     'admin@example.com' }}</p>
             </div>
