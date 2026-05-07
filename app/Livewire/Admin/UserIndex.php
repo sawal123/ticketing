@@ -127,7 +127,23 @@ class UserIndex extends Component
             }
 
             if ($this->editingId) {
-                User::find($this->editingId)->update($data);
+                $user = User::find($this->editingId);
+                $oldRole = $user->role;
+                $user->update($data);
+
+                if ($oldRole !== $this->role) {
+                    \App\Models\ActivityLog::create([
+                        'user_uid' => auth()->user()->uid,
+                        'activity' => 'Privilege Escalation',
+                        'login_status' => 'Success',
+                        'description' => "Admin " . auth()->user()->name . " changed role of {$user->name} from {$oldRole} to {$this->role}",
+                        'impact_level' => 'Berisiko Tinggi',
+                        'ip_address' => request()->ip(),
+                        'location' => $this->getLocation(request()->ip()),
+                        'user_agent' => request()->userAgent(),
+                        'session_id' => session()->getId(),
+                    ]);
+                }
             } else {
                 $data['uid'] = (string) Str::uuid();
                 User::create($data);
@@ -183,6 +199,19 @@ class UserIndex extends Component
             $this->deletingId = null;
             session()->flash('message', 'Data berhasil dihapus.');
         }
+    }
+
+    protected function getLocation($ip)
+    {
+        if ($ip === '127.0.0.1' || $ip === '::1') return 'Localhost';
+        try {
+            $response = \Illuminate\Support\Facades\Http::get("http://ip-api.com/json/{$ip}?fields=city,country");
+            if ($response->successful()) {
+                $data = $response->json();
+                return ($data['city'] ?? 'Unknown') . ', ' . ($data['country'] ?? 'Unknown');
+            }
+        } catch (\Exception $e) {}
+        return 'Unknown';
     }
 
     public function render()

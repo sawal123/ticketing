@@ -12,10 +12,15 @@ class ActivityIndex extends Component
 
     public $search = '';
     public $filterUser = '';
+    public $filterRole = 'all';
+    public $filterImpact = 'all';
+    public $filterStatus = 'all';
 
-    public function updatingSearch()
+    public function updated($propertyName)
     {
-        $this->resetPage();
+        if (in_array($propertyName, ['search', 'filterUser', 'filterRole', 'filterImpact', 'filterStatus'])) {
+            $this->resetPage();
+        }
     }
 
     public function render()
@@ -24,12 +29,24 @@ class ActivityIndex extends Component
             ->when($this->search, function ($query) {
                 $query->where('activity', 'like', '%' . $this->search . '%')
                     ->orWhere('description', 'like', '%' . $this->search . '%')
-                    ->orWhere('ip_address', 'like', '%' . $this->search . '%');
+                    ->orWhere('ip_address', 'like', '%' . $this->search . '%')
+                    ->orWhere('location', 'like', '%' . $this->search . '%');
             })
             ->when($this->filterUser, function ($query) {
                 $query->whereHas('user', function ($q) {
                     $q->where('name', 'like', '%' . $this->filterUser . '%');
                 });
+            })
+            ->when($this->filterRole !== 'all', function ($query) {
+                $query->whereHas('user', function ($q) {
+                    $q->where('role', $this->filterRole);
+                });
+            })
+            ->when($this->filterImpact !== 'all', function ($query) {
+                $query->where('impact_level', $this->filterImpact);
+            })
+            ->when($this->filterStatus !== 'all', function ($query) {
+                $query->where('login_status', $this->filterStatus);
             })
             ->latest()
             ->paginate(15);

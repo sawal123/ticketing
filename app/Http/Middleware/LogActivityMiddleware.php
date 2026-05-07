@@ -19,23 +19,56 @@ class LogActivityMiddleware
     {
         $response = $next($request);
 
-        // Only log if authenticated and it's a non-GET request (to avoid logging every page view)
-        // Or if you want to log everything, just remove the method check.
-        // For now, let's log important things like login, post, put, delete.
-        
         if (Auth::check()) {
             $user = Auth::user();
             $method = $request->method();
             $path = $request->path();
             
-            // Define activities to log
-            if ($method !== 'GET' || str_contains($path, 'login') || str_contains($path, 'logout')) {
+            // Only log important activities
+            if ($method !== 'GET' || str_contains($path, 'login') || str_contains($path, 'logout') || str_contains($path, 'payment-gateway')) {
+                
+                $impactLevel = 'Normal';
+                if ($method === 'DELETE' || str_contains($path, 'payment-gateway') || str_contains($path, 'setting') || str_contains($path, 'user')) {
+                    $impactLevel = 'Sensitif';
+                }
+                if (str_contains($path, 'delete') && $method === 'POST') {
+                    $impactLevel = 'Berisiko Tinggi';
+                }
+
+                // Scalper / Bot Detection (Simple Velocity Check)
+                if (in_array($path, ['checkout', 'paynow'])) {
+                    $recentRequests = ActivityLog::where('ip_address', $request->ip())
+                        ->where('created_at', '>', now()->subSeconds(30))
+                        ->count();
+                    
+                    if ($recentRequests > 10) {
+                        $impactLevel = 'Berisiko Tinggi';
+                        ActivityLog::create([
+                            'user_uid' => $user->uid,
+                            'activity' => 'Scalper Anomaly',
+                            'login_status' => 'Success',
+                            'description' => "Anomali Kecepatan: Terdeteksi {$recentRequests} request dalam 30 detik (Potensi Bot/Calo).",
+                            'impact_level' => 'Berisiko Tinggi',
+                            'ip_address' => $request->ip(),
+                            'location' => $this->getLocation($request->ip()),
+                            'user_agent' => $request->userAgent(),
+                            'device_id' => md5($request->userAgent() . $request->ip()),
+                            'session_id' => session()->getId(),
+                        ]);
+                    }
+                }
+
                 ActivityLog::create([
                     'user_uid' => $user->uid,
                     'activity' => $this->getActivityName($request),
+                    'login_status' => 'Success',
                     'description' => "User {$user->name} performed {$method} on {$path}",
+                    'impact_level' => $impactLevel,
                     'ip_address' => $request->ip(),
+                    'location' => $this->getLocation($request->ip()),
                     'user_agent' => $request->userAgent(),
+                    'device_id' => md5($request->userAgent() . $request->ip()),
+                    'session_id' => session()->getId(),
                 ]);
             }
         }
@@ -50,5 +83,22 @@ class LogActivityMiddleware
         if (str_contains($path, 'logout')) return 'Logout';
         
         return $request->method() . ' Request';
+    }
+
+    protected function getLocation($ip)
+    {
+        if ($ip === '127.0.0.1' || $ip === '::1') return 'Localhost';
+        
+        try {
+            $response = \Illuminate\Support\Facades\Http::get("http://ip-api.com/json/{$ip}?fields=city,country");
+            if ($response->successful()) {
+                $data = $response->json();
+                return ($data['city'] ?? 'Unknown') . ', ' . ($data['country'] ?? 'Unknown');
+            }
+        } catch (\Exception $e) {
+            // Fallback
+        }
+        
+        return 'Unknown';
     }
 }

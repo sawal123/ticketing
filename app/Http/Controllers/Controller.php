@@ -108,6 +108,18 @@ class Controller extends BaseController
         $cart = Cart::with(['users', 'event', 'hargaCarts.masterHarga'])->where('uid', $uid)->first();
         
         if($cart){
+            \App\Models\ActivityLog::create([
+                'user_uid' => auth()->check() ? auth()->user()->uid : null,
+                'activity' => 'Data Export / View',
+                'login_status' => 'Success',
+                'description' => "Accessed invoice/ticket: " . ($cart->invoice ?? $uid),
+                'impact_level' => 'Sensitif',
+                'ip_address' => request()->ip(),
+                'location' => $this->getLocation(request()->ip()),
+                'user_agent' => request()->userAgent(),
+                'session_id' => session()->getId(),
+            ]);
+
             return view('invoice', [
                 'title' => 'Invoice Transaksi',
                 'type' => 'transaksi',
@@ -116,5 +128,18 @@ class Controller extends BaseController
         }
 
         return redirect()->back();
+    }
+
+    protected function getLocation($ip)
+    {
+        if ($ip === '127.0.0.1' || $ip === '::1') return 'Localhost';
+        try {
+            $response = \Illuminate\Support\Facades\Http::get("http://ip-api.com/json/{$ip}?fields=city,country");
+            if ($response->successful()) {
+                $data = $response->json();
+                return ($data['city'] ?? 'Unknown') . ', ' . ($data['country'] ?? 'Unknown');
+            }
+        } catch (\Exception $e) {}
+        return 'Unknown';
     }
 }
