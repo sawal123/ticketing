@@ -18,12 +18,19 @@ class Register extends Component
     protected $rules = [
         'name' => 'required|string|max:255',
         'email' => 'required|email|unique:users,email',
-        'password' => 'required|min:8|confirmed|regex:/^(?=.*[a-zA-Z])(?=.*\d).+$/',
+        'password' => 'required|min:8|regex:/^(?=.*[a-zA-Z])(?=.*\d).+$/',
+        'password_confirmation' => 'required|same:password',
     ];
 
     protected $messages = [
         'password.regex' => 'Password harus mengandung huruf dan angka.',
+        'password_confirmation.same' => 'Konfirmasi password tidak cocok.',
     ];
+
+    public function updated($propertyName)
+    {
+        $this->validateOnly($propertyName);
+    }
 
     public function register()
     {

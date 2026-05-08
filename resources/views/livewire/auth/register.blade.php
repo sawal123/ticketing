@@ -22,10 +22,10 @@
                         class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 ml-1">Nama
                         Lengkap</label>
                     <div class="relative">
-                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none" wire:ignore>
                             <i data-lucide="user" class="h-4 w-4 text-slate-500"></i>
                         </div>
-                        <input wire:model="name" id="name" type="text" required
+                        <input wire:model.live="name" id="name" type="text" required
                             class="block w-full pl-11 pr-4 py-4 bg-[#1e1d35] border-0 ring-1 ring-white/5 focus:ring-2 focus:ring-indigo-500 rounded-2xl text-white text-sm placeholder-slate-500 transition-all duration-200"
                             placeholder="Nama Lengkap Anda">
                     </div>
@@ -37,10 +37,10 @@
                         class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 ml-1">Email
                         Address</label>
                     <div class="relative">
-                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none" wire:ignore>
                             <i data-lucide="mail" class="h-4 w-4 text-slate-500"></i>
                         </div>
-                        <input wire:model="email" id="email" type="email" required
+                        <input wire:model.live="email" id="email" type="email" required
                             class="block w-full pl-11 pr-4 py-4 bg-[#1e1d35] border-0 ring-1 ring-white/5 focus:ring-2 focus:ring-indigo-500 rounded-2xl text-white text-sm placeholder-slate-500 transition-all duration-200"
                             placeholder="nama@email.com">
                     </div>
@@ -51,16 +51,16 @@
                     <label for="password"
                         class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 ml-1">Password</label>
                     <div class="relative">
-                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none" wire:ignore>
                             <i data-lucide="lock" class="h-4 w-4 text-slate-500"></i>
                         </div>
-                        <input wire:model="password" id="password" :type="showPassword ? 'text' : 'password'" required
+                        <input wire:model.live="password" id="password" :type="showPassword ? 'text' : 'password'" required
                             class="block w-full pl-11 pr-12 py-4 bg-[#1e1d35] border-0 ring-1 ring-white/5 focus:ring-2 focus:ring-indigo-500 rounded-2xl text-white text-sm placeholder-slate-500 transition-all duration-200"
                             placeholder="Minimal 8 karakter">
                         <button type="button" @click="showPassword = !showPassword"
                             class="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-500 hover:text-indigo-400 transition-colors">
-                            <i x-show="!showPassword" data-lucide="eye" class="h-4 w-4"></i>
-                            <i x-show="showPassword" data-lucide="eye-off" class="h-4 w-4" x-cloak></i>
+                            <svg x-show="!showPassword" class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                            <svg x-show="showPassword" class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" x-cloak><path d="M9.88 9.88 2 2m22 22-7.88-7.88m-2.83 0A7.26 7.26 0 0 1 2 12s3-7 10-7a7.06 7.06 0 0 1 5.12 2.12M12 7.14a3 3 0 0 1 4.76 4.76m-7.64 0A3 3 0 0 1 12 16.86m2.83 0a7.06 7.06 0 0 1-5.12-2.12L12 12m-2.83-2.83A3 3 0 0 1 12 12m0 0 2.83 2.83"/><line x1="2" y1="2" x2="22" y2="22"/></svg>
                         </button>
                     </div>
                     @error('password') <p class="mt-2 text-xs text-rose-500 ml-1">{{ $message }}</p> @enderror
@@ -71,26 +71,27 @@
                         class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 ml-1">Konfirmasi
                         Password</label>
                     <div class="relative">
-                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none" wire:ignore>
                             <i data-lucide="check-square" class="h-4 w-4 text-slate-500"></i>
                         </div>
-                        <input wire:model="password_confirmation" id="password_confirmation"
+                        <input wire:model.live="password_confirmation" id="password_confirmation"
                             :type="showConfirmPassword ? 'text' : 'password'" required
                             class="block w-full pl-11 pr-12 py-4 bg-[#1e1d35] border-0 ring-1 ring-white/5 focus:ring-2 focus:ring-indigo-500 rounded-2xl text-white text-sm placeholder-slate-500 transition-all duration-200"
                             placeholder="Ulangi password">
                         <button type="button" @click="showConfirmPassword = !showConfirmPassword"
                             class="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-500 hover:text-indigo-400 transition-colors">
-                            <i x-show="!showConfirmPassword" data-lucide="eye" class="h-4 w-4"></i>
-                            <i x-show="showConfirmPassword" data-lucide="eye-off" class="h-4 w-4" x-cloak></i>
+                            <svg x-show="!showConfirmPassword" class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                            <svg x-show="showConfirmPassword" class="h-4 w-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" x-cloak><path d="M9.88 9.88 2 2m22 22-7.88-7.88m-2.83 0A7.26 7.26 0 0 1 2 12s3-7 10-7a7.06 7.06 0 0 1 5.12 2.12M12 7.14a3 3 0 0 1 4.76 4.76m-7.64 0A3 3 0 0 1 12 16.86m2.83 0a7.06 7.06 0 0 1-5.12-2.12L12 12m-2.83-2.83A3 3 0 0 1 12 12m0 0 2.83 2.83"/><line x1="2" y1="2" x2="22" y2="22"/></svg>
                         </button>
                     </div>
+                    @error('password_confirmation') <p class="mt-2 text-xs text-rose-500 ml-1">{{ $message }}</p> @enderror
                 </div>
 
                 <div>
-                    <button type="submit"
-                        class="w-full flex justify-center py-4 px-4 border border-transparent rounded-2xl shadow-lg text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200 transform active:scale-[0.98] shadow-indigo-500/20">
-                        <span wire:loading.remove>Daftar Akun</span>
-                        <span wire:loading.flex class="items-center gap-2">
+                    <button type="submit" wire:loading.attr="disabled" wire:target="register"
+                        class="w-full flex justify-center py-4 px-4 border border-transparent rounded-2xl shadow-lg text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200 transform active:scale-[0.98] shadow-indigo-500/20 disabled:opacity-70 disabled:cursor-not-allowed">
+                        <span wire:loading.remove wire:target="register">Daftar Akun</span>
+                        <span wire:loading.flex wire:target="register" class="items-center gap-2" x-cloak>
                             <i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i>
                             Memproses...
                         </span>

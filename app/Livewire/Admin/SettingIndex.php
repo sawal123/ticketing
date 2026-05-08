@@ -15,12 +15,16 @@ class SettingIndex extends Component
 
     // Settings fields
     public $description;
+
     public $keyword;
+
     public $logo;
+
     public $icon;
 
     // File fields
     public $new_logo;
+
     public $new_icon;
 
     public function mount()
@@ -46,7 +50,7 @@ class SettingIndex extends Component
             'keyword' => 'required|string|max:255',
         ]);
 
-        $setting = Landing::first() ?? new Landing();
+        $setting = Landing::first() ?? new Landing;
         $setting->description = $this->description;
         $setting->keyword = $this->keyword;
         $setting->save();
@@ -60,15 +64,15 @@ class SettingIndex extends Component
             'new_logo' => 'required|image|max:2048',
         ]);
 
-        $setting = Landing::first() ?? new Landing();
+        $setting = Landing::first() ?? new Landing;
 
-        if ($setting->logo && Storage::exists('public/logo/' . $setting->logo)) {
-            Storage::delete('public/logo/' . $setting->logo);
+        if ($setting->logo && Storage::exists('public/logo/'.$setting->logo)) {
+            Storage::delete('public/logo/'.$setting->logo);
         }
 
-        $fileName = 'logo_' . time() . '.' . $this->new_logo->getClientOriginalExtension();
+        $fileName = 'logo_'.time().'.'.$this->new_logo->getClientOriginalExtension();
         $this->new_logo->storeAs('public/logo/', $fileName);
-        
+
         $setting->logo = $fileName;
         $setting->save();
 
@@ -84,15 +88,15 @@ class SettingIndex extends Component
             'new_icon' => 'required|image|max:1024',
         ]);
 
-        $setting = Landing::first() ?? new Landing();
+        $setting = Landing::first() ?? new Landing;
 
-        if ($setting->icon && Storage::exists('public/icon/' . $setting->icon)) {
-            Storage::delete('public/icon/' . $setting->icon);
+        if ($setting->icon && Storage::exists('public/icon/'.$setting->icon)) {
+            Storage::delete('public/icon/'.$setting->icon);
         }
 
-        $fileName = 'icon_' . time() . '.' . $this->new_icon->getClientOriginalExtension();
+        $fileName = 'icon_'.time().'.'.$this->new_icon->getClientOriginalExtension();
         $this->new_icon->storeAs('public/icon/', $fileName);
-        
+
         $setting->icon = $fileName;
         $setting->save();
 
