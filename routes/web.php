@@ -24,6 +24,7 @@ use App\Http\Controllers\Penyewa\PenyewaController;
 use App\Http\Controllers\Penyewa\StaffController;
 use App\Http\Controllers\TransactionController;
 use App\Livewire\Admin\DashboardDemo;
+use App\Livewire\Admin\EmailBlast;
 use App\Livewire\Admin\EventDetail;
 use App\Livewire\Admin\EventIndex;
 use App\Livewire\Admin\PaymentGatewayIndex;
@@ -198,6 +199,7 @@ Route::prefix('admin')
         Route::get('/user', UserIndex::class)->name('admin.user');
         Route::get('/category', \App\Livewire\Admin\CategoryIndex::class)->name('admin.category');
         Route::get('/fasilitas', \App\Livewire\Admin\FasilitasIndex::class)->name('admin.fasilitas');
+        Route::get('/email-blast', EmailBlast::class)->name('admin.email-blast');
 
         // =========================================================
         // LEGACY ADMIN (MOVED TO /old)
