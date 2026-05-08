@@ -18,7 +18,7 @@ class Register extends Component
     protected $rules = [
         'name' => 'required|string|max:255',
         'email' => 'required|email|unique:users,email',
-        'password' => 'required|min:8|confirmed|regex:/^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]+$/',
+        'password' => 'required|min:8|confirmed|regex:/^(?=.*[a-zA-Z])(?=.*\d).+$/',
     ];
 
     protected $messages = [
@@ -37,6 +37,9 @@ class Register extends Component
             'role' => User::USER_ROLE,
             'birthday' => now()->format('Y-m-d'), // Default for simplified register
             'gender' => 'Other', // Default
+            'gambar' => 'default.png', // Fallback for non-nullable column
+            'kota' => '-', // Fallback
+            'alamat' => '-', // Fallback
         ]);
 
         Auth::login($user);

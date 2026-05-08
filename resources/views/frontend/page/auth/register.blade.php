@@ -26,19 +26,16 @@
                         @endif
                         <div class="mb-3">
                             <label class="form-label" for="nama">Nama <span class="text-danger">*</span></label>
-                            <input type="text" name="user" class="form-control" id="nama"
-                                placeholder="Nama Kamu :">
+                            <input type="text" name="user" class="form-control" id="nama" placeholder="Nama Kamu :">
                         </div>
 
                         <div class="mb-3">
                             <label class="form-label" for="email">Email <span class="text-danger">*</span></label>
-                            <input type="email" name="email" class="form-control" id="email"
-                                placeholder="Email Kamu :">
+                            <input type="email" name="email" class="form-control" id="email" placeholder="Email Kamu :">
                         </div>
-                      
+
                         <div class="mb-3">
-                            <label class="form-label" for="date">Tanggal Lahir <span
-                                    class="text-danger">*</span></label>
+                            <label class="form-label" for="date">Tanggal Lahir <span class="text-danger">*</span></label>
                             <input type="date" name="birthday" class="form-control" id="date" />
                         </div>
 
@@ -81,7 +78,7 @@
                             <p class="text-dark mb-0 d-inline-flex">Already have account ?<a href="{{ url('/login') }}"
                                     class="text-primary ms-1">Sign In</a></p>
                         </div>
-                      
+
                     </form>
                 </div>
             </div>
