@@ -35,7 +35,8 @@
             <div class="text-2xl font-bold text-slate-800 dark:text-white">
                 Rp {{ number_format($totalSaldo, 0, ',', '.') }}
             </div>
-            <p class="text-[10px] text-slate-500 mt-1">Total pendapatan dari penjualan online</p>
+            <p class="text-[10px] text-slate-500 mt-1">Total pendapatan dari penjualan online (termasuk kutipan pajak
+                anda)</p>
         </x-admin.card>
         <x-admin.card title="Penarikan PENDING" icon="clock" iconColor="amber">
             <div class="text-2xl font-bold text-amber-600 dark:text-amber-400">
@@ -58,14 +59,14 @@
                 <x-admin.input wire:model.live.debounce.300ms="search" placeholder="Cari catatan atau nominal..."
                     icon="search" />
             </div>
-            <div class="flex items-center gap-2">
+            {{-- <div class="flex items-center gap-2">
                 <x-admin.button variant="secondary" size="sm" icon="file-text">
                     Export PDF
                 </x-admin.button>
                 <x-admin.button variant="secondary" size="sm" icon="file-spreadsheet">
                     Export Excel
                 </x-admin.button>
-            </div>
+            </div> --}}
         </div>
 
         <x-admin.table :headers="['Tanggal', 'Nominal', 'Catatan', 'Status', 'Aksi']">

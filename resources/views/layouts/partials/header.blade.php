@@ -4,11 +4,11 @@
             <button onclick="openSidebar()" class="lg:hidden p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors flex-shrink-0" aria-label="Buka sidebar">
                 <i data-lucide="menu" class="w-5 h-5"></i>
             </button>
-            <div class="relative max-w-md w-full hidden sm:block">
-                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <i data-lucide="search" class="w-4 h-4 text-slate-400"></i>
-                </div>
-                <input type="text" placeholder="Cari apa saja..." class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200" aria-label="Pencarian">
+            <div class="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600">
+                <span class="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></span>
+                <span class="text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-400">
+                    {{ auth()->user()->role === 'admin' ? 'Super Admin' : 'Event Organizer' }}
+                </span>
             </div>
         </div>
 

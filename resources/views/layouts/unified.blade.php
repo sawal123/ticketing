@@ -1,19 +1,15 @@
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>{{ $title ?? 'Dashboard Admin' }} - AdminPanel Pro</title>
+    <title>{{ $title ?? 'Dashboard Admin' }}</title>
     <link rel="shortcut icon" href="{{ asset('storage/icon/' . ($logo[0]->icon ?? '')) }}" type="image/x-icon">
 
-    <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com" data-navigate-once></script>
-    <script data-navigate-once>
-        tailwind.config = {
-            darkMode: 'class',
-        }
-    </script>
+    <!-- Tailwind CSS (Vite) -->
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
 
     <!-- Lucide Icons CDN -->
     <script src="https://unpkg.com/lucide@latest" data-navigate-track></script>
@@ -24,7 +20,8 @@
     <!-- Custom Font (Inter) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
 
     <!-- Custom CSS -->
     <link rel="stylesheet" href="{{ asset('admin_assets/css/admin.css') }}" data-navigate-track>
@@ -39,11 +36,14 @@
     @livewireStyles
     @stack('styles')
 </head>
+
 <body class="bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 h-screen overflow-hidden">
 
     <div class="flex h-full">
         <!-- SIDEBAR OVERLAY (MOBILE) -->
-        <div id="sidebarOverlay" class="fixed inset-0 bg-black/50 z-40 hidden lg:hidden sidebar-transition opacity-0 pointer-events-none" aria-hidden="true"></div>
+        <div id="sidebarOverlay"
+            class="fixed inset-0 bg-black/50 z-40 hidden lg:hidden sidebar-transition opacity-0 pointer-events-none"
+            aria-hidden="true"></div>
 
         <!-- SIDEBAR -->
         @include('layouts.partials.sidebar')
@@ -59,8 +59,9 @@
             </main>
         </div>
     </div>
-    
+
     @livewireScripts
     @stack('scripts')
 </body>
+
 </html>

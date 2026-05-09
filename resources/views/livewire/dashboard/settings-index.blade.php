@@ -37,8 +37,20 @@
         </div>
 
         <!-- Main Content -->
-        <div class="lg:col-span-3">
-            @if ($activeTab === 'profile')
+        <div class="lg:col-span-3 relative min-h-[400px]">
+            <!-- Loading State -->
+            <div wire:loading wire:target="setTab" class="absolute inset-0 z-50 bg-slate-50/50 dark:bg-slate-900/50 backdrop-blur-sm flex flex-col items-center justify-center rounded-2xl transition-all duration-300">
+                <div class="flex flex-col items-center justify-center space-y-4">
+                    <div class="relative">
+                        <div class="w-12 h-12 border-4 border-indigo-100 dark:border-slate-700 rounded-full"></div>
+                        <div class="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin absolute inset-0"></div>
+                    </div>
+                    <p class="text-sm text-slate-500 dark:text-slate-400 font-medium animate-pulse">Menyiapkan pengaturan...</p>
+                </div>
+            </div>
+
+            <div wire:loading.remove wire:target="setTab">
+                @if ($activeTab === 'profile')
                 <x-admin.card title="Informasi Profil" icon="user">
                     <form wire:submit.prevent="updateProfile" class="space-y-6">
                         <div class="flex flex-col md:flex-row items-center gap-6">
@@ -180,6 +192,7 @@
                     </div>
                 </div>
             @endif
+            </div>
         </div>
     </div>
 

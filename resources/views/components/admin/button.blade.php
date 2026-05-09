@@ -27,7 +27,7 @@
 
 <button type="{{ $type }}" {{ $attributes->merge(['class' => $classes]) }}>
     @if($icon)
-        <i data-lucide="{{ $icon }}" class="w-4 h-4"></i>
+        <i data-lucide="{{ $icon }}" class="w-4 h-4 flex-shrink-0"></i>
     @endif
     {{ $slot }}
 </button>

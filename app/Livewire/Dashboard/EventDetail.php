@@ -11,16 +11,20 @@ use Livewire\Attributes\Layout;
 use Livewire\WithPagination;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+use Livewire\WithFileUploads;
 
 class EventDetail extends Component
 {
     use WithPagination;
+    use WithFileUploads;
 
     #[Layout('layouts.unified')]
 
     public $eventUid;
     public $activeTab = 'umum'; // umum, tiket, transaksi
     public $searchTransaction = '';
+    public $perPage = 10;
     public $showFullDescription = false;
 
     // Filters for Transactions
@@ -38,6 +42,7 @@ class EventDetail extends Component
 
     // For Delete Modal
     public $deletingHargaId;
+    public $deletingTalentId;
 
     // For Transaction Detail Modal
     public $selectedTransactionId;
@@ -45,8 +50,16 @@ class EventDetail extends Component
     // For Resend Email Confirmation
     public $resendEmailUid;
 
+    // For Add/Edit Talent
+    public $editingTalentId;
+    public $talentName;
+    public $talentLink;
+    public $talentImage;
+    public $existingTalentImage;
+
     protected $queryString = [
         'activeTab' => ['except' => 'umum'],
+        'perPage' => ['except' => 10],
         'searchTransaction' => ['except' => ''],
         'filterPayment' => ['except' => 'all'],
         'filterRange' => ['except' => null],
@@ -155,22 +168,141 @@ class EventDetail extends Component
             ->when($this->filterRange, function ($q) {
                 $dates = explode(' to ', $this->filterRange);
                 if (count($dates) === 2) {
-                    $q->whereBetween('created_at', [
+                    $q->whereBetween('carts.created_at', [
                         Carbon::parse($dates[0])->startOfDay(),
                         Carbon::parse($dates[1])->endOfDay()
                     ]);
                 } else {
-                    $q->whereDate('created_at', Carbon::parse($dates[0]));
+                    $q->whereDate('carts.created_at', Carbon::parse($dates[0]));
                 }
             })
             ->when($this->searchTransaction, function ($q) {
                 $q->where(function($sub) {
-                    $sub->where('invoice', 'like', '%' . $this->searchTransaction . '%')
+                    $sub->where('carts.invoice', 'like', '%' . $this->searchTransaction . '%')
                       ->orWhereHas('users', function ($u) {
                           $u->where('name', 'like', '%' . $this->searchTransaction . '%');
                       });
                 });
             });
+    }
+
+    /**
+     * Optimized query for exports (Excel/PDF)
+     * Avoids N+1 and minimizes object hydration
+     */
+    protected function getExportQuery()
+    {
+        $query = DB::table('carts')
+            ->join('users', 'users.uid', '=', 'carts.user_uid')
+            ->join('harga_carts', 'harga_carts.uid', '=', 'carts.uid')
+            ->select([
+                'carts.created_at',
+                'carts.invoice',
+                'users.name as user_name',
+                'users.email as user_email',
+                'harga_carts.kategori_harga',
+                'harga_carts.quantity',
+                'harga_carts.harga_ticket',
+                'carts.payment_type',
+                'carts.konfirmasi'
+            ])
+            ->where('carts.event_uid', $this->eventUid)
+            ->where('carts.status', 'SUCCESS')
+            ->whereNull('carts.deleted_at')
+            ->whereNull('harga_carts.deleted_at');
+
+        // Apply same filters as UI
+        if ($this->filterPayment !== 'all') {
+            if ($this->filterPayment === 'cash') {
+                $query->where('carts.payment_type', 'cash');
+            } else {
+                $query->where('carts.payment_type', '!=', 'cash');
+            }
+        }
+
+        if ($this->filterRange) {
+            $dates = explode(' to ', $this->filterRange);
+            if (count($dates) === 2) {
+                $query->whereBetween('carts.created_at', [
+                    Carbon::parse($dates[0])->startOfDay(),
+                    Carbon::parse($dates[1])->endOfDay()
+                ]);
+            } else {
+                $query->whereDate('carts.created_at', Carbon::parse($dates[0]));
+            }
+        }
+
+        if ($this->searchTransaction) {
+            $query->where(function($q) {
+                $q->where('carts.invoice', 'like', '%' . $this->searchTransaction . '%')
+                  ->orWhere('users.name', 'like', '%' . $this->searchTransaction . '%');
+            });
+        }
+
+        return $query->orderBy('carts.created_at', 'desc');
+    }
+
+    public function exportExcel()
+    {
+        $fileName = 'transaksi-event-' . Str::slug($this->getEventData()->event) . '-' . now()->format('YmdHis') . '.csv';
+        
+        $headers = [
+            "Content-type"        => "text/csv",
+            "Content-Disposition" => "attachment; filename=$fileName",
+            "Pragma"              => "no-cache",
+            "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
+            "Expires"             => "0"
+        ];
+
+        $callback = function() {
+            $file = fopen('php://output', 'w');
+            // Header Row
+            fputcsv($file, ['Tanggal', 'Invoice', 'Nama Pembeli', 'Email', 'Kategori Tiket', 'Qty', 'Harga Satuan', 'Total', 'Status Kehadiran']);
+
+            // Data Rows (Optimized with cursor)
+            $this->getExportQuery()->cursor()->each(function ($row) use ($file) {
+                fputcsv($file, [
+                    $row->created_at,
+                    $row->invoice,
+                    $row->user_name,
+                    $row->user_email,
+                    $row->kategori_harga,
+                    $row->quantity,
+                    $row->harga_ticket,
+                    ($row->quantity * $row->harga_ticket),
+                    $row->konfirmasi == '1' ? 'Hadir' : 'Belum Hadir'
+                ]);
+            });
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
+
+    public function exportPdf()
+    {
+        $event = $this->getEventData();
+        $transactions = $this->getExportQuery()->get();
+        
+        $filter_info = "Semua Data";
+        if ($this->filterPayment !== 'all' || $this->filterRange || $this->searchTransaction) {
+            $parts = [];
+            if ($this->filterPayment !== 'all') $parts[] = "Metode: " . strtoupper($this->filterPayment);
+            if ($this->filterRange) $parts[] = "Rentang: " . $this->filterRange;
+            if ($this->searchTransaction) $parts[] = "Cari: '" . $this->searchTransaction . "'";
+            $filter_info = implode(", ", $parts);
+        }
+
+        $html = view('exports.transactions-pdf', [
+            'event' => $event,
+            'transactions' => $transactions,
+            'filter_info' => $filter_info
+        ])->render();
+
+        return response()->streamDownload(function() use ($html) {
+            echo $html;
+        }, 'transaksi-event-' . Str::slug($event->event) . '.html');
     }
 
     public function setTab($tab)
@@ -278,12 +410,15 @@ class EventDetail extends Component
         if ($this->activeTab === 'transaksi') {
             $transactions = Cart::query()
                 ->with(['users'])
+                ->withSum(['hargaCarts as total_qty' => function($q) {
+                    $q->whereNull('deleted_at');
+                }], 'quantity')
                 ->where('event_uid', $this->eventUid)
                 ->where('status', 'SUCCESS');
             
             $transactions = $this->applyFilters($transactions)
                 ->orderBy('created_at', 'desc')
-                ->paginate(10);
+                ->paginate($this->perPage);
         }
 
         $selectedTransaction = null;
@@ -376,4 +511,101 @@ class EventDetail extends Component
         }
     }
 
+    public function addTalent()
+    {
+        if ($this->editingTalentId) {
+            return $this->updateTalent();
+        }
+
+        $this->validate([
+            'talentName' => 'required|string|max:255',
+            'talentImage' => 'required|image|max:2048',
+            'talentLink' => 'nullable|url',
+        ]);
+
+        $imagePath = $this->talentImage->store('talent', 'public');
+
+        $talent = \App\Models\Talent::create([
+            'uid' => $this->eventUid,
+            'talent' => $this->talentName,
+            'gambar' => basename($imagePath),
+            'link' => $this->talentLink,
+        ]);
+
+        $this->reset(['talentName', 'talentLink', 'talentImage', 'editingTalentId', 'existingTalentImage']);
+        $this->dispatch('close-modal', name: 'add-talent-modal');
+        
+        session()->flash('success', 'Talent berhasil ditambahkan!');
+    }
+
+    public function openAddTalentModal()
+    {
+        $this->reset(['talentName', 'talentLink', 'talentImage', 'editingTalentId', 'existingTalentImage']);
+        $this->dispatch('open-modal', name: 'add-talent-modal');
+    }
+
+    public function editTalent($id)
+    {
+        $this->reset(['talentName', 'talentLink', 'talentImage', 'editingTalentId', 'existingTalentImage']);
+        $this->editingTalentId = $id; // Set this first to show loading state if needed
+        
+        $talent = \App\Models\Talent::findOrFail($id);
+        $this->talentName = $talent->talent;
+        $this->talentLink = $talent->link;
+        $this->existingTalentImage = $talent->gambar;
+        
+        $this->dispatch('open-modal', name: 'add-talent-modal');
+    }
+
+    public function updateTalent()
+    {
+        $this->validate([
+            'talentName' => 'required|string|max:255',
+            'talentImage' => 'nullable|image|max:2048',
+            'talentLink' => 'nullable|url',
+        ]);
+
+        $talent = \App\Models\Talent::findOrFail($this->editingTalentId);
+        
+        $data = [
+            'talent' => $this->talentName,
+            'link' => $this->talentLink,
+        ];
+
+        if ($this->talentImage) {
+            if ($talent->gambar && \Storage::disk('public')->exists('talent/' . $talent->gambar)) {
+                \Storage::disk('public')->delete('talent/' . $talent->gambar);
+            }
+            
+            $imagePath = $this->talentImage->store('talent', 'public');
+            $data['gambar'] = basename($imagePath);
+        }
+
+        $talent->update($data);
+
+        $this->reset(['talentName', 'talentLink', 'talentImage', 'editingTalentId', 'existingTalentImage']);
+        $this->dispatch('close-modal', name: 'add-talent-modal');
+        
+        session()->flash('success', 'Talent berhasil diperbarui!');
+    }
+
+    public function confirmDeleteTalent($id)
+    {
+        $this->deletingTalentId = $id;
+        $this->dispatch('open-modal', name: 'delete-talent-modal');
+    }
+
+    public function deleteTalent()
+    {
+        $talent = \App\Models\Talent::findOrFail($this->deletingTalentId);
+        
+        if ($talent->gambar && \Storage::disk('public')->exists('talent/' . $talent->gambar)) {
+            \Storage::disk('public')->delete('talent/' . $talent->gambar);
+        }
+        
+        $talent->delete();
+        $this->dispatch('close-modal', name: 'delete-talent-modal');
+        $this->deletingTalentId = null;
+        session()->flash('success', 'Talent berhasil dihapus!');
+    }
 }
