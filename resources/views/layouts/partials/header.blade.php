@@ -1,10 +1,14 @@
-<header class="sticky top-0 z-30 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 shadow-sm flex-shrink-0">
+<header
+    class="sticky top-0 z-30 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 shadow-sm flex-shrink-0">
     <div class="flex items-center justify-between px-4 lg:px-6 py-3">
         <div class="flex items-center gap-3 flex-1 min-w-0">
-            <button onclick="openSidebar()" class="lg:hidden p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors flex-shrink-0" aria-label="Buka sidebar">
+            <button onclick="openSidebar()"
+                class="lg:hidden p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors flex-shrink-0"
+                aria-label="Buka sidebar">
                 <i data-lucide="menu" class="w-5 h-5"></i>
             </button>
-            <div class="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600">
+            <div
+                class="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600">
                 <span class="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></span>
                 <span class="text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-400">
                     {{ auth()->user()->role === 'admin' ? 'Super Admin' : 'Event Organizer' }}
@@ -17,30 +21,41 @@
                 <i data-lucide="bell" class="w-5 h-5"></i>
                 <span class="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full ring-2 ring-white dark:ring-slate-800"></span>
             </button> -->
-            <button id="themeToggle" onclick="toggleTheme()" class="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-all duration-200" aria-label="Toggle tema">
+            <button id="themeToggle" onclick="toggleTheme()"
+                class="cursor-pointer p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-all duration-200"
+                aria-label="Toggle tema">
                 <i data-lucide="sun" id="iconSun" class="w-5 h-5 hidden"></i>
                 <i data-lucide="moon" id="iconMoon" class="w-5 h-5"></i>
             </button>
 
             <!-- Profile Avatar with Dropdown -->
             <div class="relative ml-1">
-                <button id="profileBtn" onclick="toggleProfileDropdown()" class="flex items-center gap-2 p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 transition-all duration-200" aria-label="Profil pengguna">
-                    <div class="w-8 h-8 bg-indigo-500 rounded-full flex items-center justify-center text-white font-semibold text-sm flex-shrink-0 ring-2 ring-indigo-200 dark:ring-indigo-800">
+                <button id="profileBtn" onclick="toggleProfileDropdown()"
+                    class="cursor-pointer flex items-center gap-2 p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 transition-all duration-200"
+                    aria-label="Profil pengguna">
+                    <div
+                        class="w-8 h-8 bg-indigo-500 rounded-full flex items-center justify-center text-white font-semibold text-sm flex-shrink-0 ring-2 ring-indigo-200 dark:ring-indigo-800">
                         {{ substr(auth()->user()->name ?? 'A', 0, 1) }}
                     </div>
-                    <span class="text-sm font-medium text-slate-700 dark:text-slate-200 hidden md:inline">{{ auth()->user()->name ?? 'Admin' }}</span>
-                    <i data-lucide="chevron-down" id="chevronProfile" class="w-4 h-4 text-slate-400 hidden md:block transition-transform duration-200"></i>
+                    <span
+                        class="text-sm font-medium text-slate-700 dark:text-slate-200 hidden md:inline">{{ auth()->user()->name ?? 'Admin' }}</span>
+                    <i data-lucide="chevron-down" id="chevronProfile"
+                        class="w-4 h-4 text-slate-400 hidden md:block transition-transform duration-200"></i>
                 </button>
                 <!-- Dropdown Menu -->
-                <div id="profileDropdown" class="dropdown-profile absolute right-0 mt-2 w-48 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg py-1 z-50">
-                    <a href="{{ route('dashboard.settings') }}" wire:navigate class="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+                <div id="profileDropdown"
+                    class="dropdown-profile absolute right-0 mt-2 w-48 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg py-1 z-50">
+                    <a href="{{ route('dashboard.settings') }}" wire:navigate
+                        class="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
                         <i data-lucide="user" class="w-4 h-4"></i> Profil Saya
                     </a>
-                    <a href="{{ route('dashboard.settings') }}" wire:navigate class="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+                    <a href="{{ route('dashboard.settings') }}" wire:navigate
+                        class="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
                         <i data-lucide="settings" class="w-4 h-4"></i> Pengaturan
                     </a>
                     <hr class="border-slate-200 dark:border-slate-700 my-1">
-                    <a href="{{ url('/logout') }}" class="flex items-center gap-2 px-4 py-2 text-sm text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/30 transition-colors">
+                    <a href="{{ url('/logout') }}"
+                        class="flex items-center gap-2 px-4 py-2 text-sm text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/30 transition-colors">
                         <i data-lucide="log-out" class="w-4 h-4"></i> Keluar
                     </a>
                 </div>

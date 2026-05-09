@@ -4,10 +4,9 @@
     'type' => 'button',
     'icon' => null,
 ])
-
 @php
-    $baseClasses = 'flex items-center justify-center gap-2 font-medium rounded-xl transition-all duration-200 btn-ripple shadow-md';
-    
+    $baseClasses = 'flex items-center cursor-pointer justify-center gap-2 font-medium rounded-xl transition-all duration-200 btn-ripple shadow-md';
+
     $variants = [
         'primary' => 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-200 dark:shadow-indigo-900/30',
         'secondary' => 'border border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 shadow-none',

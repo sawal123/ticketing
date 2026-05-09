@@ -213,12 +213,17 @@
                                 Rp {{ number_format($harga->harga, 0, ',', '.') }}
                             </span>
                         </td>
-                        <td class="px-5 py-4">
-                            <!-- Toggle Status -->
-                            <button wire:click="toggleTicketStatus({{ $harga->id }})"
-                                class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none {{ $harga->status === 'active' ? 'bg-emerald-500' : 'bg-slate-300' }}">
+                        <td class="px-5 py-4" x-data="{ active: @js($harga->status === 'active') }">
+                            <!-- Toggle Status (Optimistic UI with Alpine) -->
+                            <button 
+                                x-on:click="active = !active; $wire.toggleTicketStatus({{ $harga->id }})"
+                                class="cursor-pointer relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none"
+                                :class="active ? 'bg-emerald-500' : 'bg-slate-300'"
+                            >
                                 <span
-                                    class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform {{ $harga->status === 'active' ? 'translate-x-6' : 'translate-x-1' }}"></span>
+                                    class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"
+                                    :class="active ? 'translate-x-6' : 'translate-x-1'"
+                                ></span>
                             </button>
                         </td>
                         <td class="px-5 py-4 text-center">
