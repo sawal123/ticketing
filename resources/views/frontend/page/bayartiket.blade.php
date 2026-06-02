@@ -65,9 +65,21 @@
                 <div class="event-meta-row">📅 <span>{{ $event->tanggal }}</span></div>
                 <div class="event-meta-row">📍 <span>{{ $event->alamat }}</span></div>
                 <div class="invoice-tag">
-                    <div>
+                    <div class="invoice-content">
                         <div class="invoice-label">No. Invoice</div>
                         <div class="invoice-value">{{ $cart->invoice }}</div>
+                        <div class="invoice-meta">
+                            <div class="invoice-value">
+                                <span>Tanggal Checkout</span>
+                                <strong>{{ $cart->created_at ? $cart->created_at->format('d M Y, H:i') : '-' }}</strong>
+                            </div>
+                            @if (in_array(strtoupper($cart->status ?? ''), ['SUCCESS', 'PAID']))
+                                <div class="invoice-value">
+                                    <span>Tanggal Update</span>
+                                    <strong>{{ $cart->updated_at ? $cart->updated_at->format('d M Y, H:i') : '-' }}</strong>
+                                </div>
+                            @endif
+                        </div>
                     </div>
                     <button class="copy-btn" onclick="copyInvoice()" title="Salin invoice">⎘</button>
                 </div>
@@ -298,8 +310,8 @@
                         {{-- PAJAK --}}
                         <div class="detail-row">
                             <span class="label">
-                                Pajak / Fee 
-                                @if($pajakPersen > 0)
+                                Pajak / Fee
+                                @if ($pajakPersen > 0)
                                     ({{ $pajakPersen }}%)
                                 @endif
                             </span>
@@ -424,7 +436,7 @@
                     let nilaiPajak = {{ $nilaiPajak ?? 0 }};
                     let biaya = {{ $iFee->biaya ?? 0 }};
                     let biayaType = '{{ $iFee->biaya_type ?? 'rupiah' }}';
-                    
+
                     let fee = 0;
                     if (biayaType === 'rupiah') {
                         fee = biaya;
@@ -461,14 +473,15 @@
 
             // Prepare Data for SweetAlert
             const ticketRows = document.querySelectorAll('.ticket-row');
-            let ticketHtml = '<div style="text-align: left; background: #252525; padding: 15px; border-radius: 12px; margin-top: 15px; font-size: 14px; border: 1px solid #333;">';
-            
+            let ticketHtml =
+                '<div style="text-align: left; background: #252525; padding: 15px; border-radius: 12px; margin-top: 15px; font-size: 14px; border: 1px solid #333;">';
+
             ticketRows.forEach(row => {
                 const category = row.querySelector('.ticket-tier-badge').textContent;
                 const qtyInfo = row.querySelector('.ticket-qty-info').textContent;
                 const total = row.querySelector('.ticket-total-cell').textContent;
                 const qty = qtyInfo.split(' × ')[1];
-                
+
                 ticketHtml += `
                     <div style="display: flex; justify-content: space-between; margin-bottom: 8px; border-bottom: 1px solid #333; padding-bottom: 8px;">
                         <span style="color: #aaa;">${category} (${qty}x)</span>
