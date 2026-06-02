@@ -16,7 +16,23 @@ use Illuminate\Support\Facades\Auth;
 class ConfirmController extends Controller
 {
     //
-    public function cekData($data = null)
+    protected function ownerId(Request $request): ?string
+    {
+        $user = $request->user();
+
+        return $user?->role === 'staff' ? $user->parent_uid : $user?->uid;
+    }
+
+    protected function userCanAccessEvent(Request $request, string $eventUid): bool
+    {
+        $ownerId = $this->ownerId($request);
+
+        return $ownerId && Event::where('uid', $eventUid)
+            ->where('user_uid', $ownerId)
+            ->exists();
+    }
+
+    public function cekData(Request $request, $data = null)
     {
         if ($data !== null) {
             $cart = Cart::join('harga_carts', 'harga_carts.uid', '=', 'carts.uid')
@@ -25,6 +41,13 @@ class ConfirmController extends Controller
                 ->groupBy('carts.uid', 'carts.user_uid', 'carts.event_uid', 'carts.invoice', 'carts.status', 'carts.konfirmasi', 'carts.payment_type')
                 ->first();
             if ($cart !== null && $cart->status === 'SUCCESS') {
+                if (!$this->userCanAccessEvent($request, $cart->event_uid)) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Anda tidak memiliki akses ke event tiket ini.',
+                    ], 403);
+                }
+
                 if ($cart->payment_type === 'cash') {
                     $user = Cash::select(['uid', 'name'])->where('uid_user', $cart->user_uid)->first();
                 } else {
@@ -37,16 +60,23 @@ class ConfirmController extends Controller
                     $tes[] = $hargas;
                 }
                 return response()->json([
+                    'success' => true,
                     'cart' => $cart,
                     'event' => $event,
                     'user' => $user,
                     'harga' => $tes
                 ], 200);
             } else {
-                echo "Akses Di Tolak";
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Akses ditolak atau tiket belum lunas.',
+                ], 403);
             }
         } else {
-            echo "Tidak Ada Data";
+            return response()->json([
+                'success' => false,
+                'message' => 'Tidak ada data.',
+            ], 400);
         }
     }
 
@@ -56,6 +86,19 @@ class ConfirmController extends Controller
         // dd($req);
         if ($data !== null) {
             $cart = Cart::where('invoice', $data)->first();
+            if (!$cart) {
+                return response()->json([
+                    'message' => 'Data Tidak Ditemukan',
+                ], 404);
+            }
+
+            if (!$this->userCanAccessEvent($request, $cart->event_uid)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Anda tidak memiliki akses ke event tiket ini.',
+                ], 403);
+            }
+
             if ($cart->konfirmasi === null) {
                 $cart->konfirmasi = "1";
                 $cart->save();
@@ -76,8 +119,22 @@ class ConfirmController extends Controller
         }
     }
 
-    public function verfikasi($data)
+    public function verfikasi(Request $request, $data = null)
     {
+        if (!$data) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Event harus diberikan.',
+            ], 400);
+        }
+
+        if (!$this->userCanAccessEvent($request, $data)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki akses ke event ini.',
+            ], 403);
+        }
+
         $data;
         $cart = Cart::select(['carts.uid', 'carts.konfirmasi', 'events.event', 'users.name', 'users.gambar'])
             ->where('event_uid', $data)
@@ -157,12 +214,19 @@ class ConfirmController extends Controller
     }
 
     // FUNGSI 2: Untuk update status konfirmasi (Dipanggil saat tombol "Verifikasi" diklik)
-    public function confirmTicketStatus($uid)
+    public function confirmTicketStatus(Request $request, $uid)
     {
         $ticket = Cart::where('uid', $uid)->first();
 
         if (!$ticket) {
             return response()->json(['success' => false, 'message' => 'Tiket tidak ditemukan'], 404);
+        }
+
+        if (!$this->userCanAccessEvent($request, $ticket->event_uid)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki akses ke event tiket ini.',
+            ], 403);
         }
 
         if ($ticket->konfirmasi == '1') {

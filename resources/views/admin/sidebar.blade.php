@@ -77,6 +77,12 @@
             <span class="text-sm font-medium">Log Aktivitas</span>
         </a>
 
+        <a href="{{ route('admin.monitoring') }}" wire:navigate
+            class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-all duration-200 {{ request()->routeIs('admin.monitoring') ? 'active' : '' }}">
+            <i data-lucide="scan-search" class="w-5 h-5 flex-shrink-0"></i>
+            <span class="text-sm font-medium">Monitoring Data</span>
+        </a>
+
         <a href="{{ route('admin.payments') }}" wire:navigate
             class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-all duration-200 {{ request()->routeIs('admin.payments') ? 'active' : '' }}">
             <i data-lucide="credit-card" class="w-5 h-5 flex-shrink-0"></i>

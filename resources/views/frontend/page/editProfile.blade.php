@@ -23,13 +23,6 @@
                     </div>
                 @endif
 
-                <!-- SUCCESS -->
-                @if (session('editProfile'))
-                    <div class="alert alert-success">
-                        {{ session('editProfile') }}
-                    </div>
-                @endif
-
                 <div class="avatar-card">
 
                     <!-- AVATAR -->
@@ -237,6 +230,18 @@
                 preview.src = URL.createObjectURL(file);
             }
         }
+
+        @if (session('editProfile'))
+            document.addEventListener('DOMContentLoaded', function() {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Berhasil',
+                    text: @json(session('editProfile')),
+                    confirmButtonText: 'OK',
+                    confirmButtonColor: '#4f46e5'
+                });
+            });
+        @endif
     </script>
 
 

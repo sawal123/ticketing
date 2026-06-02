@@ -27,6 +27,7 @@ class EventIndex extends Component
         if ($event) {
             $event->status = $event->status === 'active' ? 'close' : 'active';
             $event->save();
+            $this->dispatch('event-status-updated');
         }
     }
 

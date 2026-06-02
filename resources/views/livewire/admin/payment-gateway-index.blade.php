@@ -81,12 +81,19 @@
                         <div class="flex items-center justify-center gap-2">
                             <x-admin.button 
                                 wire:click="edit({{ $gateway->id }})" 
+                                wire:loading.attr="disabled"
+                                wire:target="edit({{ $gateway->id }})"
                                 variant="ghost" 
                                 size="sm" 
-                                icon="pencil"
-                                class="text-indigo-600"
+                                class="text-indigo-600 disabled:pointer-events-none disabled:opacity-60"
                                 title="Edit"
-                            />
+                            >
+                                <i wire:loading.remove wire:target="edit({{ $gateway->id }})" data-lucide="pencil" class="w-4 h-4"></i>
+                                <svg wire:loading wire:target="edit({{ $gateway->id }})" class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-90" fill="currentColor" d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z"></path>
+                                </svg>
+                            </x-admin.button>
                             <x-admin.button 
                                 wire:click="confirmDelete({{ $gateway->id }})" 
                                 variant="ghost" 
@@ -117,7 +124,18 @@
 
     <!-- Create/Edit Modal -->
     <x-admin.modal name="payment-gateway-modal" title="{{ $editingId ? 'Edit Payment Gateway' : 'Tambah Payment Gateway' }}" icon="{{ $editingId ? 'pencil' : 'plus' }}">
-        <form wire:submit="save" class="space-y-4">
+        <form wire:submit="save" class="relative space-y-4">
+            <div wire:loading.flex wire:target="save"
+                class="absolute inset-0 z-20 items-center justify-center rounded-2xl bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
+                <div class="flex flex-col items-center gap-3">
+                    <svg class="h-10 w-10 animate-spin text-indigo-600 dark:text-indigo-400" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-90" fill="currentColor" d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z"></path>
+                    </svg>
+                    <p class="text-sm font-semibold text-slate-500 dark:text-slate-400">Menyimpan data...</p>
+                </div>
+            </div>
+
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div class="col-span-full">
                     <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Nama Payment</label>
@@ -182,8 +200,24 @@
             </div>
             
             <div class="flex justify-end gap-3 mt-6">
-                <x-admin.button type="button" x-on:click="show = false" variant="ghost">Batal</x-admin.button>
-                <x-admin.button type="submit" variant="primary" icon="save">Simpan Payment</x-admin.button>
+                <x-admin.button type="button" x-on:click="show = false" variant="ghost"
+                    wire:loading.attr="disabled" wire:target="save"
+                    class="disabled:pointer-events-none disabled:opacity-60">Batal</x-admin.button>
+                <x-admin.button type="submit" variant="primary"
+                    wire:loading.attr="disabled" wire:target="save"
+                    class="disabled:pointer-events-none disabled:opacity-60">
+                    <span wire:loading.remove wire:target="save" class="flex items-center gap-2">
+                        <i data-lucide="save" class="w-4 h-4"></i>
+                        Simpan Payment
+                    </span>
+                    <span wire:loading.flex wire:target="save" class="items-center gap-2">
+                        <svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-90" fill="currentColor" d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z"></path>
+                        </svg>
+                        Menyimpan...
+                    </span>
+                </x-admin.button>
             </div>
         </form>
     </x-admin.modal>
@@ -234,4 +268,3 @@
         });
     </script>
 </div>
-

@@ -3,6 +3,7 @@
     'size' => 'md',
     'type' => 'button',
     'icon' => null,
+    'href' => null,
 ])
 @php
     $baseClasses = 'flex items-center cursor-pointer justify-center gap-2 font-medium rounded-xl transition-all duration-200 btn-ripple shadow-md';
@@ -24,9 +25,18 @@
     $classes = $baseClasses . ' ' . ($variants[$variant] ?? $variants['primary']) . ' ' . ($sizes[$size] ?? $sizes['md']);
 @endphp
 
-<button type="{{ $type }}" {{ $attributes->merge(['class' => $classes]) }}>
-    @if($icon)
-        <i data-lucide="{{ $icon }}" class="w-4 h-4 flex-shrink-0"></i>
-    @endif
-    {{ $slot }}
-</button>
+@if ($href)
+    <a href="{{ $href }}" {{ $attributes->merge(['class' => $classes]) }}>
+        @if ($icon)
+            <i data-lucide="{{ $icon }}" class="w-4 h-4 flex-shrink-0"></i>
+        @endif
+        {{ $slot }}
+    </a>
+@else
+    <button type="{{ $type }}" {{ $attributes->merge(['class' => $classes]) }}>
+        @if ($icon)
+            <i data-lucide="{{ $icon }}" class="w-4 h-4 flex-shrink-0"></i>
+        @endif
+        {{ $slot }}
+    </button>
+@endif

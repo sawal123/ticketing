@@ -38,24 +38,35 @@
     <!-- Tab Navigation -->
     <div
         class="flex items-center gap-1 bg-white dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700 w-fit mb-6">
-        <button wire:click="setTab('umum')"
-            class="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all {{ $activeTab === 'umum' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700' }}">
+        <button wire:click="setTab('umum')" wire:loading.attr="disabled" wire:target="setTab"
+            class="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all disabled:pointer-events-none disabled:opacity-60 {{ $activeTab === 'umum' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700' }}">
             <i data-lucide="info" class="w-4 h-4"></i>
             Informasi & Talent
         </button>
-        <button wire:click="setTab('tiket')"
-            class="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all {{ $activeTab === 'tiket' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700' }}">
+        <button wire:click="setTab('tiket')" wire:loading.attr="disabled" wire:target="setTab"
+            class="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all disabled:pointer-events-none disabled:opacity-60 {{ $activeTab === 'tiket' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700' }}">
             <i data-lucide="ticket" class="w-4 h-4"></i>
             Manajemen Tiket
         </button>
-        <button wire:click="setTab('transaksi')"
-            class="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all {{ $activeTab === 'transaksi' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700' }}">
+        <button wire:click="setTab('transaksi')" wire:loading.attr="disabled" wire:target="setTab"
+            class="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all disabled:pointer-events-none disabled:opacity-60 {{ $activeTab === 'transaksi' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700' }}">
             <i data-lucide="shopping-cart" class="w-4 h-4"></i>
             Transaksi
         </button>
     </div>
 
-    <div class="space-y-6">
+    <div class="relative space-y-6">
+        <div wire:loading.flex wire:target="setTab"
+            class="fixed inset-0 lg:left-64 z-[90] items-center justify-center bg-slate-50/80 dark:bg-slate-900/80 backdrop-blur-sm">
+            <div class="flex flex-col items-center gap-4">
+                <svg class="h-12 w-12 animate-spin text-indigo-600 dark:text-indigo-400" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-90" fill="currentColor" d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z"></path>
+                </svg>
+                <p class="text-sm font-semibold text-slate-500 dark:text-slate-400">Memuat tab...</p>
+            </div>
+        </div>
+
         @if($activeTab === 'umum')
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div class="lg:col-span-2 space-y-6">
@@ -186,8 +197,18 @@
                         </td>
                         <td class="px-5 py-4 text-center">
                             <div class="flex items-center justify-center gap-2">
-                                <x-admin.button wire:click="editTicket({{ $harga->id }})" variant="ghost" size="sm"
-                                    icon="pencil" class="text-indigo-600" title="Edit Tiket" />
+                                <x-admin.button wire:click="editTicket({{ $harga->id }})"
+                                    wire:loading.attr="disabled"
+                                    wire:target="editTicket({{ $harga->id }})"
+                                    variant="ghost" size="sm"
+                                    class="text-indigo-600 disabled:pointer-events-none disabled:opacity-60"
+                                    title="Edit Tiket">
+                                    <i wire:loading.remove wire:target="editTicket({{ $harga->id }})" data-lucide="pencil" class="w-4 h-4"></i>
+                                    <svg wire:loading wire:target="editTicket({{ $harga->id }})" class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-90" fill="currentColor" d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z"></path>
+                                    </svg>
+                                </x-admin.button>
                                 <x-admin.button wire:click="confirmDeleteTicket({{ $harga->id }})" variant="ghost" size="sm"
                                     icon="trash-2" class="text-rose-600" title="Hapus Tiket" />
                             </div>
@@ -370,7 +391,18 @@
 
     <!-- Edit Ticket Modal -->
     <x-admin.modal name="edit-ticket-modal" title="Edit Kategori Tiket" icon="pencil">
-        <form wire:submit="updateTicket" class="space-y-4">
+        <form wire:submit="updateTicket" class="relative space-y-4">
+            <div wire:loading.flex wire:target="updateTicket"
+                class="absolute inset-0 z-20 items-center justify-center rounded-2xl bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
+                <div class="flex flex-col items-center gap-3">
+                    <svg class="h-10 w-10 animate-spin text-indigo-600 dark:text-indigo-400" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-90" fill="currentColor" d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z"></path>
+                    </svg>
+                    <p class="text-sm font-semibold text-slate-500 dark:text-slate-400">Menyimpan perubahan...</p>
+                </div>
+            </div>
+
             <div>
                 <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Nama
                     Kategori</label>
@@ -398,8 +430,26 @@
             </div>
 
             <div class="flex justify-end gap-3 mt-6">
-                <x-admin.button type="button" x-on:click="show = false" variant="ghost">Batal</x-admin.button>
-                <x-admin.button type="submit" variant="primary" icon="save">Simpan Perubahan</x-admin.button>
+                <x-admin.button type="button" x-on:click="show = false" variant="ghost"
+                    wire:loading.attr="disabled" wire:target="updateTicket"
+                    class="disabled:pointer-events-none disabled:opacity-60">
+                    Batal
+                </x-admin.button>
+                <x-admin.button type="submit" variant="primary"
+                    wire:loading.attr="disabled" wire:target="updateTicket"
+                    class="disabled:pointer-events-none disabled:opacity-60">
+                    <span wire:loading.remove wire:target="updateTicket" class="flex items-center gap-2">
+                        <i data-lucide="save" class="w-4 h-4"></i>
+                        Simpan Perubahan
+                    </span>
+                    <span wire:loading.flex wire:target="updateTicket" class="items-center gap-2">
+                        <svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-90" fill="currentColor" d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z"></path>
+                        </svg>
+                        Menyimpan...
+                    </span>
+                </x-admin.button>
             </div>
         </form>
     </x-admin.modal>

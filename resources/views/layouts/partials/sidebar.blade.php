@@ -20,9 +20,15 @@
     <!-- Navigation Menu (scrollable) -->
     <nav class="flex-1 overflow-y-auto py-4 px-3 space-y-1" aria-label="Menu utama" x-data="{ 
         targetTab: '',
+        eventModalLoading: false,
         openEventModal(tab) {
             this.targetTab = tab;
+            this.eventModalLoading = true;
             $dispatch('open-modal', { name: 'select-event-modal' });
+            setTimeout(() => {
+                this.eventModalLoading = false;
+                this.$nextTick(() => window.lucide && window.lucide.createIcons());
+            }, 350);
         }
     }">
         <p class="px-3 text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">Menu
@@ -124,8 +130,15 @@
         <x-admin.modal name="select-event-modal" title="Pilih Event" icon="shopping-cart">
             <div class="space-y-3">
                 <p class="text-xs font-semibold text-slate-400 uppercase tracking-widest">Daftar Event Aktif</p>
-                <div class="grid gap-3">
-                    @forelse($activeEvents as $event)
+                <div x-show="eventModalLoading" class="py-10 text-center">
+                    <svg class="mx-auto mb-4 h-11 w-11 animate-spin text-indigo-600 dark:text-indigo-400" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-90" fill="currentColor" d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z"></path>
+                    </svg>
+                    <p class="text-sm font-semibold text-slate-500 dark:text-slate-400">Memuat event aktif...</p>
+                </div>
+                <div x-show="!eventModalLoading" x-cloak class="grid gap-3">
+                    @forelse($sidebarActiveEvents as $event)
                         <a :href="'{{ auth()->user()->role === 'admin' ? '/admin/event/' : '/dashboard/event/' }}' + '{{ $event->uid }}' + '?activeTab=' + targetTab" 
                            wire:navigate
                            class="flex items-center justify-between p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 hover:border-indigo-500 dark:hover:border-indigo-500 hover:bg-indigo-50/30 dark:hover:bg-indigo-900/20 transition-all duration-200 group">

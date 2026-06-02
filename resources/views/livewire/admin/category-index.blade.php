@@ -50,9 +50,15 @@
                     <td class="px-5 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div class="flex items-center gap-2">
                             <button wire:click="openEditModal({{ $category->id }})"
-                                class="p-2 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-xl transition-colors"
+                                wire:loading.attr="disabled"
+                                wire:target="openEditModal({{ $category->id }})"
+                                class="p-2 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-xl transition-colors disabled:pointer-events-none disabled:opacity-60"
                                 title="Edit">
-                                <i data-lucide="edit-3" class="w-4 h-4"></i>
+                                <i wire:loading.remove wire:target="openEditModal({{ $category->id }})" data-lucide="edit-3" class="w-4 h-4"></i>
+                                <svg wire:loading wire:target="openEditModal({{ $category->id }})" class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-90" fill="currentColor" d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z"></path>
+                                </svg>
                             </button>
                             <button wire:click="confirmDelete({{ $category->id }})"
                                 class="p-2 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-xl transition-colors"
@@ -81,20 +87,37 @@
 
     <!-- Create/Edit Modal -->
     <x-admin.modal name="category-modal" title="{{ $isEditMode ? 'Edit Kategori' : 'Tambah Kategori' }}" icon="tag">
-        <form wire:submit.prevent="save" class="space-y-4">
+        <form wire:submit.prevent="save" class="relative space-y-4">
+            <div wire:loading.flex wire:target="save"
+                class="absolute inset-0 z-20 items-center justify-center rounded-2xl bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
+                <div class="flex flex-col items-center gap-3">
+                    <svg class="h-10 w-10 animate-spin text-indigo-600 dark:text-indigo-400" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-90" fill="currentColor" d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z"></path>
+                    </svg>
+                    <p class="text-sm font-semibold text-slate-500 dark:text-slate-400">Menyimpan data...</p>
+                </div>
+            </div>
+
             <x-admin.input label="Nama Kategori" wire:model="name" placeholder="Masukan nama kategori..."
                 error="{{ $errors->first('name') }}" />
 
             <div class="flex justify-end gap-3 pt-4">
-                <x-admin.button type="button" variant="secondary" x-on:click="show = false">
+                <x-admin.button type="button" variant="secondary" x-on:click="show = false"
+                    wire:loading.attr="disabled" wire:target="save"
+                    class="disabled:pointer-events-none disabled:opacity-60">
                     Batal
                 </x-admin.button>
-                <x-admin.button type="submit" variant="primary" wire:loading.attr="disabled">
-                    <span wire:loading.remove>
+                <x-admin.button type="submit" variant="primary" wire:loading.attr="disabled" wire:target="save"
+                    class="disabled:pointer-events-none disabled:opacity-60">
+                    <span wire:loading.remove wire:target="save">
                         {{ $isEditMode ? 'Simpan Perubahan' : 'Tambah Kategori' }}
                     </span>
-                    <span wire:loading.flex class="items-center gap-2">
-                        <i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i>
+                    <span wire:loading.flex wire:target="save" class="items-center gap-2">
+                        <svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-90" fill="currentColor" d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z"></path>
+                        </svg>
                         Memproses...
                     </span>
                 </x-admin.button>

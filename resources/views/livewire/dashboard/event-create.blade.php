@@ -1,7 +1,14 @@
 <div>
-    <div class="mb-6">
-        <h1 class="text-3xl font-black text-slate-800 dark:text-white tracking-tight">{{ $title }}</h1>
-        <p class="text-slate-500 dark:text-slate-400">Configure your event details and publishing settings below.</p>
+    <div class="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <h1 class="text-3xl font-black text-slate-800 dark:text-white tracking-tight">{{ $title }}</h1>
+            <p class="text-slate-500 dark:text-slate-400">Configure your event details and publishing settings below.</p>
+        </div>
+        <div>
+            <x-admin.button href="{{ auth()->user()->role === 'admin' ? route('admin.event') : route('dashboard.event') }}" wire:navigate variant="secondary" icon="arrow-left" class="!py-2 !px-4">
+                Kembali
+            </x-admin.button>
+        </div>
     </div>
 
     @if (session()->has('message'))

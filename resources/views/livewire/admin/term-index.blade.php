@@ -41,8 +41,15 @@
                         <span class="text-xs text-slate-500 dark:text-slate-400">{{ $item->updated_at->format('d M Y, H:i') }}</span>
                     </td>
                     <td class="px-5 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                        <button wire:click="edit('{{ $item->uid }}')" class="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors" title="Edit">
-                            <i data-lucide="edit-3" class="w-4 h-4"></i>
+                        <button wire:click="edit('{{ $item->uid }}')"
+                            wire:loading.attr="disabled"
+                            wire:target="edit('{{ $item->uid }}')"
+                            class="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors disabled:pointer-events-none disabled:opacity-60" title="Edit">
+                            <i wire:loading.remove wire:target="edit('{{ $item->uid }}')" data-lucide="edit-3" class="w-4 h-4"></i>
+                            <svg wire:loading wire:target="edit('{{ $item->uid }}')" class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-90" fill="currentColor" d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z"></path>
+                            </svg>
                         </button>
                         <button wire:click="confirmDelete('{{ $item->uid }}')" class="p-2 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors" title="Hapus">
                             <i data-lucide="trash-2" class="w-4 h-4"></i>
@@ -68,7 +75,18 @@
 
     <!-- Modal Form -->
     <x-admin.modal name="term-modal" title="{{ $isEdit ? 'Edit Term and Condition' : 'Tambah Term and Condition' }}">
-        <form wire:submit.prevent="save" class="space-y-4">
+        <form wire:submit.prevent="save" class="relative space-y-4">
+            <div wire:loading.flex wire:target="save"
+                class="absolute inset-0 z-20 items-center justify-center rounded-2xl bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
+                <div class="flex flex-col items-center gap-3">
+                    <svg class="h-10 w-10 animate-spin text-indigo-600 dark:text-indigo-400" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-90" fill="currentColor" d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z"></path>
+                    </svg>
+                    <p class="text-sm font-semibold text-slate-500 dark:text-slate-400">Menyimpan data...</p>
+                </div>
+            </div>
+
             <div>
                 <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 ml-1">Judul Term</label>
                 <x-admin.input wire:model="title" placeholder="Masukkan judul..." />
@@ -82,11 +100,22 @@
             </div>
 
             <div class="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-700">
-                <x-admin.button type="button" x-on:click="$dispatch('close-modal', {name: 'term-modal'})" variant="secondary">
+                <x-admin.button type="button" x-on:click="$dispatch('close-modal', {name: 'term-modal'})" variant="secondary"
+                    wire:loading.attr="disabled" wire:target="save"
+                    class="disabled:pointer-events-none disabled:opacity-60">
                     Batal
                 </x-admin.button>
-                <x-admin.button type="submit" variant="primary">
-                    {{ $isEdit ? 'Simpan Perubahan' : 'Tambah Baru' }}
+                <x-admin.button type="submit" variant="primary"
+                    wire:loading.attr="disabled" wire:target="save"
+                    class="disabled:pointer-events-none disabled:opacity-60">
+                    <span wire:loading.remove wire:target="save">{{ $isEdit ? 'Simpan Perubahan' : 'Tambah Baru' }}</span>
+                    <span wire:loading.flex wire:target="save" class="items-center gap-2">
+                        <svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-90" fill="currentColor" d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z"></path>
+                        </svg>
+                        Menyimpan...
+                    </span>
                 </x-admin.button>
             </div>
         </form>

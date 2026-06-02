@@ -37,8 +37,18 @@ class AuthController extends Controller
             ], 403);
         }
 
+        if ($user->role === 'staff' && !$user->parent_uid) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Akun staff belum terhubung ke penyewa.',
+            ], 403);
+        }
+
         // 5. Buat Token Sanctum
         $token = $user->createToken('scanner-app-token')->plainTextToken;
+        $owner = $user->role === 'staff'
+            ? User::where('uid', $user->parent_uid)->first()
+            : $user;
 
         // 6. Kembalikan response sukses beserta token
         return response()->json([
@@ -50,6 +60,9 @@ class AuthController extends Controller
                     'name' => $user->name,
                     'email' => $user->email,
                     'role' => $user->role,
+                    'parent_uid' => $user->parent_uid,
+                    'owner_uid' => $owner?->uid,
+                    'owner_name' => $owner?->name,
                     'gambar' => $user->gambar,
                 ],
                 'token' => $token

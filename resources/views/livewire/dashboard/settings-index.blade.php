@@ -20,17 +20,17 @@
         <!-- Sidebar Tabs -->
         <div class="lg:col-span-1 space-y-2">
             <button wire:click="setTab('profile')"
-                class="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 {{ $activeTab === 'profile' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200 dark:shadow-none' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800' }}">
+                class="w-full flex items-center cursor-pointer gap-3 px-4 py-3 rounded-xl transition-all duration-200 {{ $activeTab === 'profile' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200 dark:shadow-none' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800' }}">
                 <i data-lucide="user" class="w-5 h-5"></i>
                 <span class="font-medium text-sm">Profil</span>
             </button>
             <button wire:click="setTab('security')"
-                class="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 {{ $activeTab === 'security' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200 dark:shadow-none' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800' }}">
+                class="w-full flex items-center cursor-pointer gap-3 px-4 py-3 rounded-xl transition-all duration-200 {{ $activeTab === 'security' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200 dark:shadow-none' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800' }}">
                 <i data-lucide="lock" class="w-5 h-5"></i>
                 <span class="font-medium text-sm">Keamanan</span>
             </button>
             <button wire:click="setTab('bank')"
-                class="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 {{ $activeTab === 'bank' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200 dark:shadow-none' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800' }}">
+                class="w-full flex items-center cursor-pointer gap-3 px-4 py-3 rounded-xl transition-all duration-200 {{ $activeTab === 'bank' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200 dark:shadow-none' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800' }}">
                 <i data-lucide="credit-card" class="w-5 h-5"></i>
                 <span class="font-medium text-sm">Rekening Bank</span>
             </button>

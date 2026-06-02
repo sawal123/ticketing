@@ -39,17 +39,17 @@
     <div
         class="flex items-center gap-1 bg-white dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700 w-fit mb-6">
         <button wire:click="setTab('umum')"
-            class="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all {{ $activeTab === 'umum' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700' }}">
+            class="flex items-center gap-2 cursor-pointer px-4 py-2 text-sm font-medium rounded-lg transition-all {{ $activeTab === 'umum' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700' }}">
             <i data-lucide="info" class="w-4 h-4"></i>
             Informasi & Talent
         </button>
         <button wire:click="setTab('tiket')"
-            class="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all {{ $activeTab === 'tiket' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700' }}">
+            class="flex items-center gap-2 cursor-pointer px-4 py-2 text-sm font-medium rounded-lg transition-all {{ $activeTab === 'tiket' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700' }}">
             <i data-lucide="ticket" class="w-4 h-4"></i>
             Manajemen Tiket
         </button>
         <button wire:click="setTab('transaksi')"
-            class="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all {{ $activeTab === 'transaksi' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700' }}">
+            class="flex items-center gap-2 cursor-pointer px-4 py-2 text-sm font-medium rounded-lg transition-all {{ $activeTab === 'transaksi' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700' }}">
             <i data-lucide="shopping-cart" class="w-4 h-4"></i>
             Transaksi
         </button>
@@ -381,7 +381,7 @@
                                 <span wire:loading wire:target="exportExcel">Memproses...</span>
                             </x-admin.button>
                             <x-admin.button wire:click="exportPdf" wire:loading.attr="disabled" variant="secondary" size="sm" icon="file-text">
-                                <span wire:loading.remove wire:target="exportPdf">Export PDF</span>
+                                <span wire:loading.remove wire:target="exportPdf">Export</span>
                                 <span wire:loading wire:target="exportPdf">Memproses...</span>
                             </x-admin.button>
                         </div>

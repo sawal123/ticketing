@@ -142,7 +142,7 @@ class editController extends Controller
         $validate = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
             'email' => 'required|string|email',
-            'nomor' => 'required|numeric',
+            'nomor' => 'nullable|numeric',
             'gender' => 'required|string|max:10',
             'birthday' => 'required|string|max:255',
             'kota' => 'required|string|max:255',
@@ -152,7 +152,7 @@ class editController extends Controller
         $user = User::where('uid', Auth::user()->uid)->first();
         $user->name = $request->input('name');
         $user->email = $request->input('email');
-        $user->nomor = $request->input('nomor');
+        $user->nomor = $request->input('nomor') ?? '';
         $user->gender = $request->input('gender');
         $user->birthday = $request->input('birthday');
         $user->kota = $request->input('kota');

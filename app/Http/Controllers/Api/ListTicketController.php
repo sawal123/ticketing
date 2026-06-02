@@ -4,12 +4,36 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Cart;
+use App\Models\Event;
 use Illuminate\Http\Request;
 
 class ListTicketController extends Controller
 {
+    protected function ownerId(Request $request): ?string
+    {
+        $user = $request->user();
+
+        return $user?->role === 'staff' ? $user->parent_uid : $user?->uid;
+    }
+
+    protected function userCanAccessEvent(Request $request, string $eventUid): bool
+    {
+        $ownerId = $this->ownerId($request);
+
+        return $ownerId && Event::where('uid', $eventUid)
+            ->where('user_uid', $ownerId)
+            ->exists();
+    }
+
     public function listTiketVerifikasi(Request $request, $event_uid)
     {
+        if (!$this->userCanAccessEvent($request, $event_uid)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki akses ke event ini.',
+            ], 403);
+        }
+
         // 1. Ambil data transaksi yang status konfirmasinya sudah '1' (Terverifikasi)
         // Kita tambahkan subtotal quantity tiket dari tabel harga_carts
         // dd($event_uid);
@@ -49,7 +73,7 @@ class ListTicketController extends Controller
         ], 200);
     }
 
-    public function showTicketDetail($uid)
+    public function showTicketDetail(Request $request, $uid)
     {
         // Ambil detail cart beserta relasi yang diperlukan
         $ticket = Cart::with([
@@ -74,6 +98,13 @@ class ListTicketController extends Controller
                 'success' => false,
                 'message' => 'Data tiket tidak ditemukan'
             ], 404);
+        }
+
+        if (!$this->userCanAccessEvent($request, $ticket->event_uid)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Anda tidak memiliki akses ke event tiket ini.',
+            ], 403);
         }
 
         // Format data agar mudah dibaca di Vue.js

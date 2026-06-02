@@ -26,6 +26,7 @@ class EventIndex extends Component
         if ($event) {
             $event->status = $event->status === 'active' ? 'close' : 'active';
             $event->save();
+            $this->dispatch('event-status-updated');
         }
     }
 
@@ -37,9 +38,13 @@ class EventIndex extends Component
             })
             ->leftJoin('carts', function ($join) {
                 $join->on('events.uid', '=', 'carts.event_uid')
-                    ->where('carts.status', '=', 'SUCCESS');
+                    ->where('carts.status', '=', 'SUCCESS')
+                    ->whereNull('carts.deleted_at');
             })
-            ->leftJoin('harga_carts', 'carts.uid', '=', 'harga_carts.uid')
+            ->leftJoin('harga_carts', function ($join) {
+                $join->on('carts.uid', '=', 'harga_carts.uid')
+                    ->whereNull('harga_carts.deleted_at');
+            })
             ->select(
                 'events.id',
                 'events.uid',

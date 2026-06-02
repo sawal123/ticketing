@@ -86,7 +86,9 @@ Route::get('/invoice/{uid}', [Controller::class, 'invoice']);
 Route::get('/confir/data/{data}', [Controller::class, 'confir']);
 Route::post('/confir/success', [Controller::class, 'success']);
 // Route::post('/generate-barcode', [BarcodeController::class, 'generateBarcode']);
-Route::get('/generate-barcode/{data}', [BarcodeController::class, 'generateBarcode']);
+Route::get('/generate-barcode/{data}/login', [BarcodeController::class, 'showLogin'])->name('barcode.login');
+Route::post('/generate-barcode/{data}/login', [BarcodeController::class, 'login'])->name('barcode.login.submit');
+Route::get('/generate-barcode/{data}', [BarcodeController::class, 'generateBarcode'])->name('barcode.generate');
 
 Route::middleware(['auth'])->group(function () {
     Route::get('/profile', [editController::class, 'profile']);
@@ -196,6 +198,7 @@ Route::prefix('admin')
         Route::get('/term', TermIndex::class)->name('admin.term');
         Route::get('/slider', SliderIndex::class)->name('admin.slider');
         Route::get('/activity', ActivityIndex::class)->name('admin.activity');
+        Route::get('/monitoring', \App\Livewire\Admin\MonitoringIndex::class)->name('admin.monitoring');
         Route::get('/user', UserIndex::class)->name('admin.user');
         Route::get('/category', \App\Livewire\Admin\CategoryIndex::class)->name('admin.category');
         Route::get('/fasilitas', \App\Livewire\Admin\FasilitasIndex::class)->name('admin.fasilitas');

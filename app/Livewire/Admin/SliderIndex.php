@@ -24,7 +24,7 @@ class SliderIndex extends Component
 
     protected $rules = [
         'title' => 'required|string|max:255',
-        'url' => 'nullable|url|max:255',
+        'url' => 'nullable|string|max:255',
         'sort' => 'required|integer|min:1',
         'new_gambar' => 'nullable|image|max:2048', // 2MB Max
     ];
@@ -58,7 +58,7 @@ class SliderIndex extends Component
 
         $data = [
             'title' => $this->title,
-            'url' => $this->url,
+            'url' => trim((string) $this->url) ?: '#',
             'sort' => $this->sort,
         ];
 

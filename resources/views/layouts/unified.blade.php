@@ -34,6 +34,9 @@
     <script src="https://cdn.jsdelivr.net/npm/flatpickr" data-navigate-track></script>
 
     @livewireStyles
+    <style>
+        [x-cloak] { display: none !important; }
+    </style>
     @stack('styles')
 </head>
 
@@ -46,7 +49,7 @@
             aria-hidden="true"></div>
 
         <!-- SIDEBAR -->
-        @include('layouts.partials.sidebar')
+        @livewire('layout.sidebar')
 
         <!-- MAIN CONTENT AREA -->
         <div class="flex-1 flex flex-col min-w-0 overflow-y-auto">
