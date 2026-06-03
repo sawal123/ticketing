@@ -280,11 +280,21 @@
                                 <select wire:change="addTicket($event.target.value)" class="w-full p-3 pl-10 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold focus:ring-2 focus:ring-indigo-500 transition-all outline-none appearance-none">
                                     <option value="">-- Pilih Tiket --</option>
                                     @foreach($availableTickets as $ticket)
-                                        <option value="{{ $ticket->id }}">{{ $ticket->kategori }} (Rp {{ number_format($ticket->harga) }})</option>
+                                        @php
+                                            $isSoldOut = ($ticket->remaining_stock ?? 0) < 1;
+                                            $isUnavailable = $ticket->status !== 'active' || $isSoldOut;
+                                        @endphp
+                                        <option value="{{ $ticket->id }}" @disabled($isUnavailable)>
+                                            {{ $ticket->kategori }} (Rp {{ number_format($ticket->harga) }})
+                                            - {{ $ticket->status !== 'active' ? 'Nonaktif' : ($isSoldOut ? 'Sold Out' : 'Sisa ' . number_format($ticket->remaining_stock)) }}
+                                        </option>
                                     @endforeach
                                 </select>
                                 <i data-lucide="tag" class="w-4 h-4 text-slate-400 absolute left-4 top-3.5"></i>
                             </div>
+                            @error('selectedTickets')
+                                <p class="text-xs font-medium text-rose-500 px-1">{{ $message }}</p>
+                            @enderror
 
                             <!-- Cart Items -->
                             <div class="space-y-2">
@@ -293,12 +303,18 @@
                                         <div class="flex-1">
                                             <h5 class="text-sm font-black text-slate-800 dark:text-white uppercase">{{ $item['name'] }}</h5>
                                             <p class="text-[10px] font-bold text-indigo-600 dark:text-indigo-400">Rp {{ number_format($item['price']) }} / tiket</p>
+                                            <p class="text-[10px] font-medium text-slate-400">Stok tersedia: {{ number_format($item['max_qty'] ?? 0) }}</p>
                                         </div>
                                         <div class="flex items-center gap-3">
                                             <div class="flex items-center bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden h-9 shadow-sm">
-                                                <button wire:click="$set('selectedTickets.{{ $index }}.qty', {{ max(1, $item['qty'] - 1) }})" class="px-2 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-400">-</button>
-                                                <input type="number" wire:model.live="selectedTickets.{{ $index }}.qty" class="w-10 text-center text-xs font-black bg-transparent border-x border-slate-100 dark:border-slate-700 outline-none">
-                                                <button wire:click="$set('selectedTickets.{{ $index }}.qty', {{ $item['qty'] + 1 }})" class="px-2 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-400">+</button>
+                                                <button wire:click="decreaseTicketQty({{ $index }})"
+                                                    class="px-2 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-400">-</button>
+                                                <input type="number" min="1" max="{{ $item['max_qty'] ?? 1 }}"
+                                                    wire:model.live="selectedTickets.{{ $index }}.qty"
+                                                    class="w-10 text-center text-xs font-black bg-transparent border-x border-slate-100 dark:border-slate-700 outline-none">
+                                                <button wire:click="increaseTicketQty({{ $index }})"
+                                                    @disabled(($item['qty'] ?? 0) >= ($item['max_qty'] ?? 0))
+                                                    class="px-2 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-400 disabled:opacity-30 disabled:cursor-not-allowed">+</button>
                                             </div>
                                             <button wire:click="removeTicket({{ $index }})" class="w-9 h-9 flex items-center justify-center text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/30 rounded-lg transition-colors border border-rose-100 dark:border-rose-900/50">
                                                 <i data-lucide="trash-2" class="w-4 h-4"></i>

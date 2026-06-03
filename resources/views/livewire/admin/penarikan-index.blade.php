@@ -41,7 +41,7 @@
         </div>
     @endif
 
-    <x-admin.table title="Permintaan Penarikan" :headers="['User', 'Jumlah', 'Catatan', 'Status', 'Tanggal', 'Aksi']" :count="$penarikans->total()">
+    <x-admin.table title="Permintaan Penarikan" :headers="['User', 'Jumlah', 'Catatan', 'Status', 'Tanggal Pengajuan', 'Tanggal Disetujui', 'Aksi']" :count="$penarikans->total()">
         @forelse($penarikans as $item)
             <tr class="table-row-hover transition-colors">
                 <td class="px-5 py-4 whitespace-nowrap">
@@ -78,6 +78,9 @@
                 <td class="px-5 py-4 whitespace-nowrap text-sm text-slate-500 dark:text-slate-400">
                     {{ $item->created_at->format('d M Y, H:i') }}
                 </td>
+                <td class="px-5 py-4 whitespace-nowrap text-sm text-slate-500 dark:text-slate-400">
+                    {{ $item->approved_at?->format('d M Y, H:i') ?? '-' }}
+                </td>
                 <td class="px-5 py-4 text-center">
                     <div class="flex items-center justify-center gap-2">
                         @if($statusNormalized === 'pending')
@@ -113,7 +116,7 @@
             </tr>
         @empty
             <tr>
-                <td colspan="6" class="px-5 py-12 text-center">
+                <td colspan="7" class="px-5 py-12 text-center">
                     <div class="flex flex-col items-center justify-center text-slate-400">
                         <i data-lucide="inbox" class="w-12 h-12 mb-2 opacity-20"></i>
                         <p>Tidak ada data penarikan ditemukan.</p>

@@ -10,7 +10,11 @@ class Penarikan extends Model
 {
     use HasFactory, SoftDeletes;
 
-    protected $fillable = ['uid', 'uid_user', 'amount', 'note', 'kwitansi', 'status'];
+    protected $fillable = ['uid', 'uid_user', 'amount', 'note', 'kwitansi', 'status', 'approved_at'];
+
+    protected $casts = [
+        'approved_at' => 'datetime',
+    ];
 
     public function user()
     {

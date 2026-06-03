@@ -51,7 +51,10 @@ class PenarikanIndex extends Component
     public function approve($uid)
     {
         $penarikan = Penarikan::where('uid', $uid)->firstOrFail();
-        $penarikan->update(['status' => 'success']);
+        $penarikan->update([
+            'status' => 'success',
+            'approved_at' => now(),
+        ]);
         
         session()->flash('message', 'Penarikan berhasil disetujui!');
     }

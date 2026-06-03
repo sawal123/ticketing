@@ -27,6 +27,7 @@ class SettingsIndex extends Component
     // Bank Fields
     public $banks = [];
     public $bank_id, $nama_rekening, $bank_name, $nomor_rekening;
+    public $deletingBankId;
     public $isEditBank = false;
     public $available_banks = [];
 
@@ -50,9 +51,15 @@ class SettingsIndex extends Component
 
     public function loadBanks()
     {
-        $user = Auth::user();
-        $ownerId = ($user->role === 'staff') ? $user->parent_uid : $user->uid;
-        $this->banks = Bank::where('uid_user', $ownerId)->get();
+        $ownerId = $this->getOwnerId();
+
+        $this->banks = $this->bankQuery($ownerId)
+            ->where(function ($query) {
+                $query->where('nama', '!=', '')
+                    ->orWhere('bank', '!=', '')
+                    ->orWhere('norek', '!=', '');
+            })
+            ->get();
     }
 
     public function setTab($tab)
@@ -123,7 +130,7 @@ class SettingsIndex extends Component
     {
         $this->resetValidation();
         if ($id) {
-            $bank = Bank::find($id);
+            $bank = $this->bankQuery($this->getOwnerId())->findOrFail($id);
             $this->bank_id = $bank->id;
             $this->nama_rekening = $bank->nama;
             $this->bank_name = $bank->bank;
@@ -144,22 +151,21 @@ class SettingsIndex extends Component
             'nomor_rekening' => 'required|numeric',
         ]);
 
-        $user = Auth::user();
-        $ownerId = ($user->role === 'staff') ? $user->parent_uid : $user->uid;
+        $ownerId = $this->getOwnerId();
 
         if ($this->isEditBank) {
-            $bank = Bank::find($this->bank_id);
+            $bank = $this->bankQuery($ownerId)->findOrFail($this->bank_id);
         } else {
-            // Check if account already exists
-            $existingCount = Bank::where('uid_user', $ownerId)->count();
-            if ($existingCount >= 1) {
+            $bank = $this->bankQuery($ownerId)->first();
+
+            if ($bank && $bank->nama && $bank->bank && $bank->norek) {
                 session()->flash('error', 'Maksimal hanya diperbolehkan 1 rekening bank.');
                 $this->dispatch('close-modal', name: 'bank-modal');
                 return;
             }
 
-            $bank = new Bank();
-            $bank->uid = strtolower(\Illuminate\Support\Str::random(10));
+            $bank ??= new Bank();
+            $bank->uid = $ownerId;
             $bank->uid_user = $ownerId;
         }
 
@@ -173,11 +179,39 @@ class SettingsIndex extends Component
         session()->flash('success', $this->isEditBank ? 'Rekening berhasil diperbarui.' : 'Rekening berhasil ditambahkan.');
     }
 
-    public function deleteBank($id)
+    public function confirmDeleteBank($id)
     {
-        Bank::find($id)->delete();
+        $this->bankQuery($this->getOwnerId())->findOrFail($id);
+        $this->deletingBankId = $id;
+        $this->dispatch('open-modal', name: 'delete-bank-modal');
+    }
+
+    public function deleteBank()
+    {
+        if (! $this->deletingBankId) {
+            return;
+        }
+
+        $this->bankQuery($this->getOwnerId())->findOrFail($this->deletingBankId)->delete();
+        $this->deletingBankId = null;
         $this->loadBanks();
+        $this->dispatch('close-modal', name: 'delete-bank-modal');
         session()->flash('success', 'Rekening berhasil dihapus.');
+    }
+
+    protected function getOwnerId()
+    {
+        $user = Auth::user();
+
+        return $user->role === 'staff' ? $user->parent_uid : $user->uid;
+    }
+
+    protected function bankQuery($ownerId)
+    {
+        return Bank::where(function ($query) use ($ownerId) {
+            $query->where('uid_user', $ownerId)
+                ->orWhere('uid', $ownerId);
+        });
     }
 
     public function render()

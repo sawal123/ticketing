@@ -113,10 +113,11 @@
 
                     <x-admin.card title="Talent / Pengisi Acara">
                         <x-slot name="headerAction">
-                            <x-admin.button variant="primary" size="sm" icon="plus" class="!px-3 !py-1.5 !text-[10px] font-black uppercase tracking-widest"
-                                wire:click="openAddTalentModal">
+                            <x-admin.button variant="primary" size="md" icon="plus" class="!px-3 !py-1.5 !text-[10px] font-black uppercase tracking-widest"
+                                wire:click="openAddTalentModal" loading-target="openAddTalentModal">
                                 Tambah Talent
                             </x-admin.button>
+
                         </x-slot>
                         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                             @forelse($event->talents as $talent)
@@ -129,10 +130,14 @@
                                     <h4 class="text-sm font-bold text-slate-800 dark:text-white mb-4 line-clamp-1">{{ $talent->talent }}</h4>
                                     
                                     <div class="flex items-center gap-2 w-full mt-auto">
-                                        <x-admin.button wire:click="editTalent({{ $talent->id }})" variant="secondary" size="sm" icon="pencil" class="flex-1 !py-2 text-[11px] font-bold uppercase tracking-wider">
+                                        <x-admin.button wire:click="editTalent({{ $talent->id }})" variant="secondary" size="sm" icon="pencil"
+                                            class="flex-1 !py-2 text-[11px] font-bold uppercase tracking-wider"
+                                            loading-target="editTalent({{ $talent->id }})">
                                             Edit
                                         </x-admin.button>
-                                        <x-admin.button wire:click="confirmDeleteTalent({{ $talent->id }})" variant="secondary" size="sm" icon="trash-2" class="flex-1 !py-2 text-[11px] font-bold uppercase tracking-wider !text-rose-600 !bg-rose-50 hover:!bg-rose-100 border-rose-100 dark:!bg-rose-900/20 dark:border-rose-900/30">
+                                        <x-admin.button wire:click="confirmDeleteTalent({{ $talent->id }})" variant="secondary" size="sm" icon="trash-2"
+                                            class="flex-1 !py-2 text-[11px] font-bold uppercase tracking-wider !text-rose-600 !bg-rose-50 hover:!bg-rose-100 border-rose-100 dark:!bg-rose-900/20 dark:border-rose-900/30"
+                                            loading-target="confirmDeleteTalent({{ $talent->id }})">
                                             Hapus
                                         </x-admin.button>
                                     </div>
@@ -191,6 +196,13 @@
 
         @elseif($activeTab === 'tiket')
             <x-admin.table title="Kategori Tiket & Harga" :headers="['Kategori', 'Stok', 'Terjual', 'Harga', 'Status', 'Aksi']" :count="$event->hargas->count()">
+                <x-slot name="headerAction">
+                    <x-admin.button variant="primary" size="md" icon="plus" wire:click="openAddTicketModal"
+                        loading-target="openAddTicketModal">
+                        Tambah Tiket
+                    </x-admin.button>
+                </x-slot>
+
                 @forelse($event->hargas as $harga)
                     <tr class="table-row-hover transition-colors">
                         <td class="px-5 py-4 font-bold text-slate-800 dark:text-white">
@@ -229,9 +241,11 @@
                         <td class="px-5 py-4 text-center">
                             <div class="flex items-center justify-center gap-2">
                                 <x-admin.button wire:click="editTicket({{ $harga->id }})" variant="ghost" size="sm"
-                                    icon="pencil" class="text-indigo-600" title="Edit Tiket" />
+                                    icon="pencil" class="text-indigo-600" title="Edit Tiket"
+                                    loading-target="editTicket({{ $harga->id }})" />
                                 <x-admin.button wire:click="confirmDeleteTicket({{ $harga->id }})" variant="ghost" size="sm"
-                                    icon="trash-2" class="text-rose-600" title="Hapus Tiket" />
+                                    icon="trash-2" class="text-rose-600" title="Hapus Tiket"
+                                    loading-target="confirmDeleteTicket({{ $harga->id }})" />
                             </div>
                         </td>
                     </tr>
@@ -473,6 +487,51 @@
         @endif
         </div>
     </div>
+
+    <!-- Add Ticket Modal -->
+    <x-admin.modal name="add-ticket-modal" title="Tambah Kategori Tiket" icon="plus">
+        <form wire:submit="addTicket" class="space-y-4">
+            <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Nama
+                    Kategori</label>
+                <x-admin.input wire:model="newHarga.kategori" placeholder="Contoh: VIP, Reguler..." required
+                    :error="$errors->first('newHarga.kategori')" />
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Stok
+                        (Qty)</label>
+                    <x-admin.input type="number" wire:model="newHarga.qty" min="0" required
+                        :error="$errors->first('newHarga.qty')" />
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Harga
+                        (Rp)</label>
+                    <x-admin.input type="number" wire:model="newHarga.harga" min="0" required
+                        :error="$errors->first('newHarga.harga')" />
+                </div>
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Status</label>
+                <select wire:model="newHarga.status"
+                    class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-800 dark:text-slate-200 text-sm focus:ring-2 focus:ring-indigo-500 transition-all">
+                    <option value="active">Aktif</option>
+                    <option value="inactive">Nonaktif</option>
+                </select>
+                @error('newHarga.status')
+                    <p class="mt-1 text-xs text-rose-500">{{ $message }}</p>
+                @enderror
+            </div>
+
+            <div class="flex justify-end gap-3 mt-6">
+                <x-admin.button type="button" x-on:click="show = false" variant="ghost">Batal</x-admin.button>
+                <x-admin.button type="submit" variant="primary" icon="save" wire:loading.attr="disabled">
+                    <span wire:loading.remove wire:target="addTicket">Simpan Tiket</span>
+                    <span wire:loading wire:target="addTicket">Memproses...</span>
+                </x-admin.button>
+            </div>
+        </form>
+    </x-admin.modal>
 
     <!-- Edit Ticket Modal -->
     <x-admin.modal name="edit-ticket-modal" title="Edit Kategori Tiket" icon="pencil">

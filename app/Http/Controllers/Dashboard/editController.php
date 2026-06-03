@@ -355,6 +355,7 @@ class editController extends Controller
         $penarikan = Penarikan::where('uid', $request->uid)->first();
         // dd($penarikan);
         $penarikan->status = "SUCCESS";
+        $penarikan->approved_at = now();
         $penarikan->save();
         return redirect()->back()->with("success", "Konfirmasi Berhasil");
     }

@@ -4,9 +4,11 @@
     'type' => 'button',
     'icon' => null,
     'href' => null,
+    'loadingTarget' => null,
+    'disabled' => false,
 ])
 @php
-    $baseClasses = 'flex items-center cursor-pointer justify-center gap-2 font-medium rounded-xl transition-all duration-200 btn-ripple shadow-md';
+    $baseClasses = 'flex items-center cursor-pointer justify-center gap-2 font-medium rounded-xl transition-all duration-200 btn-ripple shadow-md disabled:cursor-wait disabled:opacity-70';
 
     $variants = [
         'primary' => 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-200 dark:shadow-indigo-900/30',
@@ -33,9 +35,22 @@
         {{ $slot }}
     </a>
 @else
-    <button type="{{ $type }}" {{ $attributes->merge(['class' => $classes]) }}>
+    <button type="{{ $type }}"
+        @if($disabled)
+            disabled
+        @endif
+        @if($loadingTarget)
+            wire:loading.attr="disabled"
+            wire:target="{{ $loadingTarget }}"
+        @endif
+        {{ $attributes->merge(['class' => $classes]) }}>
+        @if ($loadingTarget)
+            <span wire:loading wire:target="{{ $loadingTarget }}"
+                class="w-4 h-4 flex-shrink-0 rounded-full border-2 border-current border-t-transparent animate-spin"></span>
+        @endif
         @if ($icon)
-            <i data-lucide="{{ $icon }}" class="w-4 h-4 flex-shrink-0"></i>
+            <i data-lucide="{{ $icon }}" class="w-4 h-4 flex-shrink-0"
+                @if($loadingTarget) wire:loading.remove wire:target="{{ $loadingTarget }}" @endif></i>
         @endif
         {{ $slot }}
     </button>

@@ -15,6 +15,13 @@
             <span class="block sm:inline text-sm font-medium">{{ session('success') }}</span>
         </div>
     @endif
+    @if (session()->has('error'))
+        <div class="bg-rose-100 border border-rose-200 text-rose-800 px-4 py-3 rounded-xl relative mb-6 flex items-center gap-3"
+            role="alert">
+            <i data-lucide="alert-circle" class="w-5 h-5"></i>
+            <span class="block sm:inline text-sm font-medium">{{ session('error') }}</span>
+        </div>
+    @endif
 
     <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
         <!-- Sidebar Tabs -->
@@ -128,10 +135,10 @@
                 <x-admin.card title="Keamanan Akun" icon="lock">
                     <form wire:submit.prevent="updatePassword" class="space-y-6">
                         <div class="max-w-md space-y-4">
-                            <x-admin.input label="Password Saat Ini" wire:model="current_password" type="password" placeholder="••••••••" error="{{ $errors->first('current_password') }}" />
+                            <x-admin.input label="Password Saat Ini" wire:model="current_password" type="password" revealable placeholder="••••••••" error="{{ $errors->first('current_password') }}" />
                             <hr class="border-slate-100 dark:border-slate-700 my-4">
-                            <x-admin.input label="Password Baru" wire:model="new_password" type="password" placeholder="••••••••" error="{{ $errors->first('new_password') }}" />
-                            <x-admin.input label="Konfirmasi Password Baru" wire:model="new_password_confirmation" type="password" placeholder="••••••••" />
+                            <x-admin.input label="Password Baru" wire:model="new_password" type="password" revealable placeholder="••••••••" error="{{ $errors->first('new_password') }}" />
+                            <x-admin.input label="Konfirmasi Password Baru" wire:model="new_password_confirmation" type="password" revealable placeholder="••••••••" />
                         </div>
 
                         <div class="flex justify-end">
@@ -151,8 +158,9 @@
                 <div class="space-y-6">
                     <div class="flex items-center justify-between">
                         <h3 class="text-lg font-bold text-slate-800 dark:text-white">Rekening Bank</h3>
-                        <x-admin.button wire:click="openBankModal" icon="plus" variant="primary" 
-                            disabled="{{ count($banks) >= 1 }}" 
+                        <x-admin.button wire:click="openBankModal" icon="plus" variant="primary"
+                            loading-target="openBankModal"
+                            :disabled="count($banks) >= 1"
                             title="{{ count($banks) >= 1 ? 'Maksimal 1 rekening diperbolehkan' : 'Tambah Bank' }}"
                             class="{{ count($banks) >= 1 ? 'opacity-50 cursor-not-allowed' : '' }}">
                             Tambah Bank
@@ -174,9 +182,11 @@
                                         <button wire:click="openBankModal({{ $bank->id }})" class="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-xl transition-colors">
                                             <i data-lucide="edit-3" class="w-4 h-4"></i>
                                         </button>
-                                        <button onclick="confirm('Apakah Anda yakin?') || event.stopImmediatePropagation()" wire:click="deleteBank({{ $bank->id }})" class="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-xl transition-colors">
-                                            <i data-lucide="trash-2" class="w-4 h-4"></i>
-                                        </button>
+                                        <x-admin.button wire:click="confirmDeleteBank({{ $bank->id }})" variant="ghost"
+                                            size="sm" icon="trash-2"
+                                            loading-target="confirmDeleteBank({{ $bank->id }})"
+                                            class="!p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20"
+                                            title="Hapus Rekening" />
                                     </div>
                                 </div>
                             </div>
@@ -187,6 +197,10 @@
                                 </div>
                                 <h4 class="text-slate-800 dark:text-white font-bold">Belum Ada Rekening</h4>
                                 <p class="text-slate-500 dark:text-slate-400 text-sm mt-1">Tambahkan rekening bank Anda untuk melakukan penarikan saldo.</p>
+                                <x-admin.button wire:click="openBankModal" icon="plus" variant="primary" size="sm"
+                                    loading-target="openBankModal" class="mt-5">
+                                    Tambah Rekening
+                                </x-admin.button>
                             </div>
                         @endforelse
                     </div>
@@ -239,4 +253,13 @@
             </div>
         </form>
     </x-admin.modal>
+
+    <!-- Delete Bank Confirmation Modal -->
+    <x-admin.modal-delete name="delete-bank-modal" title="Hapus Rekening Bank?"
+        message="Rekening bank ini akan dihapus dari akun Anda. Anda perlu menambahkan rekening kembali sebelum mengajukan penarikan saldo.">
+        <x-admin.button wire:click="deleteBank" variant="danger" icon="trash-2" loading-target="deleteBank"
+            class="w-full !py-3">
+            Ya, Hapus Rekening
+        </x-admin.button>
+    </x-admin.modal-delete>
 </div>

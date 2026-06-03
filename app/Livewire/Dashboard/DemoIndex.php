@@ -50,9 +50,16 @@ class DemoIndex extends Component
 
     public function selectEvent($uid)
     {
+        $user = auth()->user();
+        $ownerId = ($user->role === 'staff') ? $user->parent_uid : $user->uid;
+
         $this->selectedEventId = $uid;
-        $this->selectedEvent = Event::where('uid', $uid)->first();
-        $this->availableTickets = Harga::where('uid', $uid)->get();
+        $this->selectedEvent = Event::where('uid', $uid)
+            ->where('konfirmasi', '1')
+            ->where('status', 'active')
+            ->when($user->role !== 'admin', fn ($query) => $query->where('user_uid', $ownerId))
+            ->firstOrFail();
+        $this->loadAvailableTickets();
         $this->selectedTickets = [];
     }
 
@@ -65,19 +72,48 @@ class DemoIndex extends Component
 
     public function addTicket($ticketId)
     {
-        $ticket = $this->availableTickets->where('id', $ticketId)->first();
-        if ($ticket) {
-            // Check if already in selected
-            $exists = collect($this->selectedTickets)->firstWhere('id', $ticketId);
-            if (!$exists) {
-                $this->selectedTickets[] = [
-                    'id' => $ticket->id,
-                    'name' => $ticket->kategori,
-                    'price' => $ticket->harga,
-                    'qty' => 1
-                ];
-            }
+        $ticket = Harga::where('id', $ticketId)
+            ->where('uid', $this->selectedEventId)
+            ->where('status', 'active')
+            ->first();
+
+        if (! $ticket || $this->getRemainingStock($ticket) < 1) {
+            $this->addError('selectedTickets', 'Tiket tidak aktif atau sudah sold out.');
+            $this->loadAvailableTickets();
+            return;
         }
+
+        $this->resetErrorBag('selectedTickets');
+
+        $exists = collect($this->selectedTickets)->firstWhere('id', $ticket->id);
+        if (! $exists) {
+            $this->selectedTickets[] = [
+                'id' => $ticket->id,
+                'name' => $ticket->kategori,
+                'price' => $ticket->harga,
+                'qty' => 1,
+                'max_qty' => $this->getRemainingStock($ticket),
+            ];
+        }
+    }
+
+    public function increaseTicketQty($index)
+    {
+        if (! isset($this->selectedTickets[$index])) {
+            return;
+        }
+
+        $maxQty = (int) ($this->selectedTickets[$index]['max_qty'] ?? 0);
+        $this->selectedTickets[$index]['qty'] = min($maxQty, (int) $this->selectedTickets[$index]['qty'] + 1);
+    }
+
+    public function decreaseTicketQty($index)
+    {
+        if (! isset($this->selectedTickets[$index])) {
+            return;
+        }
+
+        $this->selectedTickets[$index]['qty'] = max(1, (int) $this->selectedTickets[$index]['qty'] - 1);
     }
 
     public function removeTicket($index)
@@ -109,6 +145,8 @@ class DemoIndex extends Component
         $this->validate([
             'selectedEventId' => 'required',
             'selectedTickets' => 'required|array|min:1',
+            'selectedTickets.*.id' => 'required|integer|distinct',
+            'selectedTickets.*.qty' => 'required|integer|min:1',
             'buyerName' => 'required|string|max:255',
             'buyerEmail' => 'required|email',
             'buyerBirthday' => 'required|date',
@@ -120,6 +158,37 @@ class DemoIndex extends Component
 
             $user = auth()->user();
             $ownerId = ($user->role === 'staff') ? $user->parent_uid : $user->uid;
+
+            $event = Event::where('uid', $this->selectedEventId)
+                ->where('konfirmasi', '1')
+                ->where('status', 'active')
+                ->when($user->role !== 'admin', fn ($query) => $query->where('user_uid', $ownerId))
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $validatedTickets = [];
+            foreach ($this->selectedTickets as $item) {
+                $ticket = Harga::where('id', $item['id'])
+                    ->where('uid', $event->uid)
+                    ->lockForUpdate()
+                    ->firstOrFail();
+
+                $requestedQty = filter_var($item['qty'], FILTER_VALIDATE_INT);
+                $remainingStock = $this->getRemainingStock($ticket);
+
+                if ($ticket->status !== 'active' || $requestedQty === false || $requestedQty < 1 || $requestedQty > $remainingStock) {
+                    throw new \RuntimeException("Tiket {$ticket->kategori} tidak aktif atau stok tidak mencukupi.");
+                }
+
+                $validatedTickets[] = [
+                    'model' => $ticket,
+                    'qty' => $requestedQty,
+                ];
+            }
+
+            $subtotal = collect($validatedTickets)->sum(fn ($item) => $item['model']->harga * $item['qty']);
+            $tax = (($event->fee ?? 0) / 100) * $subtotal;
+            $total = $subtotal + $tax;
             
             // 1. GENERATE INVOICE
             $invoice = 'CSH' . date('Ymd') . mt_rand(1000, 9999);
@@ -131,24 +200,22 @@ class DemoIndex extends Component
                 'event_uid' => $this->selectedEventId,
                 'status' => 'SUCCESS',
                 'payment_type' => 'cash',
-                'total_harga' => $this->total,
+                'total_harga' => $total,
                 'created_at' => now(),
             ]);
 
-            // 3. CREATE HARGA CARTS & UPDATE STOCK
-            foreach ($this->selectedTickets as $item) {
+            // 3. CREATE HARGA CARTS
+            foreach ($validatedTickets as $item) {
+                $ticket = $item['model'];
+
                 HargaCart::create([
                     'uid' => $cart->uid,
-                    'harga_uid' => $item['id'],
+                    'harga_id' => $ticket->id,
+                    'event_uid' => $event->uid,
                     'quantity' => $item['qty'],
-                    'harga_ticket' => $item['price'],
+                    'harga_ticket' => $ticket->harga,
+                    'kategori_harga' => $ticket->kategori,
                 ]);
-
-                // Update Stock logic if needed
-                $ticketModel = Harga::where('uid', $item['id'])->first();
-                if ($ticketModel) {
-                    $ticketModel->decrement('stock', $item['qty']);
-                }
             }
 
             // 4. CREATE TRANSACTION RECORD
@@ -156,7 +223,7 @@ class DemoIndex extends Component
                 'uid' => $cart->uid,
                 'user_uid' => $user->uid,
                 'event_uid' => $this->selectedEventId,
-                'amount' => $this->total,
+                'amount' => $total,
                 'status' => 'SUCCESS',
                 'type' => 'income',
             ]);
@@ -169,8 +236,8 @@ class DemoIndex extends Component
                 'email' => $this->buyerEmail,
                 'ttl' => $this->buyerBirthday,
                 'gender' => $this->buyerGender,
-                'total' => $this->total,
-                'qty' => collect($this->selectedTickets)->sum('qty'),
+                'total' => $total,
+                'qty' => collect($validatedTickets)->sum('qty'),
                 'partner' => $this->partnerId,
             ]);
 
@@ -184,6 +251,27 @@ class DemoIndex extends Component
             DB::rollBack();
             session()->flash('error', 'Gagal: ' . $e->getMessage());
         }
+    }
+
+    protected function loadAvailableTickets()
+    {
+        $this->availableTickets = Harga::where('uid', $this->selectedEventId)
+            ->withSum(['hargaCarts as sold_count' => function ($query) {
+                $query->whereHas('cart', fn ($cart) => $cart->where('status', 'SUCCESS'));
+            }], 'quantity')
+            ->get()
+            ->each(function ($ticket) {
+                $ticket->remaining_stock = max(0, (int) $ticket->qty - (int) ($ticket->sold_count ?? 0));
+            });
+    }
+
+    protected function getRemainingStock(Harga $ticket)
+    {
+        $soldCount = $ticket->hargaCarts()
+            ->whereHas('cart', fn ($cart) => $cart->where('status', 'SUCCESS'))
+            ->sum('quantity');
+
+        return max(0, (int) $ticket->qty - (int) $soldCount);
     }
 
     public function toggleGenderModal()
@@ -257,7 +345,11 @@ class DemoIndex extends Component
         $totalEventCount = (clone $totalEvent)->count();
         $eventAktifCount = (clone $totalEvent)->where('konfirmasi', '1')->count();
 
-        $activeEvents = (clone $totalEvent)->where('konfirmasi', '1')->latest()->get();
+        $activeEvents = (clone $totalEvent)
+            ->where('konfirmasi', '1')
+            ->where('status', 'active')
+            ->latest()
+            ->get();
 
         // GRAPHIC ANALYTIC (Last 7 Days) - Like Admin Dashboard
         $last7Days = collect(range(6, 0))->map(function ($days) {

@@ -31,7 +31,14 @@ class EventDetail extends Component
     public $filterPayment = 'all'; // all, cash, non-cash
     public $filterRange; // Format: "YYYY-MM-DD to YYYY-MM-DD"
 
-    // For Edit Ticket Modal
+    // For Add/Edit Ticket Modal
+    public $newHarga = [
+        'kategori' => '',
+        'qty' => 0,
+        'harga' => 0,
+        'status' => 'active'
+    ];
+
     public $editingHargaId;
     public $editingHarga = [
         'kategori' => '',
@@ -357,6 +364,47 @@ class EventDetail extends Component
             $this->deletingHargaId = null;
             session()->flash('message', 'Tiket berhasil dihapus.');
         }
+    }
+
+    public function openAddTicketModal()
+    {
+        $this->resetValidation();
+        $this->newHarga = [
+            'kategori' => '',
+            'qty' => 0,
+            'harga' => 0,
+            'status' => 'active'
+        ];
+
+        $this->dispatch('open-modal', name: 'add-ticket-modal');
+    }
+
+    public function addTicket()
+    {
+        $this->getEventData();
+
+        $validated = $this->validate([
+            'newHarga.kategori' => [
+                'required',
+                'string',
+                'max:255',
+                \Illuminate\Validation\Rule::unique('hargas', 'kategori')
+                    ->where(fn ($query) => $query->where('uid', $this->eventUid)),
+            ],
+            'newHarga.qty' => 'required|integer|min:0',
+            'newHarga.harga' => 'required|numeric|min:0',
+            'newHarga.status' => 'required|in:active,inactive',
+        ], [
+            'newHarga.kategori.unique' => 'Nama kategori tiket sudah digunakan pada event ini.',
+        ]);
+
+        Harga::create([
+            'uid' => $this->eventUid,
+            ...$validated['newHarga'],
+        ]);
+
+        $this->dispatch('close-modal', name: 'add-ticket-modal');
+        session()->flash('message', 'Tiket berhasil ditambahkan.');
     }
 
     public function editTicket($id)

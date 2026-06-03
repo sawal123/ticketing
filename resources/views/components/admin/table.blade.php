@@ -6,7 +6,7 @@
 ])
 
 <div {{ $attributes->merge(['class' => 'bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden']) }}>
-    @if($title || $count)
+    @if($title || $count || isset($headerAction))
         <div class="flex items-center justify-between px-5 py-4 border-b border-slate-200 dark:border-slate-700">
             <div>
                 @if($title)
@@ -16,11 +16,16 @@
                     <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{{ $subtitle }}</p>
                 @endif
             </div>
-            @if($count !== null)
-                <span class="text-xs text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-700 px-2.5 py-1 rounded-full">
-                    {{ $count }} data
-                </span>
-            @endif
+            <div class="flex items-center gap-3">
+                @if($count !== null)
+                    <span class="text-xs text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-700 px-2.5 py-1 rounded-full">
+                        {{ $count }} data
+                    </span>
+                @endif
+                @isset($headerAction)
+                    {{ $headerAction }}
+                @endisset
+            </div>
         </div>
     @endif
 

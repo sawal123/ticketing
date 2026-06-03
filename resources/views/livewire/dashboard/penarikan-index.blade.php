@@ -69,11 +69,17 @@
             </div> --}}
         </div>
 
-        <x-admin.table :headers="['Tanggal', 'Nominal', 'Catatan', 'Status', 'Aksi']">
+        <x-admin.table :headers="['Tanggal Pengajuan', 'Tanggal Disetujui', 'Nominal', 'Catatan', 'Status', 'Aksi']">
             @forelse($penarikans as $item)
+                @php
+                    $statusNormalized = strtolower($item->status);
+                @endphp
                 <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
                     <td class="px-5 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400">
                         {{ $item->created_at->format('d M Y, H:i') }}
+                    </td>
+                    <td class="px-5 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-400">
+                        {{ $item->approved_at?->format('d M Y, H:i') ?? '-' }}
                     </td>
                     <td class="px-5 py-4 whitespace-nowrap text-sm font-bold text-slate-800 dark:text-slate-200">
                         Rp {{ number_format($item->amount, 0, ',', '.') }}
@@ -82,10 +88,10 @@
                         {{ $item->note ?: '-' }}
                     </td>
                     <td class="px-5 py-4 whitespace-nowrap">
-                        @if($item->status === 'pending')
+                        @if($statusNormalized === 'pending')
                             <span
                                 class="px-2.5 py-1 text-[10px] font-bold bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400 rounded-full border border-amber-200 dark:border-amber-800 uppercase">PENDING</span>
-                        @elseif($item->status === 'success')
+                        @elseif($statusNormalized === 'success')
                             <span
                                 class="px-2.5 py-1 text-[10px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400 rounded-full border border-emerald-200 dark:border-emerald-800 uppercase">SUCCESS</span>
                         @else
@@ -95,7 +101,7 @@
                     </td>
                     <td class="px-5 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div class="flex items-center gap-2">
-                            @if($item->status === 'pending')
+                            @if($statusNormalized === 'pending')
                                 <button wire:click="openEditModal({{ $item->id }})"
                                     class="p-2 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-xl transition-colors"
                                     title="Edit">
@@ -108,7 +114,7 @@
                                 </button>
                             @endif
 
-                            @if($item->status === 'SUCCESS')
+                            @if($statusNormalized === 'success')
                                 <a href="{{ url('/invoice/' . $item->uid) }}" target="_blank"
                                     class="p-2 text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-xl transition-colors flex items-center gap-1"
                                     title="Invoice">
@@ -121,7 +127,7 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="5" class="px-5 py-10 text-center text-slate-500 dark:text-slate-400">
+                    <td colspan="6" class="px-5 py-10 text-center text-slate-500 dark:text-slate-400">
                         <div class="flex flex-col items-center gap-2">
                             <i data-lucide="search-x" class="w-10 h-10 text-slate-300 dark:text-slate-600"></i>
                             <p>Belum ada riwayat penarikan.</p>
