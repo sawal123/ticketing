@@ -179,8 +179,8 @@ Environment variable yang benar-benar dibaca script:
 - `BASE_URL`, default `http://127.0.0.1:8000`
 - `EVENT_SLUG`, default `demo`
 - `AUTH_COOKIE`, default kosong
-- `VUS`, default `100`
-- `DURATION`, default `1m`
+- `VUS`, default `10`
+- `DURATION`, default `30s`
 - `ALLOW_NON_LOCAL`, default kosong
 
 Safety guard script:
@@ -196,6 +196,13 @@ Persiapan:
 3. Pastikan event slug test memiliki tiket active dan event active/confirmed.
 4. Pastikan stok event test disiapkan sesuai tujuan load test.
 5. Jangan gunakan event/domain production.
+6. Jalankan inspect sebelum load test:
+
+```bash
+k6 inspect tests/load/war-ticket.js
+```
+
+Catatan: `AUTH_COOKIE` tunggal masih didukung hanya untuk smoke-test authenticated flow. Ini bukan simulasi banyak pembeli unik. Untuk uji war yang lebih realistis, siapkan cookie/session user test berbeda dan perluasan script terpisah.
 
 PowerShell contoh localhost:
 
@@ -203,7 +210,7 @@ PowerShell contoh localhost:
 $env:BASE_URL="http://127.0.0.1:8000"
 $env:EVENT_SLUG="demo"
 $env:AUTH_COOKIE="laravel_session=ISI_COOKIE_TEST; XSRF-TOKEN=ISI_XSRF_TEST"
-$env:DURATION="1m"
+$env:DURATION="30s"
 ```
 
 Tahap 10 VU:
@@ -236,7 +243,7 @@ Bash contoh staging aman:
 BASE_URL="https://war-ticket.staging.example.test" \
 EVENT_SLUG="demo" \
 AUTH_COOKIE="laravel_session=ISI_COOKIE_TEST; XSRF-TOKEN=ISI_XSRF_TEST" \
-DURATION="1m" \
+DURATION="30s" \
 VUS="10" \
 k6 run tests/load/war-ticket.js
 ```
@@ -244,17 +251,40 @@ k6 run tests/load/war-ticket.js
 Jika staging URL tidak mengandung `.test` atau `staging`, hanya gunakan ini bila benar-benar staging:
 
 ```bash
-ALLOW_NON_LOCAL=1 BASE_URL="https://staging-domain-yang-terverifikasi" EVENT_SLUG="demo" AUTH_COOKIE="..." VUS="10" DURATION="1m" k6 run tests/load/war-ticket.js
+ALLOW_NON_LOCAL=1 BASE_URL="https://staging-domain-yang-terverifikasi" EVENT_SLUG="demo" AUTH_COOKIE="..." VUS="10" DURATION="30s" k6 run tests/load/war-ticket.js
 ```
 
 ## 8. Cara Membaca Hasil k6
 
 Metric penting:
 
-- `http_req_failed`: harus di bawah threshold script, yaitu `< 20%`.
-- `checkout_success`: harus tidak lebih dari 6000 sesuai threshold script.
-- `duplicate_invoice_seen`: harus 0; tetap verifikasi lagi lewat database karena audit DB adalah sumber kebenaran.
-- Status checkout yang diterima script: 302, 303, 419, 422; tidak boleh ada 500.
+- `http_req_failed`: threshold script `< 2%`.
+- `checks`: threshold script `> 95%`.
+- `http_req_duration`: threshold script `p(95)<2000ms` dan `p(99)<5000ms`.
+- `checkout_accepted`: jumlah redirect 302/303 ke `/detail-ticket/`.
+- `checkout_sold_out`: graceful sold-out rejection yang terdeteksi setelah redirect.
+- `csrf_error`: status 419; ini kegagalan, bukan keberhasilan.
+- `validation_error`: status 422; ini kegagalan, bukan keberhasilan.
+- `rate_limited`: status 429; ini kegagalan untuk kapasitas target.
+- `server_error`: status `>=500`, threshold script `< 1%`.
+- `unexpected_response`: response di luar klasifikasi, threshold script `< 2%`.
+
+Tidak ada klaim duplicate invoice dari JavaScript runtime k6. Duplicate invoice wajib diverifikasi dari database dengan:
+
+```bash
+php artisan tickets:audit-integrity --limit=50
+```
+
+Status checkout:
+
+- 302/303 ke `/detail-ticket/` = accepted.
+- sold-out valid = graceful rejection.
+- 419 = `csrf_error` dan gagal.
+- 422 = `validation_error` dan gagal.
+- 429 = `rate_limited` dan gagal.
+- `>=500` = `server_error` dan gagal.
+
+Jika `AUTH_COOKIE`, CSRF token, `event_uid`, atau `harga_id` tidak tersedia, script abort/fail. Test tidak boleh dianggap lulus bila tidak ada checkout yang benar-benar dikirim.
 
 Setelah tiap tahap VU, jalankan audit DB:
 
@@ -337,7 +367,11 @@ Gunakan database staging MySQL/MariaDB untuk checklist ini.
 Fase 10/25/50/100 VU dinyatakan lulus bila:
 
 - Tidak ada HTTP 500 pada checkout.
-- `http_req_failed < 20%` sesuai threshold script.
+- `http_req_failed < 2%` sesuai threshold script.
+- `checks > 95%`.
+- `server_error < 1%`.
+- `unexpected_response < 2%`.
+- `http_req_duration p95 < 2000ms` dan `p99 < 5000ms`.
 - Jumlah successful reservation tidak melebihi stok test.
 - `sold_qty >= 0`, `reserved_qty >= 0`.
 - `sold_qty <= qty`.
@@ -373,4 +407,3 @@ Jangan deploy production bila salah satu terjadi:
 - **NOT READY**: Gunakan status ini bila salah satu kondisi pelarangan deployment terjadi.
 
 Production baru boleh dipertimbangkan setelah true concurrency MySQL/MariaDB staging dan load test 10/25/50/100 VU berhasil.
-
