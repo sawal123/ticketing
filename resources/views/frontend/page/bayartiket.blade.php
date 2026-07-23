@@ -16,7 +16,7 @@
     </div>
 
     <!-- SUCCESS BANNER (Show only when status is SUCCESS) -->
-    @if ($cart->status === 'SUCCESS')
+    @if ($cart->status === \App\Models\Cart::STATUS_SUCCESS)
         <div class="success-hero">
             <div class="success-hero-inner">
                 <div class="success-icon-large">✅</div>
@@ -88,6 +88,23 @@
 
         <!-- RIGHT: CHECKOUT FORMS -->
         <div class="checkout-right">
+            @if (in_array($cart->status, [\App\Models\Cart::STATUS_RESERVED, \App\Models\Cart::STATUS_PENDING]) && $cart->expires_at)
+                <div class="card" id="reservationCard" data-expires-at="{{ $cart->expires_at->toIso8601String() }}">
+                    <div class="card-header">
+                        <div class="card-icon" style="background:rgba(245,200,66,0.12);">⏳</div>
+                        <div class="card-title">Reservation</div>
+                    </div>
+                    <div class="card-body">
+                        <div class="detail-row">
+                            <span class="label">Sisa waktu pembayaran</span>
+                            <span class="value" id="reservationCountdown">--:--</span>
+                        </div>
+                        <div id="reservationExpiredMsg" style="display:none;color:#e8547a;font-size:13px;margin-top:8px;">
+                            Reservation sudah expired. Silakan checkout ulang bila tiket masih tersedia.
+                        </div>
+                    </div>
+                </div>
+            @endif
 
             <!-- TICKET DETAIL -->
             <div class="card">
@@ -197,14 +214,14 @@
                 </div>
 
                 <div class="card-body">
-                    @if ($cart->status !== 'SUCCESS')
+                    @if ($cart->status !== \App\Models\Cart::STATUS_SUCCESS)
                         <form action="{{ url('/checkVoucer') }}" method="post" class="voucher-input-wrap">
                             @csrf
                             <input type="hidden" name="event" value="{{ $event->uid }}">
                             <input type="hidden" name="cartUid" value="{{ $cart->uid }}">
 
                             <input type="text" class="voucher-input" id="voucherInput" name="code"
-                                placeholder="Masukan Code Voucher.." value="{{ $voucher->code }}"
+                                placeholder="Masukan Code Voucher.." value="{{ $voucher->code ?? '' }}"
                                 {{ $cart->link ? 'readonly' : '' }}>
 
                             <button type="submit" class="btn-voucher" {{ $cart->link ? 'disabled' : '' }}>
@@ -232,7 +249,7 @@
                     </div>
 
                     <!-- REMOVE VOUCHER -->
-                    @if (!$cart->link && $voucher->code)
+                    @if (!$cart->link && $voucher && $voucher->code)
                         <div style="margin-top:10px;">
                             <form action="{{ url('/closeVoucher') }}" method="post">
                                 @csrf
@@ -332,7 +349,7 @@
                     </div>
 
                     {{-- STATUS BADGE (Jika SUCCESS) --}}
-                    @if ($cart->status === 'SUCCESS')
+                    @if ($cart->status === \App\Models\Cart::STATUS_SUCCESS)
                         <div
                             style="margin-top: 15px; padding: 10px; background: rgba(61, 217, 196, 0.1); border-radius: 10px; border: 1px solid rgba(61, 217, 196, 0.2); display: flex; align-items: center; gap: 10px;">
                             <div
@@ -346,17 +363,14 @@
 
 
                     {{-- BUTTON --}}
-                    @if ($cart->status === 'UNPAID' || $cart->status === 'PENDING')
-                        <form action="{{ url('/paynow') }}" method="post" enctype="multipart/form-data">
+                    @if (in_array($cart->status, [\App\Models\Cart::STATUS_RESERVED, \App\Models\Cart::STATUS_PENDING]))
+                        <form action="{{ url('/paynow') }}" method="post" enctype="multipart/form-data" id="paynowForm">
                             @csrf
 
-                            <input type="hidden" id="selectedPayment" name="payment_id" value="">
-                            <input type="hidden" name="invoice" value="{{ $cart->invoice }}">
-                            <input type="hidden" name="person" value="{{ Auth::user()->uid }}">
-                            <input type="hidden" name="event" value="{{ $event->uid }}">
-                            <input type="hidden" name="cartUid" value="{{ $cart->uid }}">
+                            <input type="hidden" id="selectedPayment" name="payment_gateway_id" value="">
+                            <input type="hidden" name="cart_uid" value="{{ $cart->uid }}">
 
-                            @if ($cart->status === 'UNPAID')
+                            @if ($cart->status === \App\Models\Cart::STATUS_RESERVED)
                                 <button type="button" class="btn-pay" onclick="showConfirmModal(event)">
                                     <span>🔐</span>
                                     <span>Bayar Sekarang</span>
@@ -427,7 +441,7 @@
         }
 
         document.addEventListener('DOMContentLoaded', function() {
-            @if ($cart->status === 'UNPAID')
+            @if ($cart->status === \App\Models\Cart::STATUS_RESERVED)
                 // Hanya inisialisasi jika status UNPAID
                 // Jika iFee sudah ada (kembali dari pilihan sebelumnya), hitung ulang
                 @if ($iFee)
@@ -449,7 +463,46 @@
                     document.getElementById('grand-total').textContent = formatRupiah(totalAkhir);
                 @endif
             @endif
+
+            const reservationCard = document.getElementById('reservationCard');
+            if (reservationCard) {
+                const expiresAt = new Date(reservationCard.dataset.expiresAt).getTime();
+                const countdownEl = document.getElementById('reservationCountdown');
+                const expiredMsg = document.getElementById('reservationExpiredMsg');
+
+                const tickReservation = () => {
+                    const diff = expiresAt - Date.now();
+                    if (diff <= 0) {
+                        countdownEl.textContent = 'Expired';
+                        expiredMsg.style.display = 'block';
+                        document.querySelectorAll('.btn-pay, .btn-voucher').forEach(btn => btn.disabled = true);
+                        return;
+                    }
+
+                    const minutes = Math.floor(diff / 60000);
+                    const seconds = Math.floor((diff % 60000) / 1000);
+                    countdownEl.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+                };
+
+                tickReservation();
+                setInterval(tickReservation, 1000);
+            }
         });
+
+        function submitPaynowOnce(form) {
+            if (!form || form.dataset.submitting === '1') {
+                return false;
+            }
+
+            form.dataset.submitting = '1';
+            form.querySelectorAll('.btn-pay').forEach(btn => {
+                btn.disabled = true;
+                btn.innerHTML = '<span>Memproses...</span>';
+            });
+            form.submit();
+
+            return true;
+        }
 
         function showConfirmModal(e) {
             e.preventDefault();
@@ -548,7 +601,7 @@
                         }
                     });
                     const form = document.querySelector('form[action="{{ url('/paynow') }}"]');
-                    if (form) form.submit();
+                    submitPaynowOnce(form);
                 }
             });
         }

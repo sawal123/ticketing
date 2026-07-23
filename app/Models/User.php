@@ -10,6 +10,7 @@ use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Support\Facades\Schema;
 
 
 class User extends Authenticatable
@@ -65,6 +66,29 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
     ];
+
+    protected static function booted(): void
+    {
+        static::creating(function (User $user) {
+            foreach ([
+                'birthday' => '2000-01-01',
+                'gender' => 'pria',
+                'kota' => '-',
+                'alamat' => '-',
+                'nomor' => '-',
+                'user_uid' => '-',
+            ] as $column => $default) {
+                if (static::usersColumnExists($column) && blank($user->{$column})) {
+                    $user->{$column} = $default;
+                }
+            }
+        });
+    }
+
+    protected static function usersColumnExists(string $column): bool
+    {
+        return Schema::hasColumn('users', $column);
+    }
 
     public function events()
     {

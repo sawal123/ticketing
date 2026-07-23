@@ -5,14 +5,14 @@ namespace App\Http\Controllers;
 use App\Models\Cart;
 use App\Models\CartVoucher;
 use App\Models\Event;
-use App\Models\Harga;
 use App\Models\HargaCart;
 use App\Models\PaymentGateway;
 use App\Models\Voucher;
+use App\Services\Tickets\TicketPricingService;
+use App\Services\Tickets\TicketReservationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class BuyTicketController extends Controller
 {
@@ -41,7 +41,7 @@ class BuyTicketController extends Controller
         $harga = HargaCart::where('uid', $cart->uid)->get();
         // dd($harga);
         $cartV = CartVoucher::where('uid', $cart->uid)->first();
-        $voucher = Voucher::where('code', $cartV->code)->first();
+        $voucher = $cartV && $cartV->code ? Voucher::where('code', $cartV->code)->first() : null;
         // dd($voucher);
 
         $iFee = PaymentGateway::where('slug', $cart->payment_type)->first();
@@ -65,7 +65,7 @@ class BuyTicketController extends Controller
                 }
             } else {
                 // LOGIC FALLBACK UNTUK TRANSAKSI LAMA (PRODUCTION)
-                if ($cart->status !== 'UNPAID') {
+                if ($cart->status !== Cart::STATUS_UNPAID) {
                     // Cek berdasarkan payment_type Midtrans (Generic)
                     if (str_contains($cart->payment_type, 'qris') || str_contains($cart->payment_type, 'gopay')) {
                         $selectInternetFee = round(0.05 * $jumlah); // 5% untuk e-wallet/qris
@@ -84,19 +84,14 @@ class BuyTicketController extends Controller
         }
 
         // dd($selectInternetFee);
-        $diskon = 0;
-        if ($voucher->unit === 'rupiah') {
-            $diskon = $voucher->nominal;
-        } elseif ($voucher->unit === 'persen') {
-            $diskon = ($voucher->nominal / 100) * $jumlah;
-        }
+        $diskon = app(TicketPricingService::class)->calculateVoucherDiscount($cart, $jumlah);
         // dd($diskon);
 
         // 1. Hitung Subtotal (Jumlah Tiket - Diskon)
         $subtotal = $jumlah - $diskon;
 
         // Ambil Pajak (Fee) dari tabel Event (Gunakan yang sudah disimpan di DB jika transaksi sudah diproses)
-        if ($cart->status !== 'UNPAID' && isset($cart->pajak)) {
+        if (in_array($cart->status, [Cart::STATUS_PENDING, Cart::STATUS_SUCCESS], true) && isset($cart->pajak)) {
             $nilaiPajak = $cart->pajak;
             $pajakPersen = $cart->pajak_persen;
         } else {
@@ -133,105 +128,119 @@ class BuyTicketController extends Controller
     public function checkVoucher(Request $request)
     {
 
-        $vali = Validator::make($request->all(), [
+        $request->validate([
             'code' => 'required|alpha_num',
+            'cartUid' => 'required',
         ]);
         $code = $request->code;
         $cart = $request->cartUid;
-        $event = $request->event;
-        // $cekEvent = Event::
 
-        $cVoucher = CartVoucher::where('uid', $cart)->first();
-        $voucher = Voucher::where('code', $code)->first();
-        $carts = HargaCart::where('uid', $cart)->first();
-        // dd($voucher->event_uid .' + ' . $event);
-        if ($voucher->event_uid !== $event) {
+        $cartModel = Cart::where('uid', $cart)
+            ->where('user_uid', Auth::user()->uid)
+            ->whereIn('status', [Cart::STATUS_RESERVED, Cart::STATUS_PENDING, Cart::STATUS_UNPAID])
+            ->first();
+
+        if (! $cartModel || $cartModel->isReservationExpired()) {
+            return redirect()->back()->with('vError', 'Reservation sudah expired atau cart tidak valid.');
+        }
+
+        $voucher = Voucher::where('code', $code)
+            ->where('event_uid', $cartModel->event_uid)
+            ->where('status', 'active')
+            ->first();
+
+        if (! $voucher) {
             return redirect()->back()->with('vError', 'Voucher '.$code.' Invalid');
         }
+
+        $pricing = app(TicketPricingService::class)->calculateCart($cartModel);
+        if ($pricing['ticket_total'] < (int) $voucher->min_beli) {
+            return redirect()->back()->with('vError', 'Minimal pembelian voucher belum terpenuhi.');
+        }
+
+        if ((int) $voucher->digunakan >= (int) $voucher->limit) {
+            return redirect()->back()->with('vError', 'Voucher Expired');
+        }
+
+        $cVoucher = CartVoucher::where('uid', $cart)->first();
+        $carts = HargaCart::where('uid', $cart)->orderBy('id')->first();
+
         if ($code === null && $cVoucher) {
             $cVoucher->code = '';
-            $carts->voucher = null;
-            $carts->disc = '0';
+            if ($carts) {
+                $carts->voucher = null;
+                $carts->disc = 0;
+                $carts->save();
+            }
             $cVoucher->save();
-            $carts->save();
 
             return redirect()->back()->with('voucher', 'Voucher dihapus');
         }
-        if ($voucher) {
-            if ($cVoucher) {
-                $cVoucher->code = $code;
-                $carts->voucher = $code;
-                $carts->disc = $voucher->nominal;
-                $cVoucher->save();
-                $carts->save();
 
-                return redirect()->back()->with('voucher', 'Voucher berhasil digunakan');
-            }
-            // dd($voucher->digunakan);
-            if ($voucher->digunakan < $voucher->limit) {
-                $cartV = new CartVoucher([
-                    'uid' => $cart,
-                    'uid_vouchers' => $voucher->uid,
-                    'user_uid' => Auth::user()->uid,
-                    'event_uid' => $request->event,
-                    'code' => $code,
-                ]);
-                $cartV->save();
-
-                return redirect()->back()->with('voucher', 'Voucher berhasil digunakan');
-            } else {
-                // dd('Tidak Ada Voucher');
-                return redirect()->back()->with('vError', 'Voucher Expired');
-            }
+        if ($cVoucher) {
+            $cVoucher->code = $code;
+            $cVoucher->uid_vouchers = $voucher->uid;
+            $cVoucher->save();
         } else {
-            return redirect()->back()->with('vError', 'Voucher '.$code.' Invalid');
+            CartVoucher::create([
+                'uid' => $cart,
+                'uid_vouchers' => $voucher->uid,
+                'user_uid' => Auth::user()->uid,
+                'event_uid' => $cartModel->event_uid,
+                'code' => $code,
+            ]);
         }
+
+        if ($carts) {
+            $carts->voucher = $code;
+            $carts->disc = app(TicketPricingService::class)->calculateVoucherDiscount($cartModel, $pricing['ticket_total']);
+            $carts->save();
+        }
+
+        return redirect()->back()->with('voucher', 'Voucher berhasil digunakan');
     }
 
     public function closeVoucher(Request $request)
     {
-        $vali = Validator::make($request->all(), [
-            'code' => 'required|alpha_num',
+        $request->validate([
+            'cartUid' => 'required',
         ]);
-        $code = $request->code;
-        $cart = $request->cartUid;
 
-        $cVoucher = CartVoucher::where('uid', $cart)->first();
-        $voucher = Voucher::where('code', $code)->first();
-        $carts = HargaCart::where('uid', $cart)->first();
-        // dd($cVoucher);
-        $cVoucher->code = '';
-        $cVoucher->save();
+        $cart = Cart::where('uid', $request->cartUid)
+            ->where('user_uid', Auth::user()->uid)
+            ->whereIn('status', [Cart::STATUS_RESERVED, Cart::STATUS_PENDING, Cart::STATUS_UNPAID])
+            ->first();
+
+        if (! $cart || $cart->isReservationExpired()) {
+            return redirect()->back()->with('vError', 'Reservation sudah expired atau cart tidak valid.');
+        }
+
+        $cVoucher = CartVoucher::where('uid', $cart->uid)->first();
+        if ($cVoucher) {
+            $cVoucher->code = '';
+            $cVoucher->save();
+        }
+
+        HargaCart::where('uid', $cart->uid)->update([
+            'voucher' => null,
+            'disc' => 0,
+        ]);
 
         return redirect()->back()->with('voucher', 'Voucher berhasil dihapus!');
     }
 
-    public function checkout(Request $request)
+    public function checkout(Request $request, TicketReservationService $reservationService)
     {
+        $eventUid = $request->input('event_uid', $request->input('eventUid'));
+
+        $request->merge(['event_uid' => $eventUid]);
         $request->validate([
-            'eventUid' => 'required|exists:events,uid',
+            'event_uid' => 'required|exists:events,uid',
         ]);
 
-        $event = Event::where('uid', $request->eventUid)->firstOrFail();
+        $items = $this->parseCheckoutItems($request);
+        $totalRequestedQty = collect($items)->sum('quantity');
 
-        // 1. Kumpulkan data tiket dari input (ticket0, ticket1, dst)
-        $selectedTickets = [];
-        $totalRequestedQty = 0;
-
-        for ($i = 0; $i < 10; $i++) {
-            $qty = (int) $request->input("ticket$i", 0);
-            if ($qty > 0) {
-                $selectedTickets[] = [
-                    'qty' => $qty,
-                    'harga' => $request->input("harga$i"),
-                    'kategori' => $request->input("kategori$i"),
-                    'orderBy' => $request->input("orderBy$i", $i + 1),
-                ];
-                $totalRequestedQty += $qty;
-            }
-        }
-
-        // 2. Validasi: Minimal 1 tiket, Maksimal 5 tiket secara keseluruhan
         if ($totalRequestedQty <= 0) {
             return redirect()->back()->with('error', 'Harap pilih minimal 1 tiket!');
         }
@@ -240,71 +249,83 @@ class BuyTicketController extends Controller
             return redirect()->back()->with('error', 'Maksimal total pemesanan adalah 5 tiket.');
         }
 
-        // 3. Validasi Stok per Kategori
-        foreach ($selectedTickets as $item) {
-            $masterHarga = Harga::where('uid', $event->uid)
-                ->where('kategori', trim($item['kategori']))
-                ->first();
+        $event = Event::where('uid', $eventUid)->firstOrFail();
 
-            if (! $masterHarga) {
-                return redirect()->back()->with('error', 'Kategori tiket tidak valid.');
-            }
-
-            // Hitung tiket terjual (Status SUCCESS)
-            $soldCount = HargaCart::where('event_uid', $event->uid)
-                ->where('kategori_harga', $masterHarga->kategori)
-                ->whereHas('cart', function ($q) {
-                    $q->where('status', 'SUCCESS');
-                })
-                ->sum('quantity');
-
-            if (($soldCount + $item['qty']) > $masterHarga->qty) {
-                return redirect()->back()->with('error', "Stok tiket {$masterHarga->kategori} tidak mencukupi!");
-            }
-
-            // Tambahkan ID master harga ke array data
-            $item['harga_id'] = $masterHarga->id;
-        }
-
-        // 4. Manajemen Cart (Buat baru atau gunakan UNPAID yang ada)
-        $cart = Cart::where('event_uid', $event->uid)
+        $activeCart = Cart::where('event_uid', $event->uid)
             ->where('user_uid', Auth::user()->uid)
-            ->where('status', 'UNPAID')
+            ->whereIn('status', Cart::ACTIVE_RESERVATION_STATUSES)
+            ->where(function ($query) {
+                $query->whereNull('expires_at')->orWhere('expires_at', '>', now());
+            })
             ->first();
 
-        if (! $cart) {
-            $invoice = 'INV-'.Str::random(3).mt_rand(1000, 99999999);
-            $cart = Cart::create([
-                'uid' => Str::uuid(),
-                'user_uid' => Auth::user()->uid,
-                'event_uid' => $event->uid,
-                'invoice' => $invoice,
-                'status' => 'UNPAID',
-            ]);
-        } else {
-            // Jika ada cart UNPAID, bersihkan detail lamanya agar sesuai dengan pilihan baru
-            HargaCart::where('uid', $cart->uid)->delete();
+        if ($activeCart) {
+            return redirect('/detail-ticket/'.$activeCart->uid.'/'.Auth::user()->uid)
+                ->with('error', 'Anda masih memiliki reservation aktif untuk event ini.');
         }
 
-        // 5. Simpan Detail Tiket (HargaCart)
-        foreach ($selectedTickets as $item) {
-            $masterHarga = Harga::where('uid', $event->uid)
-                ->where('kategori', trim($item['kategori']))
-                ->first();
-
-            HargaCart::create([
-                'uid' => $cart->uid,
-                'orderBy' => $item['orderBy'],
-                'event_uid' => $event->uid,
-                'harga_id' => $masterHarga->id,
-                'quantity' => $item['qty'],
-                'harga_ticket' => $item['harga'],
-                'kategori_harga' => $item['kategori'],
-                'voucher' => null,
-                'disc' => 0,
-            ]);
+        try {
+            $cart = $reservationService->reserve($event, Auth::user()->uid, $items);
+        } catch (ValidationException $exception) {
+            return redirect()->back()->with('error', collect($exception->errors())->flatten()->first());
         }
 
         return redirect('/detail-ticket/'.$cart->uid.'/'.Auth::user()->uid);
+    }
+
+    protected function parseCheckoutItems(Request $request): array
+    {
+        $items = [];
+
+        foreach ((array) $request->input('tickets', []) as $index => $ticket) {
+            $quantity = (int) ($ticket['quantity'] ?? 0);
+            $hargaId = (int) ($ticket['harga_id'] ?? 0);
+
+            if ($quantity > 0 && $hargaId > 0) {
+                $items[] = [
+                    'harga_id' => $hargaId,
+                    'quantity' => $quantity,
+                    'order_by' => (int) ($ticket['orderBy'] ?? $ticket['order_by'] ?? ($index + 1)),
+                ];
+            }
+        }
+
+        foreach ((array) $request->input('harga_id', []) as $index => $hargaId) {
+            $quantity = (int) data_get((array) $request->input('quantity', []), $index, 0);
+
+            if ($quantity > 0 && (int) $hargaId > 0) {
+                $items[] = [
+                    'harga_id' => (int) $hargaId,
+                    'quantity' => $quantity,
+                    'order_by' => $index + 1,
+                ];
+            }
+        }
+
+        for ($i = 0; $i < 10; $i++) {
+            $quantity = (int) $request->input("ticket$i", 0);
+            $hargaId = (int) $request->input("harga_id$i", 0);
+
+            if ($quantity > 0 && $hargaId > 0) {
+                $items[] = [
+                    'harga_id' => $hargaId,
+                    'quantity' => $quantity,
+                    'order_by' => (int) $request->input("orderBy$i", $i + 1),
+                ];
+            }
+        }
+
+        return collect($items)
+            ->groupBy('harga_id')
+            ->map(function ($group, $hargaId) {
+                return [
+                    'harga_id' => (int) $hargaId,
+                    'quantity' => (int) $group->sum('quantity'),
+                    'order_by' => (int) $group->min('order_by'),
+                ];
+            })
+            ->sortBy('harga_id')
+            ->values()
+            ->all();
     }
 }

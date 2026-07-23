@@ -17,6 +17,9 @@ use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use App\Models\Cash;
 use App\Models\Transaction;
+use App\Services\Tickets\TicketReservationService;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class DeleteController extends Controller
 {
@@ -26,24 +29,30 @@ class DeleteController extends Controller
         $talent->delete();
         return redirect()->back()->with('hapus', 'Talent Berhasil dihapus');
     }
-    public function deteleListTransaksi($uid, $user_uid)
+    public function deteleListTransaksi($uid, $user_uid, TicketReservationService $reservationService)
     {
-        $cart = Cart::where('uid', $uid)->first();
+        $cart = Cart::where('uid', $uid)
+            ->where('user_uid', Auth::user()->uid)
+            ->first();
+
         if (!$cart) {
             return redirect()->back()->with('error', 'Transaksi tidak ditemukan');
         }
 
-        // Cari transaksi terkait jika ada
+        DB::transaction(function () use ($cart, $reservationService) {
+            $lockedCart = Cart::where('uid', $cart->uid)->lockForUpdate()->first();
+
+            if ($lockedCart && in_array($lockedCart->status, Cart::ACTIVE_RESERVATION_STATUSES, true)) {
+                $reservationService->releaseLockedCart($lockedCart, Cart::STATUS_CANCELLED);
+            }
+        }, 3);
+
         $transaction = Transaction::where('invoice', $cart->invoice)->first();
         if ($transaction) {
             $transaction->delete();
         }
 
-        // Cari detail harga terkait
-        $hargaCart = HargaCart::where('uid', $cart->uid)->get();
-        foreach ($hargaCart as $hc) {
-            $hc->delete();
-        }
+        HargaCart::where('uid', $cart->uid)->get()->each->delete();
 
         $cart->delete();
 
