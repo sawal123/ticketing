@@ -61,12 +61,11 @@
                                                 <label class="form-label" for="date">Provinsi <span class="text-danger">*</span></label>
                                                 <select class="form-select" aria-label="Default select example" required name="kota">
                                                     <option selected disabled>Choose City..</option>
-                                                         @foreach ($provinsi as
-                                $provinsi)
-                            <option value="{{ $provinsi['name'] }}">{{ $provinsi['name'] }}</option>
-                            @endforeach
-                            </select>
-                        </div>
+                                                    @foreach ($provinsi as $provinsi)
+                                                        <option value="{{ $provinsi['name'] }}">{{ $provinsi['name'] }}</option>
+                                                    @endforeach
+                                                </select>
+                                            </div>
                         <div class="mb-3">
                             <label class="form-label" for="alamat">Alamat <span class="text-danger">*</span></label>
                             <input type="text" name="alamat" class="form-control" id="alamat"
