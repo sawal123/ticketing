@@ -7,7 +7,6 @@ use App\Http\Controllers\Api\ListTicketController;
 use App\Http\Controllers\Api\MidtransController;
 use App\Http\Controllers\Api\SlideController;
 use App\Http\Controllers\Dashboard\DashboardController;
-use App\Http\Controllers\TransactionController;
 use App\Models\Transaction;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -49,6 +48,6 @@ Route::get('/landing', [LandingController::class, 'getLandingData']);
 
 
 
-Route::post('/callback', [TransactionController::class, 'callback']);
+// Midtrans callback is registered in routes/web.php at /api/callback without the API throttle limiter.
 Route::get('/finishMidtrans', [MidtransController::class, 'finish']);
 Route::get('/pendingMidtrans', [MidtransController::class, 'pending']);

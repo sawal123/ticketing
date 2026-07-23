@@ -7,6 +7,7 @@ use App\Models\Landing;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Symfony\Component\HttpFoundation\Response;
 
 class GlobalDataMiddleware
@@ -21,9 +22,9 @@ class GlobalDataMiddleware
         error_reporting(0);
         $user = Auth::user();
         $csrfToken = csrf_token();
-        $logo = Landing::all();
-        $sosmed = Contact::where('icon', '!=', 'null')->get();
-        $contact = Contact::where('icon', 'null')->get();
+        $logo = Cache::remember('global_data.logo', now()->addMinutes(10), fn () => Landing::all());
+        $sosmed = Cache::remember('global_data.sosmed', now()->addMinutes(10), fn () => Contact::where('icon', '!=', 'null')->get());
+        $contact = Cache::remember('global_data.contact', now()->addMinutes(10), fn () => Contact::where('icon', 'null')->get());
         // 'contact'=>$contact
         // dd($logo);
 

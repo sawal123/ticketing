@@ -42,7 +42,7 @@
 
             <form action="{{ url('/checkout') }}" method="post" class="ticket-purchase-form">
                 @csrf
-                <input type="hidden" name="eventUid" value="{{ $ticket->uid }}">
+                <input type="hidden" name="event_uid" value="{{ $ticket->uid }}">
 
                 @if ($list->count() > 0)
                     <div class="panel-body" style="overflow-y: scroll; max-height: 300px;">
@@ -69,18 +69,16 @@
                                     <div class="qty-control ticket-quantity-control input-wrapper"
                                         data-target="quantity{{ $loop->index }}" data-price="{{ $hargaItem->harga }}" data-max="5">
 
-                                        <input type="hidden" class="ticket-price-input price-input" name="harga{{ $loop->index }}"
-                                            value="{{ $hargaItem->harga }}">
-                                        <input type="hidden" name="kategori{{ $loop->index }}" value="{{ $hargaItem->kategori }}">
+                                        <input type="hidden" name="tickets[{{ $loop->index }}][harga_id]" value="{{ $hargaItem->id }}">
 
                                         <button type="button" class="qty-btn btn-minus"
                                             data-target="quantity{{ $loop->index }}">−</button>
 
                                         <input type="text"
                                             class="form-control qty-num p-0 qty-input text-center border-0 bg-transparent quantity{{ $loop->index }}"
-                                            value="0" max="5" step="1" name="ticket{{ $loop->index }}" readonly>
+                                            value="0" max="5" step="1" name="tickets[{{ $loop->index }}][quantity]" readonly>
 
-                                        <input type="hidden" name="orderBy{{ $loop->index }}" value="{{ $loop->index + 1 }}">
+                                        <input type="hidden" name="tickets[{{ $loop->index }}][orderBy]" value="{{ $loop->index + 1 }}">
 
                                         <button type="button" class="qty-btn btn-plus"
                                             data-target="quantity{{ $loop->index }}">+</button>
@@ -274,7 +272,7 @@
 
             <div class="offcanvas-body small text-start">
                 <form action="{{ url('/checkout') }}" method="post" class="ticket-purchase-form">
-                    <input type="hidden" name="eventUid" value="{{ $ticket->uid }}">
+                    <input type="hidden" name="event_uid" value="{{ $ticket->uid }}">
 
                     @if ($lists->count() > 0)
                         @csrf
@@ -302,10 +300,7 @@
                                         data-target="quantity{{ $loop->index }}" data-price="{{ $hargaItemMobile->harga }}"
                                         data-max="5">
 
-                                        <input type="hidden" class="ticket-price-input price-input" name="harga{{ $loop->index }}"
-                                            value="{{ $hargaItemMobile->harga }}">
-
-                                        <input type="hidden" name="kategori{{ $loop->index }}" value="{{ $hargaItemMobile->kategori }}">
+                                        <input type="hidden" name="tickets[{{ $loop->index }}][harga_id]" value="{{ $hargaItemMobile->id }}">
 
                                         <button type="button" class="qty-btn btn-minus" data-target="quantity{{ $loop->index }}">
                                             <i class="fa fa-minus"></i>
@@ -313,9 +308,9 @@
 
                                         <input type="text"
                                             class="qty-num qty-input text-center border-0 bg-transparent quantity{{ $loop->index }}"
-                                            min="0" max="5" step="1" value="0" name="ticket{{ $loop->index }}" readonly>
+                                            min="0" max="5" step="1" value="0" name="tickets[{{ $loop->index }}][quantity]" readonly>
 
-                                        <input type="hidden" name="orderBy{{ $loop->index }}" value="{{ $loop->index + 1 }}">
+                                        <input type="hidden" name="tickets[{{ $loop->index }}][orderBy]" value="{{ $loop->index + 1 }}">
 
                                         <button type="button" class="qty-btn btn-plus" data-target="quantity{{ $loop->index }}">
                                             <i class="fa fa-plus"></i>
@@ -540,7 +535,9 @@
                             .then(() => {
                                 // Submit form yang sekarang setelah hapus berhasil
                                 if (currentForm) {
-                                    currentForm.submit();
+                                    if (markCheckoutSubmitting(currentForm)) {
+                                        currentForm.submit();
+                                    }
                                 }
                             })
                             .catch(err => {
@@ -554,6 +551,20 @@
             }
         }
 
+        function markCheckoutSubmitting(form) {
+            if (form.dataset.submitting === '1') {
+                return false;
+            }
+
+            form.dataset.submitting = '1';
+            form.querySelectorAll('.checkButton').forEach(btn => {
+                btn.disabled = true;
+                btn.textContent = 'Memproses...';
+            });
+
+            return true;
+        }
+
         // Daftarkan listener ke semua tombol checkout (Desktop & Mobile)
         checkBtns.forEach(btn => {
             btn.addEventListener('click', showUnpaidWarning);
@@ -561,7 +572,16 @@
 
         // Daftarkan listener ke semua form checkout (Desktop & Mobile)
         checkoutForms.forEach(form => {
-            form.addEventListener('submit', showUnpaidWarning);
+            form.addEventListener('submit', function(e) {
+                if (hasUnpaid) {
+                    return showUnpaidWarning(e);
+                }
+
+                if (!markCheckoutSubmitting(form)) {
+                    e.preventDefault();
+                    return false;
+                }
+            });
         });
 
         // Inisialisasi awal

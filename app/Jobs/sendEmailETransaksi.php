@@ -11,9 +11,13 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 
-class sendEmailETransaksi implements ShouldQueue
+class sendEmailETransaksi implements ShouldQueue, ShouldBeUnique
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+    public $tries = 3;
+    public $timeout = 60;
+    public $uniqueFor = 3600;
 
     /**
      * Create a new job instance.
@@ -27,6 +31,17 @@ class sendEmailETransaksi implements ShouldQueue
         $this->user = $user;
         $this->carts = $carts;
         $this->order_id = $order_id;
+        $this->afterCommit();
+    }
+
+    public function uniqueId(): string
+    {
+        return 'ticket-email:'.$this->order_id;
+    }
+
+    public function backoff(): array
+    {
+        return [30, 120, 300];
     }
 
     /**

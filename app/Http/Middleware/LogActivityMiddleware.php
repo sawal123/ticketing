@@ -38,9 +38,11 @@ class LogActivityMiddleware
                     $impactLevel = 'Berisiko Tinggi';
                 }
 
-                // Scalper / Bot Detection (Simple Velocity Check)
+                // Lightweight anomaly signal; enforcement happens through named route limiters.
                 if (in_array($path, ['checkout', 'paynow'])) {
-                    $recentRequests = ActivityLog::where('ip_address', $request->ip())
+                    $deviceId = md5($request->userAgent() . session()->getId());
+                    $recentRequests = ActivityLog::where('user_uid', $user->uid)
+                        ->where('device_id', $deviceId)
                         ->where('created_at', '>', now()->subSeconds(30))
                         ->count();
                     
@@ -55,7 +57,7 @@ class LogActivityMiddleware
                             'ip_address' => $request->ip(),
                             'location' => $this->getLocation($request->ip()),
                             'user_agent' => $request->userAgent(),
-                            'device_id' => md5($request->userAgent() . $request->ip()),
+                            'device_id' => $deviceId,
                             'session_id' => session()->getId(),
                         ]);
                     }
@@ -70,7 +72,7 @@ class LogActivityMiddleware
                     'ip_address' => $request->ip(),
                     'location' => $this->getLocation($request->ip()),
                     'user_agent' => $request->userAgent(),
-                    'device_id' => md5($request->userAgent() . $request->ip()),
+                    'device_id' => md5($request->userAgent() . session()->getId()),
                     'session_id' => session()->getId(),
                 ]);
             }
@@ -236,17 +238,7 @@ class LogActivityMiddleware
     protected function getLocation($ip)
     {
         if ($ip === '127.0.0.1' || $ip === '::1') return 'Localhost';
-        
-        try {
-            $response = \Illuminate\Support\Facades\Http::get("http://ip-api.com/json/{$ip}?fields=city,country");
-            if ($response->successful()) {
-                $data = $response->json();
-                return ($data['city'] ?? 'Unknown') . ', ' . ($data['country'] ?? 'Unknown');
-            }
-        } catch (\Exception $e) {
-            // Fallback
-        }
-        
+
         return 'Unknown';
     }
 }

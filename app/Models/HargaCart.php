@@ -13,6 +13,13 @@ class HargaCart extends Model
 
     protected $fillable = ['uid', 'harga_id', 'orderBy', 'event_uid', 'quantity', 'harga_ticket', 'voucher', 'disc', 'kategori_harga'];
 
+    protected $casts = [
+        'harga_id' => 'integer',
+        'quantity' => 'integer',
+        'harga_ticket' => 'integer',
+        'disc' => 'integer',
+    ];
+
     public function cart()
     {
         // Berasumsi 'uid' di tabel ini adalah foreign key ke 'uid' milik Cart

@@ -42,20 +42,19 @@ class landingController extends Controller
         // 1. Hapus filter query 'active' agar tiket inactive tetap dikirim ke view
         $ticket = Event::with(['talents', 'hargas', 'fasilitas'])->where('slug', $slug)->firstOrFail();
 
-        // MENGHITUNG TIKET TERJUAL
-        $soldTickets = HargaCart::select('kategori_harga', DB::raw('SUM(quantity) as total_sold'))
-            ->where('event_uid', $ticket->uid)
-            ->whereHas('cart', function ($query) {
-                $query->where('status', 'SUCCESS');
-            })
-            ->groupBy('kategori_harga')
-            ->pluck('total_sold', 'kategori_harga')
+        $reservedAndSoldTickets = $ticket->hargas
+            ->mapWithKeys(fn ($harga) => [
+                $harga->kategori => (int) $harga->sold_qty + (int) $harga->reserved_qty,
+            ])
             ->toArray();
 
         $unpaidTx = null;
         if (Auth::check()) {
             $unpaidTx = Cart::where('user_uid', Auth::user()->uid)
-                ->whereIn('status', ['UNPAID', 'unpaid', 'PENDING', 'pending'])
+                ->whereIn('status', [Cart::STATUS_UNPAID, 'unpaid', Cart::STATUS_RESERVED, Cart::STATUS_PENDING, 'pending'])
+                ->where(function ($query) {
+                    $query->whereNull('expires_at')->orWhere('expires_at', '>', now());
+                })
                 ->first();
         }
 
@@ -65,7 +64,7 @@ class landingController extends Controller
             'tickets' => $ticket->talents,
             'list' => $ticket->hargas,
             'lists' => $ticket->hargas,
-            'jmlhQty' => $soldTickets,
+            'jmlhQty' => $reservedAndSoldTickets,
             'hasUnpaid' => $unpaidTx ? true : false,
             'unpaidUid' => $unpaidTx->uid ?? null
         ]);

@@ -33,7 +33,7 @@ class MidtransController extends Controller
 
         if ($status_code === '200') {
             return redirect('/detail-ticket/' . $cart->uid . '/' . $cart->user_uid)
-                ->with('success', 'Selamat ' . $userName . ', Pembayaran Berhasil.');
+                ->with('success', 'Hi ' . $userName . ', pembayaran sedang diverifikasi.');
         }
 
         if ($status_code === '201') {

@@ -15,9 +15,16 @@ class Transaction extends Model
         'user_uid',
         'event_uid',
         'amount',
+        'gross_amount',
         'invoice',
         'payment_type',
         'status_transaksi',
+        'paid_at',
+    ];
+
+    protected $casts = [
+        'gross_amount' => 'integer',
+        'paid_at' => 'datetime',
     ];
 
     public function user()

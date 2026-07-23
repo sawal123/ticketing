@@ -83,6 +83,13 @@ Route::get('/contact', [landingController::class, 'contact']);
 
 Route::get('/invoice/{uid}', [Controller::class, 'invoice']);
 
+Route::post('/api/callback', [TransactionController::class, 'callback'])
+    ->withoutMiddleware([
+        \App\Http\Middleware\VerifyCsrfToken::class,
+        \App\Http\Middleware\GlobalDataMiddleware::class,
+        \App\Http\Middleware\LogActivityMiddleware::class,
+    ]);
+
 Route::get('/confir/data/{data}', [Controller::class, 'confir']);
 Route::post('/confir/success', [Controller::class, 'success']);
 // Route::post('/generate-barcode', [BarcodeController::class, 'generateBarcode']);
@@ -97,10 +104,10 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/detail-ticket/{uid}/{user}', [BuyTicketController::class, 'index']);
     Route::post('/checkVoucer', [BuyTicketController::class, 'checkVoucher']);
     Route::post('/closeVoucher', [BuyTicketController::class, 'closeVoucher']);
-    Route::post('/checkout', [BuyTicketController::class, 'checkout']);
+    Route::post('/checkout', [BuyTicketController::class, 'checkout'])->middleware('throttle:checkout');
     Route::get('/transaksi', [landingController::class, 'listTransaksi']);
 
-    Route::post('/paynow', [TransactionController::class, 'paynow']);
+    Route::post('/paynow', [TransactionController::class, 'paynow'])->middleware('throttle:paynow');
     Route::get('/detail-ticket/delete/{uid}/{user_uid}', [DeleteController::class, 'deteleListTransaksi']);
     Route::get('/logout', function () {
         Auth::logout();
