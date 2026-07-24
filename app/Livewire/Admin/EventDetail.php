@@ -143,6 +143,24 @@ class EventDetail extends Component
         $this->showFullDescription = !$this->showFullDescription;
     }
 
+    public function confirmEvent(): void
+    {
+        $event = Event::where('uid', $this->eventUid)->firstOrFail();
+
+        if ((string) $event->konfirmasi === '1' && $event->status === 'active') {
+            session()->flash('message', 'Event sudah aktif.');
+
+            return;
+        }
+
+        $event->update([
+            'konfirmasi' => '1',
+            'status' => 'active',
+        ]);
+
+        session()->flash('message', 'Event berhasil dikonfirmasi dan diaktifkan.');
+    }
+
     public function toggleTicketStatus($id)
     {
         $harga = Harga::findOrFail($id);

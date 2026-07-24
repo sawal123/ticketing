@@ -4,6 +4,14 @@
         <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Daftar semua event yang terdaftar di platform.</p>
     </div>
 
+    @if (session()->has('message'))
+        <div
+            class="mb-6 p-4 rounded-2xl bg-emerald-50 border border-emerald-100 dark:bg-emerald-900/20 dark:border-emerald-500/20 flex items-center gap-3 text-emerald-600 dark:text-emerald-400">
+            <i data-lucide="check-circle" class="w-5 h-5"></i>
+            <span class="text-sm font-semibold">{{ session('message') }}</span>
+        </div>
+    @endif
+
     <!-- Filter & Search -->
     <x-admin.card padding="p-4" class="mb-6">
         <div class="flex flex-wrap items-center justify-between gap-4">
@@ -60,6 +68,13 @@
                 </td>
                 <td class="px-5 py-4 text-center">
                     <div class="flex items-center justify-center gap-2">
+                        @if($event->konfirmasi === null)
+                            <x-admin.button type="button" variant="success" size="sm" icon="check-circle"
+                                loadingTarget="confirmEvent"
+                                wire:click="confirmEvent('{{ $event->uid }}')"
+                                wire:confirm="Yakin ingin mengonfirmasi dan mengaktifkan event ini?"
+                                title="Konfirmasi Event" />
+                        @endif
                         <a href="{{ route('admin.event.detail', $event->uid) }}" wire:navigate title="Informasi Umum">
                             <x-admin.button variant="ghost" size="sm" icon="eye"
                                 class="text-slate-600 dark:text-slate-400" />

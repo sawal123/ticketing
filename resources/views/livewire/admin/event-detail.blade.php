@@ -14,9 +14,18 @@
             </nav>
             <h2 class="text-2xl font-bold text-slate-800 dark:text-white">{{ $event->event }}</h2>
         </div>
-        <x-admin.button variant="secondary" icon="arrow-left" onclick="history.back()">
-            Kembali
-        </x-admin.button>
+        <div class="flex items-center gap-3">
+            @if($event->konfirmasi === null)
+                <x-admin.button type="button" variant="success" icon="check-circle" loadingTarget="confirmEvent"
+                    wire:click="confirmEvent"
+                    wire:confirm="Yakin ingin mengonfirmasi dan mengaktifkan event ini?">
+                    Konfirmasi
+                </x-admin.button>
+            @endif
+            <x-admin.button variant="secondary" icon="arrow-left" onclick="history.back()">
+                Kembali
+            </x-admin.button>
+        </div>
     </div>
     {{-- {{ url('/a') }} --}}
     <!-- Alert Message -->
@@ -155,6 +164,19 @@
                                     <span
                                         class="text-sm font-semibold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
                                         {{ ucfirst($event->status) }}
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="flex items-start gap-3">
+                                <div
+                                    class="w-8 h-8 rounded-lg bg-sky-50 dark:bg-sky-900/30 flex items-center justify-center flex-shrink-0">
+                                    <i data-lucide="badge-check" class="w-4 h-4 text-sky-600 dark:text-sky-400"></i>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-slate-500">Konfirmasi Admin</p>
+                                    <span
+                                        class="text-sm font-semibold px-2 py-0.5 rounded-full {{ $event->konfirmasi === null ? 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400' : 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400' }}">
+                                        {{ $event->konfirmasi === null ? 'Menunggu Persetujuan' : 'Disetujui' }}
                                     </span>
                                 </div>
                             </div>
