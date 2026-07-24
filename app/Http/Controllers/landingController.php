@@ -42,7 +42,15 @@ class landingController extends Controller
         // 1. Hapus filter query 'active' agar tiket inactive tetap dikirim ke view
         $ticket = Event::with(['talents', 'hargas', 'fasilitas'])->where('slug', $slug)->firstOrFail();
 
-        $reservedAndSoldTickets = $ticket->hargas
+        $hargas = $ticket->hargas
+            ->sortBy(fn ($harga) => (int) $harga->harga)
+            ->values();
+
+        $lowestTicketPrice = $hargas
+            ->where('status', 'active')
+            ->min('harga') ?? $hargas->min('harga');
+
+        $reservedAndSoldTickets = $hargas
             ->mapWithKeys(fn ($harga) => [
                 $harga->kategori => (int) $harga->sold_qty + (int) $harga->reserved_qty,
             ])
@@ -62,9 +70,10 @@ class landingController extends Controller
             'title' => $ticket->event,
             'ticket' => $ticket,
             'tickets' => $ticket->talents,
-            'list' => $ticket->hargas,
-            'lists' => $ticket->hargas,
+            'list' => $hargas,
+            'lists' => $hargas,
             'jmlhQty' => $reservedAndSoldTickets,
+            'lowestTicketPrice' => $lowestTicketPrice,
             'hasUnpaid' => $unpaidTx ? true : false,
             'unpaidUid' => $unpaidTx->uid ?? null
         ]);

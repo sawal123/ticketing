@@ -255,7 +255,13 @@
     <div class="mobile-buy-bar">
         <div class="price-info">
             <div class="price-from">Mulai dari</div>
-            <div class="price-value">Rp 160.000</div>
+            <div class="price-value">
+                @if (! is_null($lowestTicketPrice))
+                    Rp {{ number_format($lowestTicketPrice, 0, ',', '.') }}
+                @else
+                    Belum tersedia
+                @endif
+            </div>
         </div>
         <button class="btn-beli" onclick="openModal()">Beli Tiket</button>
     </div>
