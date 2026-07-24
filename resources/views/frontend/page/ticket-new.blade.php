@@ -67,18 +67,22 @@
 
                                 @if ($sold < $qty && $hargaItem->status === 'active' && $ticket->status === 'active')
                                     <div class="qty-control ticket-quantity-control input-wrapper"
-                                        data-target="quantity{{ $loop->index }}" data-price="{{ $hargaItem->harga }}" data-max="5">
+                                        data-target="quantity{{ $loop->index }}" data-price="{{ $hargaItem->harga }}"
+                                        data-max="5">
 
-                                        <input type="hidden" name="tickets[{{ $loop->index }}][harga_id]" value="{{ $hargaItem->id }}">
+                                        <input type="hidden" name="tickets[{{ $loop->index }}][harga_id]"
+                                            value="{{ $hargaItem->id }}">
 
                                         <button type="button" class="qty-btn btn-minus"
                                             data-target="quantity{{ $loop->index }}">−</button>
 
                                         <input type="text"
                                             class="form-control qty-num p-0 qty-input text-center border-0 bg-transparent quantity{{ $loop->index }}"
-                                            value="0" max="5" step="1" name="tickets[{{ $loop->index }}][quantity]" readonly>
+                                            value="0" max="5" step="1"
+                                            name="tickets[{{ $loop->index }}][quantity]" readonly>
 
-                                        <input type="hidden" name="tickets[{{ $loop->index }}][orderBy]" value="{{ $loop->index + 1 }}">
+                                        <input type="hidden" name="tickets[{{ $loop->index }}][orderBy]"
+                                            value="{{ $loop->index + 1 }}">
 
                                         <button type="button" class="qty-btn btn-plus"
                                             data-target="quantity{{ $loop->index }}">+</button>
@@ -130,7 +134,7 @@
                         <div class="meta-icon">📍</div>
                         <span>{{ $ticket->alamat }}</span>
                     </div>
-                    @if($ticket->category)
+                    @if ($ticket->category)
                         <div class="meta-item">
                             <div class="meta-icon">🏷️</div>
                             <span>{{ $ticket->category->name }}</span>
@@ -183,7 +187,7 @@
                 </div>
             </div>
 
-            @if($ticket->fasilitas->count() > 0)
+            @if ($ticket->fasilitas->count() > 0)
                 <!-- FASILITAS -->
                 <div class="talent-section" style="margin-top: 32px;">
                     <div class="section-label">Fasilitas Event</div>
@@ -192,7 +196,7 @@
                             <div class="talent-card" style="padding: 12px; border-radius: 14px;">
                                 <div class="talent-avatar"
                                     style="width: 44px; height: 44px; flex-shrink: 0; background: var(--surface2); border-radius: 10px; display: flex; align-items: center; justify-content: center; overflow: hidden;">
-                                    @if($fas->icon)
+                                    @if ($fas->icon)
                                         <img src="{{ asset('storage/' . $fas->icon) }}" alt="{{ $fas->name }}"
                                             style="width: 100%; height: 100%; object-fit: contain; padding: 8px;">
                                     @else
@@ -214,8 +218,8 @@
             <div class="section-label">Lokasi Event</div>
             <div class="map-placeholder">
                 @if ($ticket->map)
-                    <iframe src="https://www.google.com/maps?q={{ urlencode($ticket->alamat) }}&output=embed" loading="lazy"
-                        allowfullscreen>
+                    <iframe src="https://www.google.com/maps?q={{ urlencode($ticket->alamat) }}&output=embed"
+                        loading="lazy" allowfullscreen>
                     </iframe>
                 @else
                     🗺️
@@ -256,7 +260,7 @@
         <div class="price-info">
             <div class="price-from">Mulai dari</div>
             <div class="price-value">
-                @if (! is_null($lowestTicketPrice))
+                @if (!is_null($lowestTicketPrice))
                     Rp {{ number_format($lowestTicketPrice, 0, ',', '.') }}
                 @else
                     Belum tersedia
@@ -303,22 +307,27 @@
 
                                 @if ($soldMob < $qtyMob && $hargaItemMobile->status === 'active' && $ticket->status === 'active')
                                     <div class="qty-control ticket-quantity-control input-wrapper"
-                                        data-target="quantity{{ $loop->index }}" data-price="{{ $hargaItemMobile->harga }}"
-                                        data-max="5">
+                                        data-target="quantity{{ $loop->index }}"
+                                        data-price="{{ $hargaItemMobile->harga }}" data-max="5">
 
-                                        <input type="hidden" name="tickets[{{ $loop->index }}][harga_id]" value="{{ $hargaItemMobile->id }}">
+                                        <input type="hidden" name="tickets[{{ $loop->index }}][harga_id]"
+                                            value="{{ $hargaItemMobile->id }}">
 
-                                        <button type="button" class="qty-btn btn-minus" data-target="quantity{{ $loop->index }}">
+                                        <button type="button" class="qty-btn btn-minus"
+                                            data-target="quantity{{ $loop->index }}">
                                             <i class="fa fa-minus"></i>
                                         </button>
 
                                         <input type="text"
                                             class="qty-num qty-input text-center border-0 bg-transparent quantity{{ $loop->index }}"
-                                            min="0" max="5" step="1" value="0" name="tickets[{{ $loop->index }}][quantity]" readonly>
+                                            min="0" max="5" step="1" value="0"
+                                            name="tickets[{{ $loop->index }}][quantity]" readonly>
 
-                                        <input type="hidden" name="tickets[{{ $loop->index }}][orderBy]" value="{{ $loop->index + 1 }}">
+                                        <input type="hidden" name="tickets[{{ $loop->index }}][orderBy]"
+                                            value="{{ $loop->index + 1 }}">
 
-                                        <button type="button" class="qty-btn btn-plus" data-target="quantity{{ $loop->index }}">
+                                        <button type="button" class="qty-btn btn-plus"
+                                            data-target="quantity{{ $loop->index }}">
                                             <i class="fa fa-plus"></i>
                                         </button>
                                     </div>
@@ -442,7 +451,7 @@
         }
 
         // 🔥 EVENT LISTENER UNTUK KLIK (DELEGASI)
-        document.addEventListener("click", function (e) {
+        document.addEventListener("click", function(e) {
             const btnPlus = e.target.closest(".btn-plus");
             const btnMinus = e.target.closest(".btn-minus");
 
@@ -512,7 +521,7 @@
                     denyButtonText: 'Hapus & Buat Baru',
                     cancelButtonText: 'Tutup',
                     confirmButtonColor: '#6366f1', // Indigo
-                    denyButtonColor: '#ef4444',    // Rose
+                    denyButtonColor: '#ef4444', // Rose
                     background: '#16152a',
                     color: '#fff',
                     customClass: {
@@ -592,6 +601,5 @@
 
         // Inisialisasi awal
         calculateGrandTotal();
-
     </script>
 @endsection
