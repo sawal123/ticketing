@@ -31,6 +31,33 @@ class EventIndex extends Component
         }
     }
 
+    public function deletePendingEvent(string $uid): void
+    {
+        $user = auth()->user();
+        $ownerId = ($user->role === 'staff') ? $user->parent_uid : $user->uid;
+
+        $event = Event::where('uid', $uid)->first();
+        if (! $event) {
+            session()->flash('error', 'Event tidak ditemukan.');
+
+            return;
+        }
+
+        if ($event->user_uid !== $ownerId) {
+            abort(403);
+        }
+
+        if ($event->konfirmasi !== null) {
+            session()->flash('error', 'Event yang sudah disetujui tidak dapat dihapus dari halaman ini.');
+
+            return;
+        }
+
+        $event->delete();
+        session()->flash('message', 'Event menunggu persetujuan berhasil dihapus.');
+        $this->resetPage();
+    }
+
     public function render()
     {
         $user = auth()->user();
