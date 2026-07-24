@@ -12,6 +12,8 @@ class EventIndex extends Component
     use WithPagination;
 
     public $search = '';
+    public ?string $confirmingEventUid = null;
+    public ?string $confirmingEventName = null;
 
     protected $updatesQueryString = ['search'];
 
@@ -46,6 +48,30 @@ class EventIndex extends Component
         ]);
 
         session()->flash('message', 'Event berhasil dikonfirmasi dan diaktifkan.');
+    }
+
+    public function openConfirmEventModal(string $uid): void
+    {
+        $event = Event::where('uid', $uid)->firstOrFail();
+
+        $this->confirmingEventUid = $event->uid;
+        $this->confirmingEventName = $event->event;
+        $this->dispatch('open-modal', name: 'confirm-event-modal');
+    }
+
+    public function confirmSelectedEvent(): void
+    {
+        if (! $this->confirmingEventUid) {
+            session()->flash('message', 'Event tidak ditemukan.');
+            $this->dispatch('close-modal', name: 'confirm-event-modal');
+
+            return;
+        }
+
+        $this->confirmEvent($this->confirmingEventUid);
+        $this->confirmingEventUid = null;
+        $this->confirmingEventName = null;
+        $this->dispatch('close-modal', name: 'confirm-event-modal');
     }
 
     public function render()

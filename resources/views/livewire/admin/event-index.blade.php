@@ -70,9 +70,8 @@
                     <div class="flex items-center justify-center gap-2">
                         @if($event->konfirmasi === null)
                             <x-admin.button type="button" variant="success" size="sm" icon="check-circle"
-                                loadingTarget="confirmEvent"
-                                wire:click="confirmEvent('{{ $event->uid }}')"
-                                wire:confirm="Yakin ingin mengonfirmasi dan mengaktifkan event ini?"
+                                loadingTarget="openConfirmEventModal"
+                                wire:click="openConfirmEventModal('{{ $event->uid }}')"
                                 title="Konfirmasi Event" />
                         @endif
                         <a href="{{ route('admin.event.detail', $event->uid) }}" wire:navigate title="Informasi Umum">
@@ -98,4 +97,40 @@
             {{ $events->links('components.admin.pagination') }}
         </x-slot>
     </x-admin.table>
+
+    <x-admin.modal name="confirm-event-modal" title="Konfirmasi Event" icon="badge-check">
+        <div class="space-y-6">
+            <div>
+                <p class="text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+                    Event berikut akan disetujui dan langsung diaktifkan:
+                </p>
+                <p class="mt-2 text-base font-bold text-slate-800 dark:text-white">
+                    {{ $confirmingEventName ?? '-' }}
+                </p>
+            </div>
+            <div class="rounded-2xl border border-amber-100 bg-amber-50 p-4 text-sm text-amber-700 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300">
+                Pastikan data event, jadwal, dan kategori tiket sudah benar sebelum melanjutkan.
+            </div>
+            <div class="flex justify-end gap-3">
+                <x-admin.button type="button" x-on:click="show = false" variant="secondary">
+                    Batal
+                </x-admin.button>
+                <x-admin.button type="button" wire:click="confirmSelectedEvent" variant="success"
+                    wire:loading.attr="disabled" wire:target="confirmSelectedEvent"
+                    class="disabled:pointer-events-none disabled:opacity-60">
+                    <span wire:loading.remove wire:target="confirmSelectedEvent" class="flex items-center gap-2">
+                        <i data-lucide="check-circle" class="w-4 h-4"></i>
+                        Ya, Konfirmasi
+                    </span>
+                    <span wire:loading.flex wire:target="confirmSelectedEvent" class="items-center gap-2">
+                        <svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-90" fill="currentColor" d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z"></path>
+                        </svg>
+                        Memproses...
+                    </span>
+                </x-admin.button>
+            </div>
+        </div>
+    </x-admin.modal>
 </div>

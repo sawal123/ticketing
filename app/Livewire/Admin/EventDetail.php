@@ -149,6 +149,7 @@ class EventDetail extends Component
 
         if ((string) $event->konfirmasi === '1' && $event->status === 'active') {
             session()->flash('message', 'Event sudah aktif.');
+            $this->dispatch('close-modal', name: 'confirm-event-modal');
 
             return;
         }
@@ -159,6 +160,7 @@ class EventDetail extends Component
         ]);
 
         session()->flash('message', 'Event berhasil dikonfirmasi dan diaktifkan.');
+        $this->dispatch('close-modal', name: 'confirm-event-modal');
     }
 
     public function toggleTicketStatus($id)

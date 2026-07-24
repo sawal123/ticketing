@@ -17,8 +17,7 @@
         <div class="flex items-center gap-3">
             @if($event->konfirmasi === null)
                 <x-admin.button type="button" variant="success" icon="check-circle" loadingTarget="confirmEvent"
-                    wire:click="confirmEvent"
-                    wire:confirm="Yakin ingin mengonfirmasi dan mengaktifkan event ini?">
+                    x-on:click="$dispatch('open-modal', { name: 'confirm-event-modal' })">
                     Konfirmasi
                 </x-admin.button>
             @endif
@@ -410,6 +409,38 @@
             </div>
         @endif
     </div>
+
+    <!-- Confirm Event Modal -->
+    <x-admin.modal name="confirm-event-modal" title="Konfirmasi Event" icon="badge-check">
+        <div class="space-y-6">
+            <p class="text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+                Event ini akan disetujui dan langsung diaktifkan agar tiket dapat dijual ke pengguna.
+            </p>
+            <div class="rounded-2xl border border-amber-100 bg-amber-50 p-4 text-sm text-amber-700 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300">
+                Pastikan data event, jadwal, dan kategori tiket sudah benar sebelum melanjutkan.
+            </div>
+            <div class="flex justify-end gap-3">
+                <x-admin.button type="button" x-on:click="show = false" variant="secondary">
+                    Batal
+                </x-admin.button>
+                <x-admin.button type="button" wire:click="confirmEvent" variant="success"
+                    wire:loading.attr="disabled" wire:target="confirmEvent"
+                    class="disabled:pointer-events-none disabled:opacity-60">
+                    <span wire:loading.remove wire:target="confirmEvent" class="flex items-center gap-2">
+                        <i data-lucide="check-circle" class="w-4 h-4"></i>
+                        Ya, Konfirmasi
+                    </span>
+                    <span wire:loading.flex wire:target="confirmEvent" class="items-center gap-2">
+                        <svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-90" fill="currentColor" d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z"></path>
+                        </svg>
+                        Memproses...
+                    </span>
+                </x-admin.button>
+            </div>
+        </div>
+    </x-admin.modal>
 
     <!-- Edit Ticket Modal -->
     <x-admin.modal name="edit-ticket-modal" title="Edit Kategori Tiket" icon="pencil">
