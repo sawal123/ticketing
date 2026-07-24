@@ -107,6 +107,12 @@ class EventCreate extends Component
             $this->cover->storeAs('public/cover', $coverName);
         }
 
+        if (! $this->editingEventUid && blank($coverName)) {
+            $this->addError('cover', 'Cover event wajib diupload sebelum event disimpan.');
+
+            return null;
+        }
+
         $data = [
             'category_id' => $this->category_id,
             'event' => $this->event,

@@ -48,7 +48,7 @@ class LogActivityMiddleware
                     
                     if ($recentRequests > 10) {
                         $impactLevel = 'Berisiko Tinggi';
-                        ActivityLog::create([
+                        ActivityLog::safeCreate([
                             'user_uid' => $user->uid,
                             'activity' => 'Scalper Anomaly',
                             'login_status' => 'Success',
@@ -63,7 +63,7 @@ class LogActivityMiddleware
                     }
                 }
 
-                ActivityLog::create([
+                ActivityLog::safeCreate([
                     'user_uid' => $user->uid,
                     'activity' => $detectedActivity['activity'] ?? $this->getActivityName($request),
                     'login_status' => 'Success',

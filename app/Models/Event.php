@@ -18,6 +18,7 @@ class Event extends Model
         'alamat',
         'tanggal',
         'status',
+        'cover',
         'fee',
         'deskripsi',
         'map',

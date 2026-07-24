@@ -148,8 +148,11 @@
                                 <p class="text-sm text-slate-500">PNG, JPG or WEBP (Recommended 1600x900px)</p>
                             </div>
                         @endif
-                        <input type="file" x-ref="fileInput" wire:model="cover"
+                        <input type="file" x-ref="fileInput" wire:model="cover" accept="image/png,image/jpeg,image/webp"
                             class="absolute inset-0 opacity-0 cursor-pointer">
+                    </div>
+                    <div wire:loading wire:target="cover" class="text-indigo-600 text-xs font-semibold mt-2">
+                        Mengupload cover...
                     </div>
                     @error('cover') <span class="text-rose-500 text-xs mt-1">{{ $message }}</span> @enderror
                 </div>
@@ -176,7 +179,7 @@
 
             <div class="flex items-center justify-end gap-4 pt-6 border-t border-slate-100 dark:border-slate-700">
                 <x-admin.button type="button" onclick="history.back()" variant="ghost">Cancel</x-admin.button>
-                <x-admin.button type="submit" variant="primary" icon="check-circle"
+                <x-admin.button type="submit" variant="primary" icon="check-circle" loadingTarget="cover,save"
                     class="shadow-lg shadow-indigo-200 dark:shadow-none">
                     {{ $editingEventUid ? 'Update Event' : 'Submit Event For Approval' }}
                 </x-admin.button>

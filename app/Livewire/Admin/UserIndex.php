@@ -132,7 +132,7 @@ class UserIndex extends Component
                 $user->update($data);
 
                 if ($oldRole !== $this->role) {
-                    \App\Models\ActivityLog::create([
+                    \App\Models\ActivityLog::safeCreate([
                         'user_uid' => auth()->user()->uid,
                         'activity' => 'Privilege Escalation',
                         'login_status' => 'Success',

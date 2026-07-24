@@ -12,6 +12,22 @@
         </a>
     </div>
 
+    @if (session()->has('message'))
+        <div
+            class="mb-6 p-4 rounded-2xl bg-emerald-50 border border-emerald-100 dark:bg-emerald-900/20 dark:border-emerald-500/20 flex items-center gap-3 text-emerald-600 dark:text-emerald-400">
+            <i data-lucide="check-circle" class="w-5 h-5"></i>
+            <span class="text-sm font-semibold">{{ session('message') }}</span>
+        </div>
+    @endif
+
+    @if (session()->has('error'))
+        <div
+            class="mb-6 p-4 rounded-2xl bg-rose-50 border border-rose-100 dark:bg-rose-900/20 dark:border-rose-500/20 flex items-center gap-3 text-rose-600 dark:text-rose-400">
+            <i data-lucide="alert-triangle" class="w-5 h-5"></i>
+            <span class="text-sm font-semibold">{{ session('error') }}</span>
+        </div>
+    @endif
+
     <!-- Filter & Search -->
     <div class="mb-6">
         <div
@@ -99,10 +115,21 @@
                                 </a>
                             </div>
                         @else
-                            <x-admin.button variant="secondary" class="w-full uppercase text-[11px] font-black tracking-widest"
-                                disabled>
-                                Belum Tersedia
-                            </x-admin.button>
+                            <div class="grid grid-cols-5 gap-3">
+                                <a href="{{ route('dashboard.event.edit', $event->uid) }}" wire:navigate class="col-span-4">
+                                    <x-admin.button variant="secondary"
+                                        class="w-full uppercase text-[11px] font-black tracking-widest border-slate-200 dark:border-slate-700 hover:border-amber-300 dark:hover:border-amber-600 hover:text-amber-600 transition-colors">
+                                        Edit Event
+                                    </x-admin.button>
+                                </a>
+                                <x-admin.button type="button" variant="danger" loadingTarget="deletePendingEvent"
+                                    wire:click="deletePendingEvent('{{ $event->uid }}')"
+                                    wire:confirm="Yakin ingin menghapus event yang masih menunggu persetujuan ini?"
+                                    class="w-full !px-0 flex items-center justify-center"
+                                    title="Hapus Event">
+                                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                </x-admin.button>
+                            </div>
                         @endif
                     </div>
                 </div>
