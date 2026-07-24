@@ -108,7 +108,7 @@ class Controller extends BaseController
         $cart = Cart::with(['users', 'event', 'hargaCarts.masterHarga'])->where('uid', $uid)->first();
         
         if($cart){
-            \App\Models\ActivityLog::create([
+            \App\Models\ActivityLog::safeCreate([
                 'user_uid' => auth()->check() ? auth()->user()->uid : null,
                 'activity' => 'Data Export / View',
                 'login_status' => 'Success',

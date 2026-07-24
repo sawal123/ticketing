@@ -28,7 +28,7 @@ class AuthEventSubscriber
             ->exists();
 
         if ($existingSession) {
-            ActivityLog::create([
+            ActivityLog::safeCreate([
                 'user_uid' => $user->uid,
                 'activity' => 'Concurrent Session',
                 'login_status' => 'Success',
@@ -42,7 +42,7 @@ class AuthEventSubscriber
             ]);
         }
 
-        ActivityLog::create([
+        ActivityLog::safeCreate([
             'user_uid' => $user->uid,
             'activity' => 'Login',
             'login_status' => 'Success',
@@ -65,7 +65,7 @@ class AuthEventSubscriber
         
         $ip = Request::ip();
         
-        ActivityLog::create([
+        ActivityLog::safeCreate([
             'user_uid' => $user->uid,
             'activity' => 'Logout',
             'login_status' => 'Success',
@@ -85,7 +85,7 @@ class AuthEventSubscriber
     public function handleUserLoginFailed($event) {
         $ip = Request::ip();
         
-        ActivityLog::create([
+        ActivityLog::safeCreate([
             'user_uid' => null, // No user for failed login
             'activity' => 'Login Attempt Failed',
             'login_status' => 'Failed',
