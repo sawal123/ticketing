@@ -63,7 +63,7 @@
       <p>Tekan tombol dibawah untuk melihat detail tiket dan barcode anda!</p>
     </div>
     <div class="margin"></div>
-    <a href="{{url('/generate-barcode/' . $barcode)}}" style="  color:white;" class="button">
+    <a href="{{ route('barcode.generate', $barcode) }}" style="  color:white;" class="button">
       Tunjukan Barcode
     </a>
     <div class="margin"></div>

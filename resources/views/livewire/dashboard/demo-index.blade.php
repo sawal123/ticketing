@@ -281,12 +281,14 @@
                                     <option value="">-- Pilih Tiket --</option>
                                     @foreach($availableTickets as $ticket)
                                         @php
-                                            $isSoldOut = ($ticket->remaining_stock ?? 0) < 1;
-                                            $isUnavailable = $ticket->status !== 'active' || $isSoldOut;
+                                            $remainingStock = (int) ($ticket['remaining_stock'] ?? 0);
+                                            $status = $ticket['status'] ?? 'inactive';
+                                            $isSoldOut = $remainingStock < 1;
+                                            $isUnavailable = $status !== 'active' || $isSoldOut;
                                         @endphp
-                                        <option value="{{ $ticket->id }}" @disabled($isUnavailable)>
-                                            {{ $ticket->kategori }} (Rp {{ number_format($ticket->harga) }})
-                                            - {{ $ticket->status !== 'active' ? 'Nonaktif' : ($isSoldOut ? 'Sold Out' : 'Sisa ' . number_format($ticket->remaining_stock)) }}
+                                        <option value="{{ $ticket['id'] }}" @disabled($isUnavailable)>
+                                            {{ $ticket['kategori'] }} (Rp {{ number_format($ticket['harga']) }})
+                                            - {{ $status !== 'active' ? 'Nonaktif' : ($isSoldOut ? 'Sold Out' : 'Sisa ' . number_format($remainingStock)) }}
                                         </option>
                                     @endforeach
                                 </select>
@@ -366,10 +368,10 @@
                                 </select>
                             </div>
                             <div class="flex flex-col justify-end gap-2 pb-1 px-1">
-                                <label class="flex items-center gap-2 cursor-pointer">
-                                    <input type="checkbox" wire:model="isPaidCash" class="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
-                                    <span class="text-[11px] font-bold text-slate-600 dark:text-slate-400">Sudah Bayar Cash</span>
-                                </label>
+                                <div class="flex items-center gap-2 text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+                                    <i data-lucide="badge-check" class="w-4 h-4"></i>
+                                    <span>Transaksi cash langsung dianggap lunas</span>
+                                </div>
                                 <label class="flex items-center gap-2 cursor-pointer">
                                     <input type="checkbox" wire:model="isDirectEntry" class="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
                                     <span class="text-[11px] font-bold text-slate-600 dark:text-slate-400">Langsung Masuk</span>
@@ -408,6 +410,78 @@
                 </div>
             @endif
         </div>
+    </x-admin.modal>
+
+    <!-- MODAL SUKSES TRANSAKSI CASH -->
+    <x-admin.modal name="cash-transaction-success-modal" title="Transaksi Cash Berhasil" icon="check-circle">
+        @if(!empty($cashTransactionResult))
+            <div class="space-y-6">
+                <div class="flex flex-col items-center text-center">
+                    <div class="w-16 h-16 rounded-full bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center mb-3">
+                        <i data-lucide="check-circle" class="w-9 h-9 text-emerald-600 dark:text-emerald-400"></i>
+                    </div>
+                    <h3 class="text-lg font-black text-slate-800 dark:text-white uppercase tracking-tight">Transaksi Cash Berhasil</h3>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">{{ $cashTransactionResult['event_name'] ?? '-' }}</p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                    <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-700">
+                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Pembeli</p>
+                        <p class="font-bold text-slate-800 dark:text-white">{{ $cashTransactionResult['buyer_name'] ?? '-' }}</p>
+                        <p class="text-xs text-slate-500">{{ $cashTransactionResult['buyer_email'] ?? '-' }}</p>
+                    </div>
+                    <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-700">
+                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Invoice</p>
+                        <p class="font-mono font-bold text-slate-800 dark:text-white">{{ $cashTransactionResult['invoice'] ?? '-' }}</p>
+                        <p class="text-xs text-slate-500">{{ number_format($cashTransactionResult['quantity'] ?? 0) }} tiket</p>
+                    </div>
+                </div>
+
+                <div class="space-y-2 rounded-xl border border-slate-100 dark:border-slate-700 p-4">
+                    <div class="flex justify-between text-sm">
+                        <span class="text-slate-500">Subtotal</span>
+                        <span class="font-bold text-slate-800 dark:text-white">Rp {{ number_format($cashTransactionResult['subtotal'] ?? 0) }}</span>
+                    </div>
+                    <div class="flex justify-between text-sm">
+                        <span class="text-slate-500">Pajak / Fee</span>
+                        <span class="font-bold text-slate-800 dark:text-white">Rp {{ number_format($cashTransactionResult['tax'] ?? 0) }}</span>
+                    </div>
+                    <div class="flex justify-between text-base border-t border-slate-100 dark:border-slate-700 pt-2">
+                        <span class="font-bold text-slate-800 dark:text-white">Total Bayar</span>
+                        <span class="font-black text-indigo-600">Rp {{ number_format($cashTransactionResult['total'] ?? 0) }}</span>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div class="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 text-center">
+                        <p class="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase">Pembayaran</p>
+                        <p class="text-sm font-black text-emerald-700 dark:text-emerald-300">{{ $cashTransactionResult['payment_status'] ?? 'Lunas' }}</p>
+                    </div>
+                    <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-700 text-center">
+                        <p class="text-[10px] font-bold text-slate-400 uppercase">Kehadiran</p>
+                        <p class="text-sm font-black text-slate-700 dark:text-slate-200">{{ $cashTransactionResult['attendance_status'] ?? 'Belum Hadir' }}</p>
+                    </div>
+                    <div class="p-3 rounded-xl {{ ($cashTransactionResult['email_status'] ?? '') === 'failed' ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-100 dark:border-amber-800' : 'bg-sky-50 dark:bg-sky-900/20 border-sky-100 dark:border-sky-800' }} border text-center">
+                        <p class="text-[10px] font-bold uppercase {{ ($cashTransactionResult['email_status'] ?? '') === 'failed' ? 'text-amber-600 dark:text-amber-400' : 'text-sky-600 dark:text-sky-400' }}">Email Barcode</p>
+                        <p class="text-sm font-black {{ ($cashTransactionResult['email_status'] ?? '') === 'failed' ? 'text-amber-700 dark:text-amber-300' : 'text-sky-700 dark:text-sky-300' }}">
+                            {{ $cashTransactionResult['email_message'] ?? 'Email barcode telah dijadwalkan.' }}
+                        </p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <x-admin.button wire:click="startAnotherCashTransaction" variant="secondary" icon="plus-circle" class="w-full">
+                        Transaksi Baru
+                    </x-admin.button>
+                    <x-admin.button wire:click="viewLastCashTransaction" variant="primary" icon="external-link" class="w-full">
+                        Lihat Transaksi
+                    </x-admin.button>
+                    <x-admin.button wire:click="closeCashTransactionSuccess" variant="ghost" icon="x-circle" class="w-full">
+                        Tutup
+                    </x-admin.button>
+                </div>
+            </div>
+        @endif
     </x-admin.modal>
 
     <!-- MODAL GENDER DETAIL -->

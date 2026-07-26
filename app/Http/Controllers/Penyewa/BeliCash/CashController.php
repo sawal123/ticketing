@@ -10,12 +10,12 @@ use App\Models\Event;
 use App\Models\Harga;
 use App\Models\HargaCart;
 use App\Models\Transaction;
-use App\Models\User;
-use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
+use Throwable;
 
 class CashController extends Controller
 {
@@ -68,6 +68,10 @@ class CashController extends Controller
         $kategoriTicket = Harga::where('uid', $events->uid)
             ->where('kategori', $ticket_name)
             ->first();
+
+        if (! $kategoriTicket) {
+            return back()->with('error', 'Kategori tiket tidak ditemukan');
+        }
 
         // 3. LOGIKA HITUNG ULANG PAJAK (BACKEND)
         $subtotal = $kategoriTicket->harga * $qty;
@@ -124,43 +128,29 @@ class CashController extends Controller
             'gender' => $gender,
         ]);
 
-        $cekEmail = User::where('email', $email)->first();
-        // dd($cekEmail);
-        if (! $cekEmail) {
-            $user = User::create([
-                'uid' => $str,
-                'name' => $nama,
-                'email' => $email,
-                'nomor' => $nomor,
-                'birthday' => $ttl,
-                'alamat' => $alamat,
-                'kota' => $alamat,
-                'gender' => $gender,
-                'gambar' => '',
-                'role' => User::USER_ROLE,
-                'password' => '12345678',
-            ]);
-        } else {
-            $user = $cekEmail;
+        try {
+            DB::transaction(function () use ($cart, $hargaCart, $transaksi, $cash) {
+                $cart->save();
+                $hargaCart->save();
+                $transaksi->save();
+                $cash->save();
+            }, 3);
+        } catch (Throwable $e) {
+            return back()->with('error', $e->getMessage());
         }
 
         try {
-            DB::beginTransaction();
-            $cart->save();
-            $hargaCart->save();
-            $transaksi->save();
-            // save cash & user...
-            $cash->save();
-            DB::commit();
+            dispatch(new sendEmailTrnsaksi($email, $nama, $cart->uid, $invoice));
 
-            $send = new sendEmailTrnsaksi($user, $cart, $invoice);
-            dispatch($send);
+            return redirect()->back()->with('success', 'Pembelian Cash Berhasil (Termasuk Pajak '.$pajakPersen.'%). Email barcode telah dijadwalkan.');
+        } catch (Throwable $e) {
+            Log::error('Gagal menjadwalkan email barcode cash dari controller legacy.', [
+                'cart_uid' => $cart->uid,
+                'recipient' => $email,
+                'error' => $e->getMessage(),
+            ]);
 
-            return redirect()->back()->with('success', 'Pembelian Cash Berhasil (Termasuk Pajak '.$pajakPersen.'%)');
-        } catch (Exception $e) {
-            DB::rollback();
-
-            return back()->with('error', $e->getMessage());
+            return redirect()->back()->with('success', 'Pembelian Cash Berhasil (Termasuk Pajak '.$pajakPersen.'%). Email barcode perlu dikirim ulang.');
         }
     }
 }
