@@ -25,7 +25,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::post('/login', [AuthController::class, 'login']);
 
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware(['auth:sanctum', 'roles:penyewa,staff'])->group(function () {
     Route::put('/status/{data}', [ConfirmController::class, 'upKonfirmasi']);
     Route::get('/confirm/{data}', [ConfirmController::class, 'cekData']);
 
@@ -45,6 +45,7 @@ Route::middleware('auth:sanctum')->group(function () {
 });
 Route::get('/slide/{data?}', [SlideController::class, 'slide']);
 Route::get('/landing', [LandingController::class, 'getLandingData']);
+
 
 
 
