@@ -16,22 +16,45 @@ class CheckRole
      */
     public function handle(Request $request, Closure $next, ...$roles)
     {
-        // 1. Cek apakah user sudah login
+        // API memakai auth:sanctum sebelum middleware ini. Web memakai session auth.
         if (!Auth::check()) {
+            if ($request->is('api/*')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthenticated.',
+                ], 401);
+            }
+
             return redirect('/login');
         }
 
-        $user = Auth::user();
-        $userRole = strtolower($user->role);
+        $userRole = strtolower((string) Auth::user()->role);
 
-        // 2. Cek apakah role user ada dalam daftar yang diizinkan (...$roles)
+        // Akun staff hanya boleh digunakan oleh aplikasi scanner melalui API.
+        if ($userRole === 'staff' && !$request->is('api/*')) {
+            Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return redirect('/login')->with(
+                'error',
+                'Akun staff hanya dapat digunakan untuk login ke aplikasi scan tiket.'
+            );
+        }
+
         $allowedRoles = array_map('strtolower', $roles);
 
-        if (in_array($userRole, $allowedRoles)) {
+        if (in_array($userRole, $allowedRoles, true)) {
             return $next($request);
         }
 
-        // 3. Jika tidak punya akses, lempar ke halaman 403 atau redirect
+        if ($request->is('api/*')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Akun Anda tidak memiliki akses ke API scanner.',
+            ], 403);
+        }
+
         abort(403, 'Maaf, akun Anda tidak memiliki akses ke halaman ini.');
     }
 }
