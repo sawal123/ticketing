@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Carbon\Carbon;
+use Throwable;
 
 class DemoIndex extends Component
 {
@@ -35,9 +36,9 @@ class DemoIndex extends Component
     public $buyerEmail;
     public $buyerBirthday;
     public $buyerGender;
-    public $isPaidCash = true;
     public $isDirectEntry = false;
     public $partnerId;
+    public array $cashTransactionResult = [];
 
     public function toggleSellModal()
     {
@@ -48,7 +49,6 @@ class DemoIndex extends Component
     public function resetCashForm()
     {
         $this->reset(['selectedEventId', 'selectedEvent', 'availableTickets', 'selectedTickets', 'buyerName', 'buyerEmail', 'buyerBirthday', 'buyerGender', 'partnerId']);
-        $this->isPaidCash = true;
         $this->isDirectEntry = false;
     }
 
@@ -188,8 +188,9 @@ class DemoIndex extends Component
 
         try {
             $emailPayload = null;
+            $result = null;
 
-            DB::transaction(function () use (&$emailPayload) {
+            DB::transaction(function () use (&$emailPayload, &$result) {
                 $user = auth()->user();
                 $ownerId = ($user->role === 'staff') ? $user->parent_uid : $user->uid;
 
@@ -239,6 +240,7 @@ class DemoIndex extends Component
                 }
 
                 $subtotal = collect($validatedTickets)->sum(fn ($item) => (int) $item['model']->harga * $item['qty']);
+                $quantity = collect($validatedTickets)->sum('qty');
                 $taxPercent = (int) ($event->fee ?? 0);
                 $tax = (int) round(($taxPercent / 100) * $subtotal);
                 $total = $subtotal + $tax;
@@ -311,9 +313,26 @@ class DemoIndex extends Component
                     'cart_uid' => $cart->uid,
                     'barcode' => $cart->invoice,
                 ];
+
+                $result = [
+                    'uid' => $cart->uid,
+                    'event_uid' => $event->uid,
+                    'event_name' => $event->event,
+                    'invoice' => $cart->invoice,
+                    'buyer_name' => $this->buyerName,
+                    'buyer_email' => $this->buyerEmail,
+                    'quantity' => $quantity,
+                    'subtotal' => $subtotal,
+                    'tax' => $tax,
+                    'total' => $total,
+                    'payment_status' => 'Lunas',
+                    'attendance_status' => $this->isDirectEntry ? 'Hadir' : 'Belum Hadir',
+                    'email_status' => 'pending',
+                ];
             }, 3);
 
             $this->dispatch('close-modal', name: 'sell-modal');
+            $this->cashTransactionResult = $result;
 
             try {
                 dispatch(new sendEmailTrnsaksi(
@@ -323,26 +342,70 @@ class DemoIndex extends Component
                     $emailPayload['barcode'],
                 ));
 
+                $this->cashTransactionResult['email_status'] = 'scheduled';
+                $this->cashTransactionResult['email_message'] = 'Email barcode telah dijadwalkan.';
                 session()->flash('success', 'Transaksi Cash Berhasil! Email barcode telah dijadwalkan untuk dikirim.');
-            } catch (\Throwable $mailException) {
+            } catch (Throwable $mailException) {
                 Log::error('Gagal menjadwalkan email barcode cash.', [
                     'cart_uid' => $emailPayload['cart_uid'] ?? null,
                     'recipient' => $emailPayload['email'] ?? null,
                     'error' => $mailException->getMessage(),
                 ]);
 
+                $this->cashTransactionResult['email_status'] = 'failed';
+                $this->cashTransactionResult['email_message'] = 'Email perlu dikirim ulang.';
                 session()->flash('success', 'Transaksi Cash Berhasil, tetapi email barcode perlu dikirim ulang.');
             }
 
-            return redirect()->route('dashboard');
+            $this->selectedTickets = [];
+            $this->loadAvailableTickets();
+            $this->dispatch('open-modal', name: 'cash-transaction-success-modal');
 
         } catch (ValidationException $e) {
             $this->loadAvailableTickets();
             throw $e;
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             $this->loadAvailableTickets();
             session()->flash('error', 'Gagal: ' . $e->getMessage());
         }
+    }
+
+    public function startAnotherCashTransaction()
+    {
+        $eventId = $this->cashTransactionResult['event_uid'] ?? $this->selectedEventId;
+        $this->dispatch('close-modal', name: 'cash-transaction-success-modal');
+
+        if ($eventId) {
+            $this->selectEvent($eventId);
+        }
+
+        $this->selectedTickets = [];
+        $this->buyerName = null;
+        $this->buyerEmail = null;
+        $this->buyerBirthday = null;
+        $this->buyerGender = null;
+        $this->partnerId = null;
+        $this->isDirectEntry = false;
+        $this->cashTransactionResult = [];
+        $this->loadAvailableTickets();
+        $this->dispatch('open-modal', name: 'sell-modal');
+    }
+
+    public function viewLastCashTransaction()
+    {
+        if (empty($this->cashTransactionResult['event_uid']) || empty($this->cashTransactionResult['invoice'])) {
+            return;
+        }
+
+        return redirect()->to(route('dashboard.event.detail', $this->cashTransactionResult['event_uid'])
+            .'?activeTab=transaksi&filterPayment=cash&searchTransaction='
+            .urlencode($this->cashTransactionResult['invoice']));
+    }
+
+    public function closeCashTransactionSuccess()
+    {
+        $this->dispatch('close-modal', name: 'cash-transaction-success-modal');
+        $this->cashTransactionResult = [];
     }
 
     protected function loadAvailableTickets()
@@ -499,10 +562,18 @@ class DemoIndex extends Component
         // GENDER & AGE DEMOGRAPHICS
         $demographics = (clone $queryBase)
             ->join('users', 'users.uid', '=', 'carts.user_uid')
-            ->select('users.gender', 'users.birthday')
+            ->leftJoin('cashes', 'cashes.uid', '=', 'carts.uid')
+            ->selectRaw("
+                CASE WHEN carts.payment_type = 'cash' THEN cashes.gender ELSE users.gender END as gender,
+                CASE WHEN carts.payment_type = 'cash' THEN cashes.lahir ELSE users.birthday END as birthday
+            ")
             ->get()
             ->map(function ($user) {
-                $user->age = filled($user->birthday) ? Carbon::parse($user->birthday)->age : null;
+                try {
+                    $user->age = filled($user->birthday) ? Carbon::parse($user->birthday)->age : null;
+                } catch (Throwable) {
+                    $user->age = null;
+                }
 
                 return $user;
             });
@@ -510,9 +581,9 @@ class DemoIndex extends Component
         $genderStats = [
             'pria' => $demographics->where('gender', 'pria')->count(),
             'wanita' => $demographics->where('gender', 'wanita')->count(),
-            'age_18_25' => $demographics->whereBetween('age', [18, 25])->count(),
-            'age_gt_25' => $demographics->where('age', '>', 25)->count(),
-            'age_lt_18' => $demographics->where('age', '<', 18)->count(),
+            'age_18_25' => $demographics->filter(fn ($item) => $item->age !== null && $item->age >= 18 && $item->age <= 25)->count(),
+            'age_gt_25' => $demographics->filter(fn ($item) => $item->age !== null && $item->age > 25)->count(),
+            'age_lt_18' => $demographics->filter(fn ($item) => $item->age !== null && $item->age < 18)->count(),
         ];
 
         return view('livewire.dashboard.demo-index', [

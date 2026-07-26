@@ -9,11 +9,15 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Throwable;
 
 class sendEmailTrnsaksi implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+    public int $tries = 3;
 
     public string $recipientEmail;
 
@@ -34,10 +38,20 @@ class sendEmailTrnsaksi implements ShouldQueue
 
     public function handle(): void
     {
-        $cart = Cart::with('event')->where('uid', $this->cartUid)->firstOrFail();
+        try {
+            $cart = Cart::with('event')->where('uid', $this->cartUid)->firstOrFail();
 
-        Mail::to($this->recipientEmail)->send(
-            new CashNotifikasiMail($this->recipientName, $cart, $this->barcode)
-        );
+            Mail::to($this->recipientEmail)->send(
+                new CashNotifikasiMail($this->recipientName, $cart, $this->barcode)
+            );
+        } catch (Throwable $exception) {
+            Log::error('Gagal mengirim email barcode cash.', [
+                'cart_uid' => $this->cartUid,
+                'recipient' => $this->recipientEmail,
+                'error' => $exception->getMessage(),
+            ]);
+
+            throw $exception;
+        }
     }
 }

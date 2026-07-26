@@ -23,6 +23,7 @@ use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Auth\Events\Validated;
 use App\Mail\MidtransPaymentNotification;
@@ -363,24 +364,13 @@ class editController extends Controller
     public function editTransaksi(Request $request)
     {
         $uid = $request->uid;
-        $name = $request->name;
         $barcode = $request->inv;
 
-        $user = User::where("name", $name)->first();
         $transaksis = Transaction::where("uid", $request->uid)->first();
         $carts = Cart::where("uid", $request->uid)->first();
-        $cash = Cash::where('uid', $uid)->first();
 
-        if ($request->status === "SUCCESS") {
-            if ($carts->payment_type === 'cash') {
-                // Mail::to($cash->email)->send(new CashNotifikasiMail($cash->name,  $barcode));
-                $send = new sendEmailTrnsaksi($cash->email, $cash->name, $carts->uid, $carts->invoice);
-               dispatch($send);
-            } else {
-                // Mail::to($user->email)->send(new MidtransPaymentNotification($user, $carts, $barcode));
-                $send = new sendEmailETransaksi($user, $carts, $barcode);
-                dispatch($send);
-            }
+        if (! $carts) {
+            return redirect()->back()->with('error', 'Transaksi tidak ditemukan.');
         }
 
         $carts->status = $request->status;
@@ -389,7 +379,35 @@ class editController extends Controller
             $transaksis->save();
         }
         $carts->save();
-        // $transaksis->save();
+
+        if ($request->status === "SUCCESS") {
+            try {
+                if ($carts->payment_type === 'cash') {
+                    $cash = Cash::where('uid', $uid)->first();
+                    if (! $cash || ! filter_var($cash->email, FILTER_VALIDATE_EMAIL)) {
+                        return redirect()->back()->with("success", "Transaksi Berhasil di Ubah. Email pembeli cash perlu diperiksa sebelum dikirim ulang.");
+                    }
+
+                    dispatch(new sendEmailTrnsaksi($cash->email, $cash->name, $carts->uid, $carts->invoice));
+                } else {
+                    $user = User::where("uid", $carts->user_uid)->first();
+                    if (! $user) {
+                        return redirect()->back()->with("success", "Transaksi Berhasil di Ubah. Data pembeli tidak ditemukan untuk pengiriman email.");
+                    }
+
+                    dispatch(new sendEmailETransaksi($user, $carts, $barcode ?: $carts->invoice));
+                }
+            } catch (\Throwable $e) {
+                Log::error('Gagal menjadwalkan email setelah edit transaksi.', [
+                    'cart_uid' => $carts->uid,
+                    'payment_type' => $carts->payment_type,
+                    'error' => $e->getMessage(),
+                ]);
+
+                return redirect()->back()->with("success", "Transaksi Berhasil di Ubah. Email barcode perlu dikirim ulang.");
+            }
+        }
+
         return redirect()->back()->with("success", "Transaksi Berhasil di Ubah");
     }
 

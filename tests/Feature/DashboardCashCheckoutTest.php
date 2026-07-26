@@ -14,6 +14,7 @@ use App\Models\Event;
 use App\Models\Harga;
 use App\Models\HargaCart;
 use App\Models\User;
+use Illuminate\Contracts\Bus\Dispatcher as BusDispatcher;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
@@ -60,7 +61,18 @@ class DashboardCashCheckoutTest extends TestCase
             ->set('buyerBirthday', '2000-01-01')
             ->set('buyerGender', 'pria')
             ->call('checkout')
-            ->assertRedirect(route('dashboard'));
+            ->assertNoRedirect()
+            ->assertDispatched('close-modal', fn ($event, $params) => ($params['name'] ?? null) === 'sell-modal')
+            ->assertDispatched('open-modal', fn ($event, $params) => ($params['name'] ?? null) === 'cash-transaction-success-modal')
+            ->assertSet('selectedTickets', [])
+            ->assertSet('cashTransactionResult.buyer_name', 'Pembeli Cash')
+            ->assertSet('cashTransactionResult.buyer_email', 'cash@example.test')
+            ->assertSet('cashTransactionResult.quantity', 2)
+            ->assertSet('cashTransactionResult.subtotal', 184000)
+            ->assertSet('cashTransactionResult.total', 184000)
+            ->assertSet('cashTransactionResult.payment_status', 'Lunas')
+            ->assertSet('cashTransactionResult.attendance_status', 'Belum Hadir')
+            ->assertSet('cashTransactionResult.email_status', 'scheduled');
 
         $cart = Cart::first();
 
@@ -118,7 +130,10 @@ class DashboardCashCheckoutTest extends TestCase
             ->set('buyerGender', 'wanita')
             ->set('isDirectEntry', true)
             ->call('checkout')
-            ->assertRedirect(route('dashboard'));
+            ->assertNoRedirect()
+            ->assertDispatched('open-modal', fn ($event, $params) => ($params['name'] ?? null) === 'cash-transaction-success-modal')
+            ->assertSet('cashTransactionResult.attendance_status', 'Hadir')
+            ->assertSet('cashTransactionResult.email_status', 'scheduled');
 
         $this->assertSame('1', Cart::first()->konfirmasi);
         Queue::assertPushed(sendEmailTrnsaksi::class, fn (sendEmailTrnsaksi $job) => $job->recipientEmail === 'hadir@example.test');
@@ -231,7 +246,7 @@ class DashboardCashCheckoutTest extends TestCase
 
     public function test_event_transaction_search_uses_cash_and_online_buyers(): void
     {
-        $operator = $this->user(['role' => 'penyewa']);
+        $operator = $this->user(['role' => 'penyewa', 'name' => 'Seller Operator', 'email' => 'seller@example.test']);
         $onlineBuyer = $this->user(['role' => 'user', 'name' => 'Online Searchable', 'email' => 'online-search@example.test']);
         $event = $this->event(['user_uid' => $operator->uid]);
         $harga = $this->harga($event);
@@ -250,6 +265,9 @@ class DashboardCashCheckoutTest extends TestCase
             ->assertDontSee('Online Searchable')
             ->set('searchTransaction', 'Online Searchable')
             ->assertSee('Online Searchable')
+            ->assertDontSee('Cash Searchable')
+            ->set('searchTransaction', 'seller@example.test')
+            ->assertDontSee('Online Searchable')
             ->assertDontSee('Cash Searchable');
     }
 
@@ -289,6 +307,210 @@ class DashboardCashCheckoutTest extends TestCase
                 && $job->carts->is($onlineCart)
                 && $job->order_id === $onlineCart->invoice;
         });
+    }
+
+    public function test_dashboard_event_detail_rejects_transaction_detail_from_other_event(): void
+    {
+        $ownerA = $this->user(['role' => 'penyewa', 'name' => 'Owner A']);
+        $ownerB = $this->user(['role' => 'penyewa', 'name' => 'Owner B']);
+        $eventA = $this->event(['user_uid' => $ownerA->uid, 'event' => 'Event A']);
+        $eventB = $this->event(['user_uid' => $ownerB->uid, 'event' => 'Event B']);
+        $hargaB = $this->harga($eventB);
+        $otherCart = $this->cashTransaction($ownerB, $eventB, $hargaB, [
+            'name' => 'Other Event Buyer',
+            'email' => 'other-event@example.test',
+        ]);
+
+        Livewire::actingAs($ownerA)
+            ->test(DashboardEventDetail::class, ['uid' => $eventA->uid])
+            ->call('showTransactionDetail', $otherCart->uid)
+            ->assertSet('selectedTransactionId', null)
+            ->assertNotDispatched('open-modal', fn ($event, $params) => ($params['name'] ?? null) === 'transaction-detail-modal')
+            ->assertDontSee('Other Event Buyer');
+    }
+
+    public function test_dashboard_event_detail_rejects_resend_email_from_other_event(): void
+    {
+        Queue::fake();
+
+        $ownerA = $this->user(['role' => 'penyewa']);
+        $ownerB = $this->user(['role' => 'penyewa']);
+        $eventA = $this->event(['user_uid' => $ownerA->uid, 'event' => 'Event A']);
+        $eventB = $this->event(['user_uid' => $ownerB->uid, 'event' => 'Event B']);
+        $hargaB = $this->harga($eventB);
+        $otherCart = $this->cashTransaction($ownerB, $eventB, $hargaB, [
+            'name' => 'Other Event Buyer',
+            'email' => 'other-event@example.test',
+        ]);
+
+        Livewire::actingAs($ownerA)
+            ->test(DashboardEventDetail::class, ['uid' => $eventA->uid])
+            ->set('resendEmailUid', $otherCart->uid)
+            ->call('resendEmail');
+
+        Queue::assertNotPushed(sendEmailTrnsaksi::class);
+        Queue::assertNotPushed(sendEmailETransaksi::class);
+    }
+
+    public function test_cash_checkout_success_modal_actions_reset_form_or_open_transaction_detail(): void
+    {
+        Queue::fake();
+
+        $owner = $this->user(['role' => 'penyewa']);
+        $event = $this->event(['user_uid' => $owner->uid]);
+        $harga = $this->harga($event, ['qty' => 10]);
+
+        $component = Livewire::actingAs($owner)
+            ->test(DemoIndex::class)
+            ->call('selectEvent', $event->uid)
+            ->call('addTicket', $harga->id)
+            ->set('selectedTickets.0.qty', 2)
+            ->set('buyerName', 'Pembeli Modal')
+            ->set('buyerEmail', 'modal@example.test')
+            ->set('buyerBirthday', '2000-01-01')
+            ->set('buyerGender', 'wanita')
+            ->call('checkout')
+            ->assertNoRedirect()
+            ->assertSet('cashTransactionResult.invoice', fn ($invoice) => filled($invoice));
+
+        $invoice = $component->get('cashTransactionResult.invoice');
+
+        $component
+            ->call('viewLastCashTransaction')
+            ->assertRedirectContains('activeTab=transaksi')
+            ->assertRedirectContains('filterPayment=cash')
+            ->assertRedirectContains('searchTransaction='.$invoice);
+
+        Livewire::actingAs($owner)
+            ->test(DemoIndex::class)
+            ->call('selectEvent', $event->uid)
+            ->call('addTicket', $harga->id)
+            ->set('selectedTickets.0.qty', 1)
+            ->set('buyerName', 'Pembeli Reset')
+            ->set('buyerEmail', 'reset@example.test')
+            ->set('buyerBirthday', '2000-01-01')
+            ->set('buyerGender', 'pria')
+            ->set('isDirectEntry', true)
+            ->call('checkout')
+            ->call('startAnotherCashTransaction')
+            ->assertSet('selectedEventId', $event->uid)
+            ->assertSet('selectedTickets', [])
+            ->assertSet('buyerName', null)
+            ->assertSet('buyerEmail', null)
+            ->assertSet('isDirectEntry', false)
+            ->assertSet('cashTransactionResult', [])
+            ->assertSet('availableTickets.0.remaining_stock', 7)
+            ->assertDispatched('open-modal', fn ($event, $params) => ($params['name'] ?? null) === 'sell-modal');
+    }
+
+    public function test_cash_checkout_keeps_committed_transaction_when_email_dispatch_fails(): void
+    {
+        $this->app->instance(BusDispatcher::class, new class implements BusDispatcher {
+            public function dispatch($command)
+            {
+                throw new \RuntimeException('queue down');
+            }
+
+            public function dispatchSync($command, $handler = null)
+            {
+                return null;
+            }
+
+            public function dispatchNow($command, $handler = null)
+            {
+                return null;
+            }
+
+            public function hasCommandHandler($command)
+            {
+                return false;
+            }
+
+            public function getCommandHandler($command)
+            {
+                return false;
+            }
+
+            public function pipeThrough(array $pipes)
+            {
+                return $this;
+            }
+
+            public function map(array $map)
+            {
+                return $this;
+            }
+        });
+
+        $owner = $this->user(['role' => 'penyewa']);
+        $event = $this->event(['user_uid' => $owner->uid]);
+        $harga = $this->harga($event, ['qty' => 10]);
+
+        Livewire::actingAs($owner)
+            ->test(DemoIndex::class)
+            ->call('selectEvent', $event->uid)
+            ->call('addTicket', $harga->id)
+            ->set('buyerName', 'Pembeli Email Gagal')
+            ->set('buyerEmail', 'failed-email@example.test')
+            ->set('buyerBirthday', '2000-01-01')
+            ->set('buyerGender', 'pria')
+            ->call('checkout')
+            ->assertNoRedirect()
+            ->assertDispatched('open-modal', fn ($event, $params) => ($params['name'] ?? null) === 'cash-transaction-success-modal')
+            ->assertSet('cashTransactionResult.email_status', 'failed');
+
+        $cart = Cart::first();
+
+        $this->assertNotNull($cart);
+        $this->assertSame(Cart::STATUS_SUCCESS, $cart->status);
+        $this->assertDatabaseHas('cashes', [
+            'uid' => $cart->uid,
+            'email' => 'failed-email@example.test',
+        ]);
+        $this->assertDatabaseHas('transactions', [
+            'uid' => $cart->uid,
+            'status_transaksi' => Cart::STATUS_SUCCESS,
+        ]);
+        $this->assertSame(1, (int) $harga->fresh()->sold_qty);
+    }
+
+    public function test_dashboard_demographics_use_cash_buyer_identity_and_ignore_invalid_birthdates(): void
+    {
+        $operator = $this->user([
+            'role' => 'penyewa',
+            'gender' => 'pria',
+            'birthday' => '1980-01-01',
+        ]);
+        $onlineBuyer = $this->user([
+            'role' => 'user',
+            'name' => 'Online Demographic',
+            'gender' => 'pria',
+            'birthday' => now()->subYears(20)->toDateString(),
+        ]);
+        $event = $this->event(['user_uid' => $operator->uid]);
+        $harga = $this->harga($event);
+
+        $this->cashTransaction($operator, $event, $harga, [
+            'name' => 'Cash Demographic',
+            'gender' => 'wanita',
+            'lahir' => now()->subYears(30)->toDateString(),
+        ]);
+        $this->cashTransaction($operator, $event, $harga, [
+            'name' => 'Cash Invalid Birthday',
+            'gender' => 'wanita',
+            'lahir' => 'not-a-date',
+        ]);
+        $this->onlineTransaction($onlineBuyer, $event, $harga);
+
+        $gender = Livewire::actingAs($operator)
+            ->test(DemoIndex::class)
+            ->viewData('gender');
+
+        $this->assertSame(1, $gender['pria']);
+        $this->assertSame(2, $gender['wanita']);
+        $this->assertSame(1, $gender['age_18_25']);
+        $this->assertSame(1, $gender['age_gt_25']);
+        $this->assertSame(0, $gender['age_lt_18']);
     }
 
     protected function cashTransaction(User $operator, Event $event, Harga $harga, array $cashAttributes = [], array $cartAttributes = []): Cart
