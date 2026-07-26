@@ -21,17 +21,27 @@ class Login extends Component
         $this->validate();
 
         if (Auth::attempt(['email' => $this->email, 'password' => $this->password], $this->remember)) {
-            session()->regenerate();
+            $role = strtolower((string) Auth::user()->role);
 
-            $role = strtolower(Auth::user()->role);
+            if ($role === 'staff') {
+                Auth::logout();
+                session()->invalidate();
+                session()->regenerateToken();
+                session()->flash('error', 'Akun staff hanya dapat digunakan untuk login ke aplikasi scan tiket.');
+
+                return;
+            }
+
+            session()->regenerate();
 
             if ($role === 'admin') {
                 return redirect('/admin');
             }
-            if ($role === 'penyewa' || $role === 'staff') {
+
+            if ($role === 'penyewa') {
                 return redirect('/dashboard');
             }
-            
+
             return redirect('/');
         }
 
