@@ -8,6 +8,7 @@ use App\Jobs\sendEmailETransaksi;
 use App\Jobs\sendEmailTrnsaksi;
 use App\Livewire\Dashboard\DemoIndex;
 use App\Livewire\Dashboard\EventDetail as DashboardEventDetail;
+use App\Mail\CashNotifikasiMail;
 use App\Models\Cart;
 use App\Models\Cash;
 use App\Models\Event;
@@ -17,8 +18,10 @@ use App\Models\User;
 use Illuminate\Contracts\Bus\Dispatcher as BusDispatcher;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -511,6 +514,215 @@ class DashboardCashCheckoutTest extends TestCase
         $this->assertSame(1, $gender['age_18_25']);
         $this->assertSame(1, $gender['age_gt_25']);
         $this->assertSame(0, $gender['age_lt_18']);
+    }
+
+    public function test_cash_buyer_can_open_signed_ticket_url_without_login(): void
+    {
+        $operator = $this->user(['role' => 'penyewa']);
+        $event = $this->event(['user_uid' => $operator->uid, 'event' => 'Signed Cash Event']);
+        $harga = $this->harga($event, ['kategori' => 'VIP']);
+        $cart = $this->cashTransaction($operator, $event, $harga, [
+            'name' => 'Signed Cash Buyer',
+            'email' => 'signed-cash@example.test',
+        ]);
+
+        $this->assertGuest();
+
+        $this->get($this->uriFromUrl($this->signedCashTicketUrl($cart)))
+            ->assertOk()
+            ->assertSee($cart->invoice)
+            ->assertSee('Signed Cash Event')
+            ->assertSee('Signed Cash Buyer')
+            ->assertSee('VIP')
+            ->assertSee('Link dan barcode ini bersifat rahasia');
+    }
+
+    public function test_cash_ticket_without_signature_is_rejected(): void
+    {
+        $operator = $this->user(['role' => 'penyewa']);
+        $event = $this->event(['user_uid' => $operator->uid]);
+        $harga = $this->harga($event);
+        $cart = $this->cashTransaction($operator, $event, $harga);
+
+        $this->get(route('cash.ticket.show', ['uid' => $cart->uid], false))
+            ->assertForbidden();
+    }
+
+    public function test_expired_cash_ticket_signature_is_rejected(): void
+    {
+        $operator = $this->user(['role' => 'penyewa']);
+        $event = $this->event(['user_uid' => $operator->uid]);
+        $harga = $this->harga($event);
+        $cart = $this->cashTransaction($operator, $event, $harga);
+
+        $this->get($this->uriFromUrl($this->signedCashTicketUrl($cart, now()->subMinute())))
+            ->assertForbidden();
+    }
+
+    public function test_online_cart_cannot_use_cash_ticket_route(): void
+    {
+        $operator = $this->user(['role' => 'penyewa']);
+        $onlineBuyer = $this->user(['role' => 'user']);
+        $event = $this->event(['user_uid' => $operator->uid]);
+        $harga = $this->harga($event);
+        $cart = $this->onlineTransaction($onlineBuyer, $event, $harga);
+
+        $this->get($this->uriFromUrl($this->signedCashTicketUrl($cart)))
+            ->assertNotFound();
+    }
+
+    public function test_cash_ticket_requires_success_status(): void
+    {
+        $operator = $this->user(['role' => 'penyewa']);
+        $event = $this->event(['user_uid' => $operator->uid]);
+        $harga = $this->harga($event);
+        $cart = $this->cashTransaction($operator, $event, $harga, [], [
+            'status' => Cart::STATUS_UNPAID,
+        ]);
+
+        $this->get($this->uriFromUrl($this->signedCashTicketUrl($cart)))
+            ->assertNotFound()
+            ->assertDontSee($cart->invoice);
+    }
+
+    public function test_cash_ticket_uid_cannot_be_swapped_without_new_signature(): void
+    {
+        $operator = $this->user(['role' => 'penyewa']);
+        $event = $this->event(['user_uid' => $operator->uid]);
+        $harga = $this->harga($event);
+        $cartA = $this->cashTransaction($operator, $event, $harga, ['name' => 'Cart A']);
+        $cartB = $this->cashTransaction($operator, $event, $harga, ['name' => 'Cart B']);
+
+        $tamperedUrl = str_replace($cartA->uid, $cartB->uid, $this->signedCashTicketUrl($cartA));
+
+        $this->get($this->uriFromUrl($tamperedUrl))
+            ->assertForbidden();
+    }
+
+    public function test_cash_email_contains_valid_signed_ticket_url(): void
+    {
+        Mail::fake();
+
+        $operator = $this->user(['role' => 'penyewa']);
+        $event = $this->event(['user_uid' => $operator->uid, 'event' => 'Email Signed Event']);
+        $harga = $this->harga($event);
+        $cart = $this->cashTransaction($operator, $event, $harga, [
+            'name' => 'Email Cash Buyer',
+            'email' => 'email-cash@example.test',
+        ]);
+
+        (new sendEmailTrnsaksi('email-cash@example.test', 'Email Cash Buyer', $cart->uid, $cart->invoice))->handle();
+
+        Mail::assertSent(CashNotifikasiMail::class, function (CashNotifikasiMail $mail) use ($cart) {
+            $html = $mail->render();
+            $ticketUrl = $this->extractCashTicketUrl($html);
+
+            $this->assertTrue($mail->hasTo('email-cash@example.test'));
+            $this->assertStringContainsString('/cash-ticket/'.$cart->uid, $html);
+            $this->assertStringNotContainsString('/generate-barcode/', $html);
+            $this->assertStringNotContainsString('/login', $html);
+            $this->assertNotNull($ticketUrl);
+
+            $this->get($this->uriFromUrl($ticketUrl))->assertOk();
+
+            return true;
+        });
+    }
+
+    public function test_online_barcode_still_requires_login_and_owner(): void
+    {
+        $operator = $this->user(['role' => 'penyewa']);
+        $buyer = $this->user(['role' => 'user', 'name' => 'Online Owner']);
+        $otherBuyer = $this->user(['role' => 'user']);
+        $event = $this->event(['user_uid' => $operator->uid, 'event' => 'Online Barcode Event']);
+        $harga = $this->harga($event);
+        $cart = $this->onlineTransaction($buyer, $event, $harga);
+
+        $this->get(route('barcode.generate', ['data' => $cart->invoice]))
+            ->assertRedirect(route('barcode.login', ['data' => $cart->invoice]));
+
+        $this->actingAs($buyer)
+            ->get(route('barcode.generate', ['data' => $cart->invoice]))
+            ->assertOk()
+            ->assertSee($cart->invoice)
+            ->assertSee('Online Barcode Event');
+
+        auth()->logout();
+
+        $this->actingAs($otherBuyer)
+            ->get(route('barcode.generate', ['data' => $cart->invoice]))
+            ->assertForbidden();
+    }
+
+    public function test_resend_cash_email_generates_valid_signed_ticket_url(): void
+    {
+        Queue::fake();
+
+        $operator = $this->user(['role' => 'penyewa']);
+        $event = $this->event(['user_uid' => $operator->uid, 'event' => 'Resend Signed Event']);
+        $harga = $this->harga($event);
+        $cart = $this->cashTransaction($operator, $event, $harga, [
+            'name' => 'Resend Cash Buyer',
+            'email' => 'resend-cash@example.test',
+        ]);
+        $capturedJob = null;
+
+        Livewire::actingAs($operator)
+            ->test(DashboardEventDetail::class, ['uid' => $event->uid])
+            ->set('resendEmailUid', $cart->uid)
+            ->call('resendEmail');
+
+        Queue::assertPushed(sendEmailTrnsaksi::class, function (sendEmailTrnsaksi $job) use (&$capturedJob) {
+            $capturedJob = $job;
+
+            return $job->recipientEmail === 'resend-cash@example.test';
+        });
+
+        Mail::fake();
+        $capturedJob->handle();
+
+        Mail::assertSent(CashNotifikasiMail::class, function (CashNotifikasiMail $mail) use ($cart) {
+            $html = $mail->render();
+            $ticketUrl = $this->extractCashTicketUrl($html);
+
+            $this->assertTrue($mail->hasTo('resend-cash@example.test'));
+            $this->assertNotNull($ticketUrl);
+            $this->assertStringContainsString('/cash-ticket/'.$cart->uid, $ticketUrl);
+
+            $this->get($this->uriFromUrl($ticketUrl))->assertOk();
+
+            return true;
+        });
+    }
+
+    protected function signedCashTicketUrl(Cart $cart, $expiration = null): string
+    {
+        return URL::temporarySignedRoute(
+            'cash.ticket.show',
+            $expiration ?? now()->addDays(7),
+            ['uid' => $cart->uid],
+        );
+    }
+
+    protected function extractCashTicketUrl(string $html): ?string
+    {
+        if (! preg_match('/href="([^"]*\/cash-ticket\/[^"]+)"/', $html, $matches)) {
+            return null;
+        }
+
+        return html_entity_decode($matches[1], ENT_QUOTES);
+    }
+
+    protected function uriFromUrl(string $url): string
+    {
+        $parts = parse_url($url);
+        $uri = $parts['path'] ?? '/';
+
+        if (! empty($parts['query'])) {
+            $uri .= '?'.$parts['query'];
+        }
+
+        return $uri;
     }
 
     protected function cashTransaction(User $operator, Event $event, Harga $harga, array $cashAttributes = [], array $cartAttributes = []): Cart
