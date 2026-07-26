@@ -95,6 +95,9 @@ Route::post('/confir/success', [Controller::class, 'success']);
 // Route::post('/generate-barcode', [BarcodeController::class, 'generateBarcode']);
 Route::get('/generate-barcode/{data}/login', [BarcodeController::class, 'showLogin'])->name('barcode.login');
 Route::post('/generate-barcode/{data}/login', [BarcodeController::class, 'login'])->name('barcode.login.submit');
+Route::get('/cash-ticket/{uid}', [BarcodeController::class, 'showCashTicket'])
+    ->middleware(['signed', 'throttle:30,1'])
+    ->name('cash.ticket.show');
 Route::get('/generate-barcode/{data}', [BarcodeController::class, 'generateBarcode'])->name('barcode.generate');
 
 Route::middleware(['auth'])->group(function () {

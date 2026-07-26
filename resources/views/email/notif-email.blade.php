@@ -56,14 +56,14 @@
     <hr>
     <div class="paragrap">
       <strong>Terimakasih telah membeli tiket {{$event->event}} melalui GOTIK</strong>
-      <p>Barcode dan kode ini bersifat privasi, jangan beritahu/berikan kepada orang lain.
+      <p>Link dan barcode ini bersifat rahasia. Jangan bagikan kepada orang lain.
         <br>
         Tunjukan barcode/kode kepada panitia untuk konfirmasi kehadiran.
       </p>
       <p>Tekan tombol dibawah untuk melihat detail tiket dan barcode anda!</p>
     </div>
     <div class="margin"></div>
-    <a href="{{ route('barcode.generate', $barcode) }}" style="  color:white;" class="button">
+    <a href="{{ $ticketUrl }}" style="  color:white;" class="button">
       Tunjukan Barcode
     </a>
     <div class="margin"></div>

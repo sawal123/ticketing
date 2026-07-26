@@ -112,7 +112,12 @@
     <div class="max-w-md w-full relative">
         <!-- Back Link -->
         <div class="mb-6 text-center">
-            <img src="{{ asset('storage/logo/' . $logo[0]->logo) }}" class="h-10 mx-auto opacity-80" alt="Logo">
+            @php($logoFile = $logo[0]->logo ?? null)
+            @if($logoFile)
+                <img src="{{ asset('storage/logo/' . $logoFile) }}" class="h-10 mx-auto opacity-80" alt="Logo">
+            @else
+                <div class="text-xl font-black tracking-[4px] mono text-[#f5c842]">GOTIK</div>
+            @endif
         </div>
 
         <div class="ticket-card relative z-10">
@@ -181,7 +186,8 @@
                     <div class="flex gap-3">
                         <span class="text-xl">⚠️</span>
                         <p class="text-[10px] leading-normal text-[#a098b5]">
-                            E-Ticket ini bersifat rahasia. Jangan membagikan QR Code atau nomor invoice kepada siapapun.
+                            Link dan barcode ini bersifat rahasia. Jangan bagikan kepada orang lain.
+                            Jangan membagikan QR Code atau nomor invoice kepada siapapun.
                             Pihak penyelenggara tidak bertanggung jawab atas penyalahgunaan tiket.
                         </p>
                     </div>

@@ -98,6 +98,28 @@ class BarcodeController extends Controller
         );
     }
 
+    public function showCashTicket(Request $request, string $uid)
+    {
+        $cart = Cart::query()
+            ->with(['cashBuyer', 'event', 'hargaCarts'])
+            ->where('uid', $uid)
+            ->where('payment_type', 'cash')
+            ->where('status', Cart::STATUS_SUCCESS)
+            ->first();
+
+        if (! $cart || ! $cart->cashBuyer || ! $cart->event || $cart->hargaCarts->isEmpty()) {
+            return $this->barcodeError('Tiket cash tidak ditemukan atau sudah tidak dapat diakses.', 404);
+        }
+
+        return view('barcode', [
+            'barcodeData' => QrCode::size(250)->generate($cart->invoice),
+            'invoice' => $cart->invoice,
+            'event' => $cart->event,
+            'hargaC' => $cart->hargaCarts,
+            'userBarcode' => $cart->cashBuyer,
+        ]);
+    }
+
     private function userOwnsInvoice(Cart $cart): bool
     {
         $user = Auth::user();
@@ -109,5 +131,12 @@ class BarcodeController extends Controller
         }
 
         return $user->uid === $cart->user_uid;
+    }
+
+    private function barcodeError(string $message, int $status)
+    {
+        return response()->view('barcode-error', [
+            'message' => $message,
+        ], $status);
     }
 }
