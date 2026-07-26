@@ -10,7 +10,17 @@ class Cash extends Model
 {
     use HasFactory;
     use SoftDeletes;
+
     protected $fillable = [
-        'uid','uid_partner', 'uid_user', 'uid_event','name', 'email', 'nomor',  'alamat', 'lahir', 'gender'
+        'uid',
+        'uid_partner',
+        'uid_user',
+        'uid_event',
+        'name',
+        'email',
+        'nomor',
+        'alamat',
+        'lahir',
+        'gender',
     ];
 }

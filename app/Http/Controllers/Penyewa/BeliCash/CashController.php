@@ -124,26 +124,6 @@ class CashController extends Controller
             'gender' => $gender,
         ]);
 
-        $cekEmail = User::where('email', $email)->first();
-        // dd($cekEmail);
-        if (! $cekEmail) {
-            $user = User::create([
-                'uid' => $str,
-                'name' => $nama,
-                'email' => $email,
-                'nomor' => $nomor,
-                'birthday' => $ttl,
-                'alamat' => $alamat,
-                'kota' => $alamat,
-                'gender' => $gender,
-                'gambar' => '',
-                'role' => User::USER_ROLE,
-                'password' => '12345678',
-            ]);
-        } else {
-            $user = $cekEmail;
-        }
-
         try {
             DB::beginTransaction();
             $cart->save();
@@ -153,7 +133,7 @@ class CashController extends Controller
             $cash->save();
             DB::commit();
 
-            $send = new sendEmailTrnsaksi($user, $cart, $invoice);
+            $send = new sendEmailTrnsaksi($email, $nama, $cart->uid, $invoice);
             dispatch($send);
 
             return redirect()->back()->with('success', 'Pembelian Cash Berhasil (Termasuk Pajak '.$pajakPersen.'%)');

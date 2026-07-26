@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Mail\CashNotifikasiMail;
+use App\Models\Cart;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -14,21 +15,29 @@ class sendEmailTrnsaksi implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public $user;
+    public string $recipientEmail;
 
-    public $carts;
+    public string $recipientName;
 
-    public $order_id;
+    public string $cartUid;
 
-    public function __construct($user, $carts, $order_id)
+    public string $barcode;
+
+    public function __construct(string $recipientEmail, string $recipientName, string $cartUid, string $barcode)
     {
-        $this->user = $user;
-        $this->carts = $carts;
-        $this->order_id = $order_id;
+        $this->recipientEmail = $recipientEmail;
+        $this->recipientName = $recipientName;
+        $this->cartUid = $cartUid;
+        $this->barcode = $barcode;
+        $this->afterCommit();
     }
 
     public function handle(): void
     {
-        Mail::to($this->user)->send(new CashNotifikasiMail($this->user, $this->carts, $this->order_id));
+        $cart = Cart::with('event')->where('uid', $this->cartUid)->firstOrFail();
+
+        Mail::to($this->recipientEmail)->send(
+            new CashNotifikasiMail($this->recipientName, $cart, $this->barcode)
+        );
     }
 }

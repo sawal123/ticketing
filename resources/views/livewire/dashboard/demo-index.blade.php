@@ -281,12 +281,14 @@
                                     <option value="">-- Pilih Tiket --</option>
                                     @foreach($availableTickets as $ticket)
                                         @php
-                                            $isSoldOut = ($ticket->remaining_stock ?? 0) < 1;
-                                            $isUnavailable = $ticket->status !== 'active' || $isSoldOut;
+                                            $remainingStock = (int) ($ticket['remaining_stock'] ?? 0);
+                                            $status = $ticket['status'] ?? 'inactive';
+                                            $isSoldOut = $remainingStock < 1;
+                                            $isUnavailable = $status !== 'active' || $isSoldOut;
                                         @endphp
-                                        <option value="{{ $ticket->id }}" @disabled($isUnavailable)>
-                                            {{ $ticket->kategori }} (Rp {{ number_format($ticket->harga) }})
-                                            - {{ $ticket->status !== 'active' ? 'Nonaktif' : ($isSoldOut ? 'Sold Out' : 'Sisa ' . number_format($ticket->remaining_stock)) }}
+                                        <option value="{{ $ticket['id'] }}" @disabled($isUnavailable)>
+                                            {{ $ticket['kategori'] }} (Rp {{ number_format($ticket['harga']) }})
+                                            - {{ $status !== 'active' ? 'Nonaktif' : ($isSoldOut ? 'Sold Out' : 'Sisa ' . number_format($remainingStock)) }}
                                         </option>
                                     @endforeach
                                 </select>

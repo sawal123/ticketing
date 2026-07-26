@@ -121,7 +121,7 @@
                 <tr>
                     <td>{{ \Carbon\Carbon::parse($trx->created_at)->format('d/m/y H:i') }}</td>
                     <td class="font-mono">{{ $trx->invoice }}</td>
-                    <td>{{ $trx->user_name }}</td>
+                    <td>{{ $trx->buyer_name }}</td>
                     <td>{{ $trx->kategori_harga }}</td>
                     <td>{{ $trx->quantity }}</td>
                     <td class="text-right">Rp {{ number_format($trx->harga_ticket, 0, ',', '.') }}</td>

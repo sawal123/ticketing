@@ -4,7 +4,6 @@ namespace App\Mail;
 
 use App\Models\Cart;
 use App\Models\Event;
-use App\Models\User;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Attachment;
@@ -18,12 +17,13 @@ class CashNotifikasiMail extends Mailable
 
     public $event;
 
-    public function __construct(protected User $user, protected Cart $cart, protected $barcode)
+    public function __construct(protected string $recipientName, protected Cart $cart, protected string $barcode)
     {
-        $this->user = $user;
         $this->cart = $cart;
         $this->barcode = $barcode;
-        $this->event = Event::where('uid', $this->cart->event_uid)->select('event')->firstOrFail();
+        $this->event = $this->cart->relationLoaded('event') && $this->cart->event
+            ? $this->cart->event
+            : Event::where('uid', $this->cart->event_uid)->select('event')->firstOrFail();
     }
 
     public function envelope(): Envelope
@@ -38,7 +38,7 @@ class CashNotifikasiMail extends Mailable
         return new Content(
             view: 'email.notif-email',
             with: [
-                'name' => $this->user->name,
+                'name' => $this->recipientName,
                 'cart' => $this->cart->invoice,
                 'barcode' => $this->barcode,
                 'event' => $this->event,

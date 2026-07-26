@@ -2,10 +2,14 @@
 
 namespace App\Livewire\Dashboard;
 
+use App\Jobs\sendEmailETransaksi;
+use App\Jobs\sendEmailTrnsaksi;
+use App\Models\Cash;
 use App\Models\Event;
 use App\Models\Cart;
 use App\Models\Harga;
 use App\Models\HargaCart;
+use App\Models\User;
 use Livewire\Component;
 use Livewire\Attributes\Layout;
 use Livewire\WithPagination;
@@ -187,7 +191,12 @@ class EventDetail extends Component
                 $q->where(function($sub) {
                     $sub->where('carts.invoice', 'like', '%' . $this->searchTransaction . '%')
                       ->orWhereHas('users', function ($u) {
-                          $u->where('name', 'like', '%' . $this->searchTransaction . '%');
+                          $u->where('name', 'like', '%' . $this->searchTransaction . '%')
+                            ->orWhere('email', 'like', '%' . $this->searchTransaction . '%');
+                      })
+                      ->orWhereHas('cashBuyer', function ($cash) {
+                          $cash->where('name', 'like', '%' . $this->searchTransaction . '%')
+                            ->orWhere('email', 'like', '%' . $this->searchTransaction . '%');
                       });
                 });
             });
@@ -201,12 +210,13 @@ class EventDetail extends Component
     {
         $query = DB::table('carts')
             ->join('users', 'users.uid', '=', 'carts.user_uid')
+            ->leftJoin('cashes', 'cashes.uid', '=', 'carts.uid')
             ->join('harga_carts', 'harga_carts.uid', '=', 'carts.uid')
             ->select([
                 'carts.created_at',
                 'carts.invoice',
-                'users.name as user_name',
-                'users.email as user_email',
+                DB::raw("CASE WHEN carts.payment_type = 'cash' THEN COALESCE(cashes.name, 'Data Pembeli Tidak Ditemukan') ELSE users.name END as buyer_name"),
+                DB::raw("CASE WHEN carts.payment_type = 'cash' THEN COALESCE(cashes.email, '-') ELSE users.email END as buyer_email"),
                 'harga_carts.kategori_harga',
                 'harga_carts.quantity',
                 'harga_carts.harga_ticket',
@@ -242,7 +252,10 @@ class EventDetail extends Component
         if ($this->searchTransaction) {
             $query->where(function($q) {
                 $q->where('carts.invoice', 'like', '%' . $this->searchTransaction . '%')
-                  ->orWhere('users.name', 'like', '%' . $this->searchTransaction . '%');
+                  ->orWhere('users.name', 'like', '%' . $this->searchTransaction . '%')
+                  ->orWhere('users.email', 'like', '%' . $this->searchTransaction . '%')
+                  ->orWhere('cashes.name', 'like', '%' . $this->searchTransaction . '%')
+                  ->orWhere('cashes.email', 'like', '%' . $this->searchTransaction . '%');
             });
         }
 
@@ -271,8 +284,8 @@ class EventDetail extends Component
                 fputcsv($file, [
                     $row->created_at,
                     $row->invoice,
-                    $row->user_name,
-                    $row->user_email,
+                    $row->buyer_name,
+                    $row->buyer_email,
                     $row->kategori_harga,
                     $row->quantity,
                     $row->harga_ticket,
@@ -457,7 +470,7 @@ class EventDetail extends Component
         $transactions = [];
         if ($this->activeTab === 'transaksi') {
             $transactions = Cart::query()
-                ->with(['users'])
+                ->with(['users', 'cashBuyer'])
                 ->withSum(['hargaCarts as total_qty' => function($q) {
                     $q->whereNull('deleted_at');
                 }], 'quantity')
@@ -474,7 +487,7 @@ class EventDetail extends Component
         $voucherCode = null;
         
         if ($this->selectedTransactionId) {
-            $selectedTransaction = Cart::with(['users', 'hargaCarts.masterHarga'])->where('uid', $this->selectedTransactionId)->first();
+            $selectedTransaction = Cart::with(['users', 'cashBuyer', 'hargaCarts.masterHarga'])->where('uid', $this->selectedTransactionId)->first();
             
             if ($selectedTransaction) {
                 $hargaCartWithVoucher = $selectedTransaction->hargaCarts->whereNotNull('voucher')->first();
@@ -522,7 +535,7 @@ class EventDetail extends Component
         $uid = $this->resendEmailUid;
         if (!$uid) return;
 
-        $cart = Cart::where('uid', $uid)->first();
+        $cart = Cart::with(['users', 'cashBuyer'])->where('uid', $uid)->first();
         if (!$cart) return;
 
         if ($cart->status !== 'SUCCESS') {
@@ -534,17 +547,22 @@ class EventDetail extends Component
 
         try {
             if ($cart->payment_type === 'cash') {
-                $cash = \App\Models\Cash::where('uid', $uid)->first();
+                $cash = $cart->cashBuyer;
                 if ($cash) {
-                    dispatch(new \App\Jobs\sendEmailTrnsaksi($cash->email, $cash->name, $barcode));
+                    if (! filter_var($cash->email, FILTER_VALIDATE_EMAIL)) {
+                        session()->flash('error', 'Email pembeli cash tidak valid atau kosong.');
+                        return;
+                    }
+
+                    dispatch(new sendEmailTrnsaksi($cash->email, $cash->name, $cart->uid, $barcode));
                 } else {
                      session()->flash('error', 'Data pembeli tunai tidak ditemukan.');
                      return;
                 }
             } else {
-                $user = \App\Models\User::where('uid', $cart->user_uid)->first();
+                $user = $cart->users;
                 if ($user) {
-                    dispatch(new \App\Jobs\sendEmailETransaksi($user, $cart, $barcode));
+                    dispatch(new sendEmailETransaksi($user, $cart, $barcode));
                 } else {
                     session()->flash('error', 'Data pembeli tidak ditemukan.');
                     return;
@@ -553,7 +571,7 @@ class EventDetail extends Component
 
             $this->dispatch('close-modal', name: 'resend-email-modal');
             $this->resendEmailUid = null;
-            session()->flash('message', 'Barcode tiket berhasil dikirim ulang ke email pembeli.');
+            session()->flash('message', 'Email barcode telah dijadwalkan untuk dikirim.');
         } catch (\Exception $e) {
             session()->flash('error', 'Gagal mengirim email: ' . $e->getMessage());
         }

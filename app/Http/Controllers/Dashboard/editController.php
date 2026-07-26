@@ -374,7 +374,7 @@ class editController extends Controller
         if ($request->status === "SUCCESS") {
             if ($carts->payment_type === 'cash') {
                 // Mail::to($cash->email)->send(new CashNotifikasiMail($cash->name,  $barcode));
-                $send = new sendEmailTrnsaksi($cash->email, $cash->name, $barcode);
+                $send = new sendEmailTrnsaksi($cash->email, $cash->name, $carts->uid, $carts->invoice);
                dispatch($send);
             } else {
                 // Mail::to($user->email)->send(new MidtransPaymentNotification($user, $carts, $barcode));

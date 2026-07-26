@@ -413,17 +413,26 @@
 
                     <x-admin.table title="Daftar Transaksi Terfilter" :headers="['User', 'Invoice', 'Qty', 'Status', 'Tanggal', 'Aksi']" :count="$transactions->total()">
                     @forelse($transactions as $trx)
+                        @php
+                            $buyer = $trx->payment_type === 'cash' ? $trx->cashBuyer : $trx->users;
+                            $buyerName = $trx->payment_type === 'cash'
+                                ? ($buyer->name ?? 'Data Pembeli Tidak Ditemukan')
+                                : ($buyer->name ?? 'Guest');
+                            $buyerEmail = $trx->payment_type === 'cash'
+                                ? ($buyer->email ?? '-')
+                                : ($buyer->email ?? '');
+                        @endphp
                         <tr class="table-row-hover transition-colors">
                             <td class="px-5 py-4 whitespace-nowrap">
                                 <div class="flex items-center gap-3">
                                     <div
                                         class="w-8 h-8 rounded-full bg-indigo-50 flex items-center justify-center text-xs font-bold text-indigo-600">
-                                        {{ substr($trx->users->name ?? '?', 0, 1) }}
+                                        {{ substr($buyerName, 0, 1) }}
                                     </div>
                                     <div class="flex flex-col">
                                         <span
-                                            class="font-medium text-slate-800 dark:text-white">{{ $trx->users->name ?? 'Guest' }}</span>
-                                        <span class="text-xs text-slate-500">{{ $trx->users->email ?? '' }}</span>
+                                            class="font-medium text-slate-800 dark:text-white">{{ $buyerName }}</span>
+                                        <span class="text-xs text-slate-500">{{ $buyerEmail }}</span>
                                     </div>
                                 </div>
                             </td>
@@ -613,6 +622,18 @@
 
         <div wire:loading.remove wire:target="showTransactionDetail">
             @if($selectedTransaction)
+                @php
+                    $buyer = $selectedTransaction->payment_type === 'cash'
+                        ? $selectedTransaction->cashBuyer
+                        : $selectedTransaction->users;
+                    $buyerName = $selectedTransaction->payment_type === 'cash'
+                        ? ($buyer->name ?? 'Data Pembeli Tidak Ditemukan')
+                        : ($buyer->name ?? 'Guest');
+                    $buyerEmail = $selectedTransaction->payment_type === 'cash'
+                        ? ($buyer->email ?? '-')
+                        : ($buyer->email ?? 'N/A');
+                    $operator = $selectedTransaction->users;
+                @endphp
                 <div class="space-y-6">
                     <!-- Transaction Info -->
                     <div class="flex justify-between items-start border-b border-slate-100 dark:border-slate-700 pb-4">
@@ -634,12 +655,18 @@
                     <div class="flex items-center gap-4 bg-slate-50 dark:bg-slate-700/50 p-4 rounded-2xl">
                         <div
                             class="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold">
-                            {{ substr($selectedTransaction->users->name ?? '?', 0, 1) }}
+                            {{ substr($buyerName, 0, 1) }}
                         </div>
                         <div>
+                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Pembeli</p>
                             <p class="text-sm font-bold text-slate-800 dark:text-white">
-                                {{ $selectedTransaction->users->name ?? 'Guest' }}</p>
-                            <p class="text-xs text-slate-500">{{ $selectedTransaction->users->email ?? 'N/A' }}</p>
+                                {{ $buyerName }}</p>
+                            <p class="text-xs text-slate-500">{{ $buyerEmail }}</p>
+                            @if($selectedTransaction->payment_type === 'cash' && $operator)
+                                <p class="mt-2 text-[10px] text-slate-400">
+                                    Dibuat oleh: {{ $operator->name }} ({{ $operator->email }})
+                                </p>
+                            @endif
                         </div>
                     </div>
 

@@ -75,6 +75,11 @@ class Cart extends Model
         return $this->belongsTo(User::class, 'user_uid', 'uid');
     }
 
+    public function cashBuyer()
+    {
+        return $this->hasOne(Cash::class, 'uid', 'uid');
+    }
+
     public function event()
     {
         return $this->belongsTo(Event::class, 'event_uid', 'uid');
