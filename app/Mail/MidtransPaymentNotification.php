@@ -3,28 +3,29 @@
 namespace App\Mail;
 
 use App\Models\Cart;
-use App\Models\User;
 use App\Models\Event;
+use App\Models\User;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Mail\Mailables\Content;
-use Illuminate\Queue\SerializesModels;
-use Illuminate\Mail\Mailables\Envelope;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailables\Attachment;
+use Illuminate\Mail\Mailables\Content;
+use Illuminate\Mail\Mailables\Envelope;
+use Illuminate\Queue\SerializesModels;
 
 class MidtransPaymentNotification extends Mailable
 {
     use Queueable, SerializesModels;
 
-
     /**
      * Create a new message instance.
-     * @param \App\Models\User $user
-     * @param Cart $cart
+     *
+     * @param  User  $user
+     * @param  Cart  $cart
      */
     public $event;
+
+    public string $ticketUrl;
+
     public function __construct(protected User $user, protected Cart $cart, protected $barcode)
     {
         //
@@ -32,16 +33,18 @@ class MidtransPaymentNotification extends Mailable
         $this->cart = $cart;
         $this->barcode = $barcode;
         $this->event = Event::where('uid', $this->cart->event_uid)->select('event')->firstOrFail();
+        $this->ticketUrl = route('barcode.generate', [
+            'data' => $this->cart->invoice,
+        ]);
     }
 
     /**
      * Get the message envelope.
      */
-
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Barcode Verifikasi GOTIK - '.$this->event->event ,
+            subject: 'Barcode Verifikasi GOTIK - '.$this->event->event,
         );
     }
 
@@ -50,15 +53,14 @@ class MidtransPaymentNotification extends Mailable
      */
     public function content(): Content
     {
-        $user = Auth::user();
-
         return new Content(
             view: 'email.notif-email',
             with: [
                 'name' => $this->user->name,
                 'cart' => $this->cart->invoice,
                 'barcode' => $this->barcode,
-                'event'=> $this->event
+                'event' => $this->event,
+                'ticketUrl' => $this->ticketUrl,
             ],
         );
     }
@@ -66,7 +68,7 @@ class MidtransPaymentNotification extends Mailable
     /**
      * Get the attachments for the message.
      *
-     * @return array<int, \Illuminate\Mail\Mailables\Attachment>
+     * @return array<int, Attachment>
      */
     public function attachments(): array
     {
