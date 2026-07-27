@@ -31,7 +31,7 @@ class DemoIndex extends Component
     public $selectedEvent;
     public $availableTickets = [];
     public $selectedTickets = []; // Array of ['id' => id, 'name' => name, 'price' => price, 'qty' => 1, 'max_qty' => stock]
-    
+
     public $buyerName;
     public $buyerEmail;
     public $buyerBirthday;
@@ -61,7 +61,7 @@ class DemoIndex extends Component
         $this->selectedEvent = Event::where('uid', $uid)
             ->where('konfirmasi', '1')
             ->where('status', 'active')
-            ->when($user->role !== 'admin', fn ($query) => $query->where('user_uid', $ownerId))
+            ->when($user->role !== 'admin', fn($query) => $query->where('user_uid', $ownerId))
             ->firstOrFail();
         $this->loadAvailableTickets();
         $this->selectedTickets = [];
@@ -157,7 +157,7 @@ class DemoIndex extends Component
 
     public function getSubtotalProperty()
     {
-        return collect($this->selectedTickets)->sum(function($item) {
+        return collect($this->selectedTickets)->sum(function ($item) {
             return $item['price'] * $item['qty'];
         });
     }
@@ -197,13 +197,13 @@ class DemoIndex extends Component
                 $event = Event::where('uid', $this->selectedEventId)
                     ->where('konfirmasi', '1')
                     ->where('status', 'active')
-                    ->when($user->role !== 'admin', fn ($query) => $query->where('user_uid', $ownerId))
+                    ->when($user->role !== 'admin', fn($query) => $query->where('user_uid', $ownerId))
                     ->lockForUpdate()
                     ->firstOrFail();
 
                 $ticketIds = collect($this->selectedTickets)
                     ->pluck('id')
-                    ->map(fn ($id) => (int) $id)
+                    ->map(fn($id) => (int) $id)
                     ->unique()
                     ->sort()
                     ->values();
@@ -239,7 +239,7 @@ class DemoIndex extends Component
                     ];
                 }
 
-                $subtotal = collect($validatedTickets)->sum(fn ($item) => (int) $item['model']->harga * $item['qty']);
+                $subtotal = collect($validatedTickets)->sum(fn($item) => (int) $item['model']->harga * $item['qty']);
                 $quantity = collect($validatedTickets)->sum('qty');
                 $taxPercent = (int) ($event->fee ?? 0);
                 $tax = (int) round(($taxPercent / 100) * $subtotal);
@@ -360,7 +360,6 @@ class DemoIndex extends Component
             $this->selectedTickets = [];
             $this->loadAvailableTickets();
             $this->dispatch('open-modal', name: 'cash-transaction-success-modal');
-
         } catch (ValidationException $e) {
             $this->loadAvailableTickets();
             throw $e;
@@ -398,8 +397,8 @@ class DemoIndex extends Component
         }
 
         return redirect()->to(route('dashboard.event.detail', $this->cashTransactionResult['event_uid'])
-            .'?activeTab=transaksi&filterPayment=cash&searchTransaction='
-            .urlencode($this->cashTransactionResult['invoice']));
+            . '?activeTab=transaksi&filterPayment=cash&searchTransaction='
+            . urlencode($this->cashTransactionResult['invoice']));
     }
 
     public function closeCashTransactionSuccess()
@@ -412,7 +411,7 @@ class DemoIndex extends Component
     {
         $this->availableTickets = Harga::where('uid', $this->selectedEventId)
             ->get()
-            ->map(fn (Harga $ticket) => [
+            ->map(fn(Harga $ticket) => [
                 'id' => $ticket->id,
                 'kategori' => $ticket->kategori,
                 'harga' => (int) $ticket->harga,
@@ -454,7 +453,7 @@ class DemoIndex extends Component
     protected function generateCashInvoice(): string
     {
         do {
-            $invoice = 'CASH-'.now()->format('Ymd').Str::upper(Str::random(10));
+            $invoice = 'CASH-' . now()->format('Ymd') . Str::upper(Str::random(10));
         } while (Cart::where('invoice', $invoice)->exists());
 
         return $invoice;
@@ -502,9 +501,9 @@ class DemoIndex extends Component
 
         $queryBase = HargaCart::join('carts', 'carts.uid', '=', 'harga_carts.uid')
             ->join('events', 'events.uid', '=', 'carts.event_uid')
-            ->leftJoin('vouchers', function($join) {
+            ->leftJoin('vouchers', function ($join) {
                 $join->on('vouchers.code', '=', 'harga_carts.voucher')
-                     ->on('vouchers.event_uid', '=', 'events.uid');
+                    ->on('vouchers.event_uid', '=', 'events.uid');
             })
             ->where('carts.status', 'SUCCESS');
 
@@ -514,13 +513,23 @@ class DemoIndex extends Component
 
         // STATISTIK UTAMA
         $stats = (clone $queryBase)->select(
-            DB::raw("SUM($rumusDasar) as total_omset"),
-            DB::raw("SUM(harga_carts.quantity) as total_tiket")
+            DB::raw("SUM($rumusDasar) as total_omset")
         )->first();
+
+        $totalTiketQuery = HargaCart::join('carts', 'carts.uid', '=', 'harga_carts.uid')
+            ->join('events', 'events.uid', '=', 'carts.event_uid')
+            ->where('carts.status', 'SUCCESS')
+            ->whereNull('carts.deleted_at');
+
+        if (!$isAdmin) {
+            $totalTiketQuery->where('events.user_uid', $ownerId);
+        }
+
+        $totalTiket = $totalTiketQuery->sum('harga_carts.quantity');
 
         $totalTransaksiQuery = Cart::where('status', 'SUCCESS');
         if (!$isAdmin) {
-            $totalTransaksiQuery->whereHas('event', function($q) use ($ownerId) {
+            $totalTransaksiQuery->whereHas('event', function ($q) use ($ownerId) {
                 $q->where('user_uid', $ownerId);
             });
         }
@@ -554,10 +563,10 @@ class DemoIndex extends Component
             ->get()
             ->keyBy('date');
 
-        $chartLabels = $last7Days->map(fn ($date) => Carbon::parse($date)->format('d M'))->toArray();
-        $chartRevenue = $last7Days->map(fn ($date) => (int) ($dailyData->has($date) ? $dailyData[$date]->revenue : 0))->toArray();
-        $chartCashQty = $last7Days->map(fn ($date) => (int) ($dailyData->has($date) ? $dailyData[$date]->cash_qty : 0))->toArray();
-        $chartNonCashQty = $last7Days->map(fn ($date) => (int) ($dailyData->has($date) ? $dailyData[$date]->noncash_qty : 0))->toArray();
+        $chartLabels = $last7Days->map(fn($date) => Carbon::parse($date)->format('d M'))->toArray();
+        $chartRevenue = $last7Days->map(fn($date) => (int) ($dailyData->has($date) ? $dailyData[$date]->revenue : 0))->toArray();
+        $chartCashQty = $last7Days->map(fn($date) => (int) ($dailyData->has($date) ? $dailyData[$date]->cash_qty : 0))->toArray();
+        $chartNonCashQty = $last7Days->map(fn($date) => (int) ($dailyData->has($date) ? $dailyData[$date]->noncash_qty : 0))->toArray();
 
         // GENDER & AGE DEMOGRAPHICS
         $demographics = (clone $queryBase)
@@ -581,16 +590,16 @@ class DemoIndex extends Component
         $genderStats = [
             'pria' => $demographics->where('gender', 'pria')->count(),
             'wanita' => $demographics->where('gender', 'wanita')->count(),
-            'age_18_25' => $demographics->filter(fn ($item) => $item->age !== null && $item->age >= 18 && $item->age <= 25)->count(),
-            'age_gt_25' => $demographics->filter(fn ($item) => $item->age !== null && $item->age > 25)->count(),
-            'age_lt_18' => $demographics->filter(fn ($item) => $item->age !== null && $item->age < 18)->count(),
+            'age_18_25' => $demographics->filter(fn($item) => $item->age !== null && $item->age >= 18 && $item->age <= 25)->count(),
+            'age_gt_25' => $demographics->filter(fn($item) => $item->age !== null && $item->age > 25)->count(),
+            'age_lt_18' => $demographics->filter(fn($item) => $item->age !== null && $item->age < 18)->count(),
         ];
 
         return view('livewire.dashboard.demo-index', [
             'title' => 'Dashboard Overview',
             'stats' => [
                 'omset' => $stats->total_omset ?? 0,
-                'tiket' => $stats->total_tiket ?? 0,
+                'tiket' => $totalTiket,
                 'transaksi' => $totalTransaksi,
                 'total_event' => $totalEventCount,
                 'event_aktif' => $eventAktifCount,

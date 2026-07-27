@@ -15,6 +15,7 @@ use App\Models\Event;
 use App\Models\Harga;
 use App\Models\HargaCart;
 use App\Models\User;
+use App\Models\Voucher;
 use Illuminate\Contracts\Bus\Dispatcher as BusDispatcher;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
@@ -514,6 +515,42 @@ class DashboardCashCheckoutTest extends TestCase
         $this->assertSame(1, $gender['age_18_25']);
         $this->assertSame(1, $gender['age_gt_25']);
         $this->assertSame(0, $gender['age_lt_18']);
+    }
+
+    public function test_dashboard_ticket_total_is_not_duplicated_by_matching_vouchers(): void
+    {
+        $operator = $this->user(['role' => 'penyewa']);
+        $buyer = $this->user(['role' => 'user']);
+        $event = $this->event(['user_uid' => $operator->uid]);
+        $harga = $this->harga($event);
+        $cart = $this->onlineTransaction($buyer, $event, $harga);
+
+        HargaCart::where('uid', $cart->uid)->update(['voucher' => 'PROMO']);
+
+        Voucher::create([
+            'uid' => 'voucher-1',
+            'event_uid' => $event->uid,
+            'code' => 'PROMO',
+            'unit' => 'rupiah',
+            'nominal' => 1000,
+            'max_disc' => 0,
+        ]);
+
+        Voucher::create([
+            'uid' => 'voucher-2',
+            'event_uid' => $event->uid,
+            'code' => 'PROMO',
+            'unit' => 'rupiah',
+            'nominal' => 1000,
+            'max_disc' => 0,
+        ]);
+
+        $stats = Livewire::actingAs($operator)
+            ->test(DemoIndex::class)
+            ->viewData('stats');
+
+        $this->assertSame(1, (int) $stats['tiket']);
+        $this->assertSame(1, (int) $stats['transaksi']);
     }
 
     public function test_cash_buyer_can_open_signed_ticket_url_without_login(): void
