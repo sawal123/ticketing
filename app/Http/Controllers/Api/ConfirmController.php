@@ -258,12 +258,14 @@ class ConfirmController extends Controller
                 'tiket_terjual' => Cart::selectRaw('COALESCE(SUM(harga_carts.quantity), 0)')
                     ->join('harga_carts', 'harga_carts.uid', '=', 'carts.uid')
                     ->whereColumn('carts.event_uid', 'events.uid')
+                    ->whereNull('harga_carts.deleted_at')
                     ->where('carts.status', 'SUCCESS'),
 
                 // Menghitung TOTAL TIKET TERVERIFIKASI (Sudah di-scan/Hadir)
                 'tiket_terverifikasi' => Cart::selectRaw('COALESCE(SUM(harga_carts.quantity), 0)')
                     ->join('harga_carts', 'harga_carts.uid', '=', 'carts.uid')
                     ->whereColumn('carts.event_uid', 'events.uid')
+                    ->whereNull('harga_carts.deleted_at')
                     ->where('carts.status', 'SUCCESS')
                     // PERHATIAN: Ganti 'Hadir' dengan string status yang kamu pakai saat tiket di-scan 
                     // (misal: 'Terverifikasi', 'Scanned', atau cek di kolom 'status'/'konfirmasi' kamu)

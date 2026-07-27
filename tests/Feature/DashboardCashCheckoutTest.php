@@ -24,6 +24,7 @@ use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
+use Laravel\Sanctum\Sanctum;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -551,6 +552,29 @@ class DashboardCashCheckoutTest extends TestCase
 
         $this->assertSame(1, (int) $stats['tiket']);
         $this->assertSame(1, (int) $stats['transaksi']);
+    }
+
+    public function test_api_list_event_ticket_totals_ignore_soft_deleted_ticket_items(): void
+    {
+        $operator = $this->user(['role' => 'penyewa']);
+        $buyer = $this->user(['role' => 'user']);
+        $event = $this->event(['user_uid' => $operator->uid, 'event' => 'API Soft Delete Event']);
+        $harga = $this->harga($event);
+        $cart = $this->onlineTransaction($buyer, $event, $harga, [
+            'konfirmasi' => '1',
+        ]);
+
+        $this->hargaCart($cart, $harga, 2)->delete();
+
+        Sanctum::actingAs($operator);
+
+        $response = $this->getJson('/api/listEvent')
+            ->assertOk()
+            ->json('data.0');
+
+        $this->assertSame($event->uid, $response['uid']);
+        $this->assertSame(1, (int) $response['tiket_terjual']);
+        $this->assertSame(1, (int) $response['tiket_terverifikasi']);
     }
 
     public function test_cash_buyer_can_open_signed_ticket_url_without_login(): void
