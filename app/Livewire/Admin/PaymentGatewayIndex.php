@@ -2,42 +2,53 @@
 
 namespace App\Livewire\Admin;
 
-use Livewire\Component;
-
+use App\Models\Cart;
 use App\Models\PaymentGateway;
-use Livewire\WithPagination;
-use Livewire\WithFileUploads;
+use App\Services\SecureImageStorage;
 use Illuminate\Support\Str;
-use Illuminate\Support\Facades\Storage;
+use Livewire\Component;
+use Livewire\WithFileUploads;
+use Livewire\WithPagination;
 
 class PaymentGatewayIndex extends Component
 {
-    use WithPagination, WithFileUploads;
+    use WithFileUploads, WithPagination;
 
     public $search = '';
+
     public $editingId = null;
+
     public $isModalOpen = false;
 
     // Form fields
     public $payment;
+
     public $category;
+
     public $biaya;
+
     public $biaya_type = 'rupiah';
+
     public $icon;
+
     public $currentIcon;
+
     public $is_active = true;
 
     // Delete confirmation
     public $deletingId = null;
 
-    protected $rules = [
-        'payment' => 'required|string|max:100',
-        'category' => 'required|string',
-        'biaya' => 'required|numeric',
-        'biaya_type' => 'required|in:rupiah,persen',
-        'icon' => 'nullable|image|max:2048',
-        'is_active' => 'boolean',
-    ];
+    protected function rules(): array
+    {
+        return [
+            'payment' => 'required|string|max:100',
+            'category' => 'required|string',
+            'biaya' => 'required|numeric',
+            'biaya_type' => 'required|in:rupiah,persen',
+            'icon' => SecureImageStorage::rules(),
+            'is_active' => 'boolean',
+        ];
+    }
 
     public function updatedSearch()
     {
@@ -75,7 +86,7 @@ class PaymentGatewayIndex extends Component
         $this->biaya_type = $gateway->biaya_type;
         $this->currentIcon = $gateway->icon;
         $this->is_active = $gateway->is_active;
-        
+
         $this->isModalOpen = true;
         $this->dispatch('open-modal', name: 'payment-gateway-modal');
     }
@@ -93,11 +104,10 @@ class PaymentGatewayIndex extends Component
             'slug' => Str::slug($this->payment),
         ];
 
+        $oldIcon = null;
         if ($this->icon) {
-            if ($this->editingId && $this->currentIcon) {
-                Storage::disk('public')->delete($this->currentIcon);
-            }
-            $data['icon'] = $this->icon->store('payment-icons', 'public');
+            $oldIcon = $this->editingId ? $this->currentIcon : null;
+            $data['icon'] = app(SecureImageStorage::class)->store($this->icon, 'payment-icons');
         }
 
         if ($this->editingId) {
@@ -108,6 +118,9 @@ class PaymentGatewayIndex extends Component
             session()->flash('message', 'Payment Gateway berhasil ditambahkan.');
         }
 
+        app(SecureImageStorage::class)->delete('payment-icons', $oldIcon);
+        app(SecureImageStorage::class)->delete('icon_payment', $oldIcon);
+
         $this->dispatch('close-modal', name: 'payment-gateway-modal');
         $this->resetFields();
     }
@@ -115,7 +128,7 @@ class PaymentGatewayIndex extends Component
     public function toggleStatus($id)
     {
         $gateway = PaymentGateway::findOrFail($id);
-        $gateway->is_active = !$gateway->is_active;
+        $gateway->is_active = ! $gateway->is_active;
         $gateway->save();
         session()->flash('message', 'Status berhasil diperbarui.');
     }
@@ -124,10 +137,10 @@ class PaymentGatewayIndex extends Component
     {
         $this->deletingId = $id;
         $gateway = PaymentGateway::findOrFail($id);
-        
+
         // Check if used in Cart
-        $inUse = \App\Models\Cart::where('payment_type', $gateway->slug)->exists();
-        
+        $inUse = Cart::where('payment_type', $gateway->slug)->exists();
+
         if ($inUse) {
             $this->dispatch('open-modal', name: 'cannot-delete-gateway-modal');
         } else {
@@ -139,18 +152,18 @@ class PaymentGatewayIndex extends Component
     {
         if ($this->deletingId) {
             $gateway = PaymentGateway::findOrFail($this->deletingId);
-            
+
             // double check
-            $inUse = \App\Models\Cart::where('payment_type', $gateway->slug)->exists();
+            $inUse = Cart::where('payment_type', $gateway->slug)->exists();
             if ($inUse) {
                 session()->flash('error', 'Gagal: Payment Gateway ini memiliki riwayat transaksi dan tidak dapat dihapus.');
                 $this->dispatch('close-modal', name: 'delete-gateway-modal');
+
                 return;
             }
 
-            if ($gateway->icon) {
-                Storage::disk('public')->delete($gateway->icon);
-            }
+            app(SecureImageStorage::class)->delete('payment-icons', $gateway->icon);
+            app(SecureImageStorage::class)->delete('icon_payment', $gateway->icon);
             $gateway->delete();
             $this->dispatch('close-modal', name: 'delete-gateway-modal');
             $this->deletingId = null;
@@ -160,14 +173,14 @@ class PaymentGatewayIndex extends Component
 
     public function render()
     {
-        $gateways = PaymentGateway::where('payment', 'like', '%' . $this->search . '%')
-            ->orWhere('category', 'like', '%' . $this->search . '%')
+        $gateways = PaymentGateway::where('payment', 'like', '%'.$this->search.'%')
+            ->orWhere('category', 'like', '%'.$this->search.'%')
             ->orderBy('category')
             ->orderBy('payment')
             ->paginate(10);
 
         return view('livewire.admin.payment-gateway-index', [
-            'gateways' => $gateways
+            'gateways' => $gateways,
         ])->layout('admin.layout', ['title' => 'Payment Gateway']);
     }
 }

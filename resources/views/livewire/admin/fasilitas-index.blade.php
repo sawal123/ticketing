@@ -108,12 +108,12 @@
                     Upload Ikon (SVG/PNG)
                 </label>
                 <div class="relative group">
-                    <input type="file" wire:model="icon_file" id="icon_file" class="hidden" accept=".png,.jpg,.jpeg,.svg">
+                    <input type="file" wire:model="icon_file" id="icon_file" class="hidden" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp">
                     <label for="icon_file" class="flex flex-col items-center justify-center w-full h-32 px-4 transition bg-slate-50 dark:bg-slate-900/50 border-2 border-slate-200 dark:border-slate-700 border-dashed rounded-2xl cursor-pointer hover:bg-indigo-50/50 dark:hover:bg-indigo-900/10 hover:border-indigo-400 dark:hover:border-indigo-500 transition-all duration-200">
                         @if($icon_file)
                             <div class="flex flex-col items-center gap-2">
                                 <img src="{{ $icon_file->temporaryUrl() }}" class="w-12 h-12 object-contain">
-                                <span class="text-xs text-indigo-600 font-medium">{{ $icon_file->getClientOriginalName() }}</span>
+                                <span class="text-xs text-indigo-600 font-medium">Gambar siap diunggah dan dikonversi</span>
                             </div>
                         @elseif($isEditMode && $icon)
                             <div class="flex flex-col items-center gap-2">

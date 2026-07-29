@@ -3,30 +3,37 @@
 namespace App\Livewire\Admin;
 
 use App\Models\Fasilitas;
+use App\Services\SecureImageStorage;
 use Illuminate\Support\Facades\DB;
-use Livewire\Component;
-use Livewire\WithPagination;
-use Livewire\WithFileUploads;
 use Livewire\Attributes\Layout;
-use Illuminate\Support\Facades\Storage;
+use Livewire\Component;
+use Livewire\WithFileUploads;
+use Livewire\WithPagination;
 
 class FasilitasIndex extends Component
 {
-    use WithPagination, WithFileUploads;
+    use WithFileUploads, WithPagination;
 
     #[Layout('admin.layout', ['title' => 'Master Fasilitas'])]
-
     public $search = '';
+
     public $fasilitas_id;
+
     public $name;
+
     public $icon; // This will store the path in DB
+
     public $icon_file; // This will handle the upload
+
     public $isEditMode = false;
 
-    protected $rules = [
-        'name' => 'required|string|max:255|unique:fasilitas,name',
-        'icon_file' => 'nullable|image|mimes:png,jpg,jpeg,svg,webp|max:1024',
-    ];
+    protected function rules(): array
+    {
+        return [
+            'name' => 'required|string|max:255|unique:fasilitas,name',
+            'icon_file' => SecureImageStorage::rules(),
+        ];
+    }
 
     public function resetForm()
     {
@@ -53,11 +60,11 @@ class FasilitasIndex extends Component
 
     public function save()
     {
-        $rules = $this->rules;
+        $rules = $this->rules();
         if ($this->isEditMode) {
-            $rules['name'] = 'required|string|max:255|unique:fasilitas,name,' . $this->fasilitas_id;
+            $rules['name'] = 'required|string|max:255|unique:fasilitas,name,'.$this->fasilitas_id;
         } else {
-            $rules['icon_file'] = 'required|image|mimes:png,jpg,jpeg,svg,webp|max:1024';
+            $rules['icon_file'] = SecureImageStorage::rules(true);
         }
 
         $this->validate($rules);
@@ -66,14 +73,10 @@ class FasilitasIndex extends Component
             'name' => $this->name,
         ];
 
+        $oldIcon = null;
         if ($this->icon_file) {
-            // Delete old icon if exists
-            if ($this->isEditMode && $this->icon && Storage::disk('public')->exists($this->icon)) {
-                Storage::disk('public')->delete($this->icon);
-            }
-            
-            $path = $this->icon_file->store('fasilitas', 'public');
-            $data['icon'] = $path;
+            $oldIcon = $this->isEditMode ? $this->icon : null;
+            $data['icon'] = app(SecureImageStorage::class)->store($this->icon_file, 'fasilitas');
         }
 
         if ($this->isEditMode) {
@@ -83,6 +86,8 @@ class FasilitasIndex extends Component
             Fasilitas::create($data);
             session()->flash('success', 'Fasilitas berhasil ditambahkan.');
         }
+
+        app(SecureImageStorage::class)->delete('fasilitas', $oldIcon);
 
         $this->dispatch('close-modal', name: 'fasilitas-modal');
         $this->resetForm();
@@ -95,6 +100,7 @@ class FasilitasIndex extends Component
 
         if ($count > 0) {
             session()->flash('error', "Fasilitas tidak dapat dihapus karena sedang digunakan oleh $count event.");
+
             return;
         }
 
@@ -105,12 +111,8 @@ class FasilitasIndex extends Component
     public function delete()
     {
         $fasilitas = Fasilitas::findOrFail($this->fasilitas_id);
-        
-        // Delete file from storage
-        if ($fasilitas->icon && Storage::disk('public')->exists($fasilitas->icon)) {
-            Storage::disk('public')->delete($fasilitas->icon);
-        }
 
+        app(SecureImageStorage::class)->delete('fasilitas', $fasilitas->icon);
         $fasilitas->delete();
         $this->dispatch('close-modal', name: 'delete-modal');
         session()->flash('success', 'Fasilitas berhasil dihapus.');
@@ -118,12 +120,12 @@ class FasilitasIndex extends Component
 
     public function render()
     {
-        $fasilitas = Fasilitas::where('name', 'like', '%' . $this->search . '%')
+        $fasilitas = Fasilitas::where('name', 'like', '%'.$this->search.'%')
             ->latest()
             ->paginate(10);
 
         return view('livewire.admin.fasilitas-index', [
-            'fasilitas' => $fasilitas
+            'fasilitas' => $fasilitas,
         ]);
     }
 }

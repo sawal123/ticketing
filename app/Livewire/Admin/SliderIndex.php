@@ -3,7 +3,7 @@
 namespace App\Livewire\Admin;
 
 use App\Models\Slider;
-use Illuminate\Support\Facades\Storage;
+use App\Services\SecureImageStorage;
 use Illuminate\Support\Str;
 use Livewire\Component;
 use Livewire\WithFileUploads;
@@ -11,23 +11,33 @@ use Livewire\WithPagination;
 
 class SliderIndex extends Component
 {
-    use WithPagination, WithFileUploads;
+    use WithFileUploads, WithPagination;
 
     public $search = '';
+
     public $title;
+
     public $url;
+
     public $sort = 1;
+
     public $gambar;
+
     public $new_gambar;
+
     public $selectedUid;
+
     public $isEdit = false;
 
-    protected $rules = [
-        'title' => 'required|string|max:255',
-        'url' => 'nullable|string|max:255',
-        'sort' => 'required|integer|min:1',
-        'new_gambar' => 'nullable|image|max:2048', // 2MB Max
-    ];
+    protected function rules(): array
+    {
+        return [
+            'title' => 'required|string|max:255',
+            'url' => 'nullable|string|max:255',
+            'sort' => 'required|integer|min:1',
+            'new_gambar' => SecureImageStorage::rules(),
+        ];
+    }
 
     public function resetFields()
     {
@@ -51,8 +61,9 @@ class SliderIndex extends Component
     {
         $this->validate();
 
-        if (!$this->isEdit && !$this->new_gambar) {
+        if (! $this->isEdit && ! $this->new_gambar) {
             $this->addError('new_gambar', 'Gambar slider wajib diunggah.');
+
             return;
         }
 
@@ -62,20 +73,16 @@ class SliderIndex extends Component
             'sort' => $this->sort,
         ];
 
+        $oldImage = null;
         if ($this->new_gambar) {
-            // Delete old image if editing
-            if ($this->isEdit && $this->gambar) {
-                Storage::delete('public/slider/' . $this->gambar);
-            }
-
-            $fileName = 'slider_' . time() . '.' . $this->new_gambar->getClientOriginalExtension();
-            $this->new_gambar->storeAs('public/slider/', $fileName);
-            $data['gambar'] = $fileName;
+            $oldImage = $this->isEdit ? $this->gambar : null;
+            $data['gambar'] = app(SecureImageStorage::class)
+                ->storeBasename($this->new_gambar, 'slide');
         }
 
         if ($this->isEdit) {
             $item = Slider::where('uid', $this->selectedUid)->firstOrFail();
-            
+
             // Swap logic if sort changed
             if ($item->sort != $this->sort) {
                 $existing = Slider::where('sort', $this->sort)->first();
@@ -84,7 +91,7 @@ class SliderIndex extends Component
                     $existing->update(['sort' => $item->sort]);
                 }
             }
-            
+
             $item->update($data);
             $message = 'Slider berhasil diperbarui.';
         } else {
@@ -94,11 +101,14 @@ class SliderIndex extends Component
                 // Shift all subsequent sliders up to make room
                 Slider::where('sort', '>=', $this->sort)->increment('sort');
             }
-            
+
             $data['uid'] = Str::uuid();
             Slider::create($data);
             $message = 'Slider berhasil ditambahkan.';
         }
+
+        app(SecureImageStorage::class)->delete('slide', $oldImage);
+        app(SecureImageStorage::class)->delete('slider', $oldImage);
 
         $this->dispatch('close-modal', name: 'slider-modal');
         $this->resetFields();
@@ -154,9 +164,8 @@ class SliderIndex extends Component
     {
         $item = Slider::where('uid', $this->selectedUid)->first();
         if ($item) {
-            if ($item->gambar) {
-                Storage::delete('public/slider/' . $item->gambar);
-            }
+            app(SecureImageStorage::class)->delete('slide', $item->gambar);
+            app(SecureImageStorage::class)->delete('slider', $item->gambar);
             $item->delete();
         }
         $this->dispatch('close-modal', name: 'delete-modal');
@@ -165,12 +174,12 @@ class SliderIndex extends Component
 
     public function render()
     {
-        $sliders = Slider::where('title', 'like', '%' . $this->search . '%')
+        $sliders = Slider::where('title', 'like', '%'.$this->search.'%')
             ->orderBy('sort', 'asc')
             ->paginate(10);
 
         return view('livewire.admin.slider-index', [
-            'sliders' => $sliders
+            'sliders' => $sliders,
         ])->layout('admin.layout', ['title' => 'Manajemen Slider']);
     }
 }

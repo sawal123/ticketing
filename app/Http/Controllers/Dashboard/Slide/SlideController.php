@@ -2,16 +2,21 @@
 
 namespace App\Http\Controllers\Dashboard\Slide;
 
-use App\Models\Slider;
-use Illuminate\Support\Str;
-use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
+use App\Models\Slider;
+use App\Services\SecureImageStorage;
+use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class SlideController extends Controller
 {
+    public function __construct(private SecureImageStorage $images) {}
 
     public function addSlide(Request $request)
     {
+        $request->validate([
+            'gambar' => SecureImageStorage::rules(),
+        ]);
 
         $slide = Slider::orderBy('sort', 'desc')->first();
         if ($slide === null) {
@@ -27,44 +32,42 @@ class SlideController extends Controller
             'url' => $request->url,
         ]);
         if ($request->hasFile('gambar')) {
-            $file = $request->file('gambar');
-            $fileName = $slider['uid_outlet'] . '_' . time() . '_' . $file->getClientOriginalName();
-            $file->storeAs('public/slide/', $fileName); // Simpan di direktori 'public/outlet/'
-            $slider['gambar'] = $fileName; // Simpan nama file gambar di kolom 'gambar' pada tabel
+            $slider['gambar'] = $this->images->storeBasename($request->file('gambar'), 'slide');
         }
         $slider->save();
+
         return redirect()->back()->with('addSlide', 'Slide Berhasil Ditambah..');
     }
+
     public function deleteSlide($uid)
     {
 
         $slide = Slider::where('uid', $uid)->first();
-        $imagePath = public_path() . '/storage/slide/' . $slide->gambar;
-        if (file_exists($imagePath) === true) {
-            unlink($imagePath);
-        }
+        $this->images->delete('slide', $slide->gambar);
         $slide->delete();
+
         return redirect()->back()->with('deleteSlide', 'Slide Berhasil Dihapus');
     }
 
     public function editSlide(Request $request)
     {
+        $request->validate([
+            'gambar' => SecureImageStorage::rules(),
+        ]);
+
         $slide = Slider::where('uid', $request->uid)->first();
         $slide->uid = $request->uid;
         $slide->title = $request->title;
         $slide->url = $request->url;
         $slide->sort = $request->sort;
+        $oldImage = null;
         if ($request->hasFile('gambar')) {
-            $imagePath = public_path() . '/storage/slide/' . $slide->gambar;
-            if (file_exists($imagePath) === true) {
-                unlink($imagePath);
-            }
-            $file = $request->file('gambar');
-            $fileName = $slide->uid . '_' . time() . '_' . $file->getClientOriginalName();
-            $file->storeAs('public/slide/', $fileName);
-            $slide->gambar = $fileName;
+            $oldImage = $slide->gambar;
+            $slide->gambar = $this->images->storeBasename($request->file('gambar'), 'slide');
         }
         $slide->save();
+        $this->images->delete('slide', $oldImage);
+
         return redirect()->back()->with('editSlide', 'Slide Berhasil Diubah');
     }
 }

@@ -138,12 +138,12 @@
                         @if ($new_gambar)
                             <img src="{{ $new_gambar->temporaryUrl() }}" class="max-h-48 rounded-lg shadow-md mb-4 object-cover">
                         @elseif ($gambar)
-                            <img src="{{ asset('storage/slider/' . $this->gambar) }}" class="max-h-48 rounded-lg shadow-md mb-4 object-cover">
+                            <img src="{{ asset('storage/slide/' . $this->gambar) }}" class="max-h-48 rounded-lg shadow-md mb-4 object-cover">
                         @else
                             <i data-lucide="upload-cloud" class="w-12 h-12 text-slate-300 mb-2"></i>
                         @endif
                         
-                        <input type="file" wire:model="new_gambar" id="slider-upload" class="hidden" accept="image/*">
+                        <input type="file" wire:model="new_gambar" id="slider-upload" class="hidden" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp">
                         <label for="slider-upload" class="px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-bold cursor-pointer hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200 dark:shadow-none">
                             {{ ($new_gambar || $gambar) ? 'Ganti Gambar' : 'Pilih Gambar' }}
                         </label>

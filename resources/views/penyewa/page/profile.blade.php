@@ -234,7 +234,7 @@
                             <div class="form-group mb-0">
                                 <label for="gambarProfile" class="form-label">Update Foto Profil (Opsional)</label>
                                 <input type="file" class="form-control" id="gambarProfile"
-                                    name="img" accept="image/png, image/jpeg, image/jpg">
+                                    name="img" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp">
                                 <small class="text-muted">Format: JPG, JPEG, PNG. Maksimal ukuran 2MB.</small>
                             </div>
                         </div>

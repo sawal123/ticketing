@@ -75,7 +75,7 @@
                                 </div>
                                 <label for="profile-photo" class="absolute bottom-0 right-0 w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center text-white cursor-pointer hover:bg-indigo-700 transition-colors shadow-lg">
                                     <i data-lucide="camera" class="w-4 h-4"></i>
-                                    <input type="file" id="profile-photo" wire:model="new_gambar" class="hidden" accept="image/*">
+                                    <input type="file" id="profile-photo" wire:model="new_gambar" class="hidden" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp">
                                 </label>
                             </div>
                             <div class="flex-1 text-center md:text-left">

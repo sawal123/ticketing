@@ -5,9 +5,9 @@ namespace App\Livewire\Dashboard;
 use App\Models\Bank;
 use App\Models\BankIndonesia;
 use App\Models\User;
+use App\Services\SecureImageStorage;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Storage;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 
@@ -18,17 +18,46 @@ class SettingsIndex extends Component
     public $activeTab = 'profile';
 
     // Profile Fields
-    public $name, $email, $nomor, $birthday, $alamat, $kota, $gender, $gambar;
+    public $name;
+
+    public $email;
+
+    public $nomor;
+
+    public $birthday;
+
+    public $alamat;
+
+    public $kota;
+
+    public $gender;
+
+    public $gambar;
+
     public $new_gambar;
 
     // Password Fields
-    public $current_password, $new_password, $new_password_confirmation;
+    public $current_password;
+
+    public $new_password;
+
+    public $new_password_confirmation;
 
     // Bank Fields
     public $banks = [];
-    public $bank_id, $nama_rekening, $bank_name, $nomor_rekening;
+
+    public $bank_id;
+
+    public $nama_rekening;
+
+    public $bank_name;
+
+    public $nomor_rekening;
+
     public $deletingBankId;
+
     public $isEditBank = false;
+
     public $available_banks = [];
 
     protected $listeners = ['refreshBanks' => 'loadBanks'];
@@ -71,13 +100,13 @@ class SettingsIndex extends Component
     {
         $this->validate([
             'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email,' . Auth::id(),
+            'email' => 'required|email|unique:users,email,'.Auth::id(),
             'nomor' => 'required|numeric',
             'birthday' => 'nullable|date',
             'gender' => 'nullable|string',
             'kota' => 'nullable|string',
             'alamat' => 'nullable|string',
-            'new_gambar' => 'nullable|image|max:2048',
+            'new_gambar' => SecureImageStorage::rules(),
         ]);
 
         $user = User::find(Auth::id());
@@ -89,19 +118,17 @@ class SettingsIndex extends Component
         $user->kota = $this->kota;
         $user->alamat = $this->alamat;
 
+        $oldImage = null;
         if ($this->new_gambar) {
-            if ($user->gambar && Storage::exists('public/user/' . $user->gambar)) {
-                Storage::delete('public/user/' . $user->gambar);
-            }
-
-            $fileName = $user->uid . '_' . time() . '.' . $this->new_gambar->getClientOriginalExtension();
-            $this->new_gambar->storeAs('public/user/', $fileName);
-            $user->gambar = $fileName;
-            $this->gambar = $fileName;
+            $oldImage = $user->gambar;
+            $user->gambar = app(SecureImageStorage::class)->storeBasename($this->new_gambar, 'user');
+            $this->gambar = $user->gambar;
             $this->new_gambar = null;
         }
 
         $user->save();
+        app(SecureImageStorage::class)->delete('user', $oldImage);
+
         session()->flash('success', 'Profil berhasil diperbarui.');
     }
 
@@ -114,8 +141,9 @@ class SettingsIndex extends Component
 
         $user = Auth::user();
 
-        if (!Hash::check($this->current_password, $user->password)) {
+        if (! Hash::check($this->current_password, $user->password)) {
             $this->addError('current_password', 'Password saat ini salah.');
+
             return;
         }
 
@@ -161,10 +189,11 @@ class SettingsIndex extends Component
             if ($bank && $bank->nama && $bank->bank && $bank->norek) {
                 session()->flash('error', 'Maksimal hanya diperbolehkan 1 rekening bank.');
                 $this->dispatch('close-modal', name: 'bank-modal');
+
                 return;
             }
 
-            $bank ??= new Bank();
+            $bank ??= new Bank;
             $bank->uid = $ownerId;
             $bank->uid_user = $ownerId;
         }

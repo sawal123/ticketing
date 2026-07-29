@@ -155,7 +155,7 @@
                         <div class="row mb-4">
                             <label class="col-md-3 form-label">Icon:</label>
                             <div class="col-md-9">
-                                <input type="file" class="form-control" name="icon" accept="image/*">
+                                <input type="file" class="form-control" name="icon" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp">
                             </div>
                         </div>
 

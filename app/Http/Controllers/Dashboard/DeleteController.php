@@ -2,40 +2,44 @@
 
 namespace App\Http\Controllers\Dashboard;
 
+use App\Http\Controllers\Controller;
 use App\Models\Cart;
-use App\Models\Term;
-use App\Models\User;
+use App\Models\Cash;
+use App\Models\Contact;
 use App\Models\Event;
 use App\Models\Harga;
-use App\Models\Slider;
-use App\Models\Talent;
-use App\Models\Contact;
-use App\Models\Voucher;
 use App\Models\HargaCart;
 use App\Models\Penarikan;
-use Illuminate\Http\Request;
-use App\Http\Controllers\Controller;
-use App\Models\Cash;
+use App\Models\Slider;
+use App\Models\Talent;
+use App\Models\Term;
 use App\Models\Transaction;
+use App\Models\User;
+use App\Models\Voucher;
+use App\Services\SecureImageStorage;
 use App\Services\Tickets\TicketReservationService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class DeleteController extends Controller
 {
+    public function __construct(private SecureImageStorage $images) {}
+
     public function deleteTalent($id)
     {
         $talent = Talent::where('uid', $id)->first();
         $talent->delete();
+
         return redirect()->back()->with('hapus', 'Talent Berhasil dihapus');
     }
+
     public function deteleListTransaksi($uid, $user_uid, TicketReservationService $reservationService)
     {
         $cart = Cart::where('uid', $uid)
             ->where('user_uid', Auth::user()->uid)
             ->first();
 
-        if (!$cart) {
+        if (! $cart) {
             return redirect()->back()->with('error', 'Transaksi tidak ditemukan');
         }
 
@@ -62,11 +66,9 @@ class DeleteController extends Controller
     public function deleteSlide($uid)
     {
         $slide = Slider::where('uid', $uid)->first();
-        $imagePath = public_path() . '/storage/slide/' . $slide->gambar;
-        if (file_exists($imagePath) === true) {
-            unlink($imagePath);
-        }
+        $this->images->delete('slide', $slide->gambar);
         $slide->delete();
+
         return redirect()->back()->with('deleteSlide', 'Slide Berhasil Dihapus');
     }
 
@@ -74,18 +76,12 @@ class DeleteController extends Controller
     {
         $event = Event::where('uid', $uid)->first();
         if ($event) {
-            $imagePath = public_path() . '/storage/cover/' . $event->cover;
-            if (file_exists($imagePath) === true) {
-                unlink($imagePath);
-            }
+            $this->images->delete('cover', $event->cover);
             $event->delete();
             $talent = Talent::where('uid', $event->uid)->get();
             if ($talent) {
                 foreach ($talent as $talentItem) {
-                    $imagePath = public_path() . '/storage/cover/' . $talentItem->gambar;
-                    if (file_exists($imagePath) === true) {
-                        unlink($imagePath);
-                    }
+                    $this->images->delete('talent', $talentItem->gambar);
                     $talentItem->delete();
                 }
             }
@@ -104,6 +100,7 @@ class DeleteController extends Controller
     {
         $harga = Harga::where('id', $uid)->first();
         $harga->delete();
+
         return redirect()->back()->with('deleteHarga', 'Harga Berhasil Dihapus');
     }
 
@@ -111,17 +108,17 @@ class DeleteController extends Controller
     {
         $term = Term::where('uid', $uid)->first();
         $term->delete();
+
         return redirect()->back()->with('deleteTerm', 'Term Berhasil Dihapus');
     }
+
     public function deleteUser($uid)
     {
         $user = User::where('uid', $uid)->first();
         // dd($user);
-        $imagePath = public_path() . '/storage/user/' . $user->gambar;
-        if (file_exists($imagePath) === true) {
-            unlink($imagePath);
-        }
+        $this->images->delete('user', $user->gambar);
         $user->delete();
+
         return redirect()->back()->with('deleteUser', 'User Berhasil Dihapus');
     }
 
@@ -130,7 +127,7 @@ class DeleteController extends Controller
 
         $cashes = Cash::where('uid', $uid)->first();
         $cart = Cart::where('uid', $uid)->first();
-        $transaksi =  Transaction::where('uid', $uid)->first();
+        $transaksi = Transaction::where('uid', $uid)->first();
         $hargaCart = HargaCart::where('uid', $uid)->get();
         $cashes->delete();
         if ($hargaCart) {
@@ -147,6 +144,7 @@ class DeleteController extends Controller
         if ($cashes) {
             $cashes->delete();
         }
+
         return redirect()->back()->with('success', 'Cashes Berhasil Dihapus');
     }
 
@@ -154,24 +152,26 @@ class DeleteController extends Controller
     {
         $voucher = Voucher::where('uid', $uid)->first();
         $voucher->delete();
+
         return redirect()->back()->with('deleteVoucher', 'Voucher Berhasil Dihapus');
     }
+
     public function deletePenarikan($uid)
     {
         // dd($uid);
         $penarikan = Penarikan::where('uid', $uid)->first();
         $penarikan->delete();
+
         return redirect()->back()->with('delete', 'Data berhasil dihapus');
     }
+
     public function deleteContact($id)
     {
         // dd($uid);
         $contact = Contact::where('id', $id)->first();
-        $imagePath = public_path() . '/storage/sosmed/' . $contact->icon;
-        if (file_exists($imagePath) === true) {
-            unlink($imagePath);
-        }
+        $this->images->delete('sosmed', $contact->icon);
         $contact->delete();
+
         return redirect()->back()->with('delete', 'Data berhasil dihapus');
     }
 
@@ -189,7 +189,6 @@ class DeleteController extends Controller
         if ($h_cart) {
             $h_cart->delete();
         }
-
 
         return redirect()->back()->with('delete', 'Transaksi berhasil dihapus');
     }

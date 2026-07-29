@@ -2,39 +2,40 @@
 
 namespace App\Http\Controllers\Dashboard;
 
+use App\Http\Controllers\Controller;
+use App\Jobs\sendEmailETransaksi;
+use App\Jobs\sendEmailTrnsaksi;
 use App\Models\Bank;
 use App\Models\Cart;
 use App\Models\Cash;
-use App\Models\Term;
-use App\Models\User;
+use App\Models\Contact;
 use App\Models\Event;
 use App\Models\Harga;
-use App\Models\Slider;
-use App\Models\Talent;
-use App\Models\Contact;
 use App\Models\Landing;
 use App\Models\Penarikan;
+use App\Models\Slider;
+use App\Models\Talent;
+use App\Models\Term;
 use App\Models\Transaction;
+use App\Models\User;
+use App\Services\SecureImageStorage;
 use Illuminate\Http\Request;
-use App\Jobs\sendEmailTrnsaksi;
-use App\Mail\CashNotifikasiMail;
-use App\Jobs\sendEmailETransaksi;
-use Illuminate\Support\Facades\DB;
-use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
-use Illuminate\Auth\Events\Validated;
-use App\Mail\MidtransPaymentNotification;
 use Illuminate\Support\Facades\Validator;
 
 class editController extends Controller
 {
-    //
+    public function __construct(private SecureImageStorage $images) {}
 
     public function editEvent(Request $request)
     {
+        $request->validate([
+            'cover' => SecureImageStorage::rules(),
+        ]);
+
         $event = Event::where('uid', $request->uid)->first(); // Mengambil instance model yang akan diupdate
 
         $tanggal = date('Y-m-d H:i', strtotime($request->tanggal));
@@ -46,40 +47,38 @@ class editController extends Controller
         $event->deskripsi = $request->deskripsi;
         $event->map = $request->map;
 
+        $oldCover = null;
         if ($request->hasFile('cover')) {
-            $imagePath = public_path() . '/storage/cover/' . $event->cover;
-            if (file_exists($imagePath) === true) {
-                unlink($imagePath);
-            }
-            $file = $request->file('cover');
-            $fileName = $event->uid . '_' . time() . '_' . $file->getClientOriginalName();
-            $file->storeAs('public/cover/', $fileName);
-            $event->cover = $fileName;
+            $oldCover = $event->cover;
+            $event->cover = $this->images->storeBasename($request->file('cover'), 'cover');
         }
 
         $event->save();
-        return redirect('/admin/event/eventDetail/' . $request->uid)->with('success', 'Berhasil di Update');
+        $this->images->delete('cover', $oldCover);
+
+        return redirect('/admin/event/eventDetail/'.$request->uid)->with('success', 'Berhasil di Update');
     }
 
     public function editTalent(Request $request)
     {
+        $request->validate([
+            'gambar' => SecureImageStorage::rules(),
+        ]);
+
         $uid = $request->uid;
         $talent = $request->talent;
 
         $talents = Talent::where('id', $uid)->first();
         $talents->talent = $talent;
 
+        $oldImage = null;
         if ($request->hasFile('gambar')) {
-            $imagePath = public_path() . '/storage/talent/' . $talents->gambar;
-            if (file_exists($imagePath) === true) {
-                unlink($imagePath);
-            }
-            $file = $request->file('gambar');
-            $fileName = $talents->uid . '_' . time() . '_' . $file->getClientOriginalName();
-            $file->storeAs('public/talent/', $fileName);
-            $talents->gambar = $fileName;
+            $oldImage = $talents->gambar;
+            $talents->gambar = $this->images->storeBasename($request->file('gambar'), 'talent');
         }
         $talents->save();
+        $this->images->delete('talent', $oldImage);
+
         return redirect()->back()->with('success', 'Berhasil di Update');
     }
 
@@ -91,7 +90,7 @@ class editController extends Controller
         $harga->update([
             'kategori' => $request->kategori,
             'qty' => $request->qty,
-            'harga' => $request->harga
+            'harga' => $request->harga,
         ]);
 
         return redirect()->back()->with('editHarga', 'Harga Berhasil Di Ubah');
@@ -99,24 +98,26 @@ class editController extends Controller
 
     public function editSlide(Request $request)
     {
+        $request->validate([
+            'gambar' => SecureImageStorage::rules(),
+        ]);
+
         $slide = Slider::where('uid', $request->uid)->first();
         $slide->uid = $request->uid;
         $slide->title = $request->title;
         $slide->url = $request->url;
         $slide->sort = $request->sort;
+        $oldImage = null;
         if ($request->hasFile('gambar')) {
-            $imagePath = public_path() . '/storage/slide/' . $slide->gambar;
-            if (file_exists($imagePath) === true) {
-                unlink($imagePath);
-            }
-            $file = $request->file('gambar');
-            $fileName = $slide->uid . '_' . time() . '_' . $file->getClientOriginalName();
-            $file->storeAs('public/slide/', $fileName);
-            $slide->gambar = $fileName;
+            $oldImage = $slide->gambar;
+            $slide->gambar = $this->images->storeBasename($request->file('gambar'), 'slide');
         }
         $slide->save();
+        $this->images->delete('slide', $oldImage);
+
         return redirect()->back()->with('editSlide', 'Slide Berhasil Diubah');
     }
+
     public function profile()
     {
         $final = [];
@@ -134,10 +135,11 @@ class editController extends Controller
             [
                 'title' => 'Edit Profile',
                 'dataUser' => $dataUser,
-                'provinsi' => $provinsi
+                'provinsi' => $provinsi,
             ]
         );
     }
+
     public function editProfile(Request $request)
     {
         $validate = Validator::make($request->all(), [
@@ -147,7 +149,8 @@ class editController extends Controller
             'gender' => 'required|string|max:10',
             'birthday' => 'required|string|max:255',
             'kota' => 'required|string|max:255',
-            'alamat' => 'required|string|max:255'
+            'alamat' => 'required|string|max:255',
+            'gambar' => SecureImageStorage::rules(),
         ]);
         $validate->validate();
         $user = User::where('uid', Auth::user()->uid)->first();
@@ -158,82 +161,83 @@ class editController extends Controller
         $user->birthday = $request->input('birthday');
         $user->kota = $request->input('kota');
         $user->alamat = $request->input('alamat');
+        $oldImage = null;
         if ($request->hasFile('gambar')) {
-            $imagePath = public_path() . '/storage/user/' . $user->gambar;
-            if (file_exists($imagePath) === true) {
-                unlink($imagePath);
-            }
-            $file = $request->file('gambar');
-            $fileName = $user->uid . '_' . time() . '_' . $file->getClientOriginalName();
-            $file->storeAs('public/user/', $fileName);
-            $user->gambar = $fileName;
-        }
-        // dd($user->name);
-        if ($request->password === null) {
-            $user->save();
-            return redirect()->back()->with('editProfile', 'Profile Berhasil Diubah');
-        } else {
-            $user->password = bcrypt($request->password);
-            $user->save();
-            return redirect()->back()->with('editProfile', 'Profile & Password Berhasil Diubah');
+            $oldImage = $user->gambar;
+            $user->gambar = $this->images->storeBasename($request->file('gambar'), 'user');
         }
 
-        // dd($request->password);
+        if ($request->password !== null) {
+            $user->password = bcrypt($request->password);
+        }
+
+        $user->save();
+        $this->images->delete('user', $oldImage);
+
+        $message = $request->password === null
+            ? 'Profile Berhasil Diubah'
+            : 'Profile & Password Berhasil Diubah';
+
+        return redirect()->back()->with('editProfile', $message);
     }
 
     public function editLogo(Request $request)
     {
+        $request->validate([
+            'logo' => SecureImageStorage::rules(),
+        ]);
+
         // dd($data);
         $logo = Landing::where('id', $request->id)->first();
         // dd($logo);
         if ($logo === null) {
-            $save = new Landing();
+            $save = new Landing;
             $save->description = '';
             $save->keyword = '';
             if ($request->hasFile('logo')) {
-                $file = $request->file('logo');
-                $fileName = $save->id . '_' . time() . '_' . $file->getClientOriginalName();
-                $file->storeAs('public/logo/', $fileName);
-                $save->logo = $fileName;
+                $save->logo = $this->images->storeBasename($request->file('logo'), 'logo');
             }
             $save->save();
         } else {
+            $oldLogo = null;
             if ($request->hasFile('logo')) {
-                $file = $request->file('logo');
-                $fileName = $logo->id . '_' . time() . '_' . $file->getClientOriginalName();
-                $file->storeAs('public/logo/', $fileName);
-                $logo->logo = $fileName;
+                $oldLogo = $logo->logo;
+                $logo->logo = $this->images->storeBasename($request->file('logo'), 'logo');
             }
             $logo->save();
+            $this->images->delete('logo', $oldLogo);
         }
+
         return redirect()->back()->with('editLogo', 'Logo Berhasil Diubah');
     }
 
     public function editIcon(Request $request)
     {
+        $request->validate([
+            'icon' => SecureImageStorage::rules(),
+        ]);
+
         // dd($data);
         $logo = Landing::where('id', $request->id)->first();
         // dd($logo);
         if ($logo === null) {
-            $save = new Landing();
+            $save = new Landing;
             $save->description = '';
             $save->keyword = '';
             if ($request->hasFile('icon')) {
-                $file = $request->file('icon');
-                $fileName = $save->id . '_' . time() . '_' . $file->getClientOriginalName();
-                $file->storeAs('public/logo/', $fileName);
-                $save->icon = $fileName;
+                $save->icon = $this->images->storeBasename($request->file('icon'), 'logo');
             }
             $save->save();
         } else {
+            $oldIcon = null;
             if ($request->hasFile('icon')) {
-                $file = $request->file('icon');
-                $fileName = $logo->id . '_' . time() . '_' . $file->getClientOriginalName();
-                $file->storeAs('public/logo/', $fileName);
-                $logo->icon = $fileName;
+                $oldIcon = $logo->icon;
+                $logo->icon = $this->images->storeBasename($request->file('icon'), 'logo');
             }
             $logo->save();
+            $this->images->delete('logo', $oldIcon);
         }
+
         return redirect()->back()->with('editLogo', 'Logo Berhasil Diubah');
     }
 
@@ -245,8 +249,10 @@ class editController extends Controller
 
         $deskripis->description = $des;
         $deskripis->save();
+
         return redirect()->back()->with('success', 'Deskripsi Meta Berhasil di Ubah');
     }
+
     public function editKeyword(Request $request)
     {
         $id = $request->id;
@@ -255,9 +261,9 @@ class editController extends Controller
 
         $keyword->keyword = $key;
         $keyword->save();
+
         return redirect()->back()->with('success', 'Keyword Meta Berhasil di Ubah');
     }
-
 
     public function editTerm(Request $request)
     {
@@ -279,7 +285,8 @@ class editController extends Controller
             'kota' => 'string|max:50',
             'alamat' => 'required|string|max:255',
             'nomor' => 'required|numeric',
-            'gender' => 'required|string|max:20'
+            'gender' => 'required|string|max:20',
+            'poto' => SecureImageStorage::rules(),
         ]);
         $validate->validate();
 
@@ -292,21 +299,18 @@ class editController extends Controller
         $user->nomor = $request->nomor;
         $user->gender = $request->gender;
 
+        $oldImage = null;
         if ($request->hasFile('poto')) {
-            $imagePath = public_path() . '/storage/user/' . $user->gambar;
-            if (file_exists($imagePath) === true) {
-                unlink($imagePath);
-            }
-            $file = $request->file('poto');
-            $fileName = $user->uid . '_' . time() . '_' . $file->getClientOriginalName();
-            $file->storeAs('public/user/', $fileName);
-            $user->gambar = $fileName;
+            $oldImage = $user->gambar;
+            $user->gambar = $this->images->storeBasename($request->file('poto'), 'user');
         }
 
         if ($request->password !== null) {
             $user->password = bcrypt($request->password);
         }
         $user->save();
+        $this->images->delete('user', $oldImage);
+
         if ($user->role === 'penyewa') {
             return redirect()->back()->with('editUser', 'Penyewa Berhasil Diubah');
         } else {
@@ -325,7 +329,7 @@ class editController extends Controller
             'lahir' => 'date',
             'alamat' => 'required|string|max:255',
             'nomor' => 'required|numeric',
-            'gender' => 'required|string|max:20'
+            'gender' => 'required|string|max:20',
         ]);
         $validate->validate();
 
@@ -337,15 +341,16 @@ class editController extends Controller
         $cashes->nomor = $request->nomor;
         $cashes->gender = $request->gender;
         $cashes->save();
+
         return redirect()->back()->with('success', 'Cashes Berhasil Diubah');
     }
-
 
     public function setujuiEvent($data)
     {
         $event = Event::where('uid', $data)->first();
         $event->konfirmasi = '1';
         $event->save();
+
         return redirect()->back()->with('konfirmasi', 'Event Berhasil di Setujui dan di publish');
     }
 
@@ -355,10 +360,11 @@ class editController extends Controller
         // dd($status);
         $penarikan = Penarikan::where('uid', $request->uid)->first();
         // dd($penarikan);
-        $penarikan->status = "SUCCESS";
+        $penarikan->status = 'SUCCESS';
         $penarikan->approved_at = now();
         $penarikan->save();
-        return redirect()->back()->with("success", "Konfirmasi Berhasil");
+
+        return redirect()->back()->with('success', 'Konfirmasi Berhasil');
     }
 
     public function editTransaksi(Request $request)
@@ -366,8 +372,8 @@ class editController extends Controller
         $uid = $request->uid;
         $barcode = $request->inv;
 
-        $transaksis = Transaction::where("uid", $request->uid)->first();
-        $carts = Cart::where("uid", $request->uid)->first();
+        $transaksis = Transaction::where('uid', $request->uid)->first();
+        $carts = Cart::where('uid', $request->uid)->first();
 
         if (! $carts) {
             return redirect()->back()->with('error', 'Transaksi tidak ditemukan.');
@@ -380,19 +386,19 @@ class editController extends Controller
         }
         $carts->save();
 
-        if ($request->status === "SUCCESS") {
+        if ($request->status === 'SUCCESS') {
             try {
                 if ($carts->payment_type === 'cash') {
                     $cash = Cash::where('uid', $uid)->first();
                     if (! $cash || ! filter_var($cash->email, FILTER_VALIDATE_EMAIL)) {
-                        return redirect()->back()->with("success", "Transaksi Berhasil di Ubah. Email pembeli cash perlu diperiksa sebelum dikirim ulang.");
+                        return redirect()->back()->with('success', 'Transaksi Berhasil di Ubah. Email pembeli cash perlu diperiksa sebelum dikirim ulang.');
                     }
 
                     dispatch(new sendEmailTrnsaksi($cash->email, $cash->name, $carts->uid, $carts->invoice));
                 } else {
-                    $user = User::where("uid", $carts->user_uid)->first();
+                    $user = User::where('uid', $carts->user_uid)->first();
                     if (! $user) {
-                        return redirect()->back()->with("success", "Transaksi Berhasil di Ubah. Data pembeli tidak ditemukan untuk pengiriman email.");
+                        return redirect()->back()->with('success', 'Transaksi Berhasil di Ubah. Data pembeli tidak ditemukan untuk pengiriman email.');
                     }
 
                     dispatch(new sendEmailETransaksi($user, $carts, $barcode ?: $carts->invoice));
@@ -404,13 +410,12 @@ class editController extends Controller
                     'error' => $e->getMessage(),
                 ]);
 
-                return redirect()->back()->with("success", "Transaksi Berhasil di Ubah. Email barcode perlu dikirim ulang.");
+                return redirect()->back()->with('success', 'Transaksi Berhasil di Ubah. Email barcode perlu dikirim ulang.');
             }
         }
 
-        return redirect()->back()->with("success", "Transaksi Berhasil di Ubah");
+        return redirect()->back()->with('success', 'Transaksi Berhasil di Ubah');
     }
-
 
     public function editPro(Request $request)
     {
@@ -423,6 +428,7 @@ class editController extends Controller
             'gender' => 'required|string',
             'provinsi' => 'required|string',
             'alamat' => 'required|string',
+            'img' => SecureImageStorage::rules(),
         ]);
 
         $validate->validate();
@@ -436,22 +442,20 @@ class editController extends Controller
         $user->kota = $request->provinsi;
         $user->alamat = $request->alamat;
 
+        $oldImage = null;
         if ($request->hasFile('img')) {
-            $imagePath = public_path() . '/storage/user/' . $user->gambar;
-            if (file_exists($imagePath) === true) {
-                unlink($imagePath);
-            }
-            $file = $request->file('img');
-            $fileName = $user->uid . '_' . time() . '_' . $file->getClientOriginalName();
-            $file->storeAs('public/user/', $fileName);
-            $user->gambar = $fileName;
+            $oldImage = $user->gambar;
+            $user->gambar = $this->images->storeBasename($request->file('img'), 'user');
         }
 
         try {
             $user->save();
+            $this->images->delete('user', $oldImage);
+
             return redirect()->back()->with('editProfile', 'Informasi Berhasil Di Update');
         } catch (\Exception $e) {
             DB::rollback();
+
             return redirect()->back()->with('error', 'Gagal Update. Silahkan coba lagi.');
         }
     }
@@ -468,35 +472,36 @@ class editController extends Controller
         }
         try {
             $rek->save();
+
             return redirect()->back()->with('editRek', 'Rekening Berhasil Di Update');
         } catch (\Exception $e) {
             DB::rollback();
+
             return redirect()->back()->with('error', 'Gagal Update. Silahkan coba lagi.');
         }
     }
+
     public function editContact(Request $request)
     {
         $validate = Validator::make($request->all(), [
             'sosmed' => 'string',
             'nama' => 'string',
             'link' => 'string|max:255|nullable',
+            'icon' => SecureImageStorage::rules(),
         ]);
         $validate->validate();
         $con = Contact::where('id', $request->id)->first();
         $con->sosmed = $request->sosmed;
         $con->name = $request->nama;
-        $con->link =  $request->link == null ? '' : $request->link;
+        $con->link = $request->link == null ? '' : $request->link;
+        $oldIcon = null;
         if ($request->hasFile('icon')) {
-            $imagePath = public_path() . '/storage/sosmed/' . $con->icon;
-            if (file_exists($imagePath) === true) {
-                unlink($imagePath);
-            }
-            $file = $request->file('icon');
-            $fileName = time() . '_' . $file->getClientOriginalName();
-            $file->storeAs('public/sosmed/', $fileName);
-            $con->icon = $fileName;
+            $oldIcon = $con->icon;
+            $con->icon = $this->images->storeBasename($request->file('icon'), 'sosmed');
         }
         $con->save();
+        $this->images->delete('sosmed', $oldIcon);
+
         return redirect()->back()->with('success', 'Contact Berhasil Di Ubah');
     }
 }
