@@ -4,35 +4,41 @@ namespace App\Livewire\Admin;
 
 use App\Jobs\sendEmailETransaksi;
 use App\Jobs\sendEmailTrnsaksi;
-use App\Models\Event;
 use App\Models\Cart;
+use App\Models\CartVoucher;
+use App\Models\Event;
 use App\Models\Harga;
 use App\Models\HargaCart;
+use App\Models\Voucher;
+use Carbon\Carbon;
 use Livewire\Component;
 use Livewire\WithPagination;
-use Carbon\Carbon;
-use Illuminate\Support\Facades\DB;
 
 class EventDetail extends Component
 {
     use WithPagination;
 
     public $eventUid;
+
     public $activeTab = 'umum'; // umum, tiket, transaksi
+
     public $searchTransaction = '';
+
     public $showFullDescription = false;
 
     // Filters for Transactions
     public $filterPayment = 'all'; // all, cash, non-cash
+
     public $filterRange; // Format: "YYYY-MM-DD to YYYY-MM-DD"
 
     // For Edit Ticket Modal
     public $editingHargaId;
+
     public $editingHarga = [
         'kategori' => '',
         'qty' => 0,
         'harga' => 0,
-        'status' => 'active'
+        'status' => 'active',
     ];
 
     // For Delete Modal
@@ -59,14 +65,14 @@ class EventDetail extends Component
     protected function getEventData()
     {
         return Event::with([
-            'talents', 
-            'hargas' => function($query) {
-                $query->withSum(['hargaCarts as sold_count' => function($q) {
-                    $q->whereHas('cart', function($c) {
+            'talents',
+            'hargas' => function ($query) {
+                $query->withSum(['hargaCarts as sold_count' => function ($q) {
+                    $q->whereHas('cart', function ($c) {
                         $c->where('status', 'SUCCESS');
                     });
                 }], 'quantity');
-            }
+            },
         ])->where('uid', $this->eventUid)->firstOrFail();
     }
 
@@ -77,12 +83,12 @@ class EventDetail extends Component
 
         $transactionIds = $query->pluck('uid');
         $totalTransactions = $transactionIds->count();
-        
+
         $hargaCarts = HargaCart::whereIn('uid', $transactionIds)->get();
-        
-        $totalRevenue = $hargaCarts->sum(fn($item) => $item->quantity * $item->harga_ticket);
+
+        $totalRevenue = $hargaCarts->sum(fn ($item) => $item->quantity * $item->harga_ticket);
         $totalTicketsSold = $hargaCarts->sum('quantity');
-        
+
         $totalPajak = $query->sum('pajak');
         $totalInternetFee = $query->sum('internet_fee');
 
@@ -104,44 +110,44 @@ class EventDetail extends Component
     protected function applyFilters($query)
     {
         return $query->when($this->filterPayment !== 'all', function ($q) {
-                if ($this->filterPayment === 'cash') {
-                    $q->where('payment_type', 'cash');
-                } else {
-                    $q->where('payment_type', '!=', 'cash');
-                }
-            })
+            if ($this->filterPayment === 'cash') {
+                $q->where('payment_type', 'cash');
+            } else {
+                $q->where('payment_type', '!=', 'cash');
+            }
+        })
             ->when($this->filterRange, function ($q) {
                 $dates = explode(' to ', $this->filterRange);
                 if (count($dates) === 2) {
                     $q->whereBetween('created_at', [
                         Carbon::parse($dates[0])->startOfDay(),
-                        Carbon::parse($dates[1])->endOfDay()
+                        Carbon::parse($dates[1])->endOfDay(),
                     ]);
                 } else {
                     $q->whereDate('created_at', Carbon::parse($dates[0]));
                 }
             })
             ->when($this->searchTransaction, function ($q) {
-                $q->where(function($sub) {
-                    $sub->where('carts.invoice', 'like', '%' . $this->searchTransaction . '%')
-                      ->orWhere(function ($online) {
-                          $online->where('carts.payment_type', '!=', 'cash')
-                              ->whereHas('users', function ($u) {
-                                  $u->where(function ($userQuery) {
-                                      $userQuery->where('name', 'like', '%' . $this->searchTransaction . '%')
-                                          ->orWhere('email', 'like', '%' . $this->searchTransaction . '%');
-                                  });
-                              });
-                      })
-                      ->orWhere(function ($cashCart) {
-                          $cashCart->where('carts.payment_type', 'cash')
-                              ->whereHas('cashBuyer', function ($cash) {
-                                  $cash->where(function ($cashQuery) {
-                                      $cashQuery->where('name', 'like', '%' . $this->searchTransaction . '%')
-                                          ->orWhere('email', 'like', '%' . $this->searchTransaction . '%');
-                                  });
-                              });
-                      });
+                $q->where(function ($sub) {
+                    $sub->where('carts.invoice', 'like', '%'.$this->searchTransaction.'%')
+                        ->orWhere(function ($online) {
+                            $online->where('carts.payment_type', '!=', 'cash')
+                                ->whereHas('users', function ($u) {
+                                    $u->where(function ($userQuery) {
+                                        $userQuery->where('name', 'like', '%'.$this->searchTransaction.'%')
+                                            ->orWhere('email', 'like', '%'.$this->searchTransaction.'%');
+                                    });
+                                });
+                        })
+                        ->orWhere(function ($cashCart) {
+                            $cashCart->where('carts.payment_type', 'cash')
+                                ->whereHas('cashBuyer', function ($cash) {
+                                    $cash->where(function ($cashQuery) {
+                                        $cashQuery->where('name', 'like', '%'.$this->searchTransaction.'%')
+                                            ->orWhere('email', 'like', '%'.$this->searchTransaction.'%');
+                                    });
+                                });
+                        });
                 });
             });
     }
@@ -162,7 +168,7 @@ class EventDetail extends Component
 
     public function toggleDescription()
     {
-        $this->showFullDescription = !$this->showFullDescription;
+        $this->showFullDescription = ! $this->showFullDescription;
     }
 
     public function confirmEvent(): void
@@ -196,12 +202,13 @@ class EventDetail extends Component
     public function confirmDeleteTicket($id)
     {
         $harga = Harga::findOrFail($id);
-        $hasTransactions = $harga->hargaCarts()->whereHas('cart', function($q) {
+        $hasTransactions = $harga->hargaCarts()->whereHas('cart', function ($q) {
             $q->where('status', 'SUCCESS');
         })->exists();
 
         if ($hasTransactions) {
             $this->dispatch('open-modal', name: 'forbidden-delete-modal');
+
             return;
         }
 
@@ -228,9 +235,9 @@ class EventDetail extends Component
             'kategori' => $harga->kategori,
             'qty' => $harga->qty,
             'harga' => $harga->harga,
-            'status' => $harga->status
+            'status' => $harga->status,
         ];
-        
+
         $this->dispatch('open-modal', name: 'edit-ticket-modal');
     }
 
@@ -259,6 +266,7 @@ class EventDetail extends Component
         if (! $exists) {
             $this->selectedTransactionId = null;
             session()->flash('error', 'Transaksi tidak ditemukan pada event ini.');
+
             return;
         }
 
@@ -277,13 +285,13 @@ class EventDetail extends Component
     {
         $event = $this->getEventData();
         $metrics = $this->getMetricsData();
-        
+
         $transactions = [];
         if ($this->activeTab === 'transaksi') {
             $transactions = $this->authorizedTransactionQuery()
                 ->with(['users', 'cashBuyer'])
                 ->where('status', 'SUCCESS');
-            
+
             $transactions = $this->applyFilters($transactions)
                 ->orderBy('created_at', 'desc')
                 ->paginate(10);
@@ -292,21 +300,21 @@ class EventDetail extends Component
         $selectedTransaction = null;
         $discount = 0;
         $voucherCode = null;
-        
+
         if ($this->selectedTransactionId) {
             $selectedTransaction = $this->authorizedTransactionQuery()
                 ->with(['users', 'cashBuyer', 'hargaCarts.masterHarga'])
                 ->where('uid', $this->selectedTransactionId)
                 ->where('status', 'SUCCESS')
                 ->first();
-            
+
             if ($selectedTransaction) {
-                $cartVoucher = \App\Models\CartVoucher::where('uid', $this->selectedTransactionId)->first();
+                $cartVoucher = CartVoucher::where('uid', $this->selectedTransactionId)->first();
                 if ($cartVoucher) {
                     $voucherCode = $cartVoucher->code;
-                    $voucher = \App\Models\Voucher::where('code', $voucherCode)->first();
+                    $voucher = Voucher::where('code', $voucherCode)->first();
                     if ($voucher) {
-                        $totalTickets = $selectedTransaction->hargaCarts->sum(fn($i) => $i->quantity * $i->harga_ticket);
+                        $totalTickets = $selectedTransaction->hargaCarts->sum(fn ($i) => $i->quantity * $i->harga_ticket);
                         if ($voucher->unit === 'rupiah') {
                             $discount = $voucher->nominal;
                         } elseif ($voucher->unit === 'persen') {
@@ -323,8 +331,8 @@ class EventDetail extends Component
             'transactions' => $transactions,
             'selectedTransaction' => $selectedTransaction,
             'discount' => $discount,
-            'voucherCode' => $voucherCode
-        ])->layout('admin.layout', ['title' => 'Detail Event: ' . $event->event]);
+            'voucherCode' => $voucherCode,
+        ])->layout('admin.layout', ['title' => 'Detail Event: '.$event->event]);
     }
 
     public function confirmResendEmail($uid)
@@ -339,23 +347,25 @@ class EventDetail extends Component
     public function resendEmail()
     {
         $uid = $this->resendEmailUid;
-        if (!$uid) return;
+        if (! $uid) {
+            return;
+        }
 
         $cart = $this->authorizedTransactionQuery()
             ->with(['users', 'cashBuyer'])
             ->where('uid', $uid)
             ->first();
-        if (!$cart) {
+        if (! $cart) {
             session()->flash('error', 'Transaksi tidak ditemukan pada event ini.');
+
             return;
         }
 
         if ($cart->status !== 'SUCCESS') {
             session()->flash('error', 'Email hanya dapat dikirim ulang untuk transaksi yang sukses.');
+
             return;
         }
-
-        $barcode = $cart->invoice;
 
         try {
             if ($cart->payment_type === 'cash') {
@@ -363,20 +373,23 @@ class EventDetail extends Component
                 if ($cash) {
                     if (! filter_var($cash->email, FILTER_VALIDATE_EMAIL)) {
                         session()->flash('error', 'Email pembeli cash tidak valid atau kosong.');
+
                         return;
                     }
 
-                    dispatch(new sendEmailTrnsaksi($cash->email, $cash->name, $cart->uid, $barcode));
+                    dispatch(new sendEmailTrnsaksi($cash->email, $cash->name, $cart->uid));
                 } else {
-                     session()->flash('error', 'Data pembeli tunai tidak ditemukan.');
-                     return;
+                    session()->flash('error', 'Data pembeli tunai tidak ditemukan.');
+
+                    return;
                 }
             } else {
                 $user = $cart->users;
                 if ($user) {
-                    dispatch(new sendEmailETransaksi($user, $cart, $barcode));
+                    dispatch(new sendEmailETransaksi($user, $cart));
                 } else {
                     session()->flash('error', 'Data pembeli tidak ditemukan.');
+
                     return;
                 }
             }
@@ -385,8 +398,7 @@ class EventDetail extends Component
             $this->resendEmailUid = null;
             session()->flash('message', 'Email barcode telah dijadwalkan untuk dikirim.');
         } catch (\Exception $e) {
-            session()->flash('error', 'Gagal mengirim email: ' . $e->getMessage());
+            session()->flash('error', 'Gagal mengirim email: '.$e->getMessage());
         }
     }
-
 }

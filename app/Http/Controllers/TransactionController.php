@@ -255,7 +255,7 @@ class TransactionController extends Controller
             $user = $cart ? User::where('uid', $cart->user_uid)->first() : null;
 
             if ($cart && $user) {
-                dispatch(new sendEmailETransaksi($user, $cart, $orderId));
+                dispatch(new sendEmailETransaksi($user, $cart));
             }
         }
 

@@ -8,6 +8,7 @@ use App\Mail\MidtransPaymentNotification;
 use App\Models\Cart;
 use App\Models\Event;
 use App\Models\User;
+use App\Services\Tickets\GateTokenService;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
@@ -25,6 +26,7 @@ class MidtransPaymentNotificationTest extends TestCase
         Config::set('database.connections.sqlite.database', ':memory:');
         Config::set('cache.default', 'array');
         Config::set('queue.default', 'sync');
+        Config::set('gate-tokens.key', 'base64:'.base64_encode(str_repeat('g', 32)));
 
         DB::purge('sqlite');
         DB::reconnect('sqlite');
@@ -45,7 +47,7 @@ class MidtransPaymentNotificationTest extends TestCase
             'invoice' => 'INV-CART-123',
         ]);
 
-        (new sendEmailETransaksi($buyer, $cart, 'BARCODE-PARAM-999'))->handle();
+        (new sendEmailETransaksi($buyer, $cart))->handle();
 
         Mail::assertSent(MidtransPaymentNotification::class, function (MidtransPaymentNotification $mail) use ($cart) {
             $html = $mail->render();
@@ -53,7 +55,6 @@ class MidtransPaymentNotificationTest extends TestCase
             $this->assertTrue($mail->hasTo('online-ticket@example.test'));
             $this->assertStringContainsString('/generate-barcode/'.$cart->invoice, $html);
             $this->assertStringContainsString('/generate-barcode/'.$cart->invoice, $mail->ticketUrl);
-            $this->assertStringNotContainsString('/generate-barcode/BARCODE-PARAM-999', $html);
             $this->assertStringContainsString('INV-CART-123', $html);
             $this->assertStringContainsString('Midtrans Render Event', $html);
 
@@ -70,7 +71,7 @@ class MidtransPaymentNotificationTest extends TestCase
         ]);
         $cart = $this->cashCart($operator, $event);
 
-        $html = (new CashNotifikasiMail('Cash Ticket Buyer', $cart, $cart->invoice))->render();
+        $html = (new CashNotifikasiMail('Cash Ticket Buyer', $cart))->render();
 
         $this->assertStringContainsString('/cash-ticket/'.$cart->uid, $html);
         $this->assertStringContainsString('signature=', html_entity_decode($html, ENT_QUOTES));
@@ -124,6 +125,13 @@ class MidtransPaymentNotificationTest extends TestCase
             $table->string('user_uid');
             $table->string('event_uid');
             $table->string('invoice')->nullable();
+            $table->char('gate_token_hash', 64)->nullable()->unique();
+            $table->text('gate_token_encrypted')->nullable();
+            $table->timestamp('gate_token_issued_at')->nullable();
+            $table->timestamp('scanned_at')->nullable();
+            $table->string('scanned_by')->nullable();
+            $table->string('scan_device_id')->nullable();
+            $table->unsignedInteger('gate_token_version')->default(1);
             $table->string('status');
             $table->string('konfirmasi')->nullable();
             $table->text('link')->nullable();
@@ -176,7 +184,7 @@ class MidtransPaymentNotificationTest extends TestCase
 
     private function onlineCart(User $buyer, Event $event, array $attributes = []): Cart
     {
-        return Cart::create(array_merge([
+        $cart = Cart::create(array_merge([
             'uid' => (string) Str::uuid(),
             'user_uid' => $buyer->uid,
             'event_uid' => $event->uid,
@@ -187,11 +195,15 @@ class MidtransPaymentNotificationTest extends TestCase
             'gross_amount' => 92000,
             'paid_at' => now(),
         ], $attributes));
+
+        app(GateTokenService::class)->issue($cart);
+
+        return $cart;
     }
 
     private function cashCart(User $operator, Event $event, array $attributes = []): Cart
     {
-        return Cart::create(array_merge([
+        $cart = Cart::create(array_merge([
             'uid' => (string) Str::uuid(),
             'user_uid' => $operator->uid,
             'event_uid' => $event->uid,
@@ -202,5 +214,9 @@ class MidtransPaymentNotificationTest extends TestCase
             'gross_amount' => 92000,
             'paid_at' => now(),
         ], $attributes));
+
+        app(GateTokenService::class)->issue($cart);
+
+        return $cart;
     }
 }

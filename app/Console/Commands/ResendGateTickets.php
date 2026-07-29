@@ -1,0 +1,109 @@
+<?php
+
+namespace App\Console\Commands;
+
+use App\Jobs\sendEmailETransaksi;
+use App\Jobs\sendEmailTrnsaksi;
+use App\Models\Cart;
+use App\Models\Event;
+use App\Services\Tickets\GateTokenService;
+use Illuminate\Console\Command;
+
+class ResendGateTickets extends Command
+{
+    protected $signature = 'tickets:resend-gate-tickets
+        {event_uid : Exact UID of the one event whose tickets will be resent}
+        {--dry-run : Report eligible emails without queueing jobs}
+        {--execute : Queue emails after an explicit confirmation}';
+
+    protected $description = 'Safely resend rotated gate-ticket links for one explicitly named event.';
+
+    public function handle(GateTokenService $tokens): int
+    {
+        if ($this->option('dry-run') && $this->option('execute')) {
+            $this->error('Pilih salah satu: --dry-run atau --execute.');
+
+            return self::INVALID;
+        }
+
+        $eventUid = (string) $this->argument('event_uid');
+        $event = Event::where('uid', $eventUid)->first();
+        if (! $event) {
+            $this->error("Event UID {$eventUid} tidak ditemukan.");
+
+            return self::FAILURE;
+        }
+
+        $carts = $this->eligibleQuery($eventUid)->get();
+        $recipients = $carts->filter(fn (Cart $cart) => $this->recipientIsValid($cart));
+        $invalid = $carts->count() - $recipients->count();
+        $execute = (bool) $this->option('execute');
+
+        $this->newLine();
+        $this->warn('Mode       : '.($execute ? 'EXECUTE' : 'DRY-RUN'));
+        $this->line("Event      : {$event->event}");
+        $this->line("Event UID  : {$event->uid}");
+        $this->line("Akan kirim : {$recipients->count()}");
+        $this->line("Dilewati   : {$invalid} (email/data pembeli tidak valid)");
+
+        if (! $execute) {
+            $this->info('Dry-run selesai. Tidak ada email yang dijadwalkan.');
+
+            return self::SUCCESS;
+        }
+
+        if (! $tokens->eventIsEnabled($eventUid)) {
+            $this->error('Execute ditolak: UID event tidak ada di GATE_TOKEN_EVENT_UIDS.');
+
+            return self::FAILURE;
+        }
+
+        if (! $this->confirm("KIRIM ULANG {$recipients->count()} tiket untuk {$event->event} ({$eventUid})?", false)) {
+            $this->warn('Pengiriman dibatalkan.');
+
+            return self::FAILURE;
+        }
+
+        foreach ($recipients as $cart) {
+            if ($cart->payment_type === 'cash') {
+                dispatch(new sendEmailTrnsaksi(
+                    $cart->cashBuyer->email,
+                    $cart->cashBuyer->name,
+                    $cart->uid,
+                ));
+            } else {
+                dispatch(new sendEmailETransaksi($cart->users, $cart));
+            }
+        }
+
+        $this->info("Selesai: {$recipients->count()} email dijadwalkan.");
+
+        return self::SUCCESS;
+    }
+
+    private function eligibleQuery(string $eventUid)
+    {
+        return Cart::query()
+            ->with(['users', 'cashBuyer'])
+            ->where('event_uid', $eventUid)
+            ->where('status', Cart::STATUS_SUCCESS)
+            ->whereNotNull('gate_token_hash')
+            ->whereNotNull('gate_token_encrypted')
+            ->whereNull('scanned_at')
+            ->where(function ($query) {
+                $query->whereNull('konfirmasi')->orWhere('konfirmasi', '0');
+            })
+            ->orderBy('id');
+    }
+
+    private function recipientIsValid(Cart $cart): bool
+    {
+        if ($cart->payment_type === 'cash') {
+            return $cart->cashBuyer
+                && filter_var($cart->cashBuyer->email, FILTER_VALIDATE_EMAIL) !== false;
+        }
+
+        return $cart->users
+            && filter_var($cart->users->email, FILTER_VALIDATE_EMAIL) !== false;
+    }
+}

@@ -186,8 +186,8 @@
                     <div class="flex gap-3">
                         <span class="text-xl">⚠️</span>
                         <p class="text-[10px] leading-normal text-[#a098b5]">
-                            Link dan barcode ini bersifat rahasia. Jangan bagikan kepada orang lain.
-                            Jangan membagikan QR Code atau nomor invoice kepada siapapun.
+                            Link dan QR Code ini bersifat rahasia. Jangan bagikan kepada orang lain.
+                            Nomor invoice hanya informasi transaksi dan bukan kredensial masuk gate.
                             Pihak penyelenggara tidak bertanggung jawab atas penyalahgunaan tiket.
                         </p>
                     </div>

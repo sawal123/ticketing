@@ -12,11 +12,17 @@ class Cart extends Model
     use SoftDeletes;
 
     public const STATUS_RESERVED = 'RESERVED';
+
     public const STATUS_PENDING = 'PENDING';
+
     public const STATUS_SUCCESS = 'SUCCESS';
+
     public const STATUS_CANCELLED = 'CANCELLED';
+
     public const STATUS_EXPIRED = 'EXPIRED';
+
     public const STATUS_PAYMENT_REVIEW = 'PAYMENT_REVIEW';
+
     public const STATUS_UNPAID = 'UNPAID';
 
     public const ACTIVE_RESERVATION_STATUSES = [
@@ -35,6 +41,13 @@ class Cart extends Model
         'user_uid',
         'event_uid',
         'invoice',
+        'gate_token_hash',
+        'gate_token_encrypted',
+        'gate_token_issued_at',
+        'scanned_at',
+        'scanned_by',
+        'scan_device_id',
+        'gate_token_version',
         'status',
         'konfirmasi',
         'link',
@@ -62,8 +75,15 @@ class Cart extends Model
         'internet_fee' => 'integer',
         'pajak' => 'integer',
         'pajak_persen' => 'integer',
+        'gate_token_issued_at' => 'datetime',
+        'scanned_at' => 'datetime',
+        'gate_token_version' => 'integer',
     ];
 
+    protected $hidden = [
+        'gate_token_hash',
+        'gate_token_encrypted',
+    ];
 
     public function hargaCarts()
     {

@@ -26,12 +26,10 @@ class MidtransPaymentNotification extends Mailable
 
     public string $ticketUrl;
 
-    public function __construct(protected User $user, protected Cart $cart, protected $barcode)
+    public function __construct(protected User $user, protected Cart $cart)
     {
-        //
         $this->user = $user;
         $this->cart = $cart;
-        $this->barcode = $barcode;
         $this->event = Event::where('uid', $this->cart->event_uid)->select('event')->firstOrFail();
         $this->ticketUrl = route('barcode.generate', [
             'data' => $this->cart->invoice,
@@ -58,7 +56,6 @@ class MidtransPaymentNotification extends Mailable
             with: [
                 'name' => $this->user->name,
                 'cart' => $this->cart->invoice,
-                'barcode' => $this->barcode,
                 'event' => $this->event,
                 'ticketUrl' => $this->ticketUrl,
             ],
