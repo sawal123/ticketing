@@ -104,6 +104,39 @@ class SecureProfileImageUploadTest extends TestCase
         }
     }
 
+    public function test_valid_jpeg_with_opening_tag_bytes_inside_metadata_is_accepted(): void
+    {
+        Storage::disk('public')->put('user/foto-lama.jpg', 'legacy image');
+
+        $jpeg = UploadedFile::fake()->image('camera.jpg', 40, 40);
+        $contents = file_get_contents($jpeg->getRealPath());
+
+        // Add a valid JPEG COM segment containing the harmless byte sequence "<?".
+        $withComment = substr($contents, 0, 2)
+            ."\xFF\xFE\x00\x04<?"
+            .substr($contents, 2);
+
+        $file = UploadedFile::fake()
+            ->createWithContent('camera.jpg', $withComment)
+            ->mimeType('image/jpeg');
+
+        $response = $this->from('/profile')->post(
+            '/profile/update-profile',
+            $this->validPayload($file)
+        );
+
+        $response->assertRedirect('/profile');
+        $response->assertSessionDoesntHaveErrors();
+
+        $storedName = $this->user->fresh()->gambar;
+        $this->assertMatchesRegularExpression(
+            '/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.webp$/i',
+            $storedName
+        );
+        Storage::disk('public')->assertExists('user/'.$storedName);
+        Storage::disk('public')->assertMissing('user/foto-lama.jpg');
+    }
+
     public function test_valid_image_is_reencoded_with_uuid_and_old_image_is_deleted(): void
     {
         Storage::disk('public')->put('user/foto-lama.jpg', 'legacy image');

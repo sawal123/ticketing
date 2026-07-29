@@ -77,21 +77,22 @@ class SecureImageStorage
             return 'File gambar tidak dapat dibaca.';
         }
 
-        if (str_contains($contents, '<?')
-            || preg_match('/__HALT_COMPILER\s*\(/i', $contents) === 1) {
-            return 'Gambar mengandung payload executable.';
-        }
-
         $mime = (new \finfo(FILEINFO_MIME_TYPE))->file($path);
         if (! in_array($mime, self::ALLOWED_MIME_TYPES, true)) {
             return 'MIME gambar hanya boleh JPEG, PNG, atau WEBP.';
         }
 
         $info = @getimagesizefromstring($contents);
+        $imageType = $info[2] ?? null;
+
         if ($info === false
-            || ! in_array($info[2] ?? null, [IMAGETYPE_JPEG, IMAGETYPE_PNG, IMAGETYPE_WEBP], true)
+            || ! in_array($imageType, [IMAGETYPE_JPEG, IMAGETYPE_PNG, IMAGETYPE_WEBP], true)
             || ($info[0] * $info[1]) > self::MAX_PIXELS) {
             return 'Isi atau dimensi gambar tidak valid.';
+        }
+
+        if (self::hasExecutableTrailingPayload($contents, $imageType)) {
+            return 'Gambar mengandung payload executable.';
         }
 
         $image = @imagecreatefromstring($contents);
@@ -102,6 +103,55 @@ class SecureImageStorage
         imagedestroy($image);
 
         return null;
+    }
+
+    /**
+     * Look only at bytes placed after the logical end of the image.
+     *
+     * Searching the complete compressed binary for a generic "<?" sequence
+     * causes false positives because those two bytes can naturally occur in a
+     * valid JPEG/PNG/WEBP stream. The stored image is still decoded and
+     * re-encoded, so metadata and compressed input bytes are never preserved.
+     */
+    private static function hasExecutableTrailingPayload(string $contents, int $imageType): bool
+    {
+        $trailing = self::trailingBytes($contents, $imageType);
+
+        if ($trailing === '') {
+            return false;
+        }
+
+        return preg_match('/<\?(?:php\b|=|[a-z_\\\\])|__HALT_COMPILER\s*\(/i', $trailing) === 1;
+    }
+
+    private static function trailingBytes(string $contents, int $imageType): string
+    {
+        if ($imageType === IMAGETYPE_JPEG) {
+            $end = strrpos($contents, "\xFF\xD9");
+
+            return $end === false ? $contents : substr($contents, $end + 2);
+        }
+
+        if ($imageType === IMAGETYPE_PNG) {
+            $marker = "IEND\xAE\x42\x60\x82";
+            $end = strrpos($contents, $marker);
+
+            return $end === false ? $contents : substr($contents, $end + strlen($marker));
+        }
+
+        if ($imageType === IMAGETYPE_WEBP
+            && strlen($contents) >= 12
+            && substr($contents, 0, 4) === 'RIFF'
+            && substr($contents, 8, 4) === 'WEBP') {
+            $size = unpack('Vsize', substr($contents, 4, 4));
+            $declaredLength = 8 + (int) ($size['size'] ?? 0);
+
+            if ($declaredLength >= 12 && $declaredLength <= strlen($contents)) {
+                return substr($contents, $declaredLength);
+            }
+        }
+
+        return $contents;
     }
 
     /**
