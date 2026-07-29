@@ -3,7 +3,7 @@
 namespace App\Livewire\Admin;
 
 use App\Models\Landing;
-use Illuminate\Support\Facades\Storage;
+use App\Services\SecureImageStorage;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 
@@ -61,22 +61,18 @@ class SettingIndex extends Component
     public function updateLogo()
     {
         $this->validate([
-            'new_logo' => 'required|image|max:2048',
+            'new_logo' => SecureImageStorage::rules(true),
         ]);
 
         $setting = Landing::first() ?? new Landing;
 
-        if ($setting->logo && Storage::exists('public/logo/'.$setting->logo)) {
-            Storage::delete('public/logo/'.$setting->logo);
-        }
-
-        $fileName = 'logo_'.time().'.'.$this->new_logo->getClientOriginalExtension();
-        $this->new_logo->storeAs('public/logo/', $fileName);
-
-        $setting->logo = $fileName;
+        $oldLogo = $setting->logo;
+        $setting->logo = app(SecureImageStorage::class)
+            ->storeBasename($this->new_logo, 'logo');
         $setting->save();
+        app(SecureImageStorage::class)->delete('logo', $oldLogo);
 
-        $this->logo = $fileName;
+        $this->logo = $setting->logo;
         $this->new_logo = null;
 
         session()->flash('success', 'Logo berhasil diperbarui.');
@@ -85,22 +81,18 @@ class SettingIndex extends Component
     public function updateIcon()
     {
         $this->validate([
-            'new_icon' => 'required|image|max:1024',
+            'new_icon' => SecureImageStorage::rules(true),
         ]);
 
         $setting = Landing::first() ?? new Landing;
 
-        if ($setting->icon && Storage::exists('public/icon/'.$setting->icon)) {
-            Storage::delete('public/icon/'.$setting->icon);
-        }
-
-        $fileName = 'icon_'.time().'.'.$this->new_icon->getClientOriginalExtension();
-        $this->new_icon->storeAs('public/icon/', $fileName);
-
-        $setting->icon = $fileName;
+        $oldIcon = $setting->icon;
+        $setting->icon = app(SecureImageStorage::class)
+            ->storeBasename($this->new_icon, 'icon');
         $setting->save();
+        app(SecureImageStorage::class)->delete('icon', $oldIcon);
 
-        $this->icon = $fileName;
+        $this->icon = $setting->icon;
         $this->new_icon = null;
 
         session()->flash('success', 'Icon berhasil diperbarui.');

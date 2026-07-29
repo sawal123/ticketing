@@ -11,20 +11,23 @@ use App\Models\Partner;
 use App\Models\Talent;
 use App\Models\User;
 use App\Models\Voucher;
+use App\Services\SecureImageStorage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 
 class EditController extends Controller
 {
+    public function __construct(private SecureImageStorage $images) {}
+
     public function editEventPenyewa(Request $request)
     {
         $request->validate([
             'fee' => 'required|numeric|min:0|max:100',
+            'cover' => SecureImageStorage::rules(),
         ]);
         $event = Event::where('uid', $request->uid)->where('user_uid', Auth::user()->uid)->first();
         $eventDate = EventDate::where('uid', $request->uid)->first();
@@ -41,42 +44,39 @@ class EditController extends Controller
         $event->map = $request->map;
         $event->slug = Str::slug($request->event);
 
-
-
+        $oldCover = null;
         if ($request->hasFile('cover')) {
-            $imagePath = public_path() . '/storage/cover/' . $event->cover;
-            if (file_exists($imagePath) === true) {
-                unlink($imagePath);
-            }
-
-            $file = $request->file('cover');
-            $fileName = $event->uid . '_' . time() . '_' . $file->getClientOriginalName();
-            $file->storeAs('public/cover/', $fileName);
-            $event->cover = $fileName;
+            $oldCover = $event->cover;
+            $event->cover = $this->images->storeBasename($request->file('cover'), 'cover');
         }
-
-
 
         $eventDate->save();
         $event->save();
-        return redirect('/dashboard/event/eventDetail/' . $request->uid)->with('success', 'Berhasil di Update');
+        $this->images->delete('cover', $oldCover);
+
+        return redirect('/dashboard/event/eventDetail/'.$request->uid)->with('success', 'Berhasil di Update');
     }
 
     public function editTalent(Request $request)
     {
+        $request->validate([
+            'gambar' => SecureImageStorage::rules(),
+        ]);
+
         $uid = $request->uid;
         $talent = $request->talent;
 
         $talents = Talent::where('id', $uid)->first();
         $talents->talent = $talent;
 
+        $oldImage = null;
         if ($request->hasFile('gambar')) {
-            $file = $request->file('gambar');
-            $fileName = $talents->uid . '_' . time() . '_' . $file->getClientOriginalName();
-            $file->storeAs('public/talent/', $fileName);
-            $talents->gambar = $fileName;
+            $oldImage = $talents->gambar;
+            $talents->gambar = $this->images->storeBasename($request->file('gambar'), 'talent');
         }
         $talents->save();
+        $this->images->delete('talent', $oldImage);
+
         return redirect()->back()->with('success', 'Berhasil di Update');
     }
 
@@ -88,7 +88,7 @@ class EditController extends Controller
         $harga->update([
             'kategori' => $request->kategori,
             'qty' => $request->qty,
-            'harga' => $request->harga
+            'harga' => $request->harga,
         ]);
 
         return redirect()->back()->with('editHarga', 'Harga Berhasil Di Ubah');
@@ -106,9 +106,11 @@ class EditController extends Controller
         }
         try {
             $rek->save();
+
             return redirect()->back()->with('editRek', 'Rekening Berhasil Di Update');
         } catch (\Exception $e) {
             DB::rollback();
+
             return redirect()->back()->with('error', 'Gagal Update. Silahkan coba lagi.');
         }
     }
@@ -124,7 +126,7 @@ class EditController extends Controller
             'gender' => 'required|string',
             'provinsi' => 'required|string',
             'alamat' => 'required|string',
-            'img' => 'nullable|image|mimes:jpeg,png,jpg|max:2048' // Maksimal 2MB
+            'img' => SecureImageStorage::rules(),
         ]);
 
         $user = User::where('uid', Auth::user()->uid)->first();
@@ -137,30 +139,23 @@ class EditController extends Controller
         $user->kota = $request->provinsi;
         $user->alamat = $request->alamat;
 
-        // 2. MANAJEMEN GAMBAR PINTAR (Hapus gambar lama, simpan gambar baru)
+        $oldImage = null;
         if ($request->hasFile('img')) {
-            // Cek dan hapus foto lama dari storage server jika ada
-            if ($user->gambar && Storage::exists('public/user/' . $user->gambar)) {
-                Storage::delete('public/user/' . $user->gambar);
-            }
-
-            $file = $request->file('img');
-            $fileName = $user->uid . '_' . time() . '.' . $file->getClientOriginalExtension();
-            $file->storeAs('public/user/', $fileName);
-            $user->gambar = $fileName;
+            $oldImage = $user->gambar;
+            $user->gambar = $this->images->storeBasename($request->file('img'), 'user');
         }
 
         // 3. SIMPAN DATA
         try {
             $user->save();
+            $this->images->delete('user', $oldImage);
+
             return redirect()->back()->with('editProfile', 'Informasi Berhasil Di Update');
         } catch (\Exception $e) {
             // Dihapus DB::rollback() karena kita hanya melakukan 1 save() (tidak pakai beginTransaction)
             return redirect()->back()->with('error', 'Gagal Update Profile. Silahkan coba lagi.');
         }
     }
-
-
 
     public function editPartner(Request $request)
     {
@@ -184,6 +179,7 @@ class EditController extends Controller
 
         try {
             $partner->save();
+
             return redirect()->back()->with('success', 'Partner Berhasil Diubah');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Gagal Diubah');
@@ -208,7 +204,7 @@ class EditController extends Controller
         // dd($voucher->event_uid);
 
         // Pastikan voucher ditemukan
-        if (!$voucher) {
+        if (! $voucher) {
             return redirect()->back()->with('vError', 'Voucher tidak ditemukan');
         }
 
@@ -247,7 +243,7 @@ class EditController extends Controller
         $user = Auth::user();
 
         // 2. Cek apakah password lama yang dimasukkan benar
-        if (!Hash::check($request->current_password, $user->password)) {
+        if (! Hash::check($request->current_password, $user->password)) {
             return redirect()->back()->with('error', 'Password saat ini yang Anda masukkan salah!');
         }
 

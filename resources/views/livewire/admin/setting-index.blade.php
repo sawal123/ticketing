@@ -58,7 +58,7 @@
                                 <div>
                                     <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-2 uppercase tracking-wider">Unggah Logo Baru</label>
                                     <div class="flex items-center gap-3">
-                                        <input type="file" wire:model="new_logo" id="logo-input" class="hidden" accept="image/*">
+                                        <input type="file" wire:model="new_logo" id="logo-input" class="hidden" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp">
                                         <label for="logo-input" class="px-4 py-2.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-xl text-sm font-bold cursor-pointer hover:bg-indigo-100 transition-colors flex items-center gap-2">
                                             <i data-lucide="upload" class="w-4 h-4"></i>
                                             Pilih File
@@ -103,7 +103,7 @@
                                 <div>
                                     <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-2 uppercase tracking-wider">Unggah Icon Baru</label>
                                     <div class="flex items-center gap-3">
-                                        <input type="file" wire:model="new_icon" id="icon-input" class="hidden" accept="image/*">
+                                        <input type="file" wire:model="new_icon" id="icon-input" class="hidden" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp">
                                         <label for="icon-input" class="px-4 py-2.5 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-xl text-sm font-bold cursor-pointer hover:bg-emerald-100 transition-colors flex items-center gap-2">
                                             <i data-lucide="upload" class="w-4 h-4"></i>
                                             Pilih File

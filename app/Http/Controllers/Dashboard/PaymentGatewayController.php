@@ -2,20 +2,23 @@
 
 namespace App\Http\Controllers\Dashboard;
 
-use Storage;
-use Illuminate\Support\Str;
-use Illuminate\Http\Request;
-use App\Models\PaymentGateway;
 use App\Http\Controllers\Controller;
+use App\Models\PaymentGateway;
+use App\Services\SecureImageStorage;
+use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class PaymentGatewayController extends Controller
 {
+    public function __construct(private SecureImageStorage $images) {}
+
     /**
      * Display a listing of the resource.
      */
     public function index()
     {
         $payment = PaymentGateway::paginate(20);
+
         // dd($payment);
         return view('backend.content.payment.payment-gateaway', compact('payment'));
     }
@@ -34,20 +37,19 @@ class PaymentGatewayController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'payment'     => 'required|string|max:100',
-            'category'    => 'required|string',
-            'biaya'       => 'required|numeric',
-            'biaya_type'  => 'required|in:rupiah,persen',
-            'icon'        => 'nullable|image|mimes:png,jpg,jpeg,svg|max:2048',
-            'is_active'   => 'required|boolean',
+            'payment' => 'required|string|max:100',
+            'category' => 'required|string',
+            'biaya' => 'required|numeric',
+            'biaya_type' => 'required|in:rupiah,persen',
+            'icon' => SecureImageStorage::rules(),
+            'is_active' => 'required|boolean',
         ]);
 
         // Generate slug dari field 'payment'
         $validated['slug'] = Str::slug($validated['payment']);
         // Handle icon upload
         if ($request->hasFile('icon')) {
-            $iconPath = $request->file('icon')->store('payment-icons', 'public');
-            $validated['icon'] = $iconPath;
+            $validated['icon'] = $this->images->store($request->file('icon'), 'payment-icons');
         }
 
         PaymentGateway::create($validated);
@@ -76,17 +78,25 @@ class PaymentGatewayController extends Controller
      */
     public function update(Request $request, PaymentGateway $paymentGateway)
     {
+        $request->validate([
+            'icon' => SecureImageStorage::rules(),
+        ]);
+
         // dd($paymentGateway);
         $paymentGateway->payment = $request->payment;
         $paymentGateway->biaya = $request->biaya;
         $paymentGateway->biaya_type = $request->biaya_type;
         $paymentGateway->is_active = $request->is_active;
 
+        $oldIcon = null;
         if ($request->hasFile('icon')) {
-            $paymentGateway->icon = $request->file('icon')->store('icon_payment', 'public');
+            $oldIcon = $paymentGateway->icon;
+            $paymentGateway->icon = $this->images->store($request->file('icon'), 'payment-icons');
         }
 
         $paymentGateway->save();
+        $this->images->delete('payment-icons', $oldIcon);
+        $this->images->delete('icon_payment', $oldIcon);
 
         return redirect()->back()->with('success', 'Data berhasil diperbarui.');
     }
@@ -98,11 +108,8 @@ class PaymentGatewayController extends Controller
     {
         // $gateway = PaymentGateway::findOrFail($id);
 
-        // Jika ada file icon, bisa hapus juga (opsional)
-        if ($paymentGateway->icon && Storage::disk('public')->exists($paymentGateway->icon)) {
-            \Storage::disk('public')->delete($paymentGateway->icon);
-        }
-
+        $this->images->delete('payment-icons', $paymentGateway->icon);
+        $this->images->delete('icon_payment', $paymentGateway->icon);
         $paymentGateway->delete();
 
         return redirect()->back()->with('success', 'Data berhasil dihapus.');

@@ -4,35 +4,42 @@ namespace App\Livewire\Dashboard;
 
 use App\Jobs\sendEmailETransaksi;
 use App\Jobs\sendEmailTrnsaksi;
+use App\Models\Cart;
 use App\Models\Cash;
 use App\Models\Event;
-use App\Models\Cart;
 use App\Models\Harga;
 use App\Models\HargaCart;
-use App\Models\User;
-use Livewire\Component;
-use Livewire\Attributes\Layout;
-use Livewire\WithPagination;
+use App\Models\Talent;
+use App\Models\Voucher;
+use App\Services\SecureImageStorage;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
+use Livewire\Attributes\Layout;
+use Livewire\Component;
 use Livewire\WithFileUploads;
+use Livewire\WithPagination;
 
 class EventDetail extends Component
 {
-    use WithPagination;
     use WithFileUploads;
+    use WithPagination;
 
     #[Layout('layouts.unified')]
-
     public $eventUid;
+
     public $activeTab = 'umum'; // umum, tiket, transaksi
+
     public $searchTransaction = '';
+
     public $perPage = 10;
+
     public $showFullDescription = false;
 
     // Filters for Transactions
     public $filterPayment = 'all'; // all, cash, non-cash
+
     public $filterRange; // Format: "YYYY-MM-DD to YYYY-MM-DD"
 
     // For Add/Edit Ticket Modal
@@ -40,19 +47,21 @@ class EventDetail extends Component
         'kategori' => '',
         'qty' => 0,
         'harga' => 0,
-        'status' => 'active'
+        'status' => 'active',
     ];
 
     public $editingHargaId;
+
     public $editingHarga = [
         'kategori' => '',
         'qty' => 0,
         'harga' => 0,
-        'status' => 'active'
+        'status' => 'active',
     ];
 
     // For Delete Modal
     public $deletingHargaId;
+
     public $deletingTalentId;
 
     // For Transaction Detail Modal
@@ -63,9 +72,13 @@ class EventDetail extends Component
 
     // For Add/Edit Talent
     public $editingTalentId;
+
     public $talentName;
+
     public $talentLink;
+
     public $talentImage;
+
     public $existingTalentImage;
 
     protected $queryString = [
@@ -86,19 +99,19 @@ class EventDetail extends Component
         $user = auth()->user();
         $isAdmin = $user->role === 'admin';
         $ownerId = ($user->role === 'staff') ? $user->parent_uid : $user->uid;
-        
+
         $query = Event::with([
-            'talents', 
-            'hargas' => function($query) {
-                $query->withSum(['hargaCarts as sold_count' => function($q) {
-                    $q->whereHas('cart', function($c) {
+            'talents',
+            'hargas' => function ($query) {
+                $query->withSum(['hargaCarts as sold_count' => function ($q) {
+                    $q->whereHas('cart', function ($c) {
                         $c->where('status', 'SUCCESS');
                     });
                 }], 'quantity');
-            }
+            },
         ])->where('uid', $this->eventUid);
-        
-        if (!$isAdmin) {
+
+        if (! $isAdmin) {
             $query->where('user_uid', $ownerId);
         }
 
@@ -112,29 +125,29 @@ class EventDetail extends Component
 
         $transactionIds = (clone $query)->distinct()->pluck('uid');
         $totalTransactions = $transactionIds->count();
-        
+
         $hargaCarts = HargaCart::whereIn('uid', $transactionIds)->get();
-        
-        $grossRevenue = $hargaCarts->sum(fn($item) => $item->quantity * $item->harga_ticket);
+
+        $grossRevenue = $hargaCarts->sum(fn ($item) => $item->quantity * $item->harga_ticket);
         $totalTicketsSold = $hargaCarts->sum('quantity');
-        
+
         $totalPajak = (clone $query)->sum('pajak');
         $totalInternetFee = (clone $query)->sum('internet_fee');
 
         // Calculate Total Discount based on HargaCart to sync with UI "Terpakai" count
         $totalDiscount = 0;
-        
+
         $hargaCartsWithVoucher = $hargaCarts->whereNotNull('voucher');
-        
+
         foreach ($hargaCartsWithVoucher as $hc) {
-            $voucher = \App\Models\Voucher::where('code', $hc->voucher)
+            $voucher = Voucher::where('code', $hc->voucher)
                 ->where('event_uid', $this->eventUid)
                 ->first();
-                
+
             if ($voucher) {
                 $itemTotal = $hc->quantity * $hc->harga_ticket;
                 $discountValue = 0;
-                
+
                 if (strtolower($voucher->unit) === 'rupiah') {
                     $discountValue = $voucher->nominal;
                 } elseif (strtolower($voucher->unit) === 'persen' || $voucher->unit === '%') {
@@ -143,15 +156,15 @@ class EventDetail extends Component
                         $discountValue = $voucher->max_disc;
                     }
                 }
-                
+
                 $totalDiscount += $discountValue;
             }
         }
 
         $event = $this->getEventData();
         $feePercent = $event->fee ?? 0;
-        
-        // Calculate Total Pajak based on net revenue (after discount) 
+
+        // Calculate Total Pajak based on net revenue (after discount)
         // to match the Dashboard Omset formula: (Gross - Discount) * (1 + Fee%)
         $totalPajak = ($grossRevenue - $totalDiscount) * ($feePercent / 100);
         $totalInternetFee = (clone $query)->sum('internet_fee');
@@ -177,44 +190,44 @@ class EventDetail extends Component
     protected function applyFilters($query)
     {
         return $query->when($this->filterPayment !== 'all', function ($q) {
-                if ($this->filterPayment === 'cash') {
-                    $q->where('payment_type', 'cash');
-                } else {
-                    $q->where('payment_type', '!=', 'cash');
-                }
-            })
+            if ($this->filterPayment === 'cash') {
+                $q->where('payment_type', 'cash');
+            } else {
+                $q->where('payment_type', '!=', 'cash');
+            }
+        })
             ->when($this->filterRange, function ($q) {
                 $dates = explode(' to ', $this->filterRange);
                 if (count($dates) === 2) {
                     $q->whereBetween('carts.created_at', [
                         Carbon::parse($dates[0])->startOfDay(),
-                        Carbon::parse($dates[1])->endOfDay()
+                        Carbon::parse($dates[1])->endOfDay(),
                     ]);
                 } else {
                     $q->whereDate('carts.created_at', Carbon::parse($dates[0]));
                 }
             })
             ->when($this->searchTransaction, function ($q) {
-                $q->where(function($sub) {
-                    $sub->where('carts.invoice', 'like', '%' . $this->searchTransaction . '%')
-                      ->orWhere(function ($online) {
-                          $online->where('carts.payment_type', '!=', 'cash')
-                              ->whereHas('users', function ($u) {
-                                  $u->where(function ($userQuery) {
-                                      $userQuery->where('name', 'like', '%' . $this->searchTransaction . '%')
-                                          ->orWhere('email', 'like', '%' . $this->searchTransaction . '%');
-                                  });
-                              });
-                      })
-                      ->orWhere(function ($cashCart) {
-                          $cashCart->where('carts.payment_type', 'cash')
-                              ->whereHas('cashBuyer', function ($cash) {
-                                  $cash->where(function ($cashQuery) {
-                                      $cashQuery->where('name', 'like', '%' . $this->searchTransaction . '%')
-                                          ->orWhere('email', 'like', '%' . $this->searchTransaction . '%');
-                                  });
-                              });
-                      });
+                $q->where(function ($sub) {
+                    $sub->where('carts.invoice', 'like', '%'.$this->searchTransaction.'%')
+                        ->orWhere(function ($online) {
+                            $online->where('carts.payment_type', '!=', 'cash')
+                                ->whereHas('users', function ($u) {
+                                    $u->where(function ($userQuery) {
+                                        $userQuery->where('name', 'like', '%'.$this->searchTransaction.'%')
+                                            ->orWhere('email', 'like', '%'.$this->searchTransaction.'%');
+                                    });
+                                });
+                        })
+                        ->orWhere(function ($cashCart) {
+                            $cashCart->where('carts.payment_type', 'cash')
+                                ->whereHas('cashBuyer', function ($cash) {
+                                    $cash->where(function ($cashQuery) {
+                                        $cashQuery->where('name', 'like', '%'.$this->searchTransaction.'%')
+                                            ->orWhere('email', 'like', '%'.$this->searchTransaction.'%');
+                                    });
+                                });
+                        });
                 });
             });
     }
@@ -238,7 +251,7 @@ class EventDetail extends Component
                 'harga_carts.quantity',
                 'harga_carts.harga_ticket',
                 'carts.payment_type',
-                'carts.konfirmasi'
+                'carts.konfirmasi',
             ])
             ->where('carts.event_uid', $this->eventUid)
             ->where('carts.status', 'SUCCESS')
@@ -259,7 +272,7 @@ class EventDetail extends Component
             if (count($dates) === 2) {
                 $query->whereBetween('carts.created_at', [
                     Carbon::parse($dates[0])->startOfDay(),
-                    Carbon::parse($dates[1])->endOfDay()
+                    Carbon::parse($dates[1])->endOfDay(),
                 ]);
             } else {
                 $query->whereDate('carts.created_at', Carbon::parse($dates[0]));
@@ -267,22 +280,22 @@ class EventDetail extends Component
         }
 
         if ($this->searchTransaction) {
-            $query->where(function($q) {
-                $q->where('carts.invoice', 'like', '%' . $this->searchTransaction . '%')
-                  ->orWhere(function ($online) {
-                      $online->where('carts.payment_type', '!=', 'cash')
-                          ->where(function ($user) {
-                              $user->where('users.name', 'like', '%' . $this->searchTransaction . '%')
-                                  ->orWhere('users.email', 'like', '%' . $this->searchTransaction . '%');
-                          });
-                  })
-                  ->orWhere(function ($cash) {
-                      $cash->where('carts.payment_type', 'cash')
-                          ->where(function ($cashBuyer) {
-                              $cashBuyer->where('cashes.name', 'like', '%' . $this->searchTransaction . '%')
-                                  ->orWhere('cashes.email', 'like', '%' . $this->searchTransaction . '%');
-                          });
-                  });
+            $query->where(function ($q) {
+                $q->where('carts.invoice', 'like', '%'.$this->searchTransaction.'%')
+                    ->orWhere(function ($online) {
+                        $online->where('carts.payment_type', '!=', 'cash')
+                            ->where(function ($user) {
+                                $user->where('users.name', 'like', '%'.$this->searchTransaction.'%')
+                                    ->orWhere('users.email', 'like', '%'.$this->searchTransaction.'%');
+                            });
+                    })
+                    ->orWhere(function ($cash) {
+                        $cash->where('carts.payment_type', 'cash')
+                            ->where(function ($cashBuyer) {
+                                $cashBuyer->where('cashes.name', 'like', '%'.$this->searchTransaction.'%')
+                                    ->orWhere('cashes.email', 'like', '%'.$this->searchTransaction.'%');
+                            });
+                    });
             });
         }
 
@@ -291,17 +304,17 @@ class EventDetail extends Component
 
     public function exportExcel()
     {
-        $fileName = 'transaksi-event-' . Str::slug($this->getEventData()->event) . '-' . now()->format('YmdHis') . '.csv';
-        
+        $fileName = 'transaksi-event-'.Str::slug($this->getEventData()->event).'-'.now()->format('YmdHis').'.csv';
+
         $headers = [
-            "Content-type"        => "text/csv",
-            "Content-Disposition" => "attachment; filename=$fileName",
-            "Pragma"              => "no-cache",
-            "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
-            "Expires"             => "0"
+            'Content-type' => 'text/csv',
+            'Content-Disposition' => "attachment; filename=$fileName",
+            'Pragma' => 'no-cache',
+            'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
+            'Expires' => '0',
         ];
 
-        $callback = function() {
+        $callback = function () {
             $file = fopen('php://output', 'w');
             // Header Row
             fputcsv($file, ['Tanggal', 'Invoice', 'Nama Pembeli', 'Email', 'Kategori Tiket', 'Qty', 'Harga Satuan', 'Total', 'Status Kehadiran']);
@@ -317,7 +330,7 @@ class EventDetail extends Component
                     $row->quantity,
                     $row->harga_ticket,
                     ($row->quantity * $row->harga_ticket),
-                    $row->konfirmasi == '1' ? 'Hadir' : 'Belum Hadir'
+                    $row->konfirmasi == '1' ? 'Hadir' : 'Belum Hadir',
                 ]);
             });
 
@@ -331,25 +344,31 @@ class EventDetail extends Component
     {
         $event = $this->getEventData();
         $transactions = $this->getExportQuery()->get();
-        
-        $filter_info = "Semua Data";
+
+        $filter_info = 'Semua Data';
         if ($this->filterPayment !== 'all' || $this->filterRange || $this->searchTransaction) {
             $parts = [];
-            if ($this->filterPayment !== 'all') $parts[] = "Metode: " . strtoupper($this->filterPayment);
-            if ($this->filterRange) $parts[] = "Rentang: " . $this->filterRange;
-            if ($this->searchTransaction) $parts[] = "Cari: '" . $this->searchTransaction . "'";
-            $filter_info = implode(", ", $parts);
+            if ($this->filterPayment !== 'all') {
+                $parts[] = 'Metode: '.strtoupper($this->filterPayment);
+            }
+            if ($this->filterRange) {
+                $parts[] = 'Rentang: '.$this->filterRange;
+            }
+            if ($this->searchTransaction) {
+                $parts[] = "Cari: '".$this->searchTransaction."'";
+            }
+            $filter_info = implode(', ', $parts);
         }
 
         $html = view('exports.transactions-pdf', [
             'event' => $event,
             'transactions' => $transactions,
-            'filter_info' => $filter_info
+            'filter_info' => $filter_info,
         ])->render();
 
-        return response()->streamDownload(function() use ($html) {
+        return response()->streamDownload(function () use ($html) {
             echo $html;
-        }, 'transaksi-event-' . Str::slug($event->event) . '.html');
+        }, 'transaksi-event-'.Str::slug($event->event).'.html');
     }
 
     public function setTab($tab)
@@ -368,7 +387,7 @@ class EventDetail extends Component
 
     public function toggleDescription()
     {
-        $this->showFullDescription = !$this->showFullDescription;
+        $this->showFullDescription = ! $this->showFullDescription;
     }
 
     public function toggleTicketStatus($id)
@@ -382,12 +401,13 @@ class EventDetail extends Component
     public function confirmDeleteTicket($id)
     {
         $harga = Harga::findOrFail($id);
-        $hasTransactions = $harga->hargaCarts()->whereHas('cart', function($q) {
+        $hasTransactions = $harga->hargaCarts()->whereHas('cart', function ($q) {
             $q->where('status', 'SUCCESS');
         })->exists();
 
         if ($hasTransactions) {
             $this->dispatch('open-modal', name: 'forbidden-delete-modal');
+
             return;
         }
 
@@ -413,7 +433,7 @@ class EventDetail extends Component
             'kategori' => '',
             'qty' => 0,
             'harga' => 0,
-            'status' => 'active'
+            'status' => 'active',
         ];
 
         $this->dispatch('open-modal', name: 'add-ticket-modal');
@@ -428,7 +448,7 @@ class EventDetail extends Component
                 'required',
                 'string',
                 'max:255',
-                \Illuminate\Validation\Rule::unique('hargas', 'kategori')
+                Rule::unique('hargas', 'kategori')
                     ->where(fn ($query) => $query->where('uid', $this->eventUid)),
             ],
             'newHarga.qty' => 'required|integer|min:0',
@@ -455,9 +475,9 @@ class EventDetail extends Component
             'kategori' => $harga->kategori,
             'qty' => $harga->qty,
             'harga' => $harga->harga,
-            'status' => $harga->status
+            'status' => $harga->status,
         ];
-        
+
         $this->dispatch('open-modal', name: 'edit-ticket-modal');
     }
 
@@ -486,6 +506,7 @@ class EventDetail extends Component
         if (! $exists) {
             $this->selectedTransactionId = null;
             session()->flash('error', 'Transaksi tidak ditemukan atau bukan milik event ini.');
+
             return;
         }
 
@@ -504,16 +525,16 @@ class EventDetail extends Component
     {
         $event = $this->getEventData();
         $metrics = $this->getMetricsData();
-        
+
         $transactions = [];
         if ($this->activeTab === 'transaksi') {
             $transactions = $this->authorizedTransactionQuery()
                 ->with(['users', 'cashBuyer'])
-                ->withSum(['hargaCarts as total_qty' => function($q) {
+                ->withSum(['hargaCarts as total_qty' => function ($q) {
                     $q->whereNull('deleted_at');
                 }], 'quantity')
                 ->where('status', 'SUCCESS');
-            
+
             $transactions = $this->applyFilters($transactions)
                 ->orderBy('created_at', 'desc')
                 ->paginate($this->perPage);
@@ -522,23 +543,23 @@ class EventDetail extends Component
         $selectedTransaction = null;
         $discount = 0;
         $voucherCode = null;
-        
+
         if ($this->selectedTransactionId) {
             $selectedTransaction = $this->authorizedTransactionQuery()
                 ->with(['users', 'cashBuyer', 'hargaCarts.masterHarga'])
                 ->where('uid', $this->selectedTransactionId)
                 ->where('status', 'SUCCESS')
                 ->first();
-            
+
             if ($selectedTransaction) {
                 $hargaCartWithVoucher = $selectedTransaction->hargaCarts->whereNotNull('voucher')->first();
                 if ($hargaCartWithVoucher) {
                     $voucherCode = $hargaCartWithVoucher->voucher;
-                    $voucher = \App\Models\Voucher::where('code', $voucherCode)
+                    $voucher = Voucher::where('code', $voucherCode)
                         ->where('event_uid', $this->eventUid)
                         ->first();
                     if ($voucher) {
-                        $totalTickets = $selectedTransaction->hargaCarts->sum(fn($i) => $i->quantity * $i->harga_ticket);
+                        $totalTickets = $selectedTransaction->hargaCarts->sum(fn ($i) => $i->quantity * $i->harga_ticket);
                         if (strtolower($voucher->unit) === 'rupiah') {
                             $discount = $voucher->nominal;
                         } elseif (strtolower($voucher->unit) === 'persen' || $voucher->unit === '%') {
@@ -558,7 +579,7 @@ class EventDetail extends Component
             'transactions' => $transactions,
             'selectedTransaction' => $selectedTransaction,
             'discount' => $discount,
-            'voucherCode' => $voucherCode
+            'voucherCode' => $voucherCode,
         ]);
     }
 
@@ -574,19 +595,23 @@ class EventDetail extends Component
     public function resendEmail()
     {
         $uid = $this->resendEmailUid;
-        if (!$uid) return;
+        if (! $uid) {
+            return;
+        }
 
         $cart = $this->authorizedTransactionQuery()
             ->with(['users', 'cashBuyer'])
             ->where('uid', $uid)
             ->first();
-        if (!$cart) {
+        if (! $cart) {
             session()->flash('error', 'Transaksi tidak ditemukan atau bukan milik event ini.');
+
             return;
         }
 
         if ($cart->status !== 'SUCCESS') {
             session()->flash('error', 'Email hanya dapat dikirim ulang untuk transaksi yang sukses.');
+
             return;
         }
 
@@ -598,13 +623,15 @@ class EventDetail extends Component
                 if ($cash) {
                     if (! filter_var($cash->email, FILTER_VALIDATE_EMAIL)) {
                         session()->flash('error', 'Email pembeli cash tidak valid atau kosong.');
+
                         return;
                     }
 
                     dispatch(new sendEmailTrnsaksi($cash->email, $cash->name, $cart->uid, $barcode));
                 } else {
-                     session()->flash('error', 'Data pembeli tunai tidak ditemukan.');
-                     return;
+                    session()->flash('error', 'Data pembeli tunai tidak ditemukan.');
+
+                    return;
                 }
             } else {
                 $user = $cart->users;
@@ -612,6 +639,7 @@ class EventDetail extends Component
                     dispatch(new sendEmailETransaksi($user, $cart, $barcode));
                 } else {
                     session()->flash('error', 'Data pembeli tidak ditemukan.');
+
                     return;
                 }
             }
@@ -620,7 +648,7 @@ class EventDetail extends Component
             $this->resendEmailUid = null;
             session()->flash('message', 'Email barcode telah dijadwalkan untuk dikirim.');
         } catch (\Exception $e) {
-            session()->flash('error', 'Gagal mengirim email: ' . $e->getMessage());
+            session()->flash('error', 'Gagal mengirim email: '.$e->getMessage());
         }
     }
 
@@ -632,22 +660,22 @@ class EventDetail extends Component
 
         $this->validate([
             'talentName' => 'required|string|max:255',
-            'talentImage' => 'required|image|max:2048',
+            'talentImage' => SecureImageStorage::rules(true),
             'talentLink' => 'nullable|url',
         ]);
 
-        $imagePath = $this->talentImage->store('talent', 'public');
+        $imageName = app(SecureImageStorage::class)->storeBasename($this->talentImage, 'talent');
 
-        $talent = \App\Models\Talent::create([
+        $talent = Talent::create([
             'uid' => $this->eventUid,
             'talent' => $this->talentName,
-            'gambar' => basename($imagePath),
+            'gambar' => $imageName,
             'link' => $this->talentLink,
         ]);
 
         $this->reset(['talentName', 'talentLink', 'talentImage', 'editingTalentId', 'existingTalentImage']);
         $this->dispatch('close-modal', name: 'add-talent-modal');
-        
+
         session()->flash('success', 'Talent berhasil ditambahkan!');
     }
 
@@ -661,12 +689,12 @@ class EventDetail extends Component
     {
         $this->reset(['talentName', 'talentLink', 'talentImage', 'editingTalentId', 'existingTalentImage']);
         $this->editingTalentId = $id; // Set this first to show loading state if needed
-        
-        $talent = \App\Models\Talent::findOrFail($id);
+
+        $talent = Talent::findOrFail($id);
         $this->talentName = $talent->talent;
         $this->talentLink = $talent->link;
         $this->existingTalentImage = $talent->gambar;
-        
+
         $this->dispatch('open-modal', name: 'add-talent-modal');
     }
 
@@ -674,31 +702,30 @@ class EventDetail extends Component
     {
         $this->validate([
             'talentName' => 'required|string|max:255',
-            'talentImage' => 'nullable|image|max:2048',
+            'talentImage' => SecureImageStorage::rules(),
             'talentLink' => 'nullable|url',
         ]);
 
-        $talent = \App\Models\Talent::findOrFail($this->editingTalentId);
-        
+        $talent = Talent::findOrFail($this->editingTalentId);
+
         $data = [
             'talent' => $this->talentName,
             'link' => $this->talentLink,
         ];
 
+        $oldImage = null;
         if ($this->talentImage) {
-            if ($talent->gambar && \Storage::disk('public')->exists('talent/' . $talent->gambar)) {
-                \Storage::disk('public')->delete('talent/' . $talent->gambar);
-            }
-            
-            $imagePath = $this->talentImage->store('talent', 'public');
-            $data['gambar'] = basename($imagePath);
+            $oldImage = $talent->gambar;
+            $data['gambar'] = app(SecureImageStorage::class)
+                ->storeBasename($this->talentImage, 'talent');
         }
 
         $talent->update($data);
+        app(SecureImageStorage::class)->delete('talent', $oldImage);
 
         $this->reset(['talentName', 'talentLink', 'talentImage', 'editingTalentId', 'existingTalentImage']);
         $this->dispatch('close-modal', name: 'add-talent-modal');
-        
+
         session()->flash('success', 'Talent berhasil diperbarui!');
     }
 
@@ -710,12 +737,9 @@ class EventDetail extends Component
 
     public function deleteTalent()
     {
-        $talent = \App\Models\Talent::findOrFail($this->deletingTalentId);
-        
-        if ($talent->gambar && \Storage::disk('public')->exists('talent/' . $talent->gambar)) {
-            \Storage::disk('public')->delete('talent/' . $talent->gambar);
-        }
-        
+        $talent = Talent::findOrFail($this->deletingTalentId);
+
+        app(SecureImageStorage::class)->delete('talent', $talent->gambar);
         $talent->delete();
         $this->dispatch('close-modal', name: 'delete-talent-modal');
         $this->deletingTalentId = null;

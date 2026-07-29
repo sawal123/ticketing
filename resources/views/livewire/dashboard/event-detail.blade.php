@@ -803,7 +803,7 @@
                         @endif
                         <label class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer text-white text-[10px] font-bold uppercase tracking-wider">
                             Upload
-                            <input type="file" wire:model="talentImage" class="hidden" accept="image/*">
+                            <input type="file" wire:model="talentImage" class="hidden" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp">
                         </label>
                     </div>
                     @error('talentImage') <p class="text-rose-500 text-[10px] mt-1">{{ $message }}</p> @enderror

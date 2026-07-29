@@ -5,6 +5,10 @@
 
     RewriteEngine On
 
+    # Never serve executable uploads from public storage or asset directories.
+    # This intentionally does not match the Laravel front controller (index.php).
+    RewriteRule ^(?:storage|assets)(?:/.*)?\.(?:php(?:5|7|8)?|phtml|phar)(?:[./].*)?$ - [F,NC,L]
+
     # Handle Authorization Header
     RewriteCond %{HTTP:Authorization} .
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]

@@ -2,34 +2,28 @@
 
 namespace App\Http\Controllers\Penyewa;
 
-use DateTime;
-use Exception;
-use App\Models\Cart;
-use App\Models\Cash;
-use App\Models\Event;
-use App\Models\Harga;
-use App\Models\Talent;
-use App\Models\Partner;
-use App\Models\Voucher;
-use App\Models\EventDate;
-use App\Models\HargaCart;
-use App\Models\Penarikan;
-use Ramsey\Uuid\Type\Time;
-use App\Models\Transaction;
-use Illuminate\Support\Str;
-use Illuminate\Http\Request;
-use App\Mail\CashNotifikasiMail;
-use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
-use App\Jobs\sendEmailTrnsaksi;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Mail;
+use App\Models\Cart;
+use App\Models\Event;
+use App\Models\EventDate;
+use App\Models\Harga;
+use App\Models\Partner;
+use App\Models\Penarikan;
+use App\Models\Talent;
+use App\Models\Voucher;
+use App\Services\SecureImageStorage;
+use Exception;
 use Illuminate\Http\RedirectResponse;
-use App\Mail\MidtransPaymentNotification;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 
 class AddController extends Controller
 {
+    public function __construct(private SecureImageStorage $images) {}
+
     public function addEvent(Request $request): RedirectResponse
     {
         $validate = Validator::make($request->all(), [
@@ -40,6 +34,7 @@ class AddController extends Controller
             'end' => 'required|string',
             'map' => 'required|string|max:255',
             'deskripsi' => 'required|string',
+            'cover' => SecureImageStorage::rules(),
         ]);
         $validate->validate();
 
@@ -49,7 +44,7 @@ class AddController extends Controller
         $startEvent = new EventDate([
             'uid' => $uid,
             'start' => $request->start,
-            'end' => $request->end
+            'end' => $request->end,
         ]);
 
         $event = new Event([
@@ -57,19 +52,16 @@ class AddController extends Controller
             'user_uid' => Auth::user()->uid,
             'event' => $request->event,
             'alamat' => $request->alamat,
-            'tanggal' =>  $request->start,
+            'tanggal' => $request->start,
             'status' => 'active',
             'fee' => $request->fee, // AMBIL DARI INPUT
             'deskripsi' => $request->deskripsi,
             'map' => $request->map,
             'slug' => Str::slug($request->event),
-            'konfirmasi' => null
+            'konfirmasi' => null,
         ]);
         if ($request->hasFile('cover')) {
-            $file = $request->file('cover');
-            $fileName = $event['uid_outlet'] . '_' . time() . '_' . $file->getClientOriginalName();
-            $file->storeAs('public/cover/', $fileName); // Simpan di direktori 'public/outlet/'
-            $event['cover'] = $fileName; // Simpan nama file gambar di kolom 'gambar' pada tabel
+            $event['cover'] = $this->images->storeBasename($request->file('cover'), 'cover');
         }
 
         try {
@@ -77,29 +69,33 @@ class AddController extends Controller
             $event->save();
             $startEvent->save();
             DB::commit();
-            return redirect('dashboard/event/eventDetail/' . $uid)->with('addEvent', 'Event Berhasil Disimpan..');
-        } catch (\Exception $e) {
+
+            return redirect('dashboard/event/eventDetail/'.$uid)->with('addEvent', 'Event Berhasil Disimpan..');
+        } catch (Exception $e) {
             DB::rollback();
+
             return redirect()->back()->with('error', 'Tambah Event Gagal. Silahkan coba lagi.');
         }
     }
 
     public function addTalent(Request $request)
     {
+        $request->validate([
+            'gambar' => SecureImageStorage::rules(),
+        ]);
 
         $talent = new Talent([
             'uid' => $request->uid,
             'talent' => $request->talent,
         ]);
         if ($request->hasFile('gambar')) {
-            $file = $request->file('gambar');
-            $fileName = $talent['uid_outlet'] . '_' . time() . '_' . $file->getClientOriginalName();
-            $file->storeAs('public/talent/', $fileName); // Simpan di direktori 'public/outlet/'
-            $talent['gambar'] = $fileName; // Simpan nama file gambar di kolom 'gambar' pada tabel
+            $talent['gambar'] = $this->images->storeBasename($request->file('gambar'), 'talent');
         }
         $talent->save();
+
         return redirect()->back()->with('talent', 'Talent Berhasil disimpan');
     }
+
     public function addHarga(Request $request)
     {
         // dd($request->qty);
@@ -114,6 +110,7 @@ class AddController extends Controller
             ]);
             try {
                 $harga->save();
+
                 return redirect()->back()->with('harga', 'Harga berhasil disimpan');
             } catch (Exception $e) {
                 return redirect()->back()->with('deleteHarga', $e->getMessage());
@@ -131,7 +128,7 @@ class AddController extends Controller
             // 'nominal' => 'numeric|required',
             'min' => 'required|numeric',
             'max' => 'numeric',
-            'maxUse' => 'required|numeric'
+            'maxUse' => 'required|numeric',
         ]);
         $validate->validate();
         // dd($request->event);
@@ -153,19 +150,20 @@ class AddController extends Controller
             'max_disc' => $request->max,
             'digunakan' => 0,
             'limit' => $request->maxUse,
-            'status' => 'active'
+            'status' => 'active',
         ]);
         $voucher->save();
+
         return redirect()->back()->with('voucher', 'Voucher berhasil disimpan');
     }
 
     public function addPenarikan(Request $request)
     {
         $validate = Validator::make($request->all(), [
-            'amount' => 'required|numeric'
+            'amount' => 'required|numeric',
         ]);
         $validate->validate();
-        $amount = (int)$request->amount;
+        $amount = (int) $request->amount;
 
         $totalHargaCart = Cart::select(['harga_carts.harga_ticket', 'harga_carts.quantity'])
             ->join('harga_carts', 'harga_carts.uid', '=', 'carts.uid')
@@ -203,20 +201,19 @@ class AddController extends Controller
                 'amount' => $request->amount,
                 'note' => 'Penarikan',
                 'kwitansi' => $totalSaldo,
-                'status' => 'PENDING'
+                'status' => 'PENDING',
             ]);
         }
 
         // dd($penarikan);
         try {
             $penarikan->save();
+
             return redirect()->back()->with('penarikan', 'Penarikan berhasil diajukan');
         } catch (Exception $e) {
             return redirect()->back()->with('error', 'Pengajuan Gagal!');
         }
     }
-
-
 
     public function addPartner(Request $request)
     {
@@ -230,7 +227,7 @@ class AddController extends Controller
         ]);
         $validator->validate();
         // dd(Str::uuid());
-        $partner = new Partner();
+        $partner = new Partner;
         $partner->uid = Str::uuid();
         $partner->referensi = $request->input('referensi');
         $partner->name = $request->input('name');
@@ -242,6 +239,7 @@ class AddController extends Controller
 
         try {
             $partner->save();
+
             return redirect()->back()->with('success', 'Partner Berhasil Ditambah');
         } catch (Exception $e) {
             return back()->with('error', $e->getMessage());

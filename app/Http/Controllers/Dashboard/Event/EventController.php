@@ -2,18 +2,21 @@
 
 namespace App\Http\Controllers\Dashboard\Event;
 
+use App\Http\Controllers\Controller;
 use App\Models\Event;
 use App\Models\Harga;
 use App\Models\Talent;
-use Illuminate\Support\Str;
+use App\Services\SecureImageStorage;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 
 class EventController extends Controller
 {
+    public function __construct(private SecureImageStorage $images) {}
+
     public function event(Request $request, $addEvent = null, $uid = null)
     {
         error_reporting(0);
@@ -32,7 +35,7 @@ class EventController extends Controller
             return view('backend.content.event', [
                 'title' => 'Event',
                 'event' => $event,
-                'paginate' => $pagination
+                'paginate' => $pagination,
             ]);
         } elseif ($addEvent === 'addEvent') {
 
@@ -50,22 +53,25 @@ class EventController extends Controller
             if ($eventDetail === null) {
                 abort('403');
             }
+
             // dd($eventDetail);
             return view('backend.semiPage.eventDetail', [
                 'title' => 'Event Detail',
                 'eventDetail' => $eventDetail,
                 'talent' => $talent,
                 'harga' => $harga,
-                'us' => $user
+                'us' => $user,
             ]);
         }
     }
+
     public function ubahEvents($uid)
     {
         $ubahEvent = Event::where('uid', $uid)->first();
+
         return view('backend.semiPage.addEvent', [
             'title' => 'Ubah Event',
-            'ubahEvent' => $ubahEvent
+            'ubahEvent' => $ubahEvent,
         ]);
     }
 
@@ -78,7 +84,7 @@ class EventController extends Controller
             'tanggal' => 'required|string',
             'map' => 'required|string|max:255',
             'deskripsi' => 'required|string|max:255',
-
+            'cover' => SecureImageStorage::rules(),
         ]);
         $validate->validate();
 
@@ -90,18 +96,15 @@ class EventController extends Controller
             'user_uid' => Auth::user()->uid,
             'event' => $request->event,
             'alamat' => $request->alamat,
-            'tanggal' =>  $request->tanggal,
+            'tanggal' => $request->tanggal,
             'status' => 'active',
             'fee' => $request->fee,
             'deskripsi' => $request->deskripsi,
             'map' => $request->map,
-            'slug' => Str::slug($request->event)
+            'slug' => Str::slug($request->event),
         ]);
         if ($request->hasFile('cover')) {
-            $file = $request->file('cover');
-            $fileName = $event['uid_outlet'] . '_' . time() . '_' . $file->getClientOriginalName();
-            $file->storeAs('public/cover/', $fileName); // Simpan di direktori 'public/outlet/'
-            $event['cover'] = $fileName; // Simpan nama file gambar di kolom 'gambar' pada tabel
+            $event['cover'] = $this->images->storeBasename($request->file('cover'), 'cover');
         }
         // dd($event);
 
@@ -109,9 +112,11 @@ class EventController extends Controller
             DB::beginTransaction();
             $event->save();
             DB::commit();
-            return redirect('admin/event/eventDetail/' . $uid)->with('addEvent', 'Event Berhasil Disimpan..');
+
+            return redirect('admin/event/eventDetail/'.$uid)->with('addEvent', 'Event Berhasil Disimpan..');
         } catch (\Exception $e) {
             DB::rollback();
+
             return redirect()->back()->with('error', 'Tambah Event Gagal. Silahkan coba lagi.');
         }
     }
@@ -120,18 +125,12 @@ class EventController extends Controller
     {
         $event = Event::where('uid', $uid)->first();
         if ($event) {
-            $imagePath = public_path() . '/storage/cover/' . $event->cover;
-            if (file_exists($imagePath) === true) {
-                unlink($imagePath);
-            }
+            $this->images->delete('cover', $event->cover);
             $event->delete();
             $talent = Talent::where('uid', $event->uid)->get();
             if ($talent) {
                 foreach ($talent as $talentItem) {
-                    $imagePath = public_path() . '/storage/cover/' . $talentItem->gambar;
-                    if (file_exists($imagePath) === true) {
-                        unlink($imagePath);
-                    }
+                    $this->images->delete('talent', $talentItem->gambar);
                     $talentItem->delete();
                 }
             }
@@ -151,11 +150,16 @@ class EventController extends Controller
         $event = Event::where('uid', $data)->first();
         $event->konfirmasi = '1';
         $event->save();
+
         return redirect()->back()->with('konfirmasi', 'Event Berhasil di Setujui dan di publish');
     }
 
     public function editEvent(Request $request)
     {
+        $request->validate([
+            'cover' => SecureImageStorage::rules(),
+        ]);
+
         $event = Event::where('uid', $request->uid)->first(); // Mengambil instance model yang akan diupdate
 
         $tanggal = date('Y-m-d H:i', strtotime($request->tanggal));
@@ -167,18 +171,15 @@ class EventController extends Controller
         $event->deskripsi = $request->deskripsi;
         $event->map = $request->map;
 
+        $oldCover = null;
         if ($request->hasFile('cover')) {
-            $imagePath = public_path() . '/storage/cover/' . $event->cover;
-            if (file_exists($imagePath) === true) {
-                unlink($imagePath);
-            }
-            $file = $request->file('cover');
-            $fileName = $event->uid . '_' . time() . '_' . $file->getClientOriginalName();
-            $file->storeAs('public/cover/', $fileName);
-            $event->cover = $fileName;
+            $oldCover = $event->cover;
+            $event->cover = $this->images->storeBasename($request->file('cover'), 'cover');
         }
 
         $event->save();
-        return redirect('/admin/event/eventDetail/' . $request->uid)->with('success', 'Berhasil di Update');
+        $this->images->delete('cover', $oldCover);
+
+        return redirect('/admin/event/eventDetail/'.$request->uid)->with('success', 'Berhasil di Update');
     }
 }

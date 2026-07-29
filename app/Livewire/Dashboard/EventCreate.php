@@ -5,6 +5,7 @@ namespace App\Livewire\Dashboard;
 use App\Models\Category;
 use App\Models\Event;
 use App\Models\Fasilitas;
+use App\Services\SecureImageStorage;
 use Carbon\Carbon;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Layout;
@@ -79,7 +80,7 @@ class EventCreate extends Component
             'tanggal' => 'required|date|after:start_sale',
             'alamat' => 'required|string',
             'map' => 'nullable|url',
-            'cover' => $this->editingEventUid ? 'nullable|image|max:2048' : 'required|image|max:2048',
+            'cover' => SecureImageStorage::rules(! $this->editingEventUid),
             'deskripsi' => 'required|string',
             'category_id' => 'required|exists:categories,id',
             'selectedFasilitas' => 'array',
@@ -102,9 +103,10 @@ class EventCreate extends Component
 
         // Handle Cover Upload
         $coverName = $this->existingCover;
+        $oldCover = null;
         if ($this->cover) {
-            $coverName = $uid.'.'.$this->cover->getClientOriginalExtension();
-            $this->cover->storeAs('public/cover', $coverName);
+            $oldCover = $this->editingEventUid ? $this->existingCover : null;
+            $coverName = app(SecureImageStorage::class)->storeBasename($this->cover, 'cover');
         }
 
         if (! $this->editingEventUid && blank($coverName)) {
@@ -140,6 +142,8 @@ class EventCreate extends Component
         } else {
             $event->update($data);
         }
+
+        app(SecureImageStorage::class)->delete('cover', $oldCover);
 
         // Sync Fasilitas
         $event->fasilitas()->sync($this->selectedFasilitas);

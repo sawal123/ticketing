@@ -39,7 +39,7 @@
                         </div>
 
                         <!-- 🔥 SATU INPUT GAMBAR -->
-                        <input type="file" id="gambar" name="gambar" accept="image/*" style="display:none"
+                        <input type="file" id="gambar" name="gambar" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" style="display:none"
                             onchange="previewGambar(event)">
                     </div>
 

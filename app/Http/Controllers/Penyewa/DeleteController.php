@@ -2,17 +2,19 @@
 
 namespace App\Http\Controllers\Penyewa;
 
-use App\Models\Event;
-use App\Models\Harga;
-use App\Models\Talent;
-use App\Models\Partner;
-use App\Models\Voucher;
-use App\Models\EventDate;
-use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
+use App\Models\Event;
+use App\Models\EventDate;
+use App\Models\Harga;
+use App\Models\Partner;
+use App\Models\Talent;
+use App\Models\Voucher;
+use App\Services\SecureImageStorage;
 
 class DeleteController extends Controller
 {
+    public function __construct(private SecureImageStorage $images) {}
+
     public function eventDelete($uid)
     {
         $event = Event::where('uid', $uid)->first();
@@ -20,20 +22,14 @@ class DeleteController extends Controller
         $hargaEvent = Harga::where('uid', $uid)->get();
         $talentEvent = Talent::where('uid', $uid)->get();
 
-        $imagePath = public_path() . '/storage/cover/' . $event->cover;
-        if (file_exists($imagePath) === true) {
-            unlink($imagePath);
-        }
+        $this->images->delete('cover', $event->cover);
         $event->forceDelete();
         if ($eventDate) {
             $eventDate->delete();
         }
         if ($talentEvent) {
             foreach ($talentEvent as $talent) {
-                $imagePath = public_path() . '/storage/talent/' . $talent->gambar;
-                if (file_exists($imagePath) === true) {
-                    unlink($imagePath);
-                }
+                $this->images->delete('talent', $talent->gambar);
                 $talent->delete();
             }
         }
@@ -43,23 +39,23 @@ class DeleteController extends Controller
             }
         }
 
-
         return redirect()->back()->with('hapus', 'Data Event Berhasil dihapus');
     }
+
     public function deleteTalent($id)
     {
         $talentEvent = Talent::where('uid', $id)->first();
-        $imagePath = public_path() . '/storage/talent/' . $talentEvent->gambar;
-        if (file_exists($imagePath) === true) {
-            unlink($imagePath);
-        }
+        $this->images->delete('talent', $talentEvent->gambar);
         $talentEvent->delete();
+
         return redirect()->back()->with('hapus', 'Talent Berhasil dihapus');
     }
+
     public function deleteHarga($uid)
     {
         $harga = Harga::where('id', $uid)->first();
         $harga->delete();
+
         return redirect()->back()->with('deleteHarga', 'Harga Berhasil Dihapus');
     }
 
@@ -67,11 +63,15 @@ class DeleteController extends Controller
     {
         $partner = Partner::where('uid', $uid)->first();
         $partner->delete();
+
         return redirect()->back()->with('success', 'Partner Berhasil dihapus');
     }
-    public function deleteVoucher($uid){
+
+    public function deleteVoucher($uid)
+    {
         $voucher = Voucher::where('uid', $uid)->first();
         $voucher->delete();
+
         return redirect()->back()->with('success', 'Voucher Berhasil dihapus');
     }
 }
