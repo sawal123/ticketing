@@ -27,8 +27,11 @@ class sendEmailETransaksi implements ShouldBeUnique, ShouldQueue
 
     public string $cartUid;
 
-    public function __construct(User $user, Cart $cart)
-    {
+    public function __construct(
+        User $user,
+        Cart $cart,
+        public bool $isResend = false
+    ) {
         $this->userUid = $user->uid;
         $this->cartUid = $cart->uid;
         $this->afterCommit();
@@ -36,7 +39,9 @@ class sendEmailETransaksi implements ShouldBeUnique, ShouldQueue
 
     public function uniqueId(): string
     {
-        return 'ticket-email:'.$this->cartUid;
+        $prefix = $this->isResend ? 'ticket-email-resend:' : 'ticket-email:';
+
+        return $prefix.$this->cartUid;
     }
 
     public function backoff(): array
@@ -52,6 +57,6 @@ class sendEmailETransaksi implements ShouldBeUnique, ShouldQueue
         $user = User::where('uid', $this->userUid)->firstOrFail();
         $cart = Cart::where('uid', $this->cartUid)->firstOrFail();
 
-        Mail::to($user)->send(new MidtransPaymentNotification($user, $cart));
+        Mail::to($user)->send(new MidtransPaymentNotification($user, $cart, $this->isResend));
     }
 }

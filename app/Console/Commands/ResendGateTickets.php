@@ -71,9 +71,10 @@ class ResendGateTickets extends Command
                     $cart->cashBuyer->email,
                     $cart->cashBuyer->name,
                     $cart->uid,
+                    true,
                 ));
             } else {
-                dispatch(new sendEmailETransaksi($cart->users, $cart));
+                dispatch(new sendEmailETransaksi($cart->users, $cart, true));
             }
         }
 

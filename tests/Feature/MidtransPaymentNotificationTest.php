@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Jobs\sendEmailETransaksi;
+use App\Jobs\sendEmailTrnsaksi;
 use App\Mail\CashNotifikasiMail;
 use App\Mail\MidtransPaymentNotification;
 use App\Models\Cart;
@@ -53,10 +54,17 @@ class MidtransPaymentNotificationTest extends TestCase
             $html = $mail->render();
 
             $this->assertTrue($mail->hasTo('online-ticket@example.test'));
+            $this->assertFalse($mail->isResend);
+            $this->assertSame(
+                'Barcode Verifikasi GOTIK - Midtrans Render Event',
+                $mail->envelope()->subject,
+            );
+            $this->assertFalse($mail->content()->with['isResendTicket']);
             $this->assertStringContainsString('/generate-barcode/'.$cart->invoice, $html);
             $this->assertStringContainsString('/generate-barcode/'.$cart->invoice, $mail->ticketUrl);
             $this->assertStringContainsString('INV-CART-123', $html);
             $this->assertStringContainsString('Midtrans Render Event', $html);
+            $this->assertStringNotContainsString('Barcode lama tidak berlaku lagi', $html);
 
             return true;
         });
@@ -71,13 +79,75 @@ class MidtransPaymentNotificationTest extends TestCase
         ]);
         $cart = $this->cashCart($operator, $event);
 
-        $html = (new CashNotifikasiMail('Cash Ticket Buyer', $cart))->render();
+        $mail = new CashNotifikasiMail('Cash Ticket Buyer', $cart);
+        $html = $mail->render();
 
+        $this->assertFalse($mail->isResend);
+        $this->assertSame('Barcode Verifikasi GOTIK - Cash Signed Event', $mail->envelope()->subject);
+        $this->assertFalse($mail->content()->with['isResendTicket']);
         $this->assertStringContainsString('/cash-ticket/'.$cart->uid, $html);
         $this->assertStringContainsString('signature=', html_entity_decode($html, ENT_QUOTES));
         $this->assertStringNotContainsString('/generate-barcode/', $html);
         $this->assertStringContainsString($cart->invoice, $html);
         $this->assertStringContainsString('Cash Signed Event', $html);
+        $this->assertStringNotContainsString('Barcode lama tidak berlaku lagi', $html);
+    }
+
+    public function test_resend_jobs_and_mailables_use_distinct_identity_subject_and_copy(): void
+    {
+        $buyer = $this->user([
+            'name' => 'Resend Online Buyer',
+            'email' => 'resend-online@example.test',
+        ]);
+        $event = $this->event(['event' => 'Purnama Resend Event']);
+        $onlineCart = $this->onlineCart($buyer, $event);
+        $normalJob = new sendEmailETransaksi($buyer, $onlineCart);
+        $resendJob = new sendEmailETransaksi($buyer, $onlineCart, true);
+
+        $this->assertFalse($normalJob->isResend);
+        $this->assertSame('ticket-email:'.$onlineCart->uid, $normalJob->uniqueId());
+        $this->assertTrue($resendJob->isResend);
+        $this->assertSame('ticket-email-resend:'.$onlineCart->uid, $resendJob->uniqueId());
+
+        $onlineMail = new MidtransPaymentNotification($buyer, $onlineCart, true);
+        $onlineHtml = $onlineMail->render();
+        $this->assertTrue($onlineMail->content()->with['isResendTicket']);
+        $this->assertSame(
+            'PENTING: Barcode Tiket Terbaru GOTIK - Purnama Resend Event',
+            $onlineMail->envelope()->subject,
+        );
+        $this->assertStringContainsString('Barcode Tiket Terbaru', $onlineHtml);
+        $this->assertStringContainsString('Barcode lama tidak berlaku lagi', $onlineHtml);
+        $this->assertStringContainsString('Tunjukan Barcode', $onlineHtml);
+        $this->assertStringContainsString($onlineCart->invoice, $onlineHtml);
+        $this->assertStringContainsString(
+            app(GateTokenService::class)->manualCodeForDisplay($onlineCart->fresh()),
+            $onlineHtml,
+        );
+        $this->assertStringContainsString(
+            'Kode manual ini hanya digunakan apabila barcode tidak dapat dipindai oleh panitia',
+            $onlineHtml,
+        );
+
+        $cashCart = $this->cashCart($buyer, $event);
+        $cashJob = new sendEmailTrnsaksi(
+            'resend-cash@example.test',
+            'Resend Cash Buyer',
+            $cashCart->uid,
+            true,
+        );
+        $this->assertTrue($cashJob->isResend);
+
+        Mail::fake();
+        $cashJob->handle();
+        Mail::assertSent(CashNotifikasiMail::class, function (CashNotifikasiMail $mail) {
+            $this->assertTrue($mail->isResend);
+            $this->assertTrue($mail->content()->with['isResendTicket']);
+            $this->assertStringContainsString('PENTING', $mail->envelope()->subject);
+            $this->assertStringContainsString('Barcode lama tidak berlaku lagi', $mail->render());
+
+            return true;
+        });
     }
 
     private function createSchema(): void

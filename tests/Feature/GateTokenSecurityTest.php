@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Http\Middleware\GlobalDataMiddleware;
 use App\Http\Middleware\LogActivityMiddleware;
 use App\Jobs\sendEmailETransaksi;
+use App\Jobs\sendEmailTrnsaksi;
 use App\Mail\MidtransPaymentNotification;
 use App\Models\Cart;
 use App\Models\Cash;
@@ -486,15 +487,52 @@ class GateTokenSecurityTest extends TestCase
 
             return $job->userUid === $buyer->uid
                 && $job->cartUid === $cart->uid
+                && $job->isResend
+                && $job->uniqueId() === 'ticket-email-resend:'.$cart->uid
                 && ! str_contains($serialized, $token)
                 && ! str_contains($serialized, $manualCode);
         });
 
-        $mailHtml = (new MidtransPaymentNotification($buyer, $cart->fresh()))->render();
+        $resendMail = new MidtransPaymentNotification($buyer, $cart->fresh(), true);
+        $mailHtml = $resendMail->render();
+        $this->assertSame(
+            'PENTING: Barcode Tiket Terbaru GOTIK - Purnama Bersantai',
+            $resendMail->envelope()->subject,
+        );
+        $this->assertTrue($resendMail->content()->with['isResendTicket']);
+        $this->assertStringContainsString('Barcode Tiket Terbaru', $mailHtml);
+        $this->assertStringContainsString('Barcode lama tidak berlaku lagi', $mailHtml);
         $this->assertStringContainsString(
             $this->tokens->manualCodeForDisplay($cart->fresh()),
             $mailHtml,
         );
+    }
+
+    public function test_resend_gate_command_marks_cash_job_as_resend(): void
+    {
+        Queue::fake();
+        [$owner, $event, $buyer, $cart] = $this->ticket(eventName: 'Purnama Cash');
+        $cart->update(['payment_type' => 'cash']);
+        Cash::create([
+            'uid' => $cart->uid,
+            'uid_user' => $owner->uid,
+            'uid_event' => $event->uid,
+            'name' => 'Cash Gate Buyer',
+            'email' => 'cash-gate@example.test',
+        ]);
+        $this->tokens->issue($cart);
+        Config::set('gate-tokens.active_event_uids', [$event->uid]);
+
+        $prompt = "KIRIM ULANG 1 tiket untuk Purnama Cash ({$event->uid})?";
+        $this->artisan('tickets:resend-gate-tickets', [
+            'event_uid' => $event->uid,
+            '--execute' => true,
+        ])->expectsConfirmation($prompt, 'yes')
+            ->assertSuccessful();
+
+        Queue::assertPushed(sendEmailTrnsaksi::class, fn (sendEmailTrnsaksi $job) => $job->cartUid === $cart->uid
+            && $job->recipientEmail === 'cash-gate@example.test'
+            && $job->isResend);
     }
 
     public function test_missing_manual_code_backfill_does_not_rotate_existing_gate_token(): void
