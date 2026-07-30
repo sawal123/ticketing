@@ -55,12 +55,22 @@
     <h3>Hi, {{ $name }}</h3>
     <hr>
     <div class="paragrap">
-      <strong>Terimakasih telah membeli tiket {{$event->event}} melalui GOTIK</strong>
-      <p>Link dan barcode ini bersifat rahasia. Jangan bagikan kepada orang lain.
-        <br>
-        Tunjukan barcode/kode kepada panitia untuk konfirmasi kehadiran.
-      </p>
-      <p>Tekan tombol dibawah untuk melihat detail tiket dan barcode anda!</p>
+      @if($isResendTicket ?? false)
+        <h2>Barcode Tiket Terbaru</h2>
+        <strong>{{ $event->event }}</strong>
+        <p>
+          Demi keamanan sistem tiket GOTIK, barcode/QR code tiket sebelumnya telah diperbarui.
+          Barcode lama tidak berlaku lagi. Gunakan barcode terbaru dari email ini untuk masuk ke venue.
+        </p>
+        <p>Tekan tombol di bawah untuk melihat tiket dan barcode terbaru Anda.</p>
+      @else
+        <strong>Terimakasih telah membeli tiket {{$event->event}} melalui GOTIK</strong>
+        <p>Link dan barcode ini bersifat rahasia. Jangan bagikan kepada orang lain.
+          <br>
+          Tunjukan barcode/kode kepada panitia untuk konfirmasi kehadiran.
+        </p>
+        <p>Tekan tombol dibawah untuk melihat detail tiket dan barcode anda!</p>
+      @endif
     </div>
     <div class="margin"></div>
     <a href="{{ $ticketUrl }}" style="  color:white;" class="button">
@@ -75,6 +85,13 @@
     @if($manualCode)
       <p>Kode Manual</p>
       <h2 style="letter-spacing: 4px;">{{ $manualCode }}</h2>
+    @endif
+
+    @if($isResendTicket ?? false)
+      <p>
+        Kode manual ini hanya digunakan apabila barcode tidak dapat dipindai oleh panitia.
+        Jangan bagikan barcode atau kode manual kepada orang lain.
+      </p>
     @endif
 
     <p>

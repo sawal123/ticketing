@@ -25,8 +25,12 @@ class sendEmailTrnsaksi implements ShouldQueue
 
     public string $cartUid;
 
-    public function __construct(string $recipientEmail, string $recipientName, string $cartUid)
-    {
+    public function __construct(
+        string $recipientEmail,
+        string $recipientName,
+        string $cartUid,
+        public bool $isResend = false
+    ) {
         $this->recipientEmail = $recipientEmail;
         $this->recipientName = $recipientName;
         $this->cartUid = $cartUid;
@@ -39,7 +43,7 @@ class sendEmailTrnsaksi implements ShouldQueue
             $cart = Cart::with('event')->where('uid', $this->cartUid)->firstOrFail();
 
             Mail::to($this->recipientEmail)->send(
-                new CashNotifikasiMail($this->recipientName, $cart)
+                new CashNotifikasiMail($this->recipientName, $cart, $this->isResend)
             );
         } catch (Throwable $exception) {
             Log::error('Gagal mengirim email barcode cash.', [

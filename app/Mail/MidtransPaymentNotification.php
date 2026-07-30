@@ -27,8 +27,11 @@ class MidtransPaymentNotification extends Mailable
 
     public string $ticketUrl;
 
-    public function __construct(protected User $user, protected Cart $cart)
-    {
+    public function __construct(
+        protected User $user,
+        protected Cart $cart,
+        public bool $isResend = false
+    ) {
         $this->user = $user;
         $this->cart = $cart;
         $this->event = Event::where('uid', $this->cart->event_uid)->select('event')->firstOrFail();
@@ -43,7 +46,9 @@ class MidtransPaymentNotification extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Barcode Verifikasi GOTIK - '.$this->event->event,
+            subject: $this->isResend
+                ? 'PENTING: Barcode Tiket Terbaru GOTIK - '.$this->event->event
+                : 'Barcode Verifikasi GOTIK - '.$this->event->event,
         );
     }
 
@@ -62,6 +67,7 @@ class MidtransPaymentNotification extends Mailable
                 'manualCode' => $this->cart->gate_manual_code_hash
                     ? app(GateTokenService::class)->manualCodeForDisplay($this->cart)
                     : null,
+                'isResendTicket' => $this->isResend,
             ],
         );
     }

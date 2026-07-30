@@ -23,8 +23,11 @@ class CashNotifikasiMail extends Mailable
 
     public string $ticketUrl;
 
-    public function __construct(protected string $recipientName, protected Cart $cart)
-    {
+    public function __construct(
+        protected string $recipientName,
+        protected Cart $cart,
+        public bool $isResend = false
+    ) {
         $this->cart = $cart;
         $this->event = $this->cart->relationLoaded('event') && $this->cart->event
             ? $this->cart->event
@@ -44,7 +47,9 @@ class CashNotifikasiMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Barcode Verifikasi GOTIK - '.$this->event->event,
+            subject: $this->isResend
+                ? 'PENTING: Barcode Tiket Terbaru GOTIK - '.$this->event->event
+                : 'Barcode Verifikasi GOTIK - '.$this->event->event,
         );
     }
 
@@ -60,6 +65,7 @@ class CashNotifikasiMail extends Mailable
                 'manualCode' => $this->cart->gate_manual_code_hash
                     ? app(GateTokenService::class)->manualCodeForDisplay($this->cart)
                     : null,
+                'isResendTicket' => $this->isResend,
             ],
         );
     }
