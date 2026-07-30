@@ -2,64 +2,31 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ActivityLog;
 use App\Models\Bank;
 use App\Models\Cart;
-use App\Models\User;
-use App\Models\Event;
-use App\Models\HargaCart;
+use App\Models\Cash;
 use App\Models\Penarikan;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Routing\Controller as BaseController;
-use Illuminate\Foundation\Validation\ValidatesRequests;
+use App\Models\User;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Foundation\Validation\ValidatesRequests;
+use Illuminate\Routing\Controller as BaseController;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Http;
 
 class Controller extends BaseController
 {
     use AuthorizesRequests, ValidatesRequests;
 
-    public function confir($data)
+    public function notif()
     {
-        $cart = Cart::where('invoice', $data)->first();
-
-        if ($cart === null) {
-            return 'Tidak Ada Akses';
-        }
-        $user = User::where('uid', $cart->user_uid)->first();
-        $hargaCart = HargaCart::where('uid', $cart->uid)->get();
-        if (Auth::user()->role === 'admin') {
-
-            return view('confir', [
-                'cart' => $cart,
-                'user' => $user,
-                'harga' => $hargaCart
-            ]);
-        } else {
-            echo 'Akses Ditolak';
-        }
-    }
-    public function success(Request $request)
-    {
-        $req = $request->success;
-
-        $cart = Cart::where('invoice', $req)->first();
-        if ($cart->status === 'PAID') {
-            $cart->konfirmasi = '1';
-            $cart->save();
-            return redirect()->back()->with('berhasil', 'Berhasil Dikonfirmasi');
-        } else {
-            return redirect()->back()->with('gagal', 'Konfirmasi Gagal');
-        }
-    }
-
-    public function notif(){
         return view('email.notif-email');
     }
 
+    public function invoice($uid = null)
+    {
 
-    public function invoice($uid = null){
-       
-        if($uid === null){
+        if ($uid === null) {
             return redirect()->back();
         }
 
@@ -80,39 +47,48 @@ class Controller extends BaseController
             ->where('penarikans.uid', $uid)
             ->first();
 
-        if($penarikan){
+        if ($penarikan) {
+            $viewer = Auth::user();
+            if ($viewer->role !== 'admin' && $viewer->uid !== $penarikan->uid_user) {
+                abort(403);
+            }
+
             $bank = Bank::where('uid', $penarikan->uid_user)->first();
             $cekBank = Bank::all();
             $user = User::all();
             $sbank = [];
             foreach ($user as $value) {
-                if($value->role === 'admin'){
+                if ($value->role === 'admin') {
                     foreach ($cekBank as $value2) {
-                        if($value->uid === $value2->uid){
+                        if ($value->uid === $value2->uid) {
                             $sbank[] = Bank::where('uid', $value2->uid)->first();
                         }
                     }
                 }
             }
-            
-            return view('invoice',[
+
+            return view('invoice', [
                 'title' => 'Invoice Penarikan',
                 'type' => 'penarikan',
                 'penarikan' => $penarikan,
                 'bankPenyewa' => $bank,
-                'bankPengirim' => $sbank
+                'bankPengirim' => $sbank,
             ]);
         }
 
         // 2. Jika bukan penarikan, cek apakah ini transaksi (Cart)
         $cart = Cart::with(['users', 'event', 'hargaCarts.masterHarga'])->where('uid', $uid)->first();
-        
-        if($cart){
-            \App\Models\ActivityLog::safeCreate([
+
+        if ($cart) {
+            if (! $this->userCanViewCart($cart)) {
+                abort(403);
+            }
+
+            ActivityLog::safeCreate([
                 'user_uid' => auth()->check() ? auth()->user()->uid : null,
                 'activity' => 'Data Export / View',
                 'login_status' => 'Success',
-                'description' => "Accessed invoice/ticket: " . ($cart->invoice ?? $uid),
+                'description' => 'Accessed invoice/ticket: '.($cart->invoice ?? $uid),
                 'impact_level' => 'Sensitif',
                 'ip_address' => request()->ip(),
                 'location' => $this->getLocation(request()->ip()),
@@ -130,16 +106,43 @@ class Controller extends BaseController
         return redirect()->back();
     }
 
+    private function userCanViewCart(Cart $cart): bool
+    {
+        $user = Auth::user();
+
+        if ($user->role === 'admin' || $user->uid === $cart->user_uid) {
+            return true;
+        }
+
+        if ($cart->payment_type === 'cash'
+            && Cash::where('uid', $cart->uid)->where('email', $user->email)->exists()) {
+            return true;
+        }
+
+        if (in_array($user->role, ['penyewa', 'staff'], true)) {
+            $ownerUid = $user->role === 'staff' ? $user->parent_uid : $user->uid;
+
+            return $cart->event && $cart->event->user_uid === $ownerUid;
+        }
+
+        return false;
+    }
+
     protected function getLocation($ip)
     {
-        if ($ip === '127.0.0.1' || $ip === '::1') return 'Localhost';
+        if ($ip === '127.0.0.1' || $ip === '::1') {
+            return 'Localhost';
+        }
         try {
-            $response = \Illuminate\Support\Facades\Http::get("http://ip-api.com/json/{$ip}?fields=city,country");
+            $response = Http::get("http://ip-api.com/json/{$ip}?fields=city,country");
             if ($response->successful()) {
                 $data = $response->json();
-                return ($data['city'] ?? 'Unknown') . ', ' . ($data['country'] ?? 'Unknown');
+
+                return ($data['city'] ?? 'Unknown').', '.($data['country'] ?? 'Unknown');
             }
-        } catch (\Exception $e) {}
+        } catch (\Exception $e) {
+        }
+
         return 'Unknown';
     }
 }

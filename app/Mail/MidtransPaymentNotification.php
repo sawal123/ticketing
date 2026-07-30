@@ -5,6 +5,7 @@ namespace App\Mail;
 use App\Models\Cart;
 use App\Models\Event;
 use App\Models\User;
+use App\Services\Tickets\GateTokenService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Attachment;
@@ -26,12 +27,10 @@ class MidtransPaymentNotification extends Mailable
 
     public string $ticketUrl;
 
-    public function __construct(protected User $user, protected Cart $cart, protected $barcode)
+    public function __construct(protected User $user, protected Cart $cart)
     {
-        //
         $this->user = $user;
         $this->cart = $cart;
-        $this->barcode = $barcode;
         $this->event = Event::where('uid', $this->cart->event_uid)->select('event')->firstOrFail();
         $this->ticketUrl = route('barcode.generate', [
             'data' => $this->cart->invoice,
@@ -58,9 +57,11 @@ class MidtransPaymentNotification extends Mailable
             with: [
                 'name' => $this->user->name,
                 'cart' => $this->cart->invoice,
-                'barcode' => $this->barcode,
                 'event' => $this->event,
                 'ticketUrl' => $this->ticketUrl,
+                'manualCode' => $this->cart->gate_manual_code_hash
+                    ? app(GateTokenService::class)->manualCodeForDisplay($this->cart)
+                    : null,
             ],
         );
     }

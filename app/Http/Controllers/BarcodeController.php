@@ -2,21 +2,19 @@
 
 namespace App\Http\Controllers;
 
-use DNS2D;
 use App\Models\Cart;
 use App\Models\Cash;
-use App\Models\User;
 use App\Models\Event;
-use Milon\Barcode\DNS1D;
 use App\Models\HargaCart;
+use App\Models\User;
+use App\Services\Tickets\GateTokenService;
 use Illuminate\Http\Request;
-use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
-
 class BarcodeController extends Controller
 {
+    public function __construct(private GateTokenService $gateTokens) {}
 
     public function showLogin($data)
     {
@@ -49,16 +47,13 @@ class BarcodeController extends Controller
 
     public function generateBarcode(Request $request, $data)
     {
-        // $url = url('confir/data/'.$request->barcode);
-        // $url = $request->barcode;
-        if(!$data){
-            return abort(404, 'not found');;
+        if (! $data) {
+            abort(404, 'not found');
         }
-        $url = $data;
-        $cart = Cart::where('invoice', $url)->first();
+        $cart = Cart::where('invoice', $data)->first();
 
-        if(!$cart){
-            return abort(404, 'not found');
+        if (! $cart) {
+            abort(404, 'not found');
         }
 
         if (strtolower($cart->status) !== 'success') {
@@ -67,35 +62,43 @@ class BarcodeController extends Controller
             ], 403);
         }
 
-        if (!Auth::check()) {
+        if (! Auth::check()) {
             return redirect()->route('barcode.login', ['data' => $data]);
         }
 
-        if (!$this->userOwnsInvoice($cart)) {
+        if (! $this->userCanViewTicket($cart)) {
             return response()->view('barcode-error', [
                 'message' => 'Anda tidak memiliki akses ke invoice ini.',
             ], 403);
         }
 
+        try {
+            $gateCredential = $cart->gate_token_hash
+                ? $this->gateTokens->tokenForQr($cart)
+                : $this->legacyCredential($cart);
+            $manualCode = $this->manualCodeForView($cart);
+        } catch (\RuntimeException) {
+            return $this->barcodeError('Credential gate tiket tidak valid.', 409);
+        }
+
         $hargaC = HargaCart::where('uid', $cart->uid)->get();
         $event = Event::where('uid', $cart->event_uid)->first();
-        $barcodeData =  QrCode::size(250)->generate($url);
+        $barcodeData = QrCode::size(250)->generate($gateCredential);
 
-        if($cart->payment_type === 'cash'){
+        if ($cart->payment_type === 'cash') {
             $user = Cash::where('uid', $cart->uid)->first();
-        }else{
+        } else {
             $user = User::where('uid', $cart->user_uid)->first();
         }
 
-        return view('barcode',
-            [
-                'barcodeData' => $barcodeData,
-                'invoice' => $url,
-                'event' => $event,
-                'hargaC' =>$hargaC,
-                'userBarcode' =>$user
-            ]
-        );
+        return response()->view('barcode', [
+            'barcodeData' => $barcodeData,
+            'invoice' => $cart->invoice,
+            'manualCode' => $manualCode,
+            'event' => $event,
+            'hargaC' => $hargaC,
+            'userBarcode' => $user,
+        ])->header('Cache-Control', 'private, no-store, max-age=0');
     }
 
     public function showCashTicket(Request $request, string $uid)
@@ -111,18 +114,45 @@ class BarcodeController extends Controller
             return $this->barcodeError('Tiket cash tidak ditemukan atau sudah tidak dapat diakses.', 404);
         }
 
-        return view('barcode', [
-            'barcodeData' => QrCode::size(250)->generate($cart->invoice),
+        try {
+            if ($cart->gate_token_hash
+                && ! $this->gateTokens->validCashTicketProof($cart, $request->query('gate_access'))) {
+                return $this->barcodeError('Tautan tiket cash tidak valid.', 403);
+            }
+
+            $gateCredential = $cart->gate_token_hash
+                ? $this->gateTokens->tokenForQr($cart)
+                : $this->legacyCredential($cart);
+            $manualCode = $this->manualCodeForView($cart);
+        } catch (\RuntimeException) {
+            return $this->barcodeError('Credential gate tiket tidak valid.', 409);
+        }
+
+        return response()->view('barcode', [
+            'barcodeData' => QrCode::size(250)->generate($gateCredential),
             'invoice' => $cart->invoice,
+            'manualCode' => $manualCode,
             'event' => $cart->event,
             'hargaC' => $cart->hargaCarts,
             'userBarcode' => $cart->cashBuyer,
-        ]);
+        ])->header('Cache-Control', 'private, no-store, max-age=0');
     }
 
-    private function userOwnsInvoice(Cart $cart): bool
+    private function userCanViewTicket(Cart $cart): bool
     {
         $user = Auth::user();
+
+        if (! $user) {
+            return false;
+        }
+
+        if (in_array($user->role, ['penyewa', 'staff'], true)) {
+            $ownerUid = $user->role === 'staff' ? $user->parent_uid : $user->uid;
+
+            return Event::where('uid', $cart->event_uid)
+                ->where('user_uid', $ownerUid)
+                ->exists();
+        }
 
         if ($cart->payment_type === 'cash') {
             return Cash::where('uid', $cart->uid)
@@ -138,5 +168,23 @@ class BarcodeController extends Controller
         return response()->view('barcode-error', [
             'message' => $message,
         ], $status);
+    }
+
+    private function legacyCredential(Cart $cart): string
+    {
+        if ($this->gateTokens->eventIsEnabled($cart->event_uid)) {
+            throw new \RuntimeException('Gate token wajib untuk event aktif.');
+        }
+
+        return (string) $cart->invoice;
+    }
+
+    private function manualCodeForView(Cart $cart): ?string
+    {
+        if (! $cart->gate_manual_code_hash && ! $cart->gate_manual_code_encrypted) {
+            return null;
+        }
+
+        return $this->gateTokens->manualCodeForDisplay($cart);
     }
 }

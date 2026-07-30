@@ -6,9 +6,6 @@ use App\Http\Controllers\Api\LandingController;
 use App\Http\Controllers\Api\ListTicketController;
 use App\Http\Controllers\Api\MidtransController;
 use App\Http\Controllers\Api\SlideController;
-use App\Http\Controllers\Dashboard\DashboardController;
-use App\Models\Transaction;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -22,21 +19,18 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-
 Route::post('/login', [AuthController::class, 'login']);
 
 Route::middleware(['auth:sanctum', 'roles:penyewa,staff'])->group(function () {
-    Route::put('/status/{data}', [ConfirmController::class, 'upKonfirmasi']);
-    Route::get('/confirm/{data}', [ConfirmController::class, 'cekData']);
-
-
-
     Route::get('/verfikasi/{data?}', [ConfirmController::class, 'verfikasi']);
 
     // Route::post('/ticket/verify', [ConfirmController::class, 'prosesVerifikasiTiket']);
-    Route::post('/ticket/search', [ConfirmController::class, 'checkTicketByInvoice']);
-    // 2. Update status (Saat klik tombol Verifikasi)
-    Route::post('/ticket/confirm/{uid}', [ConfirmController::class, 'confirmTicketStatus']);
+    Route::post('/ticket/search', [ConfirmController::class, 'checkTicketByGateToken']);
+    Route::post('/ticket/confirm', [ConfirmController::class, 'confirmTicketStatus']);
+    Route::middleware('throttle:gate-manual')->group(function () {
+        Route::post('/ticket/manual/search', [ConfirmController::class, 'checkTicketByManualCode']);
+        Route::post('/ticket/manual/confirm', [ConfirmController::class, 'confirmTicketByManualCode']);
+    });
 
     Route::get('/event/{uid}/verified-tickets', [ListTicketController::class, 'listTiketVerifikasi']);
     Route::get('/ticket/{uid}/detail', [ListTicketController::class, 'showTicketDetail']);
@@ -45,9 +39,6 @@ Route::middleware(['auth:sanctum', 'roles:penyewa,staff'])->group(function () {
 });
 Route::get('/slide/{data?}', [SlideController::class, 'slide']);
 Route::get('/landing', [LandingController::class, 'getLandingData']);
-
-
-
 
 // Midtrans callback is registered in routes/web.php at /api/callback without the API throttle limiter.
 Route::get('/finishMidtrans', [MidtransController::class, 'finish']);

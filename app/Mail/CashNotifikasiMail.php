@@ -4,6 +4,7 @@ namespace App\Mail;
 
 use App\Models\Cart;
 use App\Models\Event;
+use App\Services\Tickets\GateTokenService;
 use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
@@ -22,17 +23,21 @@ class CashNotifikasiMail extends Mailable
 
     public string $ticketUrl;
 
-    public function __construct(protected string $recipientName, protected Cart $cart, protected string $barcode)
+    public function __construct(protected string $recipientName, protected Cart $cart)
     {
         $this->cart = $cart;
-        $this->barcode = $barcode;
         $this->event = $this->cart->relationLoaded('event') && $this->cart->event
             ? $this->cart->event
             : Event::where('uid', $this->cart->event_uid)->select('event', 'tanggal')->firstOrFail();
+        $parameters = ['uid' => $this->cart->uid];
+        if ($this->cart->gate_token_hash) {
+            $parameters['gate_access'] = app(GateTokenService::class)->cashTicketProof($this->cart);
+        }
+
         $this->ticketUrl = URL::temporarySignedRoute(
             'cash.ticket.show',
             $this->ticketUrlExpiresAt(),
-            ['uid' => $this->cart->uid],
+            $parameters,
         );
     }
 
@@ -50,9 +55,11 @@ class CashNotifikasiMail extends Mailable
             with: [
                 'name' => $this->recipientName,
                 'cart' => $this->cart->invoice,
-                'barcode' => $this->barcode,
                 'event' => $this->event,
                 'ticketUrl' => $this->ticketUrl,
+                'manualCode' => $this->cart->gate_manual_code_hash
+                    ? app(GateTokenService::class)->manualCodeForDisplay($this->cart)
+                    : null,
             ],
         );
     }

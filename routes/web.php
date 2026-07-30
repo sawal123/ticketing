@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\SlideController;
+use App\Http\Controllers\Auth\GoogleController;
 use App\Http\Controllers\Auth\UserLoginController;
 use App\Http\Controllers\Auth\UserRegisterController;
 use App\Http\Controllers\BarcodeController;
@@ -23,18 +24,38 @@ use App\Http\Controllers\Penyewa\EditController as PenyewaEditController;
 use App\Http\Controllers\Penyewa\PenyewaController;
 use App\Http\Controllers\Penyewa\StaffController;
 use App\Http\Controllers\TransactionController;
+use App\Http\Middleware\GlobalDataMiddleware;
+use App\Http\Middleware\LogActivityMiddleware;
+use App\Http\Middleware\VerifyCsrfToken;
+use App\Livewire\Admin\ActivityIndex;
+use App\Livewire\Admin\CategoryIndex;
 use App\Livewire\Admin\DashboardDemo;
 use App\Livewire\Admin\EmailBlast;
 use App\Livewire\Admin\EventDetail;
 use App\Livewire\Admin\EventIndex;
+use App\Livewire\Admin\FasilitasIndex;
+use App\Livewire\Admin\MonitoringIndex;
 use App\Livewire\Admin\PaymentGatewayIndex;
 use App\Livewire\Admin\PenarikanIndex;
 use App\Livewire\Admin\SettingIndex;
+use App\Livewire\Admin\SliderIndex;
+use App\Livewire\Admin\TermIndex;
 use App\Livewire\Admin\TransaksiIndex;
 use App\Livewire\Admin\UserIndex;
-use App\Livewire\Admin\TermIndex;
-use App\Livewire\Admin\SliderIndex;
-use App\Livewire\Admin\ActivityIndex;
+use App\Livewire\Auth\ForgotPassword;
+use App\Livewire\Auth\Login;
+use App\Livewire\Auth\Register;
+use App\Livewire\Auth\ResetPassword;
+use App\Livewire\Auth\StaffVerify;
+use App\Livewire\Dashboard\DemoIndex;
+use App\Livewire\Dashboard\EventCreate;
+use App\Livewire\Dashboard\EventDetail as DashboardEventDetail;
+use App\Livewire\Dashboard\EventIndex as DashboardEventIndex;
+use App\Livewire\Dashboard\PartnerIndex;
+use App\Livewire\Dashboard\PenarikanIndex as DashboardPenarikanIndex;
+use App\Livewire\Dashboard\SettingsIndex;
+use App\Livewire\Dashboard\StaffIndex;
+use App\Livewire\Dashboard\VoucherIndex;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
@@ -59,19 +80,18 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', [landingController::class, 'home'])->name('home');
 Route::get('/ticket/{event}', [landingController::class, 'ticket']);
 
-Route::get('/register', \App\Livewire\Auth\Register::class)->name('register');
+Route::get('/register', Register::class)->name('register');
 // Route::post('/registerUser', [UserRegisterController::class, 'create'])->name('register-user');
 
-Route::get('/forgot-password', \App\Livewire\Auth\ForgotPassword::class)->name('forgot');
+Route::get('/forgot-password', ForgotPassword::class)->name('forgot');
 Route::post('/email', [UserLoginController::class, 'email'])->name('email');
-Route::get('/reset-password/{data}', \App\Livewire\Auth\ResetPassword::class)->name('password.reset');
+Route::get('/reset-password/{data}', ResetPassword::class)->name('password.reset');
 Route::post('/new-password', [UserLoginController::class, 'newPassword']);
-use App\Http\Controllers\Auth\GoogleController;
 
 Route::get('auth/google', [GoogleController::class, 'redirectToGoogle'])->name('auth.google');
 Route::get('auth/google/callback', [GoogleController::class, 'handleGoogleCallback']);
 
-Route::get('/login', \App\Livewire\Auth\Login::class)->name('login');
+Route::get('/login', Login::class)->name('login');
 // Route::post('/loginUser', [UserLoginController::class, 'loginUser']);
 
 // Route::get('/postEvent/{search?}', [landingController::class, 'cari']);
@@ -81,17 +101,15 @@ Route::get('/term', [landingController::class, 'term']);
 
 Route::get('/contact', [landingController::class, 'contact']);
 
-Route::get('/invoice/{uid}', [Controller::class, 'invoice']);
+Route::get('/invoice/{uid}', [Controller::class, 'invoice'])->middleware('auth');
 
 Route::post('/api/callback', [TransactionController::class, 'callback'])
     ->withoutMiddleware([
-        \App\Http\Middleware\VerifyCsrfToken::class,
-        \App\Http\Middleware\GlobalDataMiddleware::class,
-        \App\Http\Middleware\LogActivityMiddleware::class,
+        VerifyCsrfToken::class,
+        GlobalDataMiddleware::class,
+        LogActivityMiddleware::class,
     ]);
 
-Route::get('/confir/data/{data}', [Controller::class, 'confir']);
-Route::post('/confir/success', [Controller::class, 'success']);
 // Route::post('/generate-barcode', [BarcodeController::class, 'generateBarcode']);
 Route::get('/generate-barcode/{data}/login', [BarcodeController::class, 'showLogin'])->name('barcode.login');
 Route::post('/generate-barcode/{data}/login', [BarcodeController::class, 'login'])->name('barcode.login.submit');
@@ -133,21 +151,21 @@ Route::prefix('dashboard')
         // =========================================================
         // NEW LIVEWIRE DASHBOARD (PRIMARY)
         // =========================================================
-        Route::get('/', \App\Livewire\Dashboard\DemoIndex::class)->name('dashboard');
-        Route::get('/event', \App\Livewire\Dashboard\EventIndex::class)->name('dashboard.event');
-        Route::get('/event/create', \App\Livewire\Dashboard\EventCreate::class)->name('dashboard.event.create');
-        Route::get('/event/edit/{uid}', \App\Livewire\Dashboard\EventCreate::class)->name('dashboard.event.edit');
-        Route::get('/event/{uid}', \App\Livewire\Dashboard\EventDetail::class)->name('dashboard.event.detail');
-        Route::get('/voucher', \App\Livewire\Dashboard\VoucherIndex::class)->name('dashboard.voucher');
-        Route::get('/penarikan', \App\Livewire\Dashboard\PenarikanIndex::class)->name('dashboard.penarikan');
-        Route::get('/staff-index', \App\Livewire\Dashboard\StaffIndex::class)->name('dashboard.staff');
-        Route::get('/partner', \App\Livewire\Dashboard\PartnerIndex::class)->name('dashboard.partner');
-        Route::get('/settings', \App\Livewire\Dashboard\SettingsIndex::class)->name('dashboard.settings');
+        Route::get('/', DemoIndex::class)->name('dashboard');
+        Route::get('/event', DashboardEventIndex::class)->name('dashboard.event');
+        Route::get('/event/create', EventCreate::class)->name('dashboard.event.create');
+        Route::get('/event/edit/{uid}', EventCreate::class)->name('dashboard.event.edit');
+        Route::get('/event/{uid}', DashboardEventDetail::class)->name('dashboard.event.detail');
+        Route::get('/voucher', VoucherIndex::class)->name('dashboard.voucher');
+        Route::get('/penarikan', DashboardPenarikanIndex::class)->name('dashboard.penarikan');
+        Route::get('/staff-index', StaffIndex::class)->name('dashboard.staff');
+        Route::get('/partner', PartnerIndex::class)->name('dashboard.partner');
+        Route::get('/settings', SettingsIndex::class)->name('dashboard.settings');
 
         // =========================================================
         // LEGACY DASHBOARD (MOVED TO /old)
         // =========================================================
-        Route::prefix('old')->group(function() {
+        Route::prefix('old')->group(function () {
             Route::middleware(['roles:penyewa,staff'])->group(function () {
                 Route::get('/', [PenyewaController::class, 'index'])->name('dashboard.old');
                 Route::get('/transaksi/{uid?}', [PenyewaController::class, 'transaksi'])->name('dashboard.old.transaksi');
@@ -189,7 +207,7 @@ Route::prefix('dashboard')
         });
     });
 
-Route::get('/staff/verify/{uid}', \App\Livewire\Auth\StaffVerify::class)->name('staff.verify');
+Route::get('/staff/verify/{uid}', StaffVerify::class)->name('staff.verify');
 // Route::post('/staff/complete-profile/{uid}', [StaffController::class, 'completeProfile']);
 
 Route::prefix('admin')
@@ -208,10 +226,10 @@ Route::prefix('admin')
         Route::get('/term', TermIndex::class)->name('admin.term');
         Route::get('/slider', SliderIndex::class)->name('admin.slider');
         Route::get('/activity', ActivityIndex::class)->name('admin.activity');
-        Route::get('/monitoring', \App\Livewire\Admin\MonitoringIndex::class)->name('admin.monitoring');
+        Route::get('/monitoring', MonitoringIndex::class)->name('admin.monitoring');
         Route::get('/user', UserIndex::class)->name('admin.user');
-        Route::get('/category', \App\Livewire\Admin\CategoryIndex::class)->name('admin.category');
-        Route::get('/fasilitas', \App\Livewire\Admin\FasilitasIndex::class)->name('admin.fasilitas');
+        Route::get('/category', CategoryIndex::class)->name('admin.category');
+        Route::get('/fasilitas', FasilitasIndex::class)->name('admin.fasilitas');
         Route::get('/email-blast', EmailBlast::class)->name('admin.email-blast');
 
         // =========================================================

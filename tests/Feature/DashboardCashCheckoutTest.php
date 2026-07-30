@@ -16,6 +16,7 @@ use App\Models\Harga;
 use App\Models\HargaCart;
 use App\Models\User;
 use App\Models\Voucher;
+use App\Services\Tickets\GateTokenService;
 use Illuminate\Contracts\Bus\Dispatcher as BusDispatcher;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
@@ -38,6 +39,8 @@ class DashboardCashCheckoutTest extends TestCase
         Config::set('database.connections.sqlite.database', ':memory:');
         Config::set('cache.default', 'array');
         Config::set('queue.default', 'sync');
+        Config::set('gate-tokens.key', 'base64:'.base64_encode(str_repeat('g', 32)));
+        Config::set('gate-tokens.active_event_uids', []);
 
         DB::purge('sqlite');
         DB::reconnect('sqlite');
@@ -112,8 +115,7 @@ class DashboardCashCheckoutTest extends TestCase
         Queue::assertPushed(sendEmailTrnsaksi::class, function (sendEmailTrnsaksi $job) use ($cart) {
             return $job->recipientEmail === 'cash@example.test'
                 && $job->recipientName === 'Pembeli Cash'
-                && $job->cartUid === $cart->uid
-                && $job->barcode === $cart->invoice;
+                && $job->cartUid === $cart->uid;
         });
     }
 
@@ -298,8 +300,7 @@ class DashboardCashCheckoutTest extends TestCase
         Queue::assertPushed(sendEmailTrnsaksi::class, function (sendEmailTrnsaksi $job) use ($cashCart) {
             return $job->recipientEmail === 'cashbuyer@example.test'
                 && $job->recipientName === 'Cash Buyer'
-                && $job->cartUid === $cashCart->uid
-                && $job->barcode === $cashCart->invoice;
+                && $job->cartUid === $cashCart->uid;
         });
 
         Livewire::actingAs($operator)
@@ -308,9 +309,8 @@ class DashboardCashCheckoutTest extends TestCase
             ->call('resendEmail');
 
         Queue::assertPushed(sendEmailETransaksi::class, function (sendEmailETransaksi $job) use ($onlineBuyer, $onlineCart) {
-            return $job->user->is($onlineBuyer)
-                && $job->carts->is($onlineCart)
-                && $job->order_id === $onlineCart->invoice;
+            return $job->userUid === $onlineBuyer->uid
+                && $job->cartUid === $onlineCart->uid;
         });
     }
 
@@ -410,7 +410,8 @@ class DashboardCashCheckoutTest extends TestCase
 
     public function test_cash_checkout_keeps_committed_transaction_when_email_dispatch_fails(): void
     {
-        $this->app->instance(BusDispatcher::class, new class implements BusDispatcher {
+        $this->app->instance(BusDispatcher::class, new class implements BusDispatcher
+        {
             public function dispatch($command)
             {
                 throw new \RuntimeException('queue down');
@@ -595,7 +596,7 @@ class DashboardCashCheckoutTest extends TestCase
             ->assertSee('Signed Cash Event')
             ->assertSee('Signed Cash Buyer')
             ->assertSee('VIP')
-            ->assertSee('Link dan barcode ini bersifat rahasia');
+            ->assertSee('Link dan QR Code ini bersifat rahasia');
     }
 
     public function test_cash_ticket_without_signature_is_rejected(): void
@@ -672,7 +673,7 @@ class DashboardCashCheckoutTest extends TestCase
             'email' => 'email-cash@example.test',
         ]);
 
-        (new sendEmailTrnsaksi('email-cash@example.test', 'Email Cash Buyer', $cart->uid, $cart->invoice))->handle();
+        (new sendEmailTrnsaksi('email-cash@example.test', 'Email Cash Buyer', $cart->uid))->handle();
 
         Mail::assertSent(CashNotifikasiMail::class, function (CashNotifikasiMail $mail) use ($cart) {
             $html = $mail->render();
@@ -761,7 +762,12 @@ class DashboardCashCheckoutTest extends TestCase
         return URL::temporarySignedRoute(
             'cash.ticket.show',
             $expiration ?? now()->addDays(7),
-            ['uid' => $cart->uid],
+            [
+                'uid' => $cart->uid,
+                'gate_access' => $cart->gate_token_hash
+                    ? app(GateTokenService::class)->cashTicketProof($cart)
+                    : str_repeat('0', 64),
+            ],
         );
     }
 
@@ -815,6 +821,12 @@ class DashboardCashCheckoutTest extends TestCase
             'gender' => 'pria',
         ], $cashAttributes));
 
+        if ($cart->status === Cart::STATUS_SUCCESS
+            && (string) $cart->konfirmasi !== '1'
+            && ! $cart->gate_token_hash) {
+            app(GateTokenService::class)->issue($cart);
+        }
+
         return $cart;
     }
 
@@ -833,6 +845,12 @@ class DashboardCashCheckoutTest extends TestCase
         ], $cartAttributes));
 
         $this->hargaCart($cart, $harga, 1);
+
+        if ($cart->status === Cart::STATUS_SUCCESS
+            && (string) $cart->konfirmasi !== '1'
+            && ! $cart->gate_token_hash) {
+            app(GateTokenService::class)->issue($cart);
+        }
 
         return $cart;
     }
@@ -918,6 +936,15 @@ class DashboardCashCheckoutTest extends TestCase
             $table->string('user_uid');
             $table->string('event_uid');
             $table->string('invoice')->nullable();
+            $table->char('gate_token_hash', 64)->nullable()->unique();
+            $table->text('gate_token_encrypted')->nullable();
+            $table->char('gate_manual_code_hash', 64)->nullable()->unique();
+            $table->text('gate_manual_code_encrypted')->nullable();
+            $table->timestamp('gate_token_issued_at')->nullable();
+            $table->timestamp('scanned_at')->nullable();
+            $table->string('scanned_by')->nullable();
+            $table->string('scan_device_id')->nullable();
+            $table->unsignedInteger('gate_token_version')->default(1);
             $table->string('status');
             $table->string('konfirmasi')->nullable();
             $table->text('link')->nullable();
@@ -1024,7 +1051,7 @@ class DashboardCashCheckoutTest extends TestCase
 
     protected function event(array $attributes = []): Event
     {
-        return Event::create(array_merge([
+        $event = Event::create(array_merge([
             'uid' => 'event-'.Str::random(6),
             'user_uid' => 'owner',
             'event' => 'Demo Event',
@@ -1038,6 +1065,13 @@ class DashboardCashCheckoutTest extends TestCase
             'deskripsi' => 'Demo',
             'map' => '-',
         ], $attributes));
+
+        Config::set('gate-tokens.active_event_uids', array_values(array_unique([
+            ...Config::get('gate-tokens.active_event_uids', []),
+            $event->uid,
+        ])));
+
+        return $event;
     }
 
     protected function harga(Event $event, array $attributes = []): Harga

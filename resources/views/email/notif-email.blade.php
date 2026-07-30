@@ -72,6 +72,11 @@
     <p>Nomor Invoice</p>
     <h2>{{ $cart }}</h2>
 
+    @if($manualCode)
+      <p>Kode Manual</p>
+      <h2 style="letter-spacing: 4px;">{{ $manualCode }}</h2>
+    @endif
+
     <p>
       powerdBy : GOTIK
     </p>

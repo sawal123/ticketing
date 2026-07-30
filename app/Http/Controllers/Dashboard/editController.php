@@ -19,6 +19,7 @@ use App\Models\Term;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Services\SecureImageStorage;
+use App\Services\Tickets\GateTokenService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -370,7 +371,6 @@ class editController extends Controller
     public function editTransaksi(Request $request)
     {
         $uid = $request->uid;
-        $barcode = $request->inv;
 
         $transaksis = Transaction::where('uid', $request->uid)->first();
         $carts = Cart::where('uid', $request->uid)->first();
@@ -387,6 +387,8 @@ class editController extends Controller
         $carts->save();
 
         if ($request->status === 'SUCCESS') {
+            app(GateTokenService::class)->issueIfEnabled($carts);
+
             try {
                 if ($carts->payment_type === 'cash') {
                     $cash = Cash::where('uid', $uid)->first();
@@ -394,14 +396,14 @@ class editController extends Controller
                         return redirect()->back()->with('success', 'Transaksi Berhasil di Ubah. Email pembeli cash perlu diperiksa sebelum dikirim ulang.');
                     }
 
-                    dispatch(new sendEmailTrnsaksi($cash->email, $cash->name, $carts->uid, $carts->invoice));
+                    dispatch(new sendEmailTrnsaksi($cash->email, $cash->name, $carts->uid));
                 } else {
                     $user = User::where('uid', $carts->user_uid)->first();
                     if (! $user) {
                         return redirect()->back()->with('success', 'Transaksi Berhasil di Ubah. Data pembeli tidak ditemukan untuk pengiriman email.');
                     }
 
-                    dispatch(new sendEmailETransaksi($user, $carts, $barcode ?: $carts->invoice));
+                    dispatch(new sendEmailETransaksi($user, $carts));
                 }
             } catch (\Throwable $e) {
                 Log::error('Gagal menjadwalkan email setelah edit transaksi.', [

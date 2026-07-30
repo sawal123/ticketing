@@ -2,41 +2,41 @@
 
 namespace App\Jobs;
 
-use Illuminate\Bus\Queueable;
-use Illuminate\Support\Facades\Mail;
-use Illuminate\Queue\SerializesModels;
-use Illuminate\Queue\InteractsWithQueue;
 use App\Mail\MidtransPaymentNotification;
+use App\Models\Cart;
+use App\Models\User;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
-use Illuminate\Contracts\Queue\ShouldBeUnique;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Mail;
 
-class sendEmailETransaksi implements ShouldQueue, ShouldBeUnique
+class sendEmailETransaksi implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public $tries = 3;
+
     public $timeout = 60;
+
     public $uniqueFor = 3600;
 
-    /**
-     * Create a new job instance.
-     */
-    public $user;
-    public $carts;
-    public $order_id;
-    public function __construct($user, $carts, $order_id)
+    public string $userUid;
+
+    public string $cartUid;
+
+    public function __construct(User $user, Cart $cart)
     {
-        //
-        $this->user = $user;
-        $this->carts = $carts;
-        $this->order_id = $order_id;
+        $this->userUid = $user->uid;
+        $this->cartUid = $cart->uid;
         $this->afterCommit();
     }
 
     public function uniqueId(): string
     {
-        return 'ticket-email:'.$this->order_id;
+        return 'ticket-email:'.$this->cartUid;
     }
 
     public function backoff(): array
@@ -49,7 +49,9 @@ class sendEmailETransaksi implements ShouldQueue, ShouldBeUnique
      */
     public function handle(): void
     {
-        //
-        Mail::to($this->user)->send(new MidtransPaymentNotification($this->user, $this->carts, $this->order_id));
+        $user = User::where('uid', $this->userUid)->firstOrFail();
+        $cart = Cart::where('uid', $this->cartUid)->firstOrFail();
+
+        Mail::to($user)->send(new MidtransPaymentNotification($user, $cart));
     }
 }

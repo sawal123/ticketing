@@ -2,48 +2,58 @@
 
 namespace App\Livewire\Dashboard;
 
-use Livewire\Component;
-use Livewire\Attributes\Layout;
 use App\Jobs\sendEmailTrnsaksi;
 use App\Models\Cart;
-use App\Models\Event;
-use App\Models\HargaCart;
-use App\Models\Harga;
-use App\Models\Partner;
 use App\Models\Cash;
+use App\Models\Event;
+use App\Models\Harga;
+use App\Models\HargaCart;
+use App\Models\Partner;
 use App\Models\Transaction;
-use App\Models\User;
+use App\Services\Tickets\GateTokenService;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
-use Carbon\Carbon;
+use Livewire\Attributes\Layout;
+use Livewire\Component;
 use Throwable;
 
 class DemoIndex extends Component
 {
     #[Layout('layouts.unified')]
     public $isSellModalOpen = false;
+
     public $isGenderModalOpen = false;
 
     // FORM CASH PROPERTIES
     public $selectedEventId;
+
     public $selectedEvent;
+
     public $availableTickets = [];
+
     public $selectedTickets = []; // Array of ['id' => id, 'name' => name, 'price' => price, 'qty' => 1, 'max_qty' => stock]
 
     public $buyerName;
+
     public $buyerEmail;
+
     public $buyerBirthday;
+
     public $buyerGender;
+
     public $isDirectEntry = false;
+
     public $partnerId;
+
     public array $cashTransactionResult = [];
 
     public function toggleSellModal()
     {
         $this->resetCashForm();
-        $this->isSellModalOpen = !$this->isSellModalOpen;
+        $this->isSellModalOpen = ! $this->isSellModalOpen;
     }
 
     public function resetCashForm()
@@ -61,7 +71,7 @@ class DemoIndex extends Component
         $this->selectedEvent = Event::where('uid', $uid)
             ->where('konfirmasi', '1')
             ->where('status', 'active')
-            ->when($user->role !== 'admin', fn($query) => $query->where('user_uid', $ownerId))
+            ->when($user->role !== 'admin', fn ($query) => $query->where('user_uid', $ownerId))
             ->firstOrFail();
         $this->loadAvailableTickets();
         $this->selectedTickets = [];
@@ -90,6 +100,7 @@ class DemoIndex extends Component
         if (! $ticket || $remainingStock < 1) {
             $this->addError('selectedTickets', 'Tiket tidak aktif atau sudah sold out.');
             $this->loadAvailableTickets();
+
             return;
         }
 
@@ -165,6 +176,7 @@ class DemoIndex extends Component
     public function getTaxProperty()
     {
         $feePercent = $this->selectedEvent->fee ?? 0;
+
         return ($feePercent / 100) * $this->subtotal;
     }
 
@@ -197,13 +209,13 @@ class DemoIndex extends Component
                 $event = Event::where('uid', $this->selectedEventId)
                     ->where('konfirmasi', '1')
                     ->where('status', 'active')
-                    ->when($user->role !== 'admin', fn($query) => $query->where('user_uid', $ownerId))
+                    ->when($user->role !== 'admin', fn ($query) => $query->where('user_uid', $ownerId))
                     ->lockForUpdate()
                     ->firstOrFail();
 
                 $ticketIds = collect($this->selectedTickets)
                     ->pluck('id')
-                    ->map(fn($id) => (int) $id)
+                    ->map(fn ($id) => (int) $id)
                     ->unique()
                     ->sort()
                     ->values();
@@ -239,7 +251,7 @@ class DemoIndex extends Component
                     ];
                 }
 
-                $subtotal = collect($validatedTickets)->sum(fn($item) => (int) $item['model']->harga * $item['qty']);
+                $subtotal = collect($validatedTickets)->sum(fn ($item) => (int) $item['model']->harga * $item['qty']);
                 $quantity = collect($validatedTickets)->sum('qty');
                 $taxPercent = (int) ($event->fee ?? 0);
                 $tax = (int) round(($taxPercent / 100) * $subtotal);
@@ -307,11 +319,12 @@ class DemoIndex extends Component
                     'gender' => $this->buyerGender,
                 ]);
 
+                app(GateTokenService::class)->issueIfEnabled($cart);
+
                 $emailPayload = [
                     'email' => $this->buyerEmail,
                     'name' => $this->buyerName,
                     'cart_uid' => $cart->uid,
-                    'barcode' => $cart->invoice,
                 ];
 
                 $result = [
@@ -339,7 +352,6 @@ class DemoIndex extends Component
                     $emailPayload['email'],
                     $emailPayload['name'],
                     $emailPayload['cart_uid'],
-                    $emailPayload['barcode'],
                 ));
 
                 $this->cashTransactionResult['email_status'] = 'scheduled';
@@ -365,7 +377,7 @@ class DemoIndex extends Component
             throw $e;
         } catch (Throwable $e) {
             $this->loadAvailableTickets();
-            session()->flash('error', 'Gagal: ' . $e->getMessage());
+            session()->flash('error', 'Gagal: '.$e->getMessage());
         }
     }
 
@@ -397,8 +409,8 @@ class DemoIndex extends Component
         }
 
         return redirect()->to(route('dashboard.event.detail', $this->cashTransactionResult['event_uid'])
-            . '?activeTab=transaksi&filterPayment=cash&searchTransaction='
-            . urlencode($this->cashTransactionResult['invoice']));
+            .'?activeTab=transaksi&filterPayment=cash&searchTransaction='
+            .urlencode($this->cashTransactionResult['invoice']));
     }
 
     public function closeCashTransactionSuccess()
@@ -411,7 +423,7 @@ class DemoIndex extends Component
     {
         $this->availableTickets = Harga::where('uid', $this->selectedEventId)
             ->get()
-            ->map(fn(Harga $ticket) => [
+            ->map(fn (Harga $ticket) => [
                 'id' => $ticket->id,
                 'kategori' => $ticket->kategori,
                 'harga' => (int) $ticket->harga,
@@ -442,6 +454,7 @@ class DemoIndex extends Component
         if (! $ticket) {
             $this->selectedTickets[$index]['max_qty'] = 0;
             $this->selectedTickets[$index]['qty'] = 1;
+
             return;
         }
 
@@ -453,7 +466,7 @@ class DemoIndex extends Component
     protected function generateCashInvoice(): string
     {
         do {
-            $invoice = 'CASH-' . now()->format('Ymd') . Str::upper(Str::random(10));
+            $invoice = 'CASH-'.now()->format('Ymd').Str::upper(Str::random(10));
         } while (Cart::where('invoice', $invoice)->exists());
 
         return $invoice;
@@ -461,7 +474,7 @@ class DemoIndex extends Component
 
     public function toggleGenderModal()
     {
-        $this->isGenderModalOpen = !$this->isGenderModalOpen;
+        $this->isGenderModalOpen = ! $this->isGenderModalOpen;
     }
 
     public function render()
@@ -471,8 +484,8 @@ class DemoIndex extends Component
         $ownerId = ($user->role === 'staff') ? $user->parent_uid : $user->uid;
 
         // Fetch Partners for the form
-        $partners = \App\Models\Partner::query();
-        if (!$isAdmin) {
+        $partners = Partner::query();
+        if (! $isAdmin) {
             $partners->where('referensi', $ownerId)->where('status', 'active');
         } else {
             $partners->where('status', 'active');
@@ -507,7 +520,7 @@ class DemoIndex extends Component
             })
             ->where('carts.status', 'SUCCESS');
 
-        if (!$isAdmin) {
+        if (! $isAdmin) {
             $queryBase->where('events.user_uid', $ownerId);
         }
 
@@ -521,14 +534,14 @@ class DemoIndex extends Component
             ->where('carts.status', 'SUCCESS')
             ->whereNull('carts.deleted_at');
 
-        if (!$isAdmin) {
+        if (! $isAdmin) {
             $totalTiketQuery->where('events.user_uid', $ownerId);
         }
 
         $totalTiket = $totalTiketQuery->sum('harga_carts.quantity');
 
         $totalTransaksiQuery = Cart::where('status', 'SUCCESS');
-        if (!$isAdmin) {
+        if (! $isAdmin) {
             $totalTransaksiQuery->whereHas('event', function ($q) use ($ownerId) {
                 $q->where('user_uid', $ownerId);
             });
@@ -536,7 +549,9 @@ class DemoIndex extends Component
         $totalTransaksi = $totalTransaksiQuery->count();
 
         $totalEvent = Event::query();
-        if (!$isAdmin) $totalEvent->where('user_uid', $ownerId);
+        if (! $isAdmin) {
+            $totalEvent->where('user_uid', $ownerId);
+        }
         $totalEventCount = (clone $totalEvent)->count();
         $eventAktifCount = (clone $totalEvent)->where('konfirmasi', '1')->count();
 
@@ -563,10 +578,10 @@ class DemoIndex extends Component
             ->get()
             ->keyBy('date');
 
-        $chartLabels = $last7Days->map(fn($date) => Carbon::parse($date)->format('d M'))->toArray();
-        $chartRevenue = $last7Days->map(fn($date) => (int) ($dailyData->has($date) ? $dailyData[$date]->revenue : 0))->toArray();
-        $chartCashQty = $last7Days->map(fn($date) => (int) ($dailyData->has($date) ? $dailyData[$date]->cash_qty : 0))->toArray();
-        $chartNonCashQty = $last7Days->map(fn($date) => (int) ($dailyData->has($date) ? $dailyData[$date]->noncash_qty : 0))->toArray();
+        $chartLabels = $last7Days->map(fn ($date) => Carbon::parse($date)->format('d M'))->toArray();
+        $chartRevenue = $last7Days->map(fn ($date) => (int) ($dailyData->has($date) ? $dailyData[$date]->revenue : 0))->toArray();
+        $chartCashQty = $last7Days->map(fn ($date) => (int) ($dailyData->has($date) ? $dailyData[$date]->cash_qty : 0))->toArray();
+        $chartNonCashQty = $last7Days->map(fn ($date) => (int) ($dailyData->has($date) ? $dailyData[$date]->noncash_qty : 0))->toArray();
 
         // GENDER & AGE DEMOGRAPHICS
         $demographics = (clone $queryBase)
@@ -590,9 +605,9 @@ class DemoIndex extends Component
         $genderStats = [
             'pria' => $demographics->where('gender', 'pria')->count(),
             'wanita' => $demographics->where('gender', 'wanita')->count(),
-            'age_18_25' => $demographics->filter(fn($item) => $item->age !== null && $item->age >= 18 && $item->age <= 25)->count(),
-            'age_gt_25' => $demographics->filter(fn($item) => $item->age !== null && $item->age > 25)->count(),
-            'age_lt_18' => $demographics->filter(fn($item) => $item->age !== null && $item->age < 18)->count(),
+            'age_18_25' => $demographics->filter(fn ($item) => $item->age !== null && $item->age >= 18 && $item->age <= 25)->count(),
+            'age_gt_25' => $demographics->filter(fn ($item) => $item->age !== null && $item->age > 25)->count(),
+            'age_lt_18' => $demographics->filter(fn ($item) => $item->age !== null && $item->age < 18)->count(),
         ];
 
         return view('livewire.dashboard.demo-index', [
@@ -612,7 +627,7 @@ class DemoIndex extends Component
                 'cash' => $chartCashQty,
                 'nonCash' => $chartNonCashQty,
             ],
-            'gender' => $genderStats
+            'gender' => $genderStats,
         ]);
     }
 }

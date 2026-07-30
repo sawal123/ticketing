@@ -10,6 +10,7 @@ use App\Models\Event;
 use App\Models\Harga;
 use App\Models\HargaCart;
 use App\Models\Transaction;
+use App\Services\Tickets\GateTokenService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -134,13 +135,14 @@ class CashController extends Controller
                 $hargaCart->save();
                 $transaksi->save();
                 $cash->save();
+                app(GateTokenService::class)->issueIfEnabled($cart);
             }, 3);
         } catch (Throwable $e) {
             return back()->with('error', $e->getMessage());
         }
 
         try {
-            dispatch(new sendEmailTrnsaksi($email, $nama, $cart->uid, $invoice));
+            dispatch(new sendEmailTrnsaksi($email, $nama, $cart->uid));
 
             return redirect()->back()->with('success', 'Pembelian Cash Berhasil (Termasuk Pajak '.$pajakPersen.'%). Email barcode telah dijadwalkan.');
         } catch (Throwable $e) {

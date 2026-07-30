@@ -615,8 +615,6 @@ class EventDetail extends Component
             return;
         }
 
-        $barcode = $cart->invoice;
-
         try {
             if ($cart->payment_type === 'cash') {
                 $cash = $cart->cashBuyer;
@@ -627,7 +625,7 @@ class EventDetail extends Component
                         return;
                     }
 
-                    dispatch(new sendEmailTrnsaksi($cash->email, $cash->name, $cart->uid, $barcode));
+                    dispatch(new sendEmailTrnsaksi($cash->email, $cash->name, $cart->uid));
                 } else {
                     session()->flash('error', 'Data pembeli tunai tidak ditemukan.');
 
@@ -636,7 +634,7 @@ class EventDetail extends Component
             } else {
                 $user = $cart->users;
                 if ($user) {
-                    dispatch(new sendEmailETransaksi($user, $cart, $barcode));
+                    dispatch(new sendEmailETransaksi($user, $cart));
                 } else {
                     session()->flash('error', 'Data pembeli tidak ditemukan.');
 
