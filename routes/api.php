@@ -27,6 +27,10 @@ Route::middleware(['auth:sanctum', 'roles:penyewa,staff'])->group(function () {
     // Route::post('/ticket/verify', [ConfirmController::class, 'prosesVerifikasiTiket']);
     Route::post('/ticket/search', [ConfirmController::class, 'checkTicketByGateToken']);
     Route::post('/ticket/confirm', [ConfirmController::class, 'confirmTicketStatus']);
+    Route::middleware('throttle:gate-manual')->group(function () {
+        Route::post('/ticket/manual/search', [ConfirmController::class, 'checkTicketByManualCode']);
+        Route::post('/ticket/manual/confirm', [ConfirmController::class, 'confirmTicketByManualCode']);
+    });
 
     Route::get('/event/{uid}/verified-tickets', [ListTicketController::class, 'listTiketVerifikasi']);
     Route::get('/ticket/{uid}/detail', [ListTicketController::class, 'showTicketDetail']);

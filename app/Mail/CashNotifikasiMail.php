@@ -57,6 +57,9 @@ class CashNotifikasiMail extends Mailable
                 'cart' => $this->cart->invoice,
                 'event' => $this->event,
                 'ticketUrl' => $this->ticketUrl,
+                'manualCode' => $this->cart->gate_manual_code_hash
+                    ? app(GateTokenService::class)->manualCodeForDisplay($this->cart)
+                    : null,
             ],
         );
     }

@@ -4,6 +4,8 @@ namespace App\Services\Tickets;
 
 use App\Exceptions\GateTokenException;
 use App\Models\Cart;
+use App\Models\Event;
+use Closure;
 use Illuminate\Support\Facades\DB;
 
 class GateCheckInService
@@ -12,10 +14,20 @@ class GateCheckInService
 
     public function inspect(string $token, string $ownerUid): Cart
     {
-        $cart = $this->findByToken($token);
-        $this->assertGateAccess($cart, $ownerUid);
+        return $this->inspectResolved(
+            fn () => $this->findByToken($token),
+            $ownerUid,
+        );
+    }
 
-        return $cart;
+    public function inspectManual(string $manualCode, string $eventUid, string $ownerUid): Cart
+    {
+        $this->assertEventAccess($eventUid, $ownerUid);
+
+        return $this->inspectResolved(
+            fn () => $this->findByManualCode($manualCode, $eventUid),
+            $ownerUid,
+        );
     }
 
     public function checkIn(
@@ -24,9 +36,48 @@ class GateCheckInService
         string $actorUid,
         ?string $deviceId = null
     ): Cart {
-        return DB::transaction(function () use ($token, $ownerUid, $actorUid, $deviceId) {
-            $cart = $this->findByToken($token, true);
-            $this->assertGateAccess($cart, $ownerUid);
+        return $this->checkInResolved(
+            fn () => $this->findByToken($token, true),
+            $ownerUid,
+            $actorUid,
+            $deviceId,
+        );
+    }
+
+    public function checkInManual(
+        string $manualCode,
+        string $eventUid,
+        string $ownerUid,
+        string $actorUid,
+        ?string $deviceId = null
+    ): Cart {
+        $this->assertEventAccess($eventUid, $ownerUid);
+
+        return $this->checkInResolved(
+            fn () => $this->findByManualCode($manualCode, $eventUid, true),
+            $ownerUid,
+            $actorUid,
+            $deviceId,
+        );
+    }
+
+    private function inspectResolved(Closure $resolve, string $ownerUid): Cart
+    {
+        $cart = $resolve();
+        $this->assertTicketAccess($cart, $ownerUid);
+
+        return $cart;
+    }
+
+    private function checkInResolved(
+        Closure $resolve,
+        string $ownerUid,
+        string $actorUid,
+        ?string $deviceId
+    ): Cart {
+        return DB::transaction(function () use ($resolve, $ownerUid, $actorUid, $deviceId) {
+            $cart = $resolve();
+            $this->assertTicketAccess($cart, $ownerUid);
 
             $updated = Cart::query()
                 ->whereKey($cart->id)
@@ -57,23 +108,58 @@ class GateCheckInService
             throw new GateTokenException('Gate token tidak valid.', 404);
         }
 
-        $query = Cart::query()
-            ->with(['event', 'users', 'cashBuyer', 'hargaCarts'])
+        $query = $this->ticketQuery()
             ->where('gate_token_hash', $this->tokens->hash($token));
 
+        return $this->firstCredentialMatch($query, $lock, 'Gate token tidak valid.');
+    }
+
+    private function findByManualCode(
+        string $manualCode,
+        string $eventUid,
+        bool $lock = false
+    ): Cart {
+        if (! $this->tokens->isValidManualCode($manualCode)) {
+            throw new GateTokenException('Kode manual tidak valid.', 404);
+        }
+
+        $query = $this->ticketQuery()
+            ->where('event_uid', $eventUid)
+            ->where('gate_manual_code_hash', $this->tokens->hashManualCode($manualCode));
+
+        return $this->firstCredentialMatch($query, $lock, 'Kode manual tidak valid.');
+    }
+
+    private function ticketQuery()
+    {
+        return Cart::query()->with(['event', 'users', 'cashBuyer', 'hargaCarts']);
+    }
+
+    private function firstCredentialMatch($query, bool $lock, string $notFoundMessage): Cart
+    {
         if ($lock) {
             $query->lockForUpdate();
         }
 
         $cart = $query->first();
         if (! $cart) {
-            throw new GateTokenException('Gate token tidak valid.', 404);
+            throw new GateTokenException($notFoundMessage, 404);
         }
 
         return $cart;
     }
 
-    private function assertGateAccess(Cart $cart, string $ownerUid): void
+    private function assertEventAccess(string $eventUid, string $ownerUid): void
+    {
+        if (! Event::query()
+            ->where('uid', $eventUid)
+            ->where('user_uid', $ownerUid)
+            ->exists()) {
+            throw new GateTokenException('Anda tidak memiliki akses ke event tiket ini.', 403);
+        }
+    }
+
+    private function assertTicketAccess(Cart $cart, string $ownerUid): void
     {
         if (! $cart->event || $cart->event->user_uid !== $ownerUid) {
             throw new GateTokenException('Anda tidak memiliki akses ke event tiket ini.', 403);

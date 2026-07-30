@@ -157,7 +157,12 @@
                     <div class="qr-container mb-4">
                         {!! $barcodeData !!}
                     </div>
-                    <p class="text-lg font-bold mono tracking-[4px] text-[#3dd9c4]">{{ $invoice }}</p>
+                    @if($manualCode)
+                        <p class="text-[10px] uppercase tracking-wider text-[#a098b5] mono mb-1">Kode Manual</p>
+                        <p class="text-lg font-bold mono tracking-[4px] text-[#3dd9c4]">{{ $manualCode }}</p>
+                    @endif
+                    <p class="text-[10px] uppercase tracking-wider text-[#a098b5] mono mt-4 mb-1">Nomor Invoice</p>
+                    <p class="text-sm font-bold mono tracking-[2px] text-[#f0ecff]">{{ $invoice }}</p>
                     <p class="text-[11px] text-[#a098b5] mt-2 italic text-center">Tunjukkan QR Code ini kepada panitia
                     </p>
                 </div>

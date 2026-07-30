@@ -938,6 +938,8 @@ class DashboardCashCheckoutTest extends TestCase
             $table->string('invoice')->nullable();
             $table->char('gate_token_hash', 64)->nullable()->unique();
             $table->text('gate_token_encrypted')->nullable();
+            $table->char('gate_manual_code_hash', 64)->nullable()->unique();
+            $table->text('gate_manual_code_encrypted')->nullable();
             $table->timestamp('gate_token_issued_at')->nullable();
             $table->timestamp('scanned_at')->nullable();
             $table->string('scanned_by')->nullable();

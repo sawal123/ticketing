@@ -43,6 +43,8 @@ class Cart extends Model
         'invoice',
         'gate_token_hash',
         'gate_token_encrypted',
+        'gate_manual_code_hash',
+        'gate_manual_code_encrypted',
         'gate_token_issued_at',
         'scanned_at',
         'scanned_by',
@@ -83,6 +85,8 @@ class Cart extends Model
     protected $hidden = [
         'gate_token_hash',
         'gate_token_encrypted',
+        'gate_manual_code_hash',
+        'gate_manual_code_encrypted',
     ];
 
     public function hargaCarts()

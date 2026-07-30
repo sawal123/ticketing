@@ -128,6 +128,65 @@ class ConfirmController extends Controller
         ], 200);
     }
 
+    public function checkTicketByManualCode(Request $request)
+    {
+        $validated = $request->validate([
+            'manual_code' => ['required', 'string', 'max:64'],
+            'event_uid' => ['required', 'string', 'max:255'],
+        ]);
+
+        try {
+            $ticket = $this->gateCheckIn->inspectManual(
+                $validated['manual_code'],
+                $validated['event_uid'],
+                (string) $this->ownerId($request),
+            );
+        } catch (GateTokenException $exception) {
+            return response()->json([
+                'success' => false,
+                'message' => $exception->getMessage(),
+            ], $exception->status);
+        }
+
+        return $this->ticketResponse($ticket);
+    }
+
+    public function confirmTicketByManualCode(Request $request)
+    {
+        $validated = $request->validate([
+            'manual_code' => ['required', 'string', 'max:64'],
+            'event_uid' => ['required', 'string', 'max:255'],
+            'scan_device_id' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        try {
+            $ticket = $this->gateCheckIn->checkInManual(
+                $validated['manual_code'],
+                $validated['event_uid'],
+                (string) $this->ownerId($request),
+                $request->user()->uid,
+                $validated['scan_device_id'] ?? null,
+            );
+        } catch (GateTokenException $exception) {
+            return response()->json([
+                'success' => false,
+                'message' => $exception->getMessage(),
+            ], $exception->status);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Check-in berhasil.',
+            'data' => [
+                'uid' => $ticket->uid,
+                'invoice' => $ticket->invoice,
+                'scanned_at' => $ticket->scanned_at?->toIso8601String(),
+                'scanned_by' => $ticket->scanned_by,
+                'scan_device_id' => $ticket->scan_device_id,
+            ],
+        ], 200);
+    }
+
     private function ticketResponse(Cart $ticket)
     {
         return response()->json([

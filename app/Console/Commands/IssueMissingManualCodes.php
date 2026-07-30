@@ -8,14 +8,14 @@ use App\Services\Tickets\GateTokenService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
-class RotateGateTokens extends Command
+class IssueMissingManualCodes extends Command
 {
-    protected $signature = 'tickets:rotate-gate-tokens
-        {event_uid : Exact UID of the one event to rotate}
+    protected $signature = 'tickets:issue-missing-manual-codes
+        {event_uid : Exact UID of the one event to backfill}
         {--dry-run : Report eligible tickets without changing data}
-        {--execute : Rotate eligible tickets after an explicit confirmation}';
+        {--execute : Issue missing manual codes after an explicit confirmation}';
 
-    protected $description = 'Rotate QR gate tokens and manual codes for unscanned SUCCESS tickets in one event.';
+    protected $description = 'Issue only missing manual codes without rotating existing QR gate tokens.';
 
     public function handle(GateTokenService $tokens): int
     {
@@ -33,19 +33,15 @@ class RotateGateTokens extends Command
             return self::FAILURE;
         }
 
-        $counts = $this->counts($eventUid);
+        $eligible = $this->eligibleQuery($eventUid)->count();
         $execute = (bool) $this->option('execute');
-        $mode = $execute ? 'EXECUTE' : 'DRY-RUN';
 
         $this->newLine();
-        $this->warn("Mode       : {$mode}");
+        $this->warn('Mode       : '.($execute ? 'EXECUTE' : 'DRY-RUN'));
         $this->line("Event      : {$event->event}");
         $this->line("Event UID  : {$event->uid}");
-        $this->line("Semua cart : {$counts['total']}");
-        $this->line("SUCCESS    : {$counts['success']}");
-        $this->line("Belum verif: {$counts['eligible']}");
-        $this->line("Akan rotasi: {$counts['eligible']} (gate token + kode manual)");
-        $this->line("Dilewati   : {$counts['skipped']} (non-SUCCESS atau sudah scan)");
+        $this->line("Akan terbit: {$eligible} kode manual");
+        $this->line('Gate token : tidak diubah');
 
         if (! $execute) {
             $this->info('Dry-run selesai. Tidak ada data yang diubah.');
@@ -59,16 +55,16 @@ class RotateGateTokens extends Command
             return self::FAILURE;
         }
 
-        if (! $this->confirm("ROTASI {$counts['eligible']} tiket untuk {$event->event} ({$eventUid})?", false)) {
-            $this->warn('Rotasi dibatalkan. Tidak ada data yang diubah.');
+        if (! $this->confirm("TERBITKAN {$eligible} kode manual tanpa merotasi gate token untuk {$event->event} ({$eventUid})?", false)) {
+            $this->warn('Penerbitan dibatalkan. Tidak ada data yang diubah.');
 
             return self::FAILURE;
         }
 
-        $rotated = 0;
+        $issued = 0;
         $ids = $this->eligibleQuery($eventUid)->orderBy('id')->pluck('id');
         foreach ($ids as $id) {
-            DB::transaction(function () use ($id, $eventUid, $tokens, &$rotated) {
+            DB::transaction(function () use ($id, $eventUid, $tokens, &$issued) {
                 $cart = Cart::whereKey($id)
                     ->where('event_uid', $eventUid)
                     ->lockForUpdate()
@@ -78,29 +74,14 @@ class RotateGateTokens extends Command
                     return;
                 }
 
-                $tokens->issue($cart, true);
-                $rotated++;
+                $tokens->issueMissingManualCode($cart);
+                $issued++;
             }, 3);
         }
 
-        $this->info("Rotasi selesai: {$rotated} gate token dan kode manual diterbitkan ulang.");
+        $this->info("Selesai: {$issued} kode manual diterbitkan tanpa merotasi gate token.");
 
         return self::SUCCESS;
-    }
-
-    private function counts(string $eventUid): array
-    {
-        $base = Cart::where('event_uid', $eventUid);
-        $total = (clone $base)->count();
-        $success = (clone $base)->where('status', Cart::STATUS_SUCCESS)->count();
-        $eligible = $this->eligibleQuery($eventUid)->count();
-
-        return [
-            'total' => $total,
-            'success' => $success,
-            'eligible' => $eligible,
-            'skipped' => $total - $eligible,
-        ];
     }
 
     private function eligibleQuery(string $eventUid)
@@ -108,6 +89,10 @@ class RotateGateTokens extends Command
         return Cart::query()
             ->where('event_uid', $eventUid)
             ->where('status', Cart::STATUS_SUCCESS)
+            ->whereNotNull('gate_token_hash')
+            ->whereNotNull('gate_token_encrypted')
+            ->whereNull('gate_manual_code_hash')
+            ->whereNull('gate_manual_code_encrypted')
             ->whereNull('scanned_at')
             ->where(function ($query) {
                 $query->whereNull('konfirmasi')->orWhere('konfirmasi', '0');
@@ -117,6 +102,10 @@ class RotateGateTokens extends Command
     private function isEligible(Cart $cart): bool
     {
         return $cart->status === Cart::STATUS_SUCCESS
+            && $cart->gate_token_hash
+            && $cart->gate_token_encrypted
+            && ! $cart->gate_manual_code_hash
+            && ! $cart->gate_manual_code_encrypted
             && $cart->scanned_at === null
             && in_array((string) $cart->konfirmasi, ['', '0'], true);
     }

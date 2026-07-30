@@ -16,7 +16,7 @@ class ResendGateTickets extends Command
         {--dry-run : Report eligible emails without queueing jobs}
         {--execute : Queue emails after an explicit confirmation}';
 
-    protected $description = 'Safely resend rotated gate-ticket links for one explicitly named event.';
+    protected $description = 'Safely resend tickets containing the current QR gate token and manual code.';
 
     public function handle(GateTokenService $tokens): int
     {
@@ -43,6 +43,7 @@ class ResendGateTickets extends Command
         $this->warn('Mode       : '.($execute ? 'EXECUTE' : 'DRY-RUN'));
         $this->line("Event      : {$event->event}");
         $this->line("Event UID  : {$event->uid}");
+        $this->line('Isi tiket  : QR gate token + kode manual');
         $this->line("Akan kirim : {$recipients->count()}");
         $this->line("Dilewati   : {$invalid} (email/data pembeli tidak valid)");
 
@@ -89,6 +90,8 @@ class ResendGateTickets extends Command
             ->where('status', Cart::STATUS_SUCCESS)
             ->whereNotNull('gate_token_hash')
             ->whereNotNull('gate_token_encrypted')
+            ->whereNotNull('gate_manual_code_hash')
+            ->whereNotNull('gate_manual_code_encrypted')
             ->whereNull('scanned_at')
             ->where(function ($query) {
                 $query->whereNull('konfirmasi')->orWhere('konfirmasi', '0');

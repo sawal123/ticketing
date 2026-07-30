@@ -5,6 +5,7 @@ namespace App\Mail;
 use App\Models\Cart;
 use App\Models\Event;
 use App\Models\User;
+use App\Services\Tickets\GateTokenService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Attachment;
@@ -58,6 +59,9 @@ class MidtransPaymentNotification extends Mailable
                 'cart' => $this->cart->invoice,
                 'event' => $this->event,
                 'ticketUrl' => $this->ticketUrl,
+                'manualCode' => $this->cart->gate_manual_code_hash
+                    ? app(GateTokenService::class)->manualCodeForDisplay($this->cart)
+                    : null,
             ],
         );
     }

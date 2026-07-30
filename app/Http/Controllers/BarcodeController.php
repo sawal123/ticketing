@@ -76,8 +76,9 @@ class BarcodeController extends Controller
             $gateCredential = $cart->gate_token_hash
                 ? $this->gateTokens->tokenForQr($cart)
                 : $this->legacyCredential($cart);
+            $manualCode = $this->manualCodeForView($cart);
         } catch (\RuntimeException) {
-            return $this->barcodeError('Tiket belum memiliki gate token yang valid.', 409);
+            return $this->barcodeError('Credential gate tiket tidak valid.', 409);
         }
 
         $hargaC = HargaCart::where('uid', $cart->uid)->get();
@@ -93,6 +94,7 @@ class BarcodeController extends Controller
         return response()->view('barcode', [
             'barcodeData' => $barcodeData,
             'invoice' => $cart->invoice,
+            'manualCode' => $manualCode,
             'event' => $event,
             'hargaC' => $hargaC,
             'userBarcode' => $user,
@@ -121,13 +123,15 @@ class BarcodeController extends Controller
             $gateCredential = $cart->gate_token_hash
                 ? $this->gateTokens->tokenForQr($cart)
                 : $this->legacyCredential($cart);
+            $manualCode = $this->manualCodeForView($cart);
         } catch (\RuntimeException) {
-            return $this->barcodeError('Tiket belum memiliki gate token yang valid.', 409);
+            return $this->barcodeError('Credential gate tiket tidak valid.', 409);
         }
 
         return response()->view('barcode', [
             'barcodeData' => QrCode::size(250)->generate($gateCredential),
             'invoice' => $cart->invoice,
+            'manualCode' => $manualCode,
             'event' => $cart->event,
             'hargaC' => $cart->hargaCarts,
             'userBarcode' => $cart->cashBuyer,
@@ -173,5 +177,14 @@ class BarcodeController extends Controller
         }
 
         return (string) $cart->invoice;
+    }
+
+    private function manualCodeForView(Cart $cart): ?string
+    {
+        if (! $cart->gate_manual_code_hash && ! $cart->gate_manual_code_encrypted) {
+            return null;
+        }
+
+        return $this->gateTokens->manualCodeForDisplay($cart);
     }
 }

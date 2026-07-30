@@ -21,3 +21,5 @@ yarn-error.log
 /git_test.txt
 /bootstrap/cache/*.php
 !/bootstrap/cache/.gitignore
+
+.env.testing

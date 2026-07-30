@@ -14,7 +14,12 @@ return new class extends Migration
                 ->unique('carts_gate_token_hash_unique')
                 ->after('invoice');
             $table->text('gate_token_encrypted')->nullable()->after('gate_token_hash');
-            $table->timestamp('gate_token_issued_at')->nullable()->after('gate_token_encrypted');
+            $table->char('gate_manual_code_hash', 64)
+                ->nullable()
+                ->unique('carts_gate_manual_code_hash_unique')
+                ->after('gate_token_encrypted');
+            $table->text('gate_manual_code_encrypted')->nullable()->after('gate_manual_code_hash');
+            $table->timestamp('gate_token_issued_at')->nullable()->after('gate_manual_code_encrypted');
             $table->timestamp('scanned_at')->nullable()->after('gate_token_issued_at');
             $table->string('scanned_by')->nullable()->after('scanned_at');
             $table->string('scan_device_id')->nullable()->after('scanned_by');
@@ -25,10 +30,13 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('carts', function (Blueprint $table) {
+            $table->dropUnique('carts_gate_manual_code_hash_unique');
             $table->dropUnique('carts_gate_token_hash_unique');
             $table->dropColumn([
                 'gate_token_hash',
                 'gate_token_encrypted',
+                'gate_manual_code_hash',
+                'gate_manual_code_encrypted',
                 'gate_token_issued_at',
                 'scanned_at',
                 'scanned_by',
