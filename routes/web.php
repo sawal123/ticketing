@@ -153,7 +153,7 @@ Route::get('/signin', [PenyewaController::class, 'login'])->name('signIn');
 Route::post('/signin/cekLogin', [LoginController::class, 'index'])->name('cekLogin');
 
 Route::prefix('dashboard')
-    ->middleware(['roles:penyewa,staff'])
+    ->middleware(['roles:penyewa'])
     ->group(function () {
         // =========================================================
         // NEW LIVEWIRE DASHBOARD (PRIMARY)
@@ -173,7 +173,7 @@ Route::prefix('dashboard')
         // LEGACY DASHBOARD (MOVED TO /old)
         // =========================================================
         Route::prefix('old')->group(function () {
-            Route::middleware(['roles:penyewa,staff'])->group(function () {
+            Route::middleware(['roles:penyewa'])->group(function () {
                 Route::get('/', [PenyewaController::class, 'index'])->name('dashboard.old');
                 Route::get('/transaksi/{uid?}', [PenyewaController::class, 'transaksi'])->name('dashboard.old.transaksi');
                 Route::get('/cash/{uid?}', [PenyewaController::class, 'cash'])->name('dashboard.old.cash');

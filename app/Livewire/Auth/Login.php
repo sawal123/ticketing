@@ -38,15 +38,6 @@ class Login extends Component
             RateLimiter::clear($rateLimitKey);
             $role = strtolower((string) Auth::user()->role);
 
-            if ($role === 'staff') {
-                Auth::logout();
-                session()->invalidate();
-                session()->regenerateToken();
-                session()->flash('error', 'Akun staff hanya dapat digunakan untuk login ke aplikasi scan tiket.');
-
-                return;
-            }
-
             session()->regenerate();
 
             if ($role === 'admin') {
