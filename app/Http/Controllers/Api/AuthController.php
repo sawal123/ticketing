@@ -5,8 +5,9 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Str;
 
 class AuthController extends Controller
 {
@@ -19,10 +20,11 @@ class AuthController extends Controller
         ]);
 
         // 2. Cari user berdasarkan email
-        $user = User::where('email', $request->email)->first();
+        $email = Str::lower(trim((string) $request->email));
+        $user = User::where('email', $email)->first();
 
         // 3. Cek apakah user ada dan passwordnya cocok
-        if (!$user || !Hash::check($request->password, $user->password)) {
+        if (! $user || ! Hash::check($request->password, $user->password)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Email atau password salah!',
@@ -30,19 +32,21 @@ class AuthController extends Controller
         }
 
         // 4. (Opsional) Batasi akses hanya untuk role 'staff' atau 'penyewa'
-        if (!in_array($user->role, ['staff', 'penyewa'])) {
+        if (! in_array($user->role, ['staff', 'penyewa'])) {
             return response()->json([
                 'success' => false,
                 'message' => 'Akses ditolak! Aplikasi ini hanya untuk petugas scanner.',
             ], 403);
         }
 
-        if ($user->role === 'staff' && !$user->parent_uid) {
+        if ($user->role === 'staff' && ! $user->parent_uid) {
             return response()->json([
                 'success' => false,
                 'message' => 'Akun staff belum terhubung ke penyewa.',
             ], 403);
         }
+
+        RateLimiter::clear($email.':'.$request->ip());
 
         // 5. Buat Token Sanctum
         $token = $user->createToken('scanner-app-token')->plainTextToken;
@@ -65,8 +69,8 @@ class AuthController extends Controller
                     'owner_name' => $owner?->name,
                     'gambar' => $user->gambar,
                 ],
-                'token' => $token
-            ]
+                'token' => $token,
+            ],
         ], 200);
     }
 
@@ -78,7 +82,7 @@ class AuthController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Logout berhasil!'
+            'message' => 'Logout berhasil!',
         ], 200);
     }
 }

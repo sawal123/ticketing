@@ -74,9 +74,12 @@
                                     <a class="dropdown-item" href="{{url('admin/profile')}}">
                                         <i class="dropdown-icon fe fe-user"></i> Profile
                                     </a>
-                                    <a class="dropdown-item" href="{{url('/logout')}}">
-                                        <i class="dropdown-icon fe fe-alert-circle"></i> Log out
-                                    </a>
+                                    <form action="{{ route('logout') }}" method="post" style="margin:0;">
+                                        @csrf
+                                        <button type="submit" class="dropdown-item" style="border:0;background:transparent;width:100%;text-align:left;">
+                                            <i class="dropdown-icon fe fe-alert-circle"></i> Log out
+                                        </button>
+                                    </form>
                                 </div>
                             </div>
                         </div>

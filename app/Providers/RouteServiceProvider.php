@@ -44,6 +44,12 @@ class RouteServiceProvider extends ServiceProvider
             );
         });
 
+        RateLimiter::for('scanner-login', function (Request $request) {
+            $email = strtolower((string) $request->input('email', ''));
+
+            return Limit::perMinute(5)->by($email.':'.$request->ip());
+        });
+
         $this->routes(function () {
             Route::middleware('api')
                 ->prefix('api')

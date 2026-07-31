@@ -54,10 +54,13 @@
                         <i data-lucide="settings" class="w-4 h-4"></i> Pengaturan
                     </a>
                     <hr class="border-slate-200 dark:border-slate-700 my-1">
-                    <a href="{{ url('/logout') }}"
-                        class="flex items-center gap-2 px-4 py-2 text-sm text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/30 transition-colors">
-                        <i data-lucide="log-out" class="w-4 h-4"></i> Keluar
-                    </a>
+                    <form action="{{ route('logout') }}" method="post" class="m-0">
+                        @csrf
+                        <button type="submit"
+                            class="w-full flex items-center gap-2 px-4 py-2 text-sm text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/30 transition-colors text-left">
+                            <i data-lucide="log-out" class="w-4 h-4"></i> Keluar
+                        </button>
+                    </form>
                 </div>
             </div>
         </div>

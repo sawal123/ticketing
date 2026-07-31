@@ -70,7 +70,10 @@
                                         <a href="{{ url('/profile') }}">Profile</a>
                                     </li>
                                     <li class="sub-menu--item">
-                                        <a href="{{ url('/logout') }}">Log Out</a>
+                                        <form action="{{ route('logout') }}" method="post" style="margin:0;">
+                                            @csrf
+                                            <button type="submit" style="border:0;background:transparent;padding:0;color:inherit;">Log Out</button>
+                                        </form>
                                     </li>
                                 </ul>
                             </li>
@@ -154,7 +157,7 @@
                             </button>
                             <div class="dropdown-sep"></div>
                             <div class="dropdown-item logout">
-                                <a href="{{ url('/logout') }}" class="di-icon"
+                                <a href="#" class="di-icon"
                                     style="background:rgba(232,84,122,0.12);">🚪</a>Keluar
                             </div>
                         </div>
