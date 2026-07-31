@@ -168,6 +168,7 @@
             </div>
 
             <div class="profile-modal__body">
+                @unless ($pendingEmailChange)
                 <form action="{{ route('profile.email.request-otp') }}" method="post" class="modal-step">
                     @csrf
                     <div class="modal-step__label">Step 1</div>
@@ -180,14 +181,12 @@
                     </div>
                     <button type="submit" class="btn-save modal-button">Kirim OTP</button>
                 </form>
+                @endunless
 
                 @if ($pendingEmailChange)
                 <form action="{{ route('profile.email.verify-otp') }}" method="post" class="modal-step">
                     @csrf
                     <div class="modal-step__label">Step 2</div>
-                    <div class="otp-target">
-                        Kode OTP dikirim ke: <strong>{{ $pendingEmailChange }}</strong>
-                    </div>
                     <input type="hidden" name="new_email" value="{{ $pendingEmailChange }}">
                     <div class="form-group full">
                         <label>OTP</label>
@@ -197,6 +196,12 @@
                         @enderror
                     </div>
                     <button type="submit" class="btn-save modal-button">Verifikasi & Ganti Email</button>
+                </form>
+
+                <form action="{{ route('profile.email.request-otp') }}" method="post">
+                    @csrf
+                    <input type="hidden" name="new_email" value="{{ $pendingEmailChange }}">
+                    <button type="submit" class="btn-cancel modal-button">Kirim Ulang OTP</button>
                 </form>
                 @endif
             </div>
@@ -352,16 +357,6 @@
             font-size: 12px;
             font-weight: 800;
             text-transform: uppercase;
-        }
-
-        .otp-target {
-            background: rgba(245, 165, 36, 0.12);
-            border: 1px solid rgba(245, 165, 36, 0.24);
-            border-radius: 14px;
-            color: #f8f4eb;
-            font-size: 13px;
-            padding: 12px 14px;
-            overflow-wrap: anywhere;
         }
 
         .modal-button {
