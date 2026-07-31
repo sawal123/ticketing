@@ -1,9 +1,16 @@
 @extends('frontend.index')
 
 @section('content')
+    @php
+        $emailModalErrors = $errors->has('new_email') || $errors->has('otp');
+        $passwordModalErrors = $errors->has('current_password') || $errors->has('password') || $errors->has('password_confirmation');
+        $pendingEmailChange = old('new_email', session('pending_email_change'));
+        $shouldOpenEmailModal = $emailModalErrors || session()->has('pending_email_change');
+    @endphp
+
     <div class="mt-5 page-wrap">
         <aside class="left-panel">
-            @if ($errors->any())
+            @if ($errors->any() && ! $emailModalErrors && ! $passwordModalErrors)
                 <div class="alert alert-danger">
                     <ul style="margin:0;padding-left:18px;">
                         @foreach ($errors->all() as $error)
@@ -40,7 +47,7 @@
 
                 <div>
                     <div class="profile-name">{{ $dataUser->name }}</div>
-                    <div class="profile-handle">{{ '@' . strtolower(str_replace(' ', '', $dataUser->name)) }}</div>
+                    <div class="profile-handle">{{ $dataUser->email }}</div>
                     <div class="profile-badges">
                         <span class="badge verified">Terverifikasi</span>
                         <span class="badge member">Member</span>
@@ -130,86 +137,253 @@
             <div class="section-card mt-3">
                 <div class="card-head">
                     <div class="card-head-icon">@</div>
-                    <div class="card-head-title">Ganti Email</div>
+                    <div class="card-head-title">Akun & Keamanan</div>
                 </div>
 
                 <div class="card-body">
-                    <div class="form-group full">
-                        <label>Email Saat Ini</label>
-                        <input type="email" class="form-input" value="{{ $dataUser->email }}" disabled>
+                    <div class="security-panel">
+                        <div>
+                            <label>Email Saat Ini</label>
+                            <div class="security-email">{{ $dataUser->email }}</div>
+                        </div>
+                        <div class="security-actions">
+                            <button type="button" class="btn-save" data-open-modal="email-change-modal">Ganti Email</button>
+                            <button type="button" class="btn-cancel" data-open-modal="password-change-modal">Ganti Password</button>
+                        </div>
                     </div>
-
-                    <form action="{{ route('profile.email.request-otp') }}" method="post" class="form-grid">
-                        @csrf
-                        <div class="form-group full">
-                            <label>Email Baru</label>
-                            <input type="email" name="new_email" class="form-input" value="{{ old('new_email') }}">
-                            @error('new_email')
-                                <small style="color:red;">{{ $message }}</small>
-                            @enderror
-                        </div>
-                        <div class="form-actions full">
-                            <button type="submit" class="btn-save">Kirim OTP</button>
-                        </div>
-                    </form>
-
-                    <form action="{{ route('profile.email.verify-otp') }}" method="post" class="form-grid" style="margin-top:20px;">
-                        @csrf
-                        <div class="form-group">
-                            <label>Email Baru</label>
-                            <input type="email" name="new_email" class="form-input" value="{{ old('new_email') }}">
-                        </div>
-                        <div class="form-group">
-                            <label>OTP</label>
-                            <input type="text" name="otp" class="form-input" inputmode="numeric" maxlength="6">
-                            @error('otp')
-                                <small style="color:red;">{{ $message }}</small>
-                            @enderror
-                        </div>
-                        <div class="form-actions full">
-                            <button type="submit" class="btn-save">Verifikasi & Ganti Email</button>
-                        </div>
-                    </form>
                 </div>
-            </div>
-
-            <div class="section-card mt-3">
-                <div class="card-head">
-                    <div class="card-head-icon">*</div>
-                    <div class="card-head-title">Ganti Password</div>
-                </div>
-
-                <form action="{{ route('profile.password.update') }}" method="post" class="card-body">
-                    @csrf
-                    <div class="form-grid">
-                        <div class="form-group full">
-                            <label>Password Lama</label>
-                            <input type="password" name="current_password" class="form-input">
-                            @error('current_password')
-                                <small style="color:red;">{{ $message }}</small>
-                            @enderror
-                        </div>
-                        <div class="form-group">
-                            <label>Password Baru</label>
-                            <input type="password" name="password" class="form-input">
-                            @error('password')
-                                <small style="color:red;">{{ $message }}</small>
-                            @enderror
-                        </div>
-                        <div class="form-group">
-                            <label>Konfirmasi Password Baru</label>
-                            <input type="password" name="password_confirmation" class="form-input">
-                        </div>
-                    </div>
-
-                    <div class="form-actions" style="margin-top:20px;">
-                        <button type="reset" class="btn-cancel">Batal</button>
-                        <button type="submit" class="btn-save">Ganti Password</button>
-                    </div>
-                </form>
             </div>
         </div>
     </div>
+
+    <div id="email-change-modal" class="profile-modal" aria-hidden="true">
+        <div class="profile-modal__overlay" data-close-modal></div>
+        <div class="profile-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="email-change-title">
+            <div class="profile-modal__head">
+                <div>
+                    <h3 id="email-change-title">Ganti Email</h3>
+                    <p>Kode OTP akan dikirim ke email baru. Email belum berubah sebelum OTP diverifikasi.</p>
+                </div>
+                <button type="button" class="profile-modal__close" data-close-modal aria-label="Tutup">x</button>
+            </div>
+
+            <div class="profile-modal__body">
+                <form action="{{ route('profile.email.request-otp') }}" method="post" class="modal-step">
+                    @csrf
+                    <div class="modal-step__label">Step 1</div>
+                    <div class="form-group full">
+                        <label>Email Baru</label>
+                        <input type="email" name="new_email" class="form-input" value="{{ old('new_email') }}">
+                        @error('new_email')
+                            <small style="color:red;">{{ $message }}</small>
+                        @enderror
+                    </div>
+                    <button type="submit" class="btn-save modal-button">Kirim OTP</button>
+                </form>
+
+                @if ($pendingEmailChange)
+                <form action="{{ route('profile.email.verify-otp') }}" method="post" class="modal-step">
+                    @csrf
+                    <div class="modal-step__label">Step 2</div>
+                    <div class="otp-target">
+                        Kode OTP dikirim ke: <strong>{{ $pendingEmailChange }}</strong>
+                    </div>
+                    <input type="hidden" name="new_email" value="{{ $pendingEmailChange }}">
+                    <div class="form-group full">
+                        <label>OTP</label>
+                        <input type="text" name="otp" class="form-input" inputmode="numeric" maxlength="6">
+                        @error('otp')
+                            <small style="color:red;">{{ $message }}</small>
+                        @enderror
+                    </div>
+                    <button type="submit" class="btn-save modal-button">Verifikasi & Ganti Email</button>
+                </form>
+                @endif
+            </div>
+        </div>
+    </div>
+
+    <div id="password-change-modal" class="profile-modal" aria-hidden="true">
+        <div class="profile-modal__overlay" data-close-modal></div>
+        <div class="profile-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="password-change-title">
+            <div class="profile-modal__head">
+                <div>
+                    <h3 id="password-change-title">Ganti Password</h3>
+                    <p>Gunakan password minimal 8 karakter dengan huruf dan angka.</p>
+                </div>
+                <button type="button" class="profile-modal__close" data-close-modal aria-label="Tutup">x</button>
+            </div>
+
+            <form action="{{ route('profile.password.update') }}" method="post" class="profile-modal__body">
+                @csrf
+                <div class="form-group full">
+                    <label>Password Lama</label>
+                    <input type="password" name="current_password" class="form-input">
+                    @error('current_password')
+                        <small style="color:red;">{{ $message }}</small>
+                    @enderror
+                </div>
+                <div class="form-group full">
+                    <label>Password Baru</label>
+                    <input type="password" name="password" class="form-input">
+                    @error('password')
+                        <small style="color:red;">{{ $message }}</small>
+                    @enderror
+                </div>
+                <div class="form-group full">
+                    <label>Konfirmasi Password Baru</label>
+                    <input type="password" name="password_confirmation" class="form-input">
+                    @error('password_confirmation')
+                        <small style="color:red;">{{ $message }}</small>
+                    @enderror
+                </div>
+                <button type="submit" class="btn-save modal-button">Ganti Password</button>
+            </form>
+        </div>
+    </div>
+
+    <style>
+        .security-panel {
+            align-items: center;
+            display: flex;
+            gap: 20px;
+            justify-content: space-between;
+        }
+
+        .security-email {
+            color: #ffffff;
+            font-size: 15px;
+            font-weight: 700;
+            margin-top: 8px;
+            overflow-wrap: anywhere;
+        }
+
+        .security-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .profile-modal {
+            align-items: center;
+            display: none;
+            inset: 0;
+            justify-content: center;
+            padding: 20px;
+            position: fixed;
+            z-index: 9999;
+        }
+
+        .profile-modal.is-open {
+            display: flex;
+        }
+
+        .profile-modal__overlay {
+            background: rgba(5, 4, 18, 0.72);
+            inset: 0;
+            position: absolute;
+        }
+
+        .profile-modal__dialog {
+            background: #16152a;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 22px;
+            box-shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
+            max-height: calc(100vh - 40px);
+            max-width: 520px;
+            overflow-y: auto;
+            position: relative;
+            width: 100%;
+        }
+
+        .profile-modal__head {
+            align-items: flex-start;
+            display: flex;
+            gap: 16px;
+            justify-content: space-between;
+            padding: 24px 24px 12px;
+        }
+
+        .profile-modal__head h3 {
+            color: #ffffff;
+            font-size: 22px;
+            font-weight: 800;
+            margin: 0 0 8px;
+        }
+
+        .profile-modal__head p {
+            color: #b7b5ca;
+            font-size: 13px;
+            line-height: 1.5;
+            margin: 0;
+        }
+
+        .profile-modal__close {
+            background: rgba(255, 255, 255, 0.08);
+            border: 0;
+            border-radius: 999px;
+            color: #ffffff;
+            cursor: pointer;
+            flex: 0 0 auto;
+            height: 34px;
+            width: 34px;
+        }
+
+        .profile-modal__body {
+            display: grid;
+            gap: 18px;
+            padding: 12px 24px 24px;
+        }
+
+        .modal-step {
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            display: grid;
+            gap: 14px;
+            padding-top: 18px;
+        }
+
+        .modal-step:first-child {
+            border-top: 0;
+            padding-top: 0;
+        }
+
+        .modal-step__label {
+            color: #f5a524;
+            font-size: 12px;
+            font-weight: 800;
+            text-transform: uppercase;
+        }
+
+        .otp-target {
+            background: rgba(245, 165, 36, 0.12);
+            border: 1px solid rgba(245, 165, 36, 0.24);
+            border-radius: 14px;
+            color: #f8f4eb;
+            font-size: 13px;
+            padding: 12px 14px;
+            overflow-wrap: anywhere;
+        }
+
+        .modal-button {
+            width: 100%;
+        }
+
+        @media (max-width: 640px) {
+            .profile-modal {
+                align-items: flex-start;
+                padding: 14px;
+            }
+
+            .security-panel {
+                align-items: stretch;
+                flex-direction: column;
+            }
+
+            .security-actions {
+                flex-direction: column;
+            }
+        }
+    </style>
 
     <script>
         function previewGambar(event) {
@@ -221,8 +395,52 @@
             }
         }
 
-        @if (session('editProfile'))
-            document.addEventListener('DOMContentLoaded', function() {
+        function openProfileModal(id) {
+            const modal = document.getElementById(id);
+
+            if (!modal) {
+                return;
+            }
+
+            modal.classList.add('is-open');
+            modal.setAttribute('aria-hidden', 'false');
+        }
+
+        function closeProfileModal(modal) {
+            modal.classList.remove('is-open');
+            modal.setAttribute('aria-hidden', 'true');
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('[data-open-modal]').forEach(function(button) {
+                button.addEventListener('click', function() {
+                    openProfileModal(button.dataset.openModal);
+                });
+            });
+
+            document.querySelectorAll('[data-close-modal]').forEach(function(element) {
+                element.addEventListener('click', function() {
+                    closeProfileModal(element.closest('.profile-modal'));
+                });
+            });
+
+            document.addEventListener('keydown', function(event) {
+                if (event.key !== 'Escape') {
+                    return;
+                }
+
+                document.querySelectorAll('.profile-modal.is-open').forEach(closeProfileModal);
+            });
+
+            @if ($shouldOpenEmailModal)
+                openProfileModal('email-change-modal');
+            @endif
+
+            @if ($passwordModalErrors)
+                openProfileModal('password-change-modal');
+            @endif
+
+            @if (session('editProfile'))
                 Swal.fire({
                     icon: 'success',
                     title: 'Berhasil',
@@ -230,7 +448,7 @@
                     confirmButtonText: 'OK',
                     confirmButtonColor: '#4f46e5'
                 });
-            });
-        @endif
+            @endif
+        });
     </script>
 @endsection

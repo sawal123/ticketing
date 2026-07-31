@@ -249,7 +249,10 @@ class editController extends Controller
             ->first();
 
         if ($recentOtp && $recentOtp->last_sent_at?->greaterThan(now()->subSeconds(60))) {
-            return redirect()->back()->with('editProfile', 'Jika email valid, kode OTP akan dikirim.');
+            return redirect()->back()
+                ->with('editProfile', 'Jika email valid, kode OTP akan dikirim.')
+                ->withInput(['new_email' => $newEmail])
+                ->with('pending_email_change', $newEmail);
         }
 
         ProfileEmailChangeOtp::query()
@@ -271,7 +274,10 @@ class editController extends Controller
 
         Mail::to($newEmail)->send(new ProfileEmailChangeOtpMail($user, $otp));
 
-        return redirect()->back()->with('editProfile', 'Jika email valid, kode OTP akan dikirim.');
+        return redirect()->back()
+            ->with('editProfile', 'Jika email valid, kode OTP akan dikirim.')
+            ->withInput(['new_email' => $newEmail])
+            ->with('pending_email_change', $newEmail);
     }
 
     public function verifyEmailChangeOtp(Request $request)
@@ -333,7 +339,7 @@ class editController extends Controller
         if ($result !== true) {
             return redirect()->back()->withErrors([
                 'otp' => $result,
-            ]);
+            ])->withInput(['new_email' => $newEmail]);
         }
 
         return redirect()->back()->with('editProfile', 'Email berhasil diverifikasi dan diubah.');
