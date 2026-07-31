@@ -81,10 +81,13 @@
                                                     data-nomor="{{ $ps->hp }}"><span
                                                         class="fe fe-edit fs-14"></span></button>
 
-                                                <a class="btn text-danger btn-sm delete"
-                                                    href="{{ url('dashboard/delete/partner/' . $ps->uid) }}"
-                                                    data-bs-toggle="tooltip" data-bs-original-title="Delete"><span
-                                                        class="fe fe-trash-2 fs-14"></span>
+                                                <form method="POST" action="{{ route('dashboard.old.partners.destroy', $ps->uid) }}" class="d-inline">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit" class="btn text-danger btn-sm delete"
+                                                        data-bs-toggle="tooltip" data-bs-original-title="Delete"><span
+                                                            class="fe fe-trash-2 fs-14"></span></button>
+                                                </form>
                                             </div>
                                         </td>
 

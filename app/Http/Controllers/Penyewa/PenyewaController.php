@@ -160,7 +160,7 @@ class PenyewaController extends Controller
 
         foreach ($transaksiSukses as $c) {
             $u = $c->users; // Hubungan (relationship) di model Cart bernama 'users'
-            if (!$u) {
+            if (! $u) {
                 continue;
             }
 
@@ -296,7 +296,7 @@ class PenyewaController extends Controller
 
     public function toggleStatusEvent($uid)
     {
-        $event = Event::where('uid', $uid)->first();
+        $event = Event::where('uid', $uid)->where('user_uid', Auth::user()->uid)->first();
 
         if ($event) {
             $event->status = $event->status === 'active' ? 'close' : 'active';
@@ -305,7 +305,7 @@ class PenyewaController extends Controller
             return response()->json([
                 'success' => true,
                 'status' => $event->status,
-                'message' => 'Status event berhasil diperbarui'
+                'message' => 'Status event berhasil diperbarui',
             ]);
         }
 
@@ -315,7 +315,9 @@ class PenyewaController extends Controller
     public function toggleStatusHarga($id)
     {
         // dd($id);
-        $harga = Harga::findOrFail($id);
+        $harga = Harga::where('id', $id)
+            ->whereHas('event', fn ($query) => $query->where('user_uid', Auth::user()->uid))
+            ->firstOrFail();
 
         // Membalikkan status secara otomatis
         $harga->status = ($harga->status === 'active') ? 'inactive' : 'active';
@@ -329,7 +331,10 @@ class PenyewaController extends Controller
     {
         $user = Auth::user();
         $ownerId = ($user->role === 'staff') ? $user->parent_uid : $user->uid;
-        $ubahEvent = Event::join('event_dates', 'events.uid', 'event_dates.uid')->where('events.uid', $uid)->first();
+        $ubahEvent = Event::join('event_dates', 'events.uid', 'event_dates.uid')
+            ->where('events.uid', $uid)
+            ->where('events.user_uid', $ownerId)
+            ->firstOrFail();
 
         // dd($ubahEvent);
         return view('penyewa.eventSemi.addEvent', [
@@ -423,7 +428,7 @@ class PenyewaController extends Controller
             $tiketQuery->where('events.uid', $request->uid);
         }
 
-        if (!empty($filter)) {
+        if (! empty($filter)) {
             $cartQuery->whereDate('carts.created_at', $filter);
             $omsetQuery->whereDate('carts.created_at', $filter);
             $tiketQuery->whereDate('carts.created_at', $filter);
@@ -554,7 +559,7 @@ class PenyewaController extends Controller
             $tiketQuery->where('events.uid', $request->uid);
         }
 
-        if (!empty($filter)) {
+        if (! empty($filter)) {
             $cartQuery->whereDate('carts.created_at', $filter);
             $omsetQuery->whereDate('carts.created_at', $filter);
             $tiketQuery->whereDate('carts.created_at', $filter);

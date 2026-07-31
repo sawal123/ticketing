@@ -2,34 +2,44 @@
 
 namespace App\Livewire\Dashboard;
 
+use App\Models\Event;
 use App\Models\Partner;
+use Illuminate\Support\Str;
+use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Livewire\WithPagination;
-use Livewire\Attributes\Layout;
-use Illuminate\Support\Str;
 
 class PartnerIndex extends Component
 {
     use WithPagination;
 
     #[Layout('layouts.unified')]
-    
     public $search = '';
+
     public $event_uid = '';
-    
+
     // Form properties
     public $partner_id;
+
     public $name;
+
     public $email;
+
     public $city;
+
     public $alamat;
+
     public $hp;
+
     public $selected_event_uid;
+
     public $status = 'active';
 
     // Stats
     public $totalPartners = 0;
+
     public $activePartners = 0;
+
     public $totalCities = 0;
 
     public $isEditMode = false;
@@ -58,8 +68,8 @@ class PartnerIndex extends Component
     {
         $this->resetForm();
         $this->isEditMode = true;
-        $partner = Partner::findOrFail($id);
-        
+        $partner = $this->ownedPartnerQuery($id)->firstOrFail();
+
         $this->partner_id = $partner->id;
         $this->name = $partner->name;
         $this->email = $partner->email;
@@ -76,6 +86,10 @@ class PartnerIndex extends Component
     {
         $this->validate();
 
+        if ($this->selected_event_uid) {
+            $this->ownedEventQuery($this->selected_event_uid)->firstOrFail();
+        }
+
         $data = [
             'name' => $this->name,
             'email' => $this->email,
@@ -87,12 +101,12 @@ class PartnerIndex extends Component
         ];
 
         if ($this->isEditMode) {
-            Partner::find($this->partner_id)->update($data);
+            $this->ownedPartnerQuery($this->partner_id)->firstOrFail()->update($data);
             session()->flash('success', 'Partner berhasil diperbarui.');
         } else {
             $data['uid'] = Str::uuid();
             $data['user_uid'] = auth()->user()->role === 'staff' ? auth()->user()->parent_uid : auth()->user()->uid;
-            $data['referensi'] = 'PARTNER-' . strtoupper(Str::random(6));
+            $data['referensi'] = 'PARTNER-'.strtoupper(Str::random(6));
             Partner::create($data);
             session()->flash('success', 'Partner berhasil ditambahkan.');
         }
@@ -103,7 +117,7 @@ class PartnerIndex extends Component
 
     public function toggleStatus($id)
     {
-        $partner = Partner::findOrFail($id);
+        $partner = $this->ownedPartnerQuery($id)->firstOrFail();
         $partner->status = $partner->status === 'active' ? 'inactive' : 'active';
         $partner->save();
         session()->flash('success', 'Status partner berhasil diubah.');
@@ -111,13 +125,14 @@ class PartnerIndex extends Component
 
     public function confirmDelete($id)
     {
+        $this->ownedPartnerQuery($id)->firstOrFail();
         $this->partner_id = $id;
         $this->dispatch('open-modal', name: 'delete-modal');
     }
 
     public function delete()
     {
-        Partner::findOrFail($this->partner_id)->delete();
+        $this->ownedPartnerQuery($this->partner_id)->firstOrFail()->delete();
         $this->dispatch('close-modal', name: 'delete-modal');
         session()->flash('success', 'Partner berhasil dihapus.');
     }
@@ -131,15 +146,15 @@ class PartnerIndex extends Component
         // Base Query for Table
         $query = Partner::query()->with('event');
 
-        if (!$isAdmin) {
+        if (! $isAdmin) {
             $query->where('user_uid', $ownerId);
         }
 
         if ($this->search) {
-            $query->where(function($q) {
-                $q->where('name', 'like', '%' . $this->search . '%')
-                  ->orWhere('email', 'like', '%' . $this->search . '%')
-                  ->orWhere('referensi', 'like', '%' . $this->search . '%');
+            $query->where(function ($q) {
+                $q->where('name', 'like', '%'.$this->search.'%')
+                    ->orWhere('email', 'like', '%'.$this->search.'%')
+                    ->orWhere('referensi', 'like', '%'.$this->search.'%');
             });
         }
 
@@ -151,7 +166,7 @@ class PartnerIndex extends Component
 
         // Stats Calculation
         $statsQuery = Partner::query();
-        if (!$isAdmin) {
+        if (! $isAdmin) {
             $statsQuery->where('user_uid', $ownerId);
         }
         $this->totalPartners = (clone $statsQuery)->count();
@@ -159,15 +174,33 @@ class PartnerIndex extends Component
         $this->totalCities = (clone $statsQuery)->distinct('city')->count();
 
         // Events for dropdown
-        $eventsQuery = \App\Models\Event::query();
-        if (!$isAdmin) {
+        $eventsQuery = Event::query();
+        if (! $isAdmin) {
             $eventsQuery->where('user_uid', $ownerId);
         }
         $events = $eventsQuery->orderBy('event', 'asc')->get();
 
         return view('livewire.dashboard.partner-index', [
             'partners' => $partners,
-            'events' => $events
+            'events' => $events,
         ]);
+    }
+
+    private function ownedPartnerQuery($id)
+    {
+        $user = auth()->user();
+        $ownerId = ($user->role === 'staff') ? $user->parent_uid : $user->uid;
+
+        return Partner::where('id', $id)
+            ->when($user->role !== 'admin', fn ($query) => $query->where('user_uid', $ownerId));
+    }
+
+    private function ownedEventQuery(string $uid)
+    {
+        $user = auth()->user();
+        $ownerId = ($user->role === 'staff') ? $user->parent_uid : $user->uid;
+
+        return Event::where('uid', $uid)
+            ->when($user->role !== 'admin', fn ($query) => $query->where('user_uid', $ownerId));
     }
 }

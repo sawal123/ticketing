@@ -29,8 +29,8 @@ class EditController extends Controller
             'fee' => 'required|numeric|min:0|max:100',
             'cover' => SecureImageStorage::rules(),
         ]);
-        $event = Event::where('uid', $request->uid)->where('user_uid', Auth::user()->uid)->first();
-        $eventDate = EventDate::where('uid', $request->uid)->first();
+        $event = $this->ownedEventQuery($request->uid)->firstOrFail();
+        $eventDate = EventDate::where('uid', $event->uid)->firstOrFail();
 
         $tanggal = date('Y-m-d H:i', strtotime($request->tanggal));
         $event->event = $request->event;
@@ -66,7 +66,7 @@ class EditController extends Controller
         $uid = $request->uid;
         $talent = $request->talent;
 
-        $talents = Talent::where('id', $uid)->first();
+        $talents = $this->ownedTalentQuery($uid)->firstOrFail();
         $talents->talent = $talent;
 
         $oldImage = null;
@@ -83,7 +83,7 @@ class EditController extends Controller
     public function editHarga(Request $request)
     {
         $id = $request->id;
-        $harga = Harga::where('id', $id)->first();
+        $harga = $this->ownedHargaQuery($id)->firstOrFail();
         // dd($request->kategori);
         $harga->update([
             'kategori' => $request->kategori,
@@ -168,7 +168,7 @@ class EditController extends Controller
         ]);
 
         $validate->validate();
-        $partner = Partner::where('uid', $request->uid)->first();
+        $partner = $this->ownedPartnerQuery($request->uid)->firstOrFail();
         // dd($partner);
 
         $partner->name = $request->name;
@@ -200,13 +200,8 @@ class EditController extends Controller
         $validate->validate();
 
         // Cari voucher yang akan diupdate
-        $voucher = Voucher::find($request->id);
-        // dd($voucher->event_uid);
-
-        // Pastikan voucher ditemukan
-        if (! $voucher) {
-            return redirect()->back()->with('vError', 'Voucher tidak ditemukan');
-        }
+        $voucher = $this->ownedVoucherByIdQuery($request->id)->firstOrFail();
+        $targetEvent = $this->ownedEventQuery($request->event)->firstOrFail();
 
         // Tentukan nominal berdasarkan unit (rupiah atau persen)
         if ($request->unit === 'rupiah') {
@@ -222,13 +217,54 @@ class EditController extends Controller
         $voucher->min_beli = $request->min;
         $voucher->max_disc = $request->max;
         $voucher->limit = $request->maxUse;
-        $voucher->event_uid = $request->event; // Update event_uid (mengaitkan voucher dengan event baru)
+        $voucher->event_uid = $targetEvent->uid; // Update event_uid (mengaitkan voucher dengan event baru)
 
         // Simpan perubahan
         $voucher->save();
 
         // Redirect dengan pesan berhasil
         return redirect()->back()->with('voucher', 'Voucher berhasil diperbarui');
+    }
+
+    private function ownedEventQuery(string $uid)
+    {
+        return Event::where('uid', $uid)->where('user_uid', Auth::user()->uid);
+    }
+
+    private function ownedTalentQuery(string $id)
+    {
+        return Talent::query()
+            ->where(function ($query) use ($id) {
+                $query->where('id', $id)->orWhere('uid', $id);
+            })
+            ->whereHas('event', fn ($query) => $query->where('user_uid', Auth::user()->uid));
+    }
+
+    private function ownedHargaQuery(string $id)
+    {
+        return Harga::query()
+            ->where('id', $id)
+            ->whereHas('event', fn ($query) => $query->where('user_uid', Auth::user()->uid));
+    }
+
+    private function ownedPartnerQuery(string $uid)
+    {
+        return Partner::query()
+            ->where('uid', $uid)
+            ->where(function ($query) {
+                $query->where('user_uid', Auth::user()->uid)
+                    ->orWhereHas('event', fn ($event) => $event->where('user_uid', Auth::user()->uid));
+            });
+    }
+
+    private function ownedVoucherByIdQuery(string $id)
+    {
+        return Voucher::query()
+            ->where('id', $id)
+            ->where(function ($query) {
+                $query->where('user_uid', Auth::user()->uid)
+                    ->orWhereHas('event', fn ($event) => $event->where('user_uid', Auth::user()->uid));
+            });
     }
 
     public function updatePassword(Request $request)

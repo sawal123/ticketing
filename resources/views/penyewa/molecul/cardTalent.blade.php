@@ -19,7 +19,11 @@
                                 <button type="submit" class="btn ripple btn-primary me-2" data-bs-target="#updateTalent"
                                     data-bs-effect="effect-sign" data-bs-toggle="modal" data-uid="{{$talents->id}}" data-talent="{{$talents->talent}}"><i class="fe fe-edit"> </i>
                                 </button>
-                                <a href="{{url('dashboard/delete/'.$talents->uid)}}" class="delete btn ripple btn-danger"><i class="fe fe-trash"> </i></a>
+                                <form method="POST" action="{{ route('dashboard.old.talents.destroy', $talents->id) }}" class="d-inline">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="delete btn ripple btn-danger"><i class="fe fe-trash"> </i></button>
+                                </form>
                             </div>
                         </div>
 

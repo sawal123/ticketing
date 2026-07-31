@@ -93,11 +93,13 @@
                                                 <i class="fa fa-edit"></i> Edit
                                             </button>
 
-                                            <a href="{{ url('dashboard/staff/delete/' . $staff->uid) }}" class="delete">
-                                                <button type="button" class="btn btn-sm btn-danger" title="Hapus Staff">
+                                            <form method="POST" action="{{ route('dashboard.old.staff.destroy', $staff->uid) }}" class="d-inline">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="btn btn-sm btn-danger delete" title="Hapus Staff">
                                                     <i class="fa fa-trash text-white"></i> Hapus
                                                 </button>
-                                            </a>
+                                            </form>
                                         </td>
                                     </tr>
                                 @empty

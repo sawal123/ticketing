@@ -155,9 +155,13 @@
 
                     @if ($events->konfirmasi === null)
                         <div class="position-absolute" style="left: 15px; top: 15px;">
-                            <a href="{{ url('dashboard/events/delete/' . $events->uid) }}" class="btn btn-danger btn-sm rounded-circle shadow-sm d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
-                                <i class="fe fe-trash"></i>
-                            </a>
+                            <form method="POST" action="{{ route('dashboard.old.events.destroy', $events->uid) }}" class="m-0">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="btn btn-danger btn-sm rounded-circle shadow-sm d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
+                                    <i class="fe fe-trash"></i>
+                                </button>
+                            </form>
                         </div>
                     @endif
                 </div>

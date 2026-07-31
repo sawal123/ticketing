@@ -2,44 +2,57 @@
 
 namespace App\Livewire\Dashboard;
 
+use App\Models\Cart;
 use App\Models\Event;
 use App\Models\Voucher;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
+use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Livewire\WithPagination;
-use Livewire\Attributes\Layout;
-use Illuminate\Support\Str;
-use Illuminate\Support\Facades\Auth;
 
 class VoucherIndex extends Component
 {
     use WithPagination;
 
     #[Layout('layouts.unified')]
-    
     public $search = '';
+
     public $event_uid = '';
-    
+
     // Form properties
     public $voucher_id;
+
     public $code;
+
     public $selected_event_uid;
+
     public $unit = 'persen'; // persen or rupiah
+
     public $nominal;
+
     public $min_beli = 0;
+
     public $max_disc = 0;
+
     public $limit = 100;
+
     public $status = 'active';
 
     public $isEditMode = false;
+
     public $confirmingDeletion = false;
-    
+
     // Properti untuk List Transaksi
     public $selectedVoucherCode;
+
     public $transactions = [];
-    
+
     // Stats
     public $totalVouchers = 0;
+
     public $activeVouchers = 0;
+
     public $totalUsedVouchers = 0;
 
     public function mount()
@@ -68,12 +81,14 @@ class VoucherIndex extends Component
 
     public function updatedNominal($value)
     {
-        if ($value < 0) $this->nominal = 0;
-        
+        if ($value < 0) {
+            $this->nominal = 0;
+        }
+
         if ($this->unit === 'rupiah') {
             $this->max_disc = $this->nominal;
         }
-        
+
         if ($this->unit === 'persen' && $value > 100) {
             $this->nominal = 100;
         }
@@ -81,13 +96,17 @@ class VoucherIndex extends Component
 
     public function updatedMinBeli($value)
     {
-        if ($value < 0) $this->min_beli = 0;
+        if ($value < 0) {
+            $this->min_beli = 0;
+        }
     }
 
     public function updatedMaxDisc($value)
     {
-        if ($value < 0) $this->max_disc = 0;
-        
+        if ($value < 0) {
+            $this->max_disc = 0;
+        }
+
         if ($this->unit === 'rupiah') {
             $this->max_disc = $this->nominal;
         }
@@ -95,15 +114,17 @@ class VoucherIndex extends Component
 
     public function updatedLimit($value)
     {
-        if ($value < 1) $this->limit = 1;
+        if ($value < 1) {
+            $this->limit = 1;
+        }
     }
 
     public function openEditModal($id)
     {
         $this->resetForm();
         $this->isEditMode = true;
-        $voucher = Voucher::findOrFail($id);
-        
+        $voucher = $this->ownedVoucherQuery($id)->firstOrFail();
+
         $this->voucher_id = $voucher->id;
         $this->code = $voucher->code;
         $this->selected_event_uid = $voucher->event_uid;
@@ -123,7 +144,7 @@ class VoucherIndex extends Component
             'code' => 'required|string|max:50',
             'selected_event_uid' => 'required',
             'unit' => 'required|in:persen,rupiah',
-            'nominal' => 'required|numeric|min:0' . ($this->unit === 'persen' ? '|max:100' : ''),
+            'nominal' => 'required|numeric|min:0'.($this->unit === 'persen' ? '|max:100' : ''),
             'min_beli' => 'required|numeric|min:0',
             'max_disc' => 'nullable|numeric|min:0',
             'limit' => 'required|numeric|min:1',
@@ -137,6 +158,7 @@ class VoucherIndex extends Component
 
         $user = Auth::user();
         $ownerId = ($user->role === 'staff') ? $user->parent_uid : $user->uid;
+        $this->ownedEventQuery($this->selected_event_uid)->firstOrFail();
 
         $data = [
             'user_uid' => $ownerId,
@@ -151,7 +173,7 @@ class VoucherIndex extends Component
         ];
 
         if ($this->isEditMode) {
-            Voucher::find($this->voucher_id)->update($data);
+            $this->ownedVoucherQuery($this->voucher_id)->firstOrFail()->update($data);
             session()->flash('success', 'Voucher berhasil diperbarui.');
         } else {
             $data['uid'] = Str::uuid();
@@ -166,7 +188,7 @@ class VoucherIndex extends Component
 
     public function toggleStatus($id)
     {
-        $voucher = Voucher::findOrFail($id);
+        $voucher = $this->ownedVoucherQuery($id)->firstOrFail();
         $voucher->status = $voucher->status === 'active' ? 'inactive' : 'active';
         $voucher->save();
         session()->flash('success', 'Status voucher berhasil diubah.');
@@ -174,13 +196,14 @@ class VoucherIndex extends Component
 
     public function confirmDelete($id)
     {
+        $this->ownedVoucherQuery($id)->firstOrFail();
         $this->voucher_id = $id;
         $this->dispatch('open-modal', name: 'delete-modal');
     }
 
     public function delete()
     {
-        \App\Models\Voucher::findOrFail($this->voucher_id)->delete();
+        $this->ownedVoucherQuery($this->voucher_id)->firstOrFail()->delete();
         $this->dispatch('close-modal', name: 'delete-modal');
         session()->flash('success', 'Voucher berhasil dihapus.');
     }
@@ -188,11 +211,11 @@ class VoucherIndex extends Component
     public function viewTransactions($code)
     {
         $this->selectedVoucherCode = $code;
-        $this->transactions = \App\Models\Cart::whereHas('hargaCarts', function($q) use ($code) {
-                $q->where('voucher', $code);
-            })
+        $this->transactions = Cart::whereHas('hargaCarts', function ($q) use ($code) {
+            $q->where('voucher', $code);
+        })
             ->where('status', 'SUCCESS')
-            ->with(['users', 'hargaCarts' => function($q) use ($code) {
+            ->with(['users', 'hargaCarts' => function ($q) {
                 $q->with('masterHarga');
             }])
             ->latest()
@@ -209,28 +232,28 @@ class VoucherIndex extends Component
 
         // Calculate Stats
         $statsQuery = Voucher::query();
-        if (!$isAdmin) {
+        if (! $isAdmin) {
             $statsQuery->where('user_uid', $ownerId);
         }
         $this->totalVouchers = (clone $statsQuery)->count();
         $this->activeVouchers = (clone $statsQuery)->where('status', 'active')->count();
-        
+
         // Total Used (Success)
-        $this->totalUsedVouchers = \App\Models\Cart::where('status', 'SUCCESS')
-            ->whereHas('hargaCarts', function($q) use ($isAdmin, $ownerId) {
+        $this->totalUsedVouchers = Cart::where('status', 'SUCCESS')
+            ->whereHas('hargaCarts', function ($q) use ($isAdmin, $ownerId) {
                 $q->whereNotNull('voucher');
-                if (!$isAdmin) {
-                    $q->whereHas('event', fn($e) => $e->where('user_uid', $ownerId));
+                if (! $isAdmin) {
+                    $q->whereHas('event', fn ($e) => $e->where('user_uid', $ownerId));
                 }
             })->count();
 
         $vouchersQuery = Voucher::query();
-        if (!$isAdmin) {
+        if (! $isAdmin) {
             $vouchersQuery->where('user_uid', $ownerId);
         }
 
         if ($this->search) {
-            $vouchersQuery->where('code', 'like', '%' . $this->search . '%');
+            $vouchersQuery->where('code', 'like', '%'.$this->search.'%');
         }
 
         if ($this->event_uid) {
@@ -239,15 +262,15 @@ class VoucherIndex extends Component
 
         $vouchers = $vouchersQuery->with(['event'])->withCount([
             'cartVoucher',
-            'hargaCart as success_count' => function($q) {
-                $q->whereHas('cart', function($p) {
+            'hargaCart as success_count' => function ($q) {
+                $q->whereHas('cart', function ($p) {
                     $p->where('status', 'SUCCESS');
                 });
-            }
+            },
         ])->latest()->paginate(10);
 
         $eventsQuery = Event::query();
-        if (!$isAdmin) {
+        if (! $isAdmin) {
             $eventsQuery->where('user_uid', $ownerId);
         }
         $events = $eventsQuery->get();
@@ -256,5 +279,23 @@ class VoucherIndex extends Component
             'vouchers' => $vouchers,
             'events' => $events,
         ]);
+    }
+
+    private function ownedVoucherQuery($id)
+    {
+        $user = Auth::user();
+        $ownerId = ($user->role === 'staff') ? $user->parent_uid : $user->uid;
+
+        return Voucher::where('id', $id)
+            ->when($user->role !== 'admin', fn ($query) => $query->where('user_uid', $ownerId));
+    }
+
+    private function ownedEventQuery(string $uid)
+    {
+        $user = Auth::user();
+        $ownerId = ($user->role === 'staff') ? $user->parent_uid : $user->uid;
+
+        return Event::where('uid', $uid)
+            ->when($user->role !== 'admin', fn ($query) => $query->where('user_uid', $ownerId));
     }
 }

@@ -392,7 +392,7 @@ class EventDetail extends Component
 
     public function toggleTicketStatus($id)
     {
-        $harga = Harga::findOrFail($id);
+        $harga = $this->authorizedHarga($id);
         $harga->status = $harga->status === 'active' ? 'inactive' : 'active';
         $harga->save();
         session()->flash('message', 'Status tiket berhasil diperbarui.');
@@ -400,7 +400,7 @@ class EventDetail extends Component
 
     public function confirmDeleteTicket($id)
     {
-        $harga = Harga::findOrFail($id);
+        $harga = $this->authorizedHarga($id);
         $hasTransactions = $harga->hargaCarts()->whereHas('cart', function ($q) {
             $q->where('status', 'SUCCESS');
         })->exists();
@@ -418,7 +418,7 @@ class EventDetail extends Component
     public function deleteTicket()
     {
         if ($this->deletingHargaId) {
-            $harga = Harga::findOrFail($this->deletingHargaId);
+            $harga = $this->authorizedHarga($this->deletingHargaId);
             $harga->delete();
             $this->dispatch('close-modal', name: 'delete-ticket-modal');
             $this->deletingHargaId = null;
@@ -469,7 +469,7 @@ class EventDetail extends Component
 
     public function editTicket($id)
     {
-        $harga = Harga::findOrFail($id);
+        $harga = $this->authorizedHarga($id);
         $this->editingHargaId = $id;
         $this->editingHarga = [
             'kategori' => $harga->kategori,
@@ -489,7 +489,7 @@ class EventDetail extends Component
             'editingHarga.harga' => 'required|numeric',
         ]);
 
-        $harga = Harga::findOrFail($this->editingHargaId);
+        $harga = $this->authorizedHarga($this->editingHargaId);
         $harga->update($this->editingHarga);
 
         $this->dispatch('close-modal', name: 'edit-ticket-modal');
@@ -652,6 +652,8 @@ class EventDetail extends Component
 
     public function addTalent()
     {
+        $this->getEventData();
+
         if ($this->editingTalentId) {
             return $this->updateTalent();
         }
@@ -688,7 +690,7 @@ class EventDetail extends Component
         $this->reset(['talentName', 'talentLink', 'talentImage', 'editingTalentId', 'existingTalentImage']);
         $this->editingTalentId = $id; // Set this first to show loading state if needed
 
-        $talent = Talent::findOrFail($id);
+        $talent = $this->authorizedTalent($id);
         $this->talentName = $talent->talent;
         $this->talentLink = $talent->link;
         $this->existingTalentImage = $talent->gambar;
@@ -704,7 +706,7 @@ class EventDetail extends Component
             'talentLink' => 'nullable|url',
         ]);
 
-        $talent = Talent::findOrFail($this->editingTalentId);
+        $talent = $this->authorizedTalent($this->editingTalentId);
 
         $data = [
             'talent' => $this->talentName,
@@ -729,18 +731,37 @@ class EventDetail extends Component
 
     public function confirmDeleteTalent($id)
     {
+        $this->authorizedTalent($id);
         $this->deletingTalentId = $id;
         $this->dispatch('open-modal', name: 'delete-talent-modal');
     }
 
     public function deleteTalent()
     {
-        $talent = Talent::findOrFail($this->deletingTalentId);
+        $talent = $this->authorizedTalent($this->deletingTalentId);
 
         app(SecureImageStorage::class)->delete('talent', $talent->gambar);
         $talent->delete();
         $this->dispatch('close-modal', name: 'delete-talent-modal');
         $this->deletingTalentId = null;
         session()->flash('success', 'Talent berhasil dihapus!');
+    }
+
+    private function authorizedHarga($id): Harga
+    {
+        $this->getEventData();
+
+        return Harga::where('id', $id)
+            ->where('uid', $this->eventUid)
+            ->firstOrFail();
+    }
+
+    private function authorizedTalent($id): Talent
+    {
+        $this->getEventData();
+
+        return Talent::where('id', $id)
+            ->where('uid', $this->eventUid)
+            ->firstOrFail();
     }
 }
