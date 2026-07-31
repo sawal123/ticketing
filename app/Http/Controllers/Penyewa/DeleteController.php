@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Penyewa;
 
 use App\Http\Controllers\Controller;
+use App\Models\Cart;
 use App\Models\Event;
 use App\Models\EventDate;
 use App\Models\Harga;
@@ -15,12 +16,27 @@ use Illuminate\Support\Facades\DB;
 
 class DeleteController extends Controller
 {
+    private const BLOCKING_TRANSACTION_STATUSES = [
+        Cart::STATUS_SUCCESS,
+        Cart::STATUS_PENDING,
+        Cart::STATUS_RESERVED,
+        Cart::STATUS_PAYMENT_REVIEW,
+        Cart::STATUS_UNPAID,
+    ];
+
     public function __construct(private SecureImageStorage $images) {}
 
     public function eventDelete($uid)
     {
         DB::transaction(function () use ($uid) {
             $event = $this->ownedEventQuery($uid)->lockForUpdate()->firstOrFail();
+
+            if ($this->eventHasTransactions($event)) {
+                redirect()->back()
+                    ->with('error', 'Event tidak dapat dihapus karena sudah memiliki transaksi.')
+                    ->throwResponse();
+            }
+
             $eventDate = EventDate::where('uid', $event->uid)->lockForUpdate()->first();
             $hargaEvent = Harga::where('uid', $event->uid)->lockForUpdate()->get();
             $talentEvent = Talent::where('uid', $event->uid)->lockForUpdate()->get();
@@ -57,6 +73,11 @@ class DeleteController extends Controller
     public function deleteHarga($uid)
     {
         $harga = $this->ownedHargaQuery($uid)->firstOrFail();
+
+        if ($this->hargaHasTransactions($harga)) {
+            return redirect()->back()->with('error', 'Tiket tidak dapat dihapus karena sudah memiliki transaksi.');
+        }
+
         $harga->delete();
 
         return redirect()->back()->with('deleteHarga', 'Harga Berhasil Dihapus');
@@ -122,5 +143,19 @@ class DeleteController extends Controller
                 $query->where('user_uid', $this->ownerUid())
                     ->orWhereHas('event', fn ($event) => $event->where('user_uid', $this->ownerUid()));
             });
+    }
+
+    private function eventHasTransactions(Event $event): bool
+    {
+        return Cart::where('event_uid', $event->uid)
+            ->whereIn('status', self::BLOCKING_TRANSACTION_STATUSES)
+            ->exists();
+    }
+
+    private function hargaHasTransactions(Harga $harga): bool
+    {
+        return $harga->hargaCarts()
+            ->whereHas('cart', fn ($query) => $query->whereIn('status', self::BLOCKING_TRANSACTION_STATUSES))
+            ->exists();
     }
 }

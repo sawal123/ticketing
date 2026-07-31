@@ -2,9 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\Livewire\Dashboard\EventDetail;
+use App\Models\Cart;
 use App\Models\Event;
 use App\Models\EventDate;
 use App\Models\Harga;
+use App\Models\HargaCart;
 use App\Models\Partner;
 use App\Models\Talent;
 use App\Models\User;
@@ -13,6 +16,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\Str;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class TenantOwnershipSecurityTest extends TestCase
@@ -232,6 +236,161 @@ class TenantOwnershipSecurityTest extends TestCase
         $this->assertDatabaseMissing('events', ['uid' => $eventA->uid]);
     }
 
+    public function test_tenant_cannot_delete_own_event_with_success_transaction(): void
+    {
+        [$tenantA] = $this->tenants();
+        $eventA = $this->event($tenantA);
+        $this->cart($tenantA, $eventA, Cart::STATUS_SUCCESS);
+
+        $this->actingAs($tenantA)
+            ->delete(route('dashboard.old.events.destroy', $eventA->uid))
+            ->assertRedirect()
+            ->assertSessionHas('error', 'Event tidak dapat dihapus karena sudah memiliki transaksi.');
+
+        $this->assertDatabaseHas('events', ['uid' => $eventA->uid]);
+    }
+
+    public function test_tenant_cannot_delete_own_event_with_pending_or_reserved_transaction(): void
+    {
+        [$tenantA] = $this->tenants();
+        $eventA = $this->event($tenantA);
+        $this->cart($tenantA, $eventA, Cart::STATUS_RESERVED);
+
+        $this->actingAs($tenantA)
+            ->delete(route('dashboard.old.events.destroy', $eventA->uid))
+            ->assertRedirect()
+            ->assertSessionHas('error', 'Event tidak dapat dihapus karena sudah memiliki transaksi.');
+
+        $this->assertDatabaseHas('events', ['uid' => $eventA->uid]);
+    }
+
+    public function test_tenant_cannot_delete_harga_with_success_transaction(): void
+    {
+        [$tenantA] = $this->tenants();
+        $eventA = $this->event($tenantA);
+        $hargaA = $this->harga($eventA);
+        $this->cartWithHarga($tenantA, $eventA, $hargaA, Cart::STATUS_SUCCESS);
+
+        $this->actingAs($tenantA)
+            ->delete(route('dashboard.old.hargas.destroy', $hargaA->id))
+            ->assertRedirect()
+            ->assertSessionHas('error', 'Tiket tidak dapat dihapus karena sudah memiliki transaksi.');
+
+        $this->assertDatabaseHas('hargas', ['id' => $hargaA->id]);
+    }
+
+    public function test_tenant_cannot_delete_harga_with_pending_or_reserved_transaction(): void
+    {
+        [$tenantA] = $this->tenants();
+        $eventA = $this->event($tenantA);
+        $hargaA = $this->harga($eventA);
+        $this->cartWithHarga($tenantA, $eventA, $hargaA, Cart::STATUS_PENDING);
+
+        $this->actingAs($tenantA)
+            ->delete(route('dashboard.old.hargas.destroy', $hargaA->id))
+            ->assertRedirect()
+            ->assertSessionHas('error', 'Tiket tidak dapat dihapus karena sudah memiliki transaksi.');
+
+        $this->assertDatabaseHas('hargas', ['id' => $hargaA->id]);
+    }
+
+    public function test_livewire_event_detail_cannot_delete_ticket_with_transaction(): void
+    {
+        [$tenantA] = $this->tenants();
+        $eventA = $this->event($tenantA);
+        $hargaA = $this->harga($eventA);
+        $this->cartWithHarga($tenantA, $eventA, $hargaA, Cart::STATUS_PAYMENT_REVIEW);
+
+        Livewire::actingAs($tenantA)
+            ->test(EventDetail::class, ['uid' => $eventA->uid])
+            ->set('deletingHargaId', $hargaA->id)
+            ->call('deleteTicket');
+
+        $this->assertDatabaseHas('hargas', ['id' => $hargaA->id]);
+    }
+
+    public function test_livewire_event_detail_cannot_update_qty_below_sold_qty(): void
+    {
+        [$tenantA] = $this->tenants();
+        $eventA = $this->event($tenantA);
+        $hargaA = $this->harga($eventA, ['qty' => 30, 'sold_qty' => 20, 'reserved_qty' => 0]);
+
+        Livewire::actingAs($tenantA)
+            ->test(EventDetail::class, ['uid' => $eventA->uid])
+            ->set('editingHargaId', $hargaA->id)
+            ->set('editingHarga', [
+                'kategori' => 'Regular',
+                'qty' => 15,
+                'harga' => 100000,
+                'status' => 'active',
+            ])
+            ->call('updateTicket')
+            ->assertHasErrors('editingHarga.qty');
+
+        $this->assertDatabaseHas('hargas', ['id' => $hargaA->id, 'qty' => 30]);
+    }
+
+    public function test_livewire_event_detail_cannot_update_qty_below_sold_plus_reserved_qty(): void
+    {
+        [$tenantA] = $this->tenants();
+        $eventA = $this->event($tenantA);
+        $hargaA = $this->harga($eventA, ['qty' => 30, 'sold_qty' => 20, 'reserved_qty' => 5]);
+
+        Livewire::actingAs($tenantA)
+            ->test(EventDetail::class, ['uid' => $eventA->uid])
+            ->set('editingHargaId', $hargaA->id)
+            ->set('editingHarga', [
+                'kategori' => 'Regular',
+                'qty' => 24,
+                'harga' => 100000,
+                'status' => 'active',
+            ])
+            ->call('updateTicket')
+            ->assertHasErrors('editingHarga.qty');
+
+        $this->assertDatabaseHas('hargas', ['id' => $hargaA->id, 'qty' => 30]);
+    }
+
+    public function test_livewire_event_detail_can_update_qty_equal_or_above_locked_qty(): void
+    {
+        [$tenantA] = $this->tenants();
+        $eventA = $this->event($tenantA);
+        $hargaA = $this->harga($eventA, ['qty' => 30, 'sold_qty' => 20, 'reserved_qty' => 5]);
+
+        Livewire::actingAs($tenantA)
+            ->test(EventDetail::class, ['uid' => $eventA->uid])
+            ->set('editingHargaId', $hargaA->id)
+            ->set('editingHarga', [
+                'kategori' => 'Regular',
+                'qty' => 25,
+                'harga' => 100000,
+                'status' => 'active',
+            ])
+            ->call('updateTicket')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('hargas', ['id' => $hargaA->id, 'qty' => 25]);
+    }
+
+    public function test_legacy_edit_harga_cannot_update_qty_below_locked_qty(): void
+    {
+        [$tenantA] = $this->tenants();
+        $eventA = $this->event($tenantA);
+        $hargaA = $this->harga($eventA, ['qty' => 30, 'sold_qty' => 20, 'reserved_qty' => 5]);
+
+        $this->actingAs($tenantA)
+            ->post('/dashboard/old/editHarga', [
+                'id' => $hargaA->id,
+                'kategori' => 'Regular',
+                'qty' => 24,
+                'harga' => 100000,
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('error', 'Qty tiket tidak boleh lebih kecil dari jumlah tiket yang sudah terjual atau sedang dipesan.');
+
+        $this->assertDatabaseHas('hargas', ['id' => $hargaA->id, 'qty' => 30]);
+    }
+
     private function tenants(): array
     {
         return [
@@ -341,6 +500,33 @@ class TenantOwnershipSecurityTest extends TestCase
             'city' => 'Jakarta',
             'status' => 'active',
         ], $overrides));
+    }
+
+    private function cart(User $user, Event $event, string $status): Cart
+    {
+        return Cart::create([
+            'uid' => (string) Str::uuid(),
+            'user_uid' => $user->uid,
+            'event_uid' => $event->uid,
+            'invoice' => 'INV'.Str::upper(Str::random(8)),
+            'status' => $status,
+            'payment_type' => 'online',
+        ]);
+    }
+
+    private function cartWithHarga(User $user, Event $event, Harga $harga, string $status, int $quantity = 2): HargaCart
+    {
+        $cart = $this->cart($user, $event, $status);
+
+        return HargaCart::create([
+            'uid' => $cart->uid,
+            'harga_id' => $harga->id,
+            'orderBy' => $user->uid,
+            'event_uid' => $event->uid,
+            'quantity' => $quantity,
+            'harga_ticket' => $harga->harga,
+            'kategori_harga' => $harga->kategori,
+        ]);
     }
 
     private function eventPayload(Event $event, array $overrides = []): array

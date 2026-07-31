@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Dashboard;
 
+use App\Models\Cart;
 use App\Models\Event;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -10,6 +11,14 @@ use Livewire\WithPagination;
 class EventIndex extends Component
 {
     use WithPagination;
+
+    private const BLOCKING_TRANSACTION_STATUSES = [
+        Cart::STATUS_SUCCESS,
+        Cart::STATUS_PENDING,
+        Cart::STATUS_RESERVED,
+        Cart::STATUS_PAYMENT_REVIEW,
+        Cart::STATUS_UNPAID,
+    ];
 
     #[Layout('layouts.unified')]
     public $search = '';
@@ -33,6 +42,12 @@ class EventIndex extends Component
     {
         $event = $this->ownedEventQuery($uid)->firstOrFail();
 
+        if ($this->eventHasTransactions($event)) {
+            session()->flash('error', 'Event tidak dapat dihapus karena sudah memiliki transaksi.');
+
+            return;
+        }
+
         if ($event->konfirmasi !== null) {
             session()->flash('error', 'Event yang sudah disetujui tidak dapat dihapus dari halaman ini.');
 
@@ -51,6 +66,13 @@ class EventIndex extends Component
 
         return Event::where('uid', $uid)
             ->when($user->role !== 'admin', fn ($query) => $query->where('user_uid', $ownerId));
+    }
+
+    private function eventHasTransactions(Event $event): bool
+    {
+        return Cart::where('event_uid', $event->uid)
+            ->whereIn('status', self::BLOCKING_TRANSACTION_STATUSES)
+            ->exists();
     }
 
     public function render()

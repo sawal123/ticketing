@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Penyewa;
 
 use App\Http\Controllers\Controller;
 use App\Models\Bank;
+use App\Models\Cart;
 use App\Models\Event;
 use App\Models\EventDate;
 use App\Models\Harga;
@@ -21,6 +22,14 @@ use Illuminate\Support\Str;
 
 class EditController extends Controller
 {
+    private const LOCKED_QTY_STATUSES = [
+        Cart::STATUS_SUCCESS,
+        Cart::STATUS_RESERVED,
+        Cart::STATUS_PENDING,
+        Cart::STATUS_PAYMENT_REVIEW,
+        Cart::STATUS_UNPAID,
+    ];
+
     public function __construct(private SecureImageStorage $images) {}
 
     public function editEventPenyewa(Request $request)
@@ -82,8 +91,19 @@ class EditController extends Controller
 
     public function editHarga(Request $request)
     {
+        $request->validate([
+            'kategori' => 'required|string|max:255',
+            'qty' => 'required|integer|min:0',
+            'harga' => 'required|numeric|min:0',
+        ]);
+
         $id = $request->id;
         $harga = $this->ownedHargaQuery($id)->firstOrFail();
+
+        if ((int) $request->qty < $this->minimumLockedQty($harga)) {
+            return redirect()->back()->with('error', 'Qty tiket tidak boleh lebih kecil dari jumlah tiket yang sudah terjual atau sedang dipesan.');
+        }
+
         // dd($request->kategori);
         $harga->update([
             'kategori' => $request->kategori,
@@ -265,6 +285,15 @@ class EditController extends Controller
                 $query->where('user_uid', Auth::user()->uid)
                     ->orWhereHas('event', fn ($event) => $event->where('user_uid', Auth::user()->uid));
             });
+    }
+
+    private function minimumLockedQty(Harga $harga): int
+    {
+        $cartQuantity = (int) $harga->hargaCarts()
+            ->whereHas('cart', fn ($query) => $query->whereIn('status', self::LOCKED_QTY_STATUSES))
+            ->sum('quantity');
+
+        return max((int) $harga->sold_qty + (int) $harga->reserved_qty, $cartQuantity);
     }
 
     public function updatePassword(Request $request)
