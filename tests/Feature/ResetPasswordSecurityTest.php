@@ -105,6 +105,20 @@ class ResetPasswordSecurityTest extends TestCase
         $this->assertFalse(Hash::check('Secondpass2', $user->fresh()->password));
     }
 
+    public function test_token_marked_used_before_submit_cannot_reset_password(): void
+    {
+        $user = $this->user();
+        $plainToken = Str::random(80);
+        $reset = $this->resetToken($user, $plainToken);
+        $reset->forceFill(['used_at' => now()])->save();
+
+        $this->resetPassword($plainToken, $user->email, 'Newpass123')
+            ->assertNoRedirect()
+            ->assertSet('invalidLink', true);
+
+        $this->assertFalse(Hash::check('Newpass123', $user->fresh()->password));
+    }
+
     public function test_expired_token_cannot_be_used(): void
     {
         $user = $this->user();

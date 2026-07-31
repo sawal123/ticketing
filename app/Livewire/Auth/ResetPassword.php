@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Livewire\Component;
+use RuntimeException;
 
 class ResetPassword extends Component
 {
@@ -51,27 +52,42 @@ class ResetPassword extends Component
             return;
         }
 
-        $user = User::where('uid', $reset->uid_user)
-            ->where('email', $reset->email)
-            ->first();
+        try {
+            DB::transaction(function () use ($reset): void {
+                $lockedReset = ModelsForgotPassword::query()
+                    ->whereKey($reset->id)
+                    ->lockForUpdate()
+                    ->first();
 
-        if (! $user) {
+                if (! $lockedReset || ! $lockedReset->isUsable()) {
+                    throw new RuntimeException(self::INVALID_LINK_MESSAGE);
+                }
+
+                $user = User::query()
+                    ->where('uid', $lockedReset->uid_user)
+                    ->where('email', $lockedReset->email)
+                    ->lockForUpdate()
+                    ->first();
+
+                if (! $user) {
+                    throw new RuntimeException(self::INVALID_LINK_MESSAGE);
+                }
+
+                $user->forceFill([
+                    'password' => Hash::make($this->password),
+                    'remember_token' => Str::random(60),
+                ])->save();
+
+                $user->tokens()->delete();
+
+                $lockedReset->forceFill(['used_at' => now()])->save();
+            });
+        } catch (RuntimeException) {
             $this->invalidLink = true;
             session()->flash('error', self::INVALID_LINK_MESSAGE);
 
             return;
         }
-
-        DB::transaction(function () use ($reset, $user): void {
-            $user->forceFill([
-                'password' => Hash::make($this->password),
-                'remember_token' => Str::random(60),
-            ])->save();
-
-            $user->tokens()->delete();
-
-            $reset->forceFill(['used_at' => now()])->save();
-        });
 
         session()->flash('success', 'Password Anda telah berhasil diperbarui. Silakan login kembali.');
 
