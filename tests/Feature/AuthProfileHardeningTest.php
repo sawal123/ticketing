@@ -8,6 +8,7 @@ use App\Models\ProfileEmailChangeOtp;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\View;
@@ -90,7 +91,7 @@ class AuthProfileHardeningTest extends TestCase
         $this->assertFalse(RateLimiter::tooManyAttempts($key, 1));
     }
 
-    public function test_staff_is_rejected_from_web_login(): void
+    public function test_staff_can_login_web_as_regular_buyer(): void
     {
         $staff = $this->user([
             'email' => 'staff-web@example.test',
@@ -102,9 +103,41 @@ class AuthProfileHardeningTest extends TestCase
             ->set('email', $staff->email)
             ->set('password', 'Secret123')
             ->call('login')
-            ->assertNoRedirect();
+            ->assertRedirect('/');
 
-        $this->assertGuest();
+        $this->assertAuthenticatedAs($staff);
+    }
+
+    public function test_staff_cannot_access_dashboard(): void
+    {
+        $staff = $this->user([
+            'email' => 'staff-dashboard@example.test',
+            'role' => 'staff',
+        ]);
+
+        $this->actingAs($staff)
+            ->get('/dashboard')
+            ->assertForbidden();
+
+        $this->assertAuthenticatedAs($staff);
+    }
+
+    public function test_staff_can_access_profile_after_web_login(): void
+    {
+        Http::fake([
+            'https://www.emsifa.com/*' => Http::response([
+                ['id' => '31', 'name' => 'DKI Jakarta'],
+            ]),
+        ]);
+
+        $staff = $this->user([
+            'email' => 'staff-profile@example.test',
+            'role' => 'staff',
+        ]);
+
+        $this->actingAs($staff)
+            ->get('/profile')
+            ->assertOk();
     }
 
     public function test_api_scanner_login_rate_limit_works(): void
