@@ -26,6 +26,22 @@ class EventDetail extends Component
     use WithFileUploads;
     use WithPagination;
 
+    private const BLOCKING_TRANSACTION_STATUSES = [
+        Cart::STATUS_SUCCESS,
+        Cart::STATUS_PENDING,
+        Cart::STATUS_RESERVED,
+        Cart::STATUS_PAYMENT_REVIEW,
+        Cart::STATUS_UNPAID,
+    ];
+
+    private const LOCKED_QTY_STATUSES = [
+        Cart::STATUS_SUCCESS,
+        Cart::STATUS_RESERVED,
+        Cart::STATUS_PENDING,
+        Cart::STATUS_PAYMENT_REVIEW,
+        Cart::STATUS_UNPAID,
+    ];
+
     #[Layout('layouts.unified')]
     public $eventUid;
 
@@ -392,7 +408,7 @@ class EventDetail extends Component
 
     public function toggleTicketStatus($id)
     {
-        $harga = Harga::findOrFail($id);
+        $harga = $this->authorizedHarga($id);
         $harga->status = $harga->status === 'active' ? 'inactive' : 'active';
         $harga->save();
         session()->flash('message', 'Status tiket berhasil diperbarui.');
@@ -400,10 +416,8 @@ class EventDetail extends Component
 
     public function confirmDeleteTicket($id)
     {
-        $harga = Harga::findOrFail($id);
-        $hasTransactions = $harga->hargaCarts()->whereHas('cart', function ($q) {
-            $q->where('status', 'SUCCESS');
-        })->exists();
+        $harga = $this->authorizedHarga($id);
+        $hasTransactions = $this->hargaHasTransactions($harga);
 
         if ($hasTransactions) {
             $this->dispatch('open-modal', name: 'forbidden-delete-modal');
@@ -418,7 +432,15 @@ class EventDetail extends Component
     public function deleteTicket()
     {
         if ($this->deletingHargaId) {
-            $harga = Harga::findOrFail($this->deletingHargaId);
+            $harga = $this->authorizedHarga($this->deletingHargaId);
+            if ($this->hargaHasTransactions($harga)) {
+                $this->dispatch('close-modal', name: 'delete-ticket-modal');
+                $this->deletingHargaId = null;
+                session()->flash('error', 'Tiket tidak dapat dihapus karena sudah memiliki transaksi.');
+
+                return;
+            }
+
             $harga->delete();
             $this->dispatch('close-modal', name: 'delete-ticket-modal');
             $this->deletingHargaId = null;
@@ -469,7 +491,7 @@ class EventDetail extends Component
 
     public function editTicket($id)
     {
-        $harga = Harga::findOrFail($id);
+        $harga = $this->authorizedHarga($id);
         $this->editingHargaId = $id;
         $this->editingHarga = [
             'kategori' => $harga->kategori,
@@ -485,11 +507,19 @@ class EventDetail extends Component
     {
         $this->validate([
             'editingHarga.kategori' => 'required',
-            'editingHarga.qty' => 'required|numeric',
+            'editingHarga.qty' => 'required|integer|min:0',
             'editingHarga.harga' => 'required|numeric',
         ]);
 
-        $harga = Harga::findOrFail($this->editingHargaId);
+        $harga = $this->authorizedHarga($this->editingHargaId);
+        $minimumQty = $this->minimumLockedQty($harga);
+        if ((int) $this->editingHarga['qty'] < $minimumQty) {
+            $this->addError('editingHarga.qty', 'Qty tiket tidak boleh lebih kecil dari jumlah tiket yang sudah terjual atau sedang dipesan.');
+            session()->flash('error', 'Qty tiket tidak boleh lebih kecil dari jumlah tiket yang sudah terjual atau sedang dipesan.');
+
+            return;
+        }
+
         $harga->update($this->editingHarga);
 
         $this->dispatch('close-modal', name: 'edit-ticket-modal');
@@ -652,6 +682,8 @@ class EventDetail extends Component
 
     public function addTalent()
     {
+        $this->getEventData();
+
         if ($this->editingTalentId) {
             return $this->updateTalent();
         }
@@ -688,7 +720,7 @@ class EventDetail extends Component
         $this->reset(['talentName', 'talentLink', 'talentImage', 'editingTalentId', 'existingTalentImage']);
         $this->editingTalentId = $id; // Set this first to show loading state if needed
 
-        $talent = Talent::findOrFail($id);
+        $talent = $this->authorizedTalent($id);
         $this->talentName = $talent->talent;
         $this->talentLink = $talent->link;
         $this->existingTalentImage = $talent->gambar;
@@ -704,7 +736,7 @@ class EventDetail extends Component
             'talentLink' => 'nullable|url',
         ]);
 
-        $talent = Talent::findOrFail($this->editingTalentId);
+        $talent = $this->authorizedTalent($this->editingTalentId);
 
         $data = [
             'talent' => $this->talentName,
@@ -729,18 +761,53 @@ class EventDetail extends Component
 
     public function confirmDeleteTalent($id)
     {
+        $this->authorizedTalent($id);
         $this->deletingTalentId = $id;
         $this->dispatch('open-modal', name: 'delete-talent-modal');
     }
 
     public function deleteTalent()
     {
-        $talent = Talent::findOrFail($this->deletingTalentId);
+        $talent = $this->authorizedTalent($this->deletingTalentId);
 
         app(SecureImageStorage::class)->delete('talent', $talent->gambar);
         $talent->delete();
         $this->dispatch('close-modal', name: 'delete-talent-modal');
         $this->deletingTalentId = null;
         session()->flash('success', 'Talent berhasil dihapus!');
+    }
+
+    private function authorizedHarga($id): Harga
+    {
+        $this->getEventData();
+
+        return Harga::where('id', $id)
+            ->where('uid', $this->eventUid)
+            ->firstOrFail();
+    }
+
+    private function authorizedTalent($id): Talent
+    {
+        $this->getEventData();
+
+        return Talent::where('id', $id)
+            ->where('uid', $this->eventUid)
+            ->firstOrFail();
+    }
+
+    private function hargaHasTransactions(Harga $harga): bool
+    {
+        return $harga->hargaCarts()
+            ->whereHas('cart', fn ($query) => $query->whereIn('status', self::BLOCKING_TRANSACTION_STATUSES))
+            ->exists();
+    }
+
+    private function minimumLockedQty(Harga $harga): int
+    {
+        $cartQuantity = (int) $harga->hargaCarts()
+            ->whereHas('cart', fn ($query) => $query->whereIn('status', self::LOCKED_QTY_STATUSES))
+            ->sum('quantity');
+
+        return max((int) $harga->sold_qty + (int) $harga->reserved_qty, $cartQuantity);
     }
 }

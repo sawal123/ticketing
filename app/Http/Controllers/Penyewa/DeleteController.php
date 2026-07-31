@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Penyewa;
 
 use App\Http\Controllers\Controller;
+use App\Models\Cart;
 use App\Models\Event;
 use App\Models\EventDate;
 use App\Models\Harga;
@@ -10,41 +11,59 @@ use App\Models\Partner;
 use App\Models\Talent;
 use App\Models\Voucher;
 use App\Services\SecureImageStorage;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class DeleteController extends Controller
 {
+    private const BLOCKING_TRANSACTION_STATUSES = [
+        Cart::STATUS_SUCCESS,
+        Cart::STATUS_PENDING,
+        Cart::STATUS_RESERVED,
+        Cart::STATUS_PAYMENT_REVIEW,
+        Cart::STATUS_UNPAID,
+    ];
+
     public function __construct(private SecureImageStorage $images) {}
 
     public function eventDelete($uid)
     {
-        $event = Event::where('uid', $uid)->first();
-        $eventDate = EventDate::where('uid', $uid)->first();
-        $hargaEvent = Harga::where('uid', $uid)->get();
-        $talentEvent = Talent::where('uid', $uid)->get();
+        DB::transaction(function () use ($uid) {
+            $event = $this->ownedEventQuery($uid)->lockForUpdate()->firstOrFail();
 
-        $this->images->delete('cover', $event->cover);
-        $event->forceDelete();
-        if ($eventDate) {
-            $eventDate->delete();
-        }
-        if ($talentEvent) {
+            if ($this->eventHasTransactions($event)) {
+                redirect()->back()
+                    ->with('error', 'Event tidak dapat dihapus karena sudah memiliki transaksi.')
+                    ->throwResponse();
+            }
+
+            $eventDate = EventDate::where('uid', $event->uid)->lockForUpdate()->first();
+            $hargaEvent = Harga::where('uid', $event->uid)->lockForUpdate()->get();
+            $talentEvent = Talent::where('uid', $event->uid)->lockForUpdate()->get();
+
+            $this->images->delete('cover', $event->cover);
+            $event->forceDelete();
+
+            if ($eventDate) {
+                $eventDate->delete();
+            }
+
             foreach ($talentEvent as $talent) {
                 $this->images->delete('talent', $talent->gambar);
                 $talent->delete();
             }
-        }
-        if ($hargaEvent) {
+
             foreach ($hargaEvent as $harga) {
                 $harga->delete();
             }
-        }
+        });
 
         return redirect()->back()->with('hapus', 'Data Event Berhasil dihapus');
     }
 
     public function deleteTalent($id)
     {
-        $talentEvent = Talent::where('uid', $id)->first();
+        $talentEvent = $this->ownedTalentQuery($id)->firstOrFail();
         $this->images->delete('talent', $talentEvent->gambar);
         $talentEvent->delete();
 
@@ -53,7 +72,12 @@ class DeleteController extends Controller
 
     public function deleteHarga($uid)
     {
-        $harga = Harga::where('id', $uid)->first();
+        $harga = $this->ownedHargaQuery($uid)->firstOrFail();
+
+        if ($this->hargaHasTransactions($harga)) {
+            return redirect()->back()->with('error', 'Tiket tidak dapat dihapus karena sudah memiliki transaksi.');
+        }
+
         $harga->delete();
 
         return redirect()->back()->with('deleteHarga', 'Harga Berhasil Dihapus');
@@ -61,7 +85,7 @@ class DeleteController extends Controller
 
     public function deletePartner($uid)
     {
-        $partner = Partner::where('uid', $uid)->first();
+        $partner = $this->ownedPartnerQuery($uid)->firstOrFail();
         $partner->delete();
 
         return redirect()->back()->with('success', 'Partner Berhasil dihapus');
@@ -69,9 +93,69 @@ class DeleteController extends Controller
 
     public function deleteVoucher($uid)
     {
-        $voucher = Voucher::where('uid', $uid)->first();
+        $voucher = $this->ownedVoucherQuery($uid)->firstOrFail();
         $voucher->delete();
 
         return redirect()->back()->with('success', 'Voucher Berhasil dihapus');
+    }
+
+    private function ownerUid(): string
+    {
+        return Auth::user()->uid;
+    }
+
+    private function ownedEventQuery(string $uid)
+    {
+        return Event::where('uid', $uid)->where('user_uid', $this->ownerUid());
+    }
+
+    private function ownedTalentQuery(string $id)
+    {
+        return Talent::query()
+            ->where(function ($query) use ($id) {
+                $query->where('id', $id)->orWhere('uid', $id);
+            })
+            ->whereHas('event', fn ($query) => $query->where('user_uid', $this->ownerUid()));
+    }
+
+    private function ownedHargaQuery(string $id)
+    {
+        return Harga::query()
+            ->where('id', $id)
+            ->whereHas('event', fn ($query) => $query->where('user_uid', $this->ownerUid()));
+    }
+
+    private function ownedPartnerQuery(string $uid)
+    {
+        return Partner::query()
+            ->where('uid', $uid)
+            ->where(function ($query) {
+                $query->where('user_uid', $this->ownerUid())
+                    ->orWhereHas('event', fn ($event) => $event->where('user_uid', $this->ownerUid()));
+            });
+    }
+
+    private function ownedVoucherQuery(string $uid)
+    {
+        return Voucher::query()
+            ->where('uid', $uid)
+            ->where(function ($query) {
+                $query->where('user_uid', $this->ownerUid())
+                    ->orWhereHas('event', fn ($event) => $event->where('user_uid', $this->ownerUid()));
+            });
+    }
+
+    private function eventHasTransactions(Event $event): bool
+    {
+        return Cart::where('event_uid', $event->uid)
+            ->whereIn('status', self::BLOCKING_TRANSACTION_STATUSES)
+            ->exists();
+    }
+
+    private function hargaHasTransactions(Harga $harga): bool
+    {
+        return $harga->hargaCarts()
+            ->whereHas('cart', fn ($query) => $query->whereIn('status', self::BLOCKING_TRANSACTION_STATUSES))
+            ->exists();
     }
 }

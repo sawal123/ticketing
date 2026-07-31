@@ -83,9 +83,10 @@ class AddController extends Controller
         $request->validate([
             'gambar' => SecureImageStorage::rules(),
         ]);
+        $event = Event::where('uid', $request->uid)->where('user_uid', Auth::user()->uid)->firstOrFail();
 
         $talent = new Talent([
-            'uid' => $request->uid,
+            'uid' => $event->uid,
             'talent' => $request->talent,
         ]);
         if ($request->hasFile('gambar')) {
@@ -98,12 +99,20 @@ class AddController extends Controller
 
     public function addHarga(Request $request)
     {
+        $request->validate([
+            'uid' => 'required|string',
+            'kategori' => 'required|string|max:255',
+            'qty' => 'required|integer|min:0',
+            'harga' => 'required|numeric|min:0',
+        ]);
+
+        $eventOwner = Event::where('uid', $request->uid)->where('user_uid', Auth::user()->uid)->firstOrFail();
         // dd($request->qty);
-        $event = Harga::where('kategori', $request->kategori)->where('uid', $request->uid)->first();
+        $event = Harga::where('kategori', $request->kategori)->where('uid', $eventOwner->uid)->first();
         // dd($event);
         if ($event === null) {
             $harga = new Harga([
-                'uid' => $request->uid,
+                'uid' => $eventOwner->uid,
                 'kategori' => $request->kategori,
                 'qty' => $request->qty,
                 'harga' => $request->harga,
@@ -132,6 +141,7 @@ class AddController extends Controller
         ]);
         $validate->validate();
         // dd($request->event);
+        $event = Event::where('uid', $request->event)->where('user_uid', Auth::user()->uid)->firstOrFail();
         if ($request->unit === 'rupiah') {
             $nominal = $request->nominalRupiah;
         } else {
@@ -142,7 +152,7 @@ class AddController extends Controller
         $voucher = new Voucher([
             'uid' => $uid,
             'user_uid' => Auth::user()->uid,
-            'event_uid' => $request->event,
+            'event_uid' => $event->uid,
             'code' => $request->code,
             'unit' => $request->unit,
             'nominal' => $nominal,
@@ -229,6 +239,7 @@ class AddController extends Controller
         // dd(Str::uuid());
         $partner = new Partner;
         $partner->uid = Str::uuid();
+        $partner->user_uid = Auth::user()->uid;
         $partner->referensi = $request->input('referensi');
         $partner->name = $request->input('name');
         $partner->email = $request->input('email');

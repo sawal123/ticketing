@@ -105,11 +105,15 @@
                             </form>
 
                             <div class="d-flex" style="gap: 8px;">
-                                <a href="{{ url("dashboard/hargas/delete/{$h->id}") }}"
-                                    class="btn d-flex align-items-center justify-content-center p-0"
-                                    style="width: 38px; height: 38px; background-color: #ff1a55; border-radius: 8px; border: none;">
-                                    <i class="fa fa-trash text-white"></i>
-                                </a>
+                                <form method="POST" action="{{ route('dashboard.old.hargas.destroy', $h->id) }}" class="m-0">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit"
+                                        class="btn d-flex align-items-center justify-content-center p-0"
+                                        style="width: 38px; height: 38px; background-color: #ff1a55; border-radius: 8px; border: none;">
+                                        <i class="fa fa-trash text-white"></i>
+                                    </button>
+                                </form>
 
                                 <button type="button" data-bs-toggle="modal" data-bs-target="#updateHarga"
                                     class="btn d-flex align-items-center justify-content-center p-0"

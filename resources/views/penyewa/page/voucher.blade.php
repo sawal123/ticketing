@@ -92,10 +92,13 @@
                                                     data-bs-original-title="Edit"><span
                                                         class="fe fe-edit fs-14"></span></a>
 
-                                                <a class="btn text-danger btn-sm delete"
-                                                    href="{{ url('dashboard/delete/voucher/' . $v->uid) }}"
-                                                    data-bs-toggle="tooltip" data-bs-original-title="Delete"><span
-                                                        class="fe fe-trash-2 fs-14"></span>
+                                                <form method="POST" action="{{ route('dashboard.old.vouchers.destroy', $v->uid) }}" class="d-inline">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit" class="btn text-danger btn-sm delete"
+                                                        data-bs-toggle="tooltip" data-bs-original-title="Delete"><span
+                                                            class="fe fe-trash-2 fs-14"></span></button>
+                                                </form>
                                             </div>
                                         </td>
                                     </tr>

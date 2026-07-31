@@ -4,12 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Harga extends Model
 {
-
     use HasFactory;
+
     protected $fillable = [
         'uid',
         'kategori',
@@ -29,8 +28,9 @@ class Harga extends Model
 
     public function event()
     {
-        return $this->belongsTo(Event::class);
+        return $this->belongsTo(Event::class, 'uid', 'uid');
     }
+
     public function hargaCarts()
     {
         return $this->hasMany(HargaCart::class, 'harga_id', 'id');

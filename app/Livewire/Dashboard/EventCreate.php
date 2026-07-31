@@ -93,7 +93,7 @@ class EventCreate extends Component
 
         $event = null;
         if ($this->editingEventUid) {
-            $event = Event::where('uid', $this->editingEventUid)->firstOrFail();
+            $event = $this->ownedEventQuery($this->editingEventUid)->firstOrFail();
             $uid = $this->editingEventUid;
             $slug = $event->slug;
         } else {
@@ -160,5 +160,14 @@ class EventCreate extends Component
             'fasilitasData' => Fasilitas::all(),
             'title' => $this->editingEventUid ? 'Edit Event' : 'Add New Event',
         ]);
+    }
+
+    private function ownedEventQuery(string $uid)
+    {
+        $user = auth()->user();
+        $ownerId = ($user->role === 'staff') ? $user->parent_uid : $user->uid;
+
+        return Event::where('uid', $uid)
+            ->when($user->role !== 'admin', fn ($query) => $query->where('user_uid', $ownerId));
     }
 }

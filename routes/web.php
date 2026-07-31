@@ -180,7 +180,7 @@ Route::prefix('dashboard')
                 Route::get('/event/{addEvent?}/{uid?}', [PenyewaController::class, 'event']);
                 Route::get('/ubahEvents/{uid}', [PenyewaController::class, 'ubahEvents']);
                 Route::get('/voucher', [PenyewaController::class, 'voucher']);
-                Route::get('/staff/delete/{uid}', [StaffController::class, 'destroy']);
+                Route::delete('/staff/delete/{uid}', [StaffController::class, 'destroy'])->name('dashboard.old.staff.destroy');
                 Route::resource('staff', StaffController::class);
                 Route::post('/event/toggle-status/{uid}', [PenyewaController::class, 'toggleStatusEvent']);
                 Route::post('/hargas/toggle-status/{id}', [PenyewaController::class, 'toggleStatusHarga']);
@@ -193,11 +193,11 @@ Route::prefix('dashboard')
                 Route::post('/addPenarikan', [PenyewaAddController::class, 'addPenarikan']);
                 Route::post('/editRekening', [PenyewaEditController::class, 'editRekening']);
                 Route::post('/editProfile', [PenyewaEditController::class, 'editProfile']);
-                Route::get('/events/delete/{id}', [PenyewaDelete::class, 'eventDelete']);
-                Route::get('/delete/{id}', [PenyewaDelete::class, 'deleteTalent']);
-                Route::get('/hargas/delete/{id}', [PenyewaDelete::class, 'deleteHarga']);
-                Route::get('/delete/voucher/{id}', [PenyewaDelete::class, 'deleteVoucher']);
-                Route::get('/delete/partner/{id}', [PenyewaDelete::class, 'deletePartner']);
+                Route::delete('/events/{id}', [PenyewaDelete::class, 'eventDelete'])->name('dashboard.old.events.destroy');
+                Route::delete('/talents/{id}', [PenyewaDelete::class, 'deleteTalent'])->name('dashboard.old.talents.destroy');
+                Route::delete('/hargas/{id}', [PenyewaDelete::class, 'deleteHarga'])->name('dashboard.old.hargas.destroy');
+                Route::delete('/vouchers/{id}', [PenyewaDelete::class, 'deleteVoucher'])->name('dashboard.old.vouchers.destroy');
+                Route::delete('/partners/{id}', [PenyewaDelete::class, 'deletePartner'])->name('dashboard.old.partners.destroy');
                 Route::post('/addEvents', [PenyewaAddController::class, 'addEvent'])->name('dashboard.old.addEvent');
                 Route::post('/addTalent', [PenyewaAddController::class, 'addTalent']);
                 Route::post('/addHarga', [PenyewaAddController::class, 'addHarga']);
