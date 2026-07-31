@@ -130,16 +130,23 @@ Route::middleware(['auth'])->group(function () {
 
     Route::post('/paynow', [TransactionController::class, 'paynow'])->middleware('throttle:paynow');
     Route::get('/detail-ticket/delete/{uid}/{user_uid}', [DeleteController::class, 'deteleListTransaksi']);
-    Route::get('/logout', function () {
+    Route::post('/profile/update-password', [editController::class, 'updateProfilePassword'])->name('profile.password.update');
+    Route::post('/profile/email/request-otp', [editController::class, 'requestEmailChangeOtp'])->name('profile.email.request-otp');
+    Route::post('/profile/email/verify-otp', [editController::class, 'verifyEmailChangeOtp'])->name('profile.email.verify-otp');
+    Route::post('/logout', function () {
         Auth::logout();
+        request()->session()->invalidate();
+        request()->session()->regenerateToken();
 
         return redirect('/');
-    });
-    Route::get('/out', function () {
+    })->name('logout');
+    Route::post('/out', function () {
         Auth::logout();
+        request()->session()->invalidate();
+        request()->session()->regenerateToken();
 
         return redirect('/signin');
-    });
+    })->name('out');
 });
 
 Route::get('/signin', [PenyewaController::class, 'login'])->name('signIn');

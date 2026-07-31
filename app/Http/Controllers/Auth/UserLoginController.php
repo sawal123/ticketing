@@ -30,15 +30,25 @@ class UserLoginController extends Controller
     public function loginUser(Request $request)
     {
         $user = $request->only('email', 'password');
+        $email = Str::lower(trim((string) $request->email));
+        $rateLimitKey = 'web-login:'.sha1($email.'|'.$request->ip());
+
+        if (RateLimiter::tooManyAttempts($rateLimitKey, 5)) {
+            return redirect('/login')->with('error', 'Terlalu banyak percobaan login. Silakan coba lagi beberapa saat.');
+        }
 
         if (Auth::attempt($user)) {
+            RateLimiter::clear($rateLimitKey);
+
             if (Auth::user()->role === 'admin') {
                 return redirect('/admin');
             } else {
                 return redirect('/');
             }
         } else {
-            return redirect('/login')->with('success', 'Email atau password salah.');
+            RateLimiter::hit($rateLimitKey, 60);
+
+            return redirect('/login')->with('error', 'Email atau password salah.');
         }
     }
 

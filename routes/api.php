@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::post('/login', [AuthController::class, 'login']);
+Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:scanner-login');
 
 Route::middleware(['auth:sanctum', 'roles:penyewa,staff'])->group(function () {
     Route::get('/verfikasi/{data?}', [ConfirmController::class, 'verfikasi']);

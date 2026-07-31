@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Dashboard;
 use App\Http\Controllers\Controller;
 use App\Jobs\sendEmailETransaksi;
 use App\Jobs\sendEmailTrnsaksi;
+use App\Mail\ProfileEmailChangeOtpMail;
+use App\Models\ActivityLog;
 use App\Models\Bank;
 use App\Models\Cart;
 use App\Models\Cash;
@@ -13,6 +15,7 @@ use App\Models\Event;
 use App\Models\Harga;
 use App\Models\Landing;
 use App\Models\Penarikan;
+use App\Models\ProfileEmailChangeOtp;
 use App\Models\Slider;
 use App\Models\Talent;
 use App\Models\Term;
@@ -23,9 +26,14 @@ use App\Services\Tickets\GateTokenService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class editController extends Controller
 {
@@ -125,6 +133,7 @@ class editController extends Controller
         //  dd($data);
         $valueUser = [Auth::user()->name, Auth::user()->email, Auth::user()->nomor, Auth::user()->gambar];
         $dataUser = User::where('uid', Auth::user()->uid)->first();
+        $provinsi = [];
         $http = Http::get('https://www.emsifa.com/api-wilayah-indonesia/api/provinces.json');
         if ($http->successful()) {
             $provinsi = $http->json();
@@ -145,7 +154,6 @@ class editController extends Controller
     {
         $validate = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
-            'email' => 'required|string|email',
             'nomor' => 'nullable|numeric',
             'gender' => 'required|string|max:10',
             'birthday' => 'required|string|max:255',
@@ -156,7 +164,6 @@ class editController extends Controller
         $validate->validate();
         $user = User::where('uid', Auth::user()->uid)->first();
         $user->name = $request->input('name');
-        $user->email = $request->input('email');
         $user->nomor = $request->input('nomor') ?? '';
         $user->gender = $request->input('gender');
         $user->birthday = $request->input('birthday');
@@ -168,18 +175,173 @@ class editController extends Controller
             $user->gambar = $this->images->storeBasename($request->file('gambar'), 'user');
         }
 
-        if ($request->password !== null) {
-            $user->password = bcrypt($request->password);
-        }
-
         $user->save();
         $this->images->delete('user', $oldImage);
 
-        $message = $request->password === null
-            ? 'Profile Berhasil Diubah'
-            : 'Profile & Password Berhasil Diubah';
+        return redirect()->back()->with('editProfile', 'Profile Berhasil Diubah');
+    }
 
-        return redirect()->back()->with('editProfile', $message);
+    public function updateProfilePassword(Request $request)
+    {
+        $request->validate([
+            'current_password' => 'required|string',
+            'password' => 'required|string|min:8|confirmed|regex:/^(?=.*[A-Za-z])(?=.*\d).+$/',
+        ], [
+            'password.regex' => 'Password harus mengandung huruf dan angka.',
+        ]);
+
+        $user = User::where('uid', Auth::user()->uid)->firstOrFail();
+
+        if (! Hash::check($request->current_password, $user->password)) {
+            return redirect()->back()->withErrors([
+                'current_password' => 'Password lama tidak sesuai.',
+            ]);
+        }
+
+        $user->forceFill([
+            'password' => Hash::make($request->password),
+            'remember_token' => Str::random(60),
+        ])->save();
+
+        $user->tokens()->delete();
+
+        return redirect()->back()->with('editProfile', 'Password berhasil diubah.');
+    }
+
+    public function requestEmailChangeOtp(Request $request)
+    {
+        $request->validate([
+            'new_email' => 'required|email',
+        ]);
+
+        $user = User::where('uid', Auth::user()->uid)->firstOrFail();
+        $newEmail = Str::lower(trim((string) $request->new_email));
+
+        if ($user->google_id) {
+            return redirect()->back()->withErrors([
+                'new_email' => 'Akun Google tidak dapat mengganti email dari profile. Silakan gunakan akun Google yang sesuai.',
+            ]);
+        }
+
+        if (Str::lower($user->email) === $newEmail) {
+            return redirect()->back()->with('editProfile', 'Email baru sama dengan email saat ini.');
+        }
+
+        Validator::make(['new_email' => $newEmail], [
+            'new_email' => ['required', 'email', Rule::unique('users', 'email')],
+        ])->validate();
+
+        $rateLimitKey = $this->emailOtpRateLimitKey($user, $newEmail, $request);
+
+        if (RateLimiter::tooManyAttempts($rateLimitKey, 3)) {
+            return redirect()->back()->withErrors([
+                'new_email' => 'Terlalu banyak permintaan OTP. Silakan coba lagi beberapa saat.',
+            ]);
+        }
+
+        RateLimiter::hit($rateLimitKey, 600);
+
+        $recentOtp = ProfileEmailChangeOtp::query()
+            ->where('user_uid', $user->uid)
+            ->where('new_email', $newEmail)
+            ->active()
+            ->latest()
+            ->first();
+
+        if ($recentOtp && $recentOtp->last_sent_at?->greaterThan(now()->subSeconds(60))) {
+            return redirect()->back()->with('editProfile', 'Jika email valid, kode OTP akan dikirim.');
+        }
+
+        ProfileEmailChangeOtp::query()
+            ->where('user_uid', $user->uid)
+            ->active()
+            ->update(['used_at' => now()]);
+
+        $otp = (string) random_int(100000, 999999);
+
+        ProfileEmailChangeOtp::create([
+            'user_uid' => $user->uid,
+            'current_email' => $user->email,
+            'new_email' => $newEmail,
+            'otp_hash' => hash('sha256', $otp),
+            'purpose' => ProfileEmailChangeOtp::PURPOSE,
+            'expires_at' => now()->addMinutes(10),
+            'last_sent_at' => now(),
+        ]);
+
+        Mail::to($newEmail)->send(new ProfileEmailChangeOtpMail($user, $otp));
+
+        return redirect()->back()->with('editProfile', 'Jika email valid, kode OTP akan dikirim.');
+    }
+
+    public function verifyEmailChangeOtp(Request $request)
+    {
+        $request->validate([
+            'new_email' => 'required|email',
+            'otp' => 'required|digits:6',
+        ]);
+
+        $user = User::where('uid', Auth::user()->uid)->firstOrFail();
+        $newEmail = Str::lower(trim((string) $request->new_email));
+
+        $result = DB::transaction(function () use ($request, $user, $newEmail): true|string {
+            $otp = ProfileEmailChangeOtp::query()
+                ->where('user_uid', $user->uid)
+                ->where('new_email', $newEmail)
+                ->active()
+                ->latest()
+                ->lockForUpdate()
+                ->first();
+
+            if (! $otp || ! $otp->isUsable()) {
+                return 'Kode OTP tidak valid atau sudah kedaluwarsa.';
+            }
+
+            if (! $otp->verifyOtp((string) $request->otp)) {
+                $otp->increment('attempts');
+
+                return 'Kode OTP tidak valid atau sudah kedaluwarsa.';
+            }
+
+            if (User::where('email', $newEmail)->where('uid', '!=', $user->uid)->exists()) {
+                return 'Email baru sudah digunakan.';
+            }
+
+            $lockedUser = User::where('uid', $user->uid)->lockForUpdate()->firstOrFail();
+            $oldEmail = $lockedUser->email;
+
+            $lockedUser->forceFill([
+                'email' => $newEmail,
+                'email_verified_at' => now(),
+            ])->save();
+
+            $otp->forceFill(['used_at' => now()])->save();
+
+            ActivityLog::safeCreate([
+                'user_uid' => $lockedUser->uid,
+                'activity' => 'Profile Email Changed',
+                'description' => 'Email profile diubah dari '.$oldEmail.' ke '.$newEmail,
+                'impact_level' => 'Medium',
+                'ip_address' => request()->ip(),
+                'user_agent' => request()->userAgent(),
+                'session_id' => request()->session()->getId(),
+            ]);
+
+            return true;
+        });
+
+        if ($result !== true) {
+            return redirect()->back()->withErrors([
+                'otp' => $result,
+            ]);
+        }
+
+        return redirect()->back()->with('editProfile', 'Email berhasil diverifikasi dan diubah.');
+    }
+
+    private function emailOtpRateLimitKey(User $user, string $newEmail, Request $request): string
+    {
+        return 'profile-email-otp:'.sha1($user->uid.'|'.$newEmail.'|'.$request->ip());
     }
 
     public function editLogo(Request $request)

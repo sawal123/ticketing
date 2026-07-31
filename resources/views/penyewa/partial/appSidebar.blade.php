@@ -72,9 +72,13 @@
                             Utama</span></a>
                 </li>
                 <li class="slide {{ request()->is('dashboard/user') ? 'active' : '' }}">
-                    <a class="side-menu__item has-link" data-bs-toggle="slide" href="{{ url('/out') }}"><i
-                            class=" side-menu__icon fa fa-power-off"></i><span class="side-menu__label">Log
-                            Out</span></a>
+                    <form action="{{ route('out') }}" method="post" style="margin:0;">
+                        @csrf
+                        <button type="submit" class="side-menu__item has-link" data-bs-toggle="slide" style="border:0;background:transparent;width:100%;text-align:left;">
+                            <i class=" side-menu__icon fa fa-power-off"></i><span class="side-menu__label">Log
+                                Out</span>
+                        </button>
+                    </form>
                 </li>
             </ul>
             <div class="slide-right" id="slide-right"><svg xmlns="http://www.w3.org/2000/svg" fill="#7b8191"

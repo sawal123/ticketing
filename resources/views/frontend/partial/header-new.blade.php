@@ -58,10 +58,13 @@
                     </a> --}}
 
                     <div class="dropdown-sep"></div>
-                    <a href="{{ url('/logout') }}" class="dropdown-item logout">
-                        <span class="di-icon" style="background:rgba(232,84,122,0.12);">🚪</span>
-                        Keluar
-                    </a>
+                    <form action="{{ route('logout') }}" method="post" style="margin:0;">
+                        @csrf
+                        <button type="submit" class="dropdown-item logout" style="border:0;background:transparent;width:100%;text-align:left;">
+                            <span class="di-icon" style="background:rgba(232,84,122,0.12);">🚪</span>
+                            Keluar
+                        </button>
+                    </form>
                 </div>
             </div>
         </div>
