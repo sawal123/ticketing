@@ -50,6 +50,57 @@ class AuthProfileHardeningTest extends TestCase
         $this->assertAuthenticatedAs($user);
     }
 
+    public function test_guest_accessing_admin_redirects_to_login(): void
+    {
+        $this->get('/admin')
+            ->assertRedirect('/login');
+    }
+
+    public function test_user_accessing_admin_redirects_home_without_logout(): void
+    {
+        $user = $this->user(['role' => 'user']);
+
+        $this->actingAs($user)
+            ->get('/admin')
+            ->assertRedirect('/')
+            ->assertSessionHas('error', 'Halaman tidak tersedia.');
+
+        $this->assertAuthenticatedAs($user);
+    }
+
+    public function test_staff_accessing_admin_redirects_home_without_logout(): void
+    {
+        $staff = $this->user(['role' => 'staff']);
+
+        $this->actingAs($staff)
+            ->get('/admin')
+            ->assertRedirect('/')
+            ->assertSessionHas('error', 'Halaman tidak tersedia.');
+
+        $this->assertAuthenticatedAs($staff);
+    }
+
+    public function test_penyewa_accessing_admin_redirects_home_without_logout(): void
+    {
+        $penyewa = $this->user(['role' => 'penyewa']);
+
+        $this->actingAs($penyewa)
+            ->get('/admin')
+            ->assertRedirect('/')
+            ->assertSessionHas('error', 'Halaman tidak tersedia.');
+
+        $this->assertAuthenticatedAs($penyewa);
+    }
+
+    public function test_admin_accessing_admin_is_allowed(): void
+    {
+        $admin = $this->user(['role' => 'admin']);
+
+        $this->actingAs($admin)
+            ->get('/admin')
+            ->assertOk();
+    }
+
     public function test_web_login_rate_limit_works(): void
     {
         $user = $this->user(['email' => 'limit@example.test', 'password' => Hash::make('Secret123')]);

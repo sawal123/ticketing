@@ -12,7 +12,7 @@ class isAdmin
     /**
      * Handle an incoming request.
      *
-     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
+     * @param  Closure(Request): (Response)  $next
      */
     public function handle(Request $request, Closure $next): Response
     {
@@ -20,8 +20,8 @@ class isAdmin
             if (strtolower(Auth::user()->role) === 'admin') {
                 return $next($request);
             }
-            // Jika sudah login tapi bukan admin, lempar 403
-            abort(403, 'Anda tidak memiliki akses ke halaman administrator.');
+
+            return redirect('/')->with('error', 'Halaman tidak tersedia.');
         }
 
         return redirect('/login');
