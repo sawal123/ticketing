@@ -234,7 +234,8 @@ class AuthProfileHardeningTest extends TestCase
             ->post(route('profile.email.request-otp'), [
                 'new_email' => 'new@example.test',
             ])
-            ->assertRedirect();
+            ->assertRedirect()
+            ->assertSessionHasInput('new_email', 'new@example.test');
 
         $this->assertSame('old@example.test', $user->fresh()->email);
         $this->assertDatabaseHas('profile_email_change_otps', [
