@@ -2,13 +2,13 @@
 
 namespace App\Mail;
 
+use App\Models\User;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
+use Illuminate\Mail\Mailables\Attachment;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
-use App\Models\User;
 
 class ForgotPassword extends Mailable
 {
@@ -16,11 +16,9 @@ class ForgotPassword extends Mailable
 
     /**
      * Create a new message instance.
-     * @param \App\Models\User $user
      */
-    public function __construct(protected User $user)
+    public function __construct(protected User $user, protected string $resetUrl)
     {
-        //
         $this->user = $user;
     }
 
@@ -30,7 +28,7 @@ class ForgotPassword extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Reset Password',
+            subject: 'Reset Password GOTIK',
         );
     }
 
@@ -41,10 +39,9 @@ class ForgotPassword extends Mailable
     {
         return new Content(
             view: 'email.forgot-password',
-            with:[
+            with: [
                 'name' => $this->user->name,
-                'uid' => $this->user->uid,
-
+                'resetUrl' => $this->resetUrl,
             ],
         );
     }
@@ -52,7 +49,7 @@ class ForgotPassword extends Mailable
     /**
      * Get the attachments for the message.
      *
-     * @return array<int, \Illuminate\Mail\Mailables\Attachment>
+     * @return array<int, Attachment>
      */
     public function attachments(): array
     {

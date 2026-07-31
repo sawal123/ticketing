@@ -85,7 +85,7 @@ Route::get('/register', Register::class)->name('register');
 
 Route::get('/forgot-password', ForgotPassword::class)->name('forgot');
 Route::post('/email', [UserLoginController::class, 'email'])->name('email');
-Route::get('/reset-password/{data}', ResetPassword::class)->name('password.reset');
+Route::get('/reset-password/{token}', ResetPassword::class)->name('password.reset');
 Route::post('/new-password', [UserLoginController::class, 'newPassword']);
 
 Route::get('auth/google', [GoogleController::class, 'redirectToGoogle'])->name('auth.google');

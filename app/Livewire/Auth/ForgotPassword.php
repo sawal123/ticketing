@@ -2,14 +2,17 @@
 
 namespace App\Livewire\Auth;
 
-use App\Models\User;
-use App\Models\ForgotPassword as ModelsForgotPassword;
 use App\Jobs\ForgotPassword as JobsForgotPassword;
+use App\Models\ForgotPassword as ModelsForgotPassword;
+use App\Models\User;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Livewire\Component;
 
 class ForgotPassword extends Component
 {
+    private const GENERIC_MESSAGE = 'Jika email terdaftar, link reset password akan dikirim.';
+
     public $email;
 
     protected $rules = [
@@ -20,22 +23,66 @@ class ForgotPassword extends Component
     {
         $this->validate();
 
-        $user = User::where('email', $this->email)->first();
+        $email = Str::lower(trim($this->email));
+        $rateLimitKey = 'forgot-password:'.sha1($email.'|'.request()->ip());
 
-        if ($user) {
-            $add = new ModelsForgotPassword([
-                'uid' => Str::random(10),
-                'uid_user' => $user->uid,
-            ]);
-            $add->save();
+        if (RateLimiter::tooManyAttempts($rateLimitKey, 3)) {
+            $this->finishWithGenericMessage();
 
-            dispatch(new JobsForgotPassword($user, $this->email));
-
-            session()->flash('success', 'Periksa Email Anda (atau folder Spam) untuk instruksi reset password.');
-            $this->email = '';
-        } else {
-            session()->flash('error', 'Email tidak terdaftar dalam sistem kami.');
+            return;
         }
+
+        RateLimiter::hit($rateLimitKey, 600);
+
+        $user = User::where('email', $email)->first();
+
+        if (! $user) {
+            $this->finishWithGenericMessage();
+
+            return;
+        }
+
+        $recentActiveToken = ModelsForgotPassword::query()
+            ->where('email', $email)
+            ->active()
+            ->where('created_at', '>=', now()->subSeconds(60))
+            ->latest()
+            ->first();
+
+        if ($recentActiveToken) {
+            $this->finishWithGenericMessage();
+
+            return;
+        }
+
+        ModelsForgotPassword::query()
+            ->where('email', $email)
+            ->active()
+            ->update(['used_at' => now()]);
+
+        $token = Str::random(80);
+        ModelsForgotPassword::create([
+            'uid' => Str::random(10),
+            'uid_user' => $user->uid,
+            'email' => $email,
+            'token_hash' => hash('sha256', $token),
+            'expires_at' => now()->addMinutes(30),
+        ]);
+
+        $resetUrl = route('password.reset', [
+            'token' => $token,
+            'email' => $email,
+        ]);
+
+        dispatch(new JobsForgotPassword($user, $email, $resetUrl));
+
+        $this->finishWithGenericMessage();
+    }
+
+    private function finishWithGenericMessage(): void
+    {
+        session()->flash('success', self::GENERIC_MESSAGE);
+        $this->email = '';
     }
 
     public function render()
