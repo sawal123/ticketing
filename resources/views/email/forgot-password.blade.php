@@ -54,11 +54,11 @@ p, h2{
         <hr>
         <div class="paragrap">
             <p>
-                Reset password dengan link dibawah ini, Link dapat digunakan hanya 5 menit:
+                Reset password dengan link di bawah ini. Link berlaku selama 30 menit dan hanya dapat digunakan satu kali:
             </p>
         </div>
         <div class="margin"></div>
-        <a href="https://go-tik.com/reset-password/{{$uid}}" type="submit" class="button">Reset Password</a>
+        <a href="{{ $resetUrl }}" type="submit" class="button">Reset Password</a>
         <div class="margin"></div>
         <br>
 

@@ -12,15 +12,23 @@
 
         <div class="relative">
             <h2 class="text-3xl font-extrabold text-white text-center mb-2 tracking-tight">Atur Ulang Password</h2>
-            <p class="text-slate-400 text-center text-sm mb-10">Silakan masukkan password baru Anda di bawah ini.</p>
+            <p class="text-slate-400 text-center text-sm mb-10">
+                {{ $invalidLink ? 'Silakan minta link reset password baru.' : 'Silakan masukkan password baru Anda di bawah ini.' }}
+            </p>
 
-            @if (session()->has('error'))
+            @if ($invalidLink)
+                <div class="mb-6 p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-medium flex items-center gap-3">
+                    <i data-lucide="alert-circle" class="w-4 h-4"></i>
+                    Link reset password tidak valid atau sudah kedaluwarsa.
+                </div>
+            @elseif (session()->has('error'))
                 <div class="mb-6 p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-medium flex items-center gap-3">
                     <i data-lucide="alert-circle" class="w-4 h-4"></i>
                     {{ session('error') }}
                 </div>
             @endif
 
+            @unless ($invalidLink)
             <form wire:submit.prevent="resetPassword" class="space-y-6">
                 <div>
                     <label for="password" class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 ml-1">Password Baru</label>
@@ -53,6 +61,7 @@
                     </button>
                 </div>
             </form>
+            @endunless
         </div>
     </div>
 

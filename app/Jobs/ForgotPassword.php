@@ -4,27 +4,29 @@ namespace App\Jobs;
 
 use App\Mail\ForgotPassword as FGPassword;
 use Illuminate\Bus\Queueable;
-use Illuminate\Support\Facades\Mail;
-use Illuminate\Queue\SerializesModels;
-use Illuminate\Queue\InteractsWithQueue;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
-use Illuminate\Contracts\Queue\ShouldBeUnique;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Mail;
 
-class ForgotPassword implements ShouldQueue
+class ForgotPassword
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+    public $user;
+
+    public $email;
+
+    public $resetUrl;
 
     /**
      * Create a new job instance.
      */
-    public $user;
-    public $email;
-    public function __construct($user, $email)
+    public function __construct($user, $email, string $resetUrl)
     {
-        //
         $this->user = $user;
         $this->email = $email;
+        $this->resetUrl = $resetUrl;
     }
 
     /**
@@ -32,7 +34,6 @@ class ForgotPassword implements ShouldQueue
      */
     public function handle(): void
     {
-        //
-        Mail::to($this->email)->send(new FGPassword($this->user));
+        Mail::to($this->email)->send(new FGPassword($this->user, $this->resetUrl));
     }
 }
