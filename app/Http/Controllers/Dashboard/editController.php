@@ -205,6 +205,7 @@ class editController extends Controller
         ])->save();
 
         $user->tokens()->delete();
+        $request->session()->regenerate();
 
         return redirect()->back()->with('editProfile', 'Password berhasil diubah.');
     }

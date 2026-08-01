@@ -33,7 +33,7 @@
                     <div class="card-header border-bottom-0">
                         <div class="card-title">Informasi Rekening</div>
                     </div>
-                    <form action="{{ url('dashboard/editRekening') }}" method="post">
+                    <form action="{{ url('dashboard/old/editRekening') }}" method="post">
                         @csrf
                         <div class="card-body pt-0">
                             <div class="text-center chat-image mb-5">
@@ -87,6 +87,14 @@
                                         required>
                                 </div>
                             </div>
+                            <div class="form-group">
+                                <label class="form-label">Password Saat Ini</label>
+                                <div class="wrap-input100 validate-input input-group">
+                                    <span class="input-group-text bg-light text-muted"><i class="zmdi zmdi-lock"></i></span>
+                                    <input class="input100 form-control" type="password" name="current_password"
+                                        placeholder="Konfirmasi password akun" required>
+                                </div>
+                            </div>
                         </div>
                         <div class="card-footer text-end bg-light">
                             <button type="submit" class="btn btn-primary w-100"><i class="fe fe-save me-2"></i>Simpan
@@ -99,7 +107,7 @@
                     <div class="card-header border-bottom-0">
                         <div class="card-title">Ubah Password</div>
                     </div>
-                    <form action="{{ url('dashboard/updatePassword') }}" method="post">
+                    <form action="{{ url('dashboard/old/updatePassword') }}" method="post">
                         @csrf
                         <div class="card-body pt-0">
                             @if ($errors->any())
@@ -129,6 +137,15 @@
                                         name="new_password" placeholder="Masukkan password baru" required>
                                 </div>
                             </div>
+                            <div class="form-group">
+                                <label class="form-label">Konfirmasi Password Baru</label>
+                                <div class="wrap-input100 validate-input input-group">
+                                    <span class="input-group-text bg-light text-muted"><i
+                                            class="zmdi zmdi-lock-outline"></i></span>
+                                    <input class="input100 form-control" type="password"
+                                        name="new_password_confirmation" placeholder="Ulangi password baru" required>
+                                </div>
+                            </div>
                         </div>
                         <div class="card-footer text-end bg-light">
                             <button type="submit" class="btn btn-primary w-100"><i class="fe fe-save me-2"></i>Ubah Password</button>
@@ -142,7 +159,7 @@
                     <div class="card-header border-bottom-0">
                         <h3 class="card-title">Edit Data Diri</h3>
                     </div>
-                    <form action="{{ url('dashboard/editProfile') }}" method="post"
+                    <form action="{{ url('dashboard/old/editProfile') }}" method="post"
                         enctype="multipart/form-data">
                         @csrf
                         <div class="card-body">
@@ -173,7 +190,7 @@
                                         <label for="emailAddr" class="form-label">Alamat Email</label>
                                         <input type="email" class="form-control" id="emailAddr"
                                             value="{{ $profile->email }}" name="email"
-                                            placeholder="email@contoh.com" required>
+                                            placeholder="email@contoh.com" readonly>
                                     </div>
                                 </div>
                                 <div class="col-lg-6 col-md-12">
