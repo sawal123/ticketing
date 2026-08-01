@@ -23,19 +23,19 @@
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
         <x-admin.card title="Total Staff" icon="users" iconColor="indigo">
             <div class="text-2xl font-bold text-slate-800 dark:text-white">
-                {{ \App\Models\User::where('role', 'staff')->where('parent_uid', auth()->user()->role === 'staff' ? auth()->user()->parent_uid : auth()->user()->uid)->count() }}
+                {{ \App\Models\User::where('role', 'staff')->where('parent_uid', auth()->user()->uid)->count() }}
             </div>
             <p class="text-[10px] text-slate-500 mt-1">Jumlah anggota tim terdaftar</p>
         </x-admin.card>
         <x-admin.card title="Akses Aktif" icon="shield-check" iconColor="emerald">
             <div class="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
-                {{ \App\Models\User::where('role', 'staff')->where('parent_uid', auth()->user()->role === 'staff' ? auth()->user()->parent_uid : auth()->user()->uid)->whereNotNull('email_verified_at')->count() }}
+                {{ \App\Models\User::where('role', 'staff')->where('parent_uid', auth()->user()->uid)->whereNotNull('email_verified_at')->count() }}
             </div>
             <p class="text-[10px] text-slate-500 mt-1">Staff yang sudah verifikasi</p>
         </x-admin.card>
         <x-admin.card title="Menunggu Verifikasi" icon="mail" iconColor="amber">
             <div class="text-2xl font-bold text-amber-600 dark:text-amber-400">
-                {{ \App\Models\User::where('role', 'staff')->where('parent_uid', auth()->user()->role === 'staff' ? auth()->user()->parent_uid : auth()->user()->uid)->whereNull('email_verified_at')->count() }}
+                {{ \App\Models\User::where('role', 'staff')->where('parent_uid', auth()->user()->uid)->whereNull('email_verified_at')->count() }}
             </div>
             <p class="text-[10px] text-slate-500 mt-1">Undangan terkirim</p>
         </x-admin.card>
@@ -117,7 +117,7 @@
         <form wire:submit.prevent="save" class="space-y-4">
             <div class="bg-indigo-50 dark:bg-indigo-900/20 p-4 rounded-2xl border border-indigo-100 dark:border-indigo-800 mb-4">
                 <p class="text-xs text-indigo-700 dark:text-indigo-400 leading-relaxed">
-                    Undangan akan dikirim via email. Jika email sudah terdaftar sebagai User biasa, maka akun tersebut akan otomatis diubah menjadi Staff. Roles Admin dan Penyewa tidak dapat diubah menjadi Staff.
+                    Undangan hanya dapat dikirim ke email baru. Email yang sudah terdaftar perlu menerima undangan melalui flow khusus.
                 </p>
             </div>
 
