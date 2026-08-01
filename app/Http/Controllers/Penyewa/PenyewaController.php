@@ -108,23 +108,39 @@ class PenyewaController extends Controller
         // 6. SETUP DROPDOWN UNTUK MODAL CASH
         // ==========================================================
         $e = Event::join('hargas', 'hargas.uid', '=', 'events.uid')
-            ->select('events.event', 'events.fee', 'hargas.kategori', 'hargas.harga')
+            ->select(
+                'events.uid as event_uid',
+                'events.event',
+                'events.fee',
+                'hargas.id as harga_id',
+                'hargas.kategori',
+                'hargas.harga'
+            )
             ->where('events.user_uid', $ownerId)
             ->where('events.konfirmasi', '1')
+            ->where('events.status', 'active')
+            ->where('hargas.status', 'active')
             ->get();
 
         $transformedEvents = [];
         foreach ($e as $item) {
-            $existingEventIndex = array_search($item->event, array_column($transformedEvents, 'event'));
+            $existingEventIndex = array_search($item->event_uid, array_column($transformedEvents, 'eventUid'));
             if ($existingEventIndex !== false) {
-                $transformedEvents[$existingEventIndex]['kategori'][] = $item->kategori;
-                $transformedEvents[$existingEventIndex]['harga'][] = $item->harga;
+                $transformedEvents[$existingEventIndex]['tickets'][] = [
+                    'id' => $item->harga_id,
+                    'kategori' => $item->kategori,
+                    'harga' => $item->harga,
+                ];
             } else {
                 $transformedEvents[] = [
+                    'eventUid' => $item->event_uid,
                     'event' => $item->event,
                     'eventFee' => $item->fee,
-                    'kategori' => [$item->kategori],
-                    'harga' => [$item->harga],
+                    'tickets' => [[
+                        'id' => $item->harga_id,
+                        'kategori' => $item->kategori,
+                        'harga' => $item->harga,
+                    ]],
                 ];
             }
         }
@@ -132,8 +148,8 @@ class PenyewaController extends Controller
         $ticketOptions = [];
         $hargaOption = [];
         foreach ($transformedEvents as $key => $val) {
-            $ticketOptions[$key + 1] = $val['kategori'];
-            $hargaOption[$key + 1] = $val['harga'];
+            $ticketOptions[$key + 1] = $val['tickets'];
+            $hargaOption[$key + 1] = array_column($val['tickets'], 'harga');
         }
 
         // ==========================================================

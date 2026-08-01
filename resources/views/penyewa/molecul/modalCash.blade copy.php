@@ -5,16 +5,15 @@
                 <h6 class="modal-title">Jual Ticket Cash</h6><button aria-label="Close" class="btn-close"
                     data-bs-dismiss="modal"><span aria-hidden="true">&times;</span></button>
             </div>
-            <form action="{{ url('dashboard/addCash') }}" method="post" enctype="multipart/form-data">
+            <form action="{{ route('old.add.cash') }}" method="post" enctype="multipart/form-data">
                 @csrf
                 <div class="modal-body">
 
-                    <input type="hidden" name="user" value="{{ Auth::user()->uid }}">
                     <div class="row mb-4">
                         <label class="col-md-3 	d-none d-lg-block form-label">Partner</label>
                         <div class="col-md-9">
                             <select class="form-select" name="partner" aria-label="Default select example">
-                                <option selected>Pilih Partner</option>
+                                <option value="" selected>Pilih Partner</option>
                                 @foreach ($partner as $key => $partners)
                                     <option value="{{ $partners->uid }}" class="{{ $key + 1 }}">
                                         {{ $partners->name }}</option>
@@ -25,11 +24,11 @@
                     <div class="row mb-4">
                         <label class="col-md-3 	d-none d-lg-block form-label">Event</label>
                         <div class="col-md-9">
-                            <select id="select-event" class="form-select" name="event"
+                            <select id="select-event" class="form-select" name="event_uid"
                                 aria-label="Default select example">
                                 <option selected>Pilih Event</option>
                                 @foreach ($event as $key => $events)
-                                    <option value="{{ $event[$key]['event'] }}" class="{{ $key + 1 }}">
+                                    <option value="{{ $event[$key]['eventUid'] }}" class="{{ $key + 1 }}">
                                         {{ $event[$key]['event'] }}</option>
                                 @endforeach
                             </select>
@@ -39,7 +38,7 @@
                     <div class="row mb-4 d-flex" id="ticket-select-container" style="display: none;">
                         <label class="col-md-3 	d-none d-lg-block form-label">Ticket</label>
                         <div class="col-md-9">
-                            <select id="select-ticket" class="form-select" name="ticket"
+                            <select id="select-ticket" class="form-select" name="harga_id"
                                 aria-label="Default select example">
                                 <option selected>Pilih Ticket</option>
                                 <!-- Opsi tiket akan ditambahkan di sini melalui JavaScript -->
@@ -121,13 +120,6 @@
                                         Sudah Bayar Cash?
                                     </label>
                                 </div>
-                                <div class="col">
-                                    <input class="form-check-input" type="checkbox" value="1"
-                                        id="defaultCheck2" name="konfirmasi">
-                                    <label class="form-check-label" for="defaultCheck2">
-                                        Langsung Masuk
-                                    </label>
-                                </div>
                             </div>
                         </div>
                     </div>
@@ -137,8 +129,6 @@
                 </div>
                 <div class="modal-footer d-flex justify-content-between">
                     <div class="d-flex align-items-center">
-                        <input type="hidden" value="{{ Auth::user()->uid }}" name="uid" readonly>
-                        <input type="hidden" value="" id="total" name="total" readonly>
                         <h5>Total : </h5>
                         <h6 id="total-harga"></h6>
                     </div>
@@ -161,37 +151,19 @@
         const ticketSelect = document.getElementById("select-ticket");
         const jumlahTiket = document.getElementById("select-jumlah");
         const totalHarga = document.getElementById("total-harga");
-        const totali = document.getElementById("total");
 
 
         const ticketOptions = {!! html_entity_decode(json_encode($ticketEvent, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT)) !!};
-        const hargaTicket = {!! html_entity_decode(json_encode($hargaTicket, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT)) !!};
 
         // Fungsi untuk menghitung total harga
         function hitungTotalHarga() {
-            const selectedEventId = eventSelect.value;
-            const selectedTicketName = ticketSelect.value;
             const selectedJumlah = parseInt(jumlahTiket.value);
 
             const selectedOption = eventSelect.options[eventSelect.selectedIndex];
-            const selectEventClass = selectedOption.className;
+            const selectedTicket = ticketSelect.options[ticketSelect.selectedIndex];
 
-
-
-            if (selectEventClass in ticketOptions) {
-                const ticketOptionsForEvent = ticketOptions[selectEventClass];
-                const hargaTicketForEvent = hargaTicket[selectEventClass]
-                console.log(ticketOptionsForEvent)
-                console.log(hargaTicketForEvent)
-                let selectedTicketKey = null;
-                for (const key in ticketOptionsForEvent) {
-                    if (ticketOptionsForEvent[key] === selectedTicketName) {
-                        selectedTicketKey = parseInt(key);
-                        break;
-                    }
-                }
-                if (selectedTicketKey !== null) {
-                    const hargaPerTiket = parseFloat(hargaTicketForEvent[selectedTicketKey]);
+            if (selectedOption && selectedTicket && !selectedTicket.disabled) {
+                    const hargaPerTiket = parseFloat(selectedTicket.getAttribute("data-price")) || 0;
                     const total = selectedJumlah * hargaPerTiket;
 
                     const formattedTotal = new Intl.NumberFormat('en-US', {
@@ -203,9 +175,7 @@
                         totalHarga.textContent = "IDR 0";
                     } else {
                         totalHarga.textContent = formattedTotal;
-                        totali.value = total;
                     }
-                }
             }
         }
         eventSelect.addEventListener("change", function() {
@@ -218,8 +188,9 @@
                 const tickets = ticketOptions[selectEventClass];
                 for (const ticket of tickets) {
                     const option = document.createElement("option");
-                    option.value = ticket;
-                    option.textContent = ticket;
+                    option.value = ticket.id;
+                    option.textContent = ticket.kategori;
+                    option.setAttribute("data-price", ticket.harga);
                     ticketSelect.appendChild(option);
                 }
                 ticketSelectContainer.style.display = "block";

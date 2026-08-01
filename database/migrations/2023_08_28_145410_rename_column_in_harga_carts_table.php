@@ -11,10 +11,17 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('harga_carts', function (Blueprint $table) {
-            $table->dropColumn('harga_uid');
-            $table->string('event_uid')->after('uid');
-        });
+        if (Schema::hasColumn('harga_carts', 'harga_uid')) {
+            Schema::table('harga_carts', function (Blueprint $table) {
+                $table->dropColumn('harga_uid');
+            });
+        }
+
+        if (! Schema::hasColumn('harga_carts', 'event_uid')) {
+            Schema::table('harga_carts', function (Blueprint $table) {
+                $table->string('event_uid')->after('uid');
+            });
+        }
     }
 
     /**
@@ -22,8 +29,16 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('harga_carts', function (Blueprint $table) {
-            //
-        });
+        if (Schema::hasColumn('harga_carts', 'event_uid')) {
+            Schema::table('harga_carts', function (Blueprint $table) {
+                $table->dropColumn('event_uid');
+            });
+        }
+
+        if (! Schema::hasColumn('harga_carts', 'harga_uid')) {
+            Schema::table('harga_carts', function (Blueprint $table) {
+                $table->string('harga_uid')->after('uid');
+            });
+        }
     }
 };

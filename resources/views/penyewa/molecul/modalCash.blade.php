@@ -5,11 +5,9 @@
                 <h5 class="modal-title fw-bold text-dark" style="font-size: 18px;">Jual Tiket Cash</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" style="opacity: 0.5;"></button>
             </div>
-            <form action="{{ url('dashboard/addCash') }}" method="post" enctype="multipart/form-data">
+            <form action="{{ route('old.add.cash') }}" method="post" enctype="multipart/form-data">
                 @csrf
                 <div class="modal-body px-4 pt-3 pb-2">
-                    <input type="hidden" name="user" value="{{ Auth::user()->uid }}">
-
                     <style>
                         .form-custom {
                             background-color: #F8F9FA;
@@ -37,7 +35,7 @@
 
                     <div class="mb-3">
                         <select class="form-select form-custom" name="partner" aria-label="Partner">
-                            <option selected>Pilih Partner (optional)</option>
+                            <option value="" selected>Pilih Partner (optional)</option>
                             @foreach ($partner as $key => $partners)
                                 <option value="{{ $partners->uid }}" class="{{ $key + 1 }}">
                                     {{ $partners->name }}</option>
@@ -46,10 +44,10 @@
                     </div>
 
                     <div class="mb-3">
-                        <select id="select-event" class="form-select form-custom fw-bold" style="color: #6c757d" name="event" aria-label="Event">
+                        <select id="select-event" class="form-select form-custom fw-bold" style="color: #6c757d" name="event_uid" aria-label="Event">
                             <option selected disabled>PILIH EVENT</option>
                             @foreach ($event as $key => $e)
-                                <option value="{{ $e['event'] }}" class="{{ $key + 1 }}" data-fee="{{ $e['eventFee'] ?? 0 }}">
+                                <option value="{{ $e['eventUid'] }}" class="{{ $key + 1 }}" data-fee="{{ $e['eventFee'] ?? 0 }}">
                                     {{ strtoupper($e['event']) }}
                                 </option>
                             @endforeach
@@ -57,7 +55,7 @@
                     </div>
 
                     <div class="mb-3" id="ticket-select-container" style="display: none;">
-                        <select id="select-ticket" class="form-select form-custom" name="ticket" aria-label="Ticket">
+                        <select id="select-ticket" class="form-select form-custom" name="harga_id" aria-label="Ticket">
                             <option selected>Pilih tiket</option>
                             <!-- Opsi tiket akan ditambahkan di sini -->
                         </select>
@@ -112,12 +110,6 @@
                                 Sudah Bayar Cash ?
                             </label>
                         </div>
-                        <div class="form-check d-flex align-items-center">
-                            <input class="form-check-input me-2 mt-0" type="checkbox" value="1" id="defaultCheck2" name="konfirmasi" style="width: 18px; height: 18px; border-radius: 4px; border: 1px solid #adb5bd;">
-                            <label class="form-check-label text-muted" for="defaultCheck2" style="font-size: 13px;">
-                                Langsung Masuk?
-                            </label>
-                        </div>
                     </div>
 
                     <!-- Total Details -->
@@ -138,9 +130,6 @@
                 </div>
 
                 <div class="modal-footer border-top-0 px-4 pb-4 pt-0">
-                    <input type="hidden" value="{{ Auth::user()->uid }}" name="uid" readonly>
-                    <input type="hidden" value="0" id="total" name="total" readonly>
-                    
                     <button type="submit" id="btn-submit" class="btn btn-primary w-100 py-2 d-flex justify-content-center align-items-center gap-2" style="background-color: #5A67D8; border: none; border-radius: 8px; font-weight: 600; font-size: 15px;">
                         <span id="btn-text">Check Out</span>
                         <div id="btn-spinner" class="spinner-border spinner-border-sm d-none" role="status">
@@ -165,10 +154,8 @@
         const labelPajak = document.getElementById("label-pajak");
         const displayPajak = document.getElementById("display-pajak");
         const displayTotal = document.getElementById("display-total");
-        const totali = document.getElementById("total");
 
         const ticketOptions = {!! json_encode($ticketEvent) !!};
-        const hargaTicket = {!! json_encode($hargaTicket) !!};
 
         // Fungsi Format Uang
         const formatRupiah = (angka) => {
@@ -184,37 +171,21 @@
             if (!selectedOption || selectedOption.disabled) return;
 
             const eventIndex = selectedOption.className;
-            const ticketName = ticketSelect.value;
+            const selectedTicket = ticketSelect.options[ticketSelect.selectedIndex];
             const qty = parseInt(jumlahTiket.value) || 0;
 
             const persenPajak = parseFloat(selectedOption.getAttribute('data-fee')) || 0;
 
-            if (ticketOptions[eventIndex]) {
-                const ticketsForEvent = ticketOptions[eventIndex];
-                let ticketIndex = null;
+            if (selectedTicket && !selectedTicket.disabled && qty > 0) {
+                const price = parseFloat(selectedTicket.getAttribute('data-price')) || 0;
+                const subtotal = price * qty;
+                const nilaiPajak = (persenPajak / 100) * subtotal;
+                const totalAkhir = subtotal + nilaiPajak;
 
-                for (const key in ticketsForEvent) {
-                    if (ticketsForEvent[key] === ticketName) {
-                        ticketIndex = key;
-                        break;
-                    }
-                }
-
-                if (ticketIndex !== null && qty > 0) {
-                    const price = parseFloat(hargaTicket[eventIndex][ticketIndex]);
-                    const subtotal = price * qty;
-                    const nilaiPajak = (persenPajak / 100) * subtotal;
-                    const totalAkhir = subtotal + nilaiPajak;
-
-                    // Update UI Rincian
-                    displaySubtotal.textContent = formatRupiah(subtotal);
-                    labelPajak.textContent = `Pajak (${persenPajak}%):`;
-                    displayPajak.textContent = formatRupiah(nilaiPajak);
-                    displayTotal.textContent = formatRupiah(totalAkhir);
-
-                    // Update input hidden
-                    totali.value = totalAkhir;
-                }
+                displaySubtotal.textContent = formatRupiah(subtotal);
+                labelPajak.textContent = `Pajak (${persenPajak}%):`;
+                displayPajak.textContent = formatRupiah(nilaiPajak);
+                displayTotal.textContent = formatRupiah(totalAkhir);
             }
         }
 
@@ -225,8 +196,9 @@
             if (ticketOptions[eventIndex]) {
                 for (const ticket of ticketOptions[eventIndex]) {
                     const option = document.createElement("option");
-                    option.value = ticket;
-                    option.textContent = ticket;
+                    option.value = ticket.id;
+                    option.textContent = ticket.kategori;
+                    option.setAttribute("data-price", ticket.harga);
                     ticketSelect.appendChild(option);
                 }
                 ticketSelectContainer.style.display = "flex";
