@@ -14,6 +14,7 @@ use App\Models\Voucher;
 use App\Services\SecureImageStorage;
 use App\Services\Withdrawals\WithdrawalBalanceService;
 use Exception;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -21,6 +22,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class AddController extends Controller
 {
@@ -134,8 +136,11 @@ class AddController extends Controller
 
     public function addVoucher(Request $request)
     {
+        $code = Str::upper(trim((string) $request->code));
+        $request->merge(['code' => $code]);
+
         $validate = Validator::make($request->all(), [
-            'code' => 'string|required|max:50',
+            'code' => ['required', 'string', 'max:50', 'regex:/^[A-Z0-9_-]+$/'],
             'unit' => 'string|required|max:255',
             // 'nominal' => 'numeric|required',
             'min' => 'required|numeric',
@@ -145,6 +150,16 @@ class AddController extends Controller
         $validate->validate();
         // dd($request->event);
         $event = Event::where('uid', $request->event)->where('user_uid', Auth::user()->uid)->firstOrFail();
+
+        Validator::make(['code' => $code], [
+            'code' => [
+                Rule::unique('vouchers', 'code')
+                    ->where(fn ($query) => $query->where('event_uid', $event->uid)),
+            ],
+        ], [
+            'code.unique' => 'Kode voucher sudah digunakan pada event ini.',
+        ])->validate();
+
         if ($request->unit === 'rupiah') {
             $nominal = $request->nominalRupiah;
         } else {
@@ -156,7 +171,7 @@ class AddController extends Controller
             'uid' => $uid,
             'user_uid' => Auth::user()->uid,
             'event_uid' => $event->uid,
-            'code' => $request->code,
+            'code' => $code,
             'unit' => $request->unit,
             'nominal' => $nominal,
             'min_beli' => $request->min,
@@ -165,7 +180,16 @@ class AddController extends Controller
             'limit' => $request->maxUse,
             'status' => 'active',
         ]);
-        $voucher->save();
+
+        try {
+            $voucher->save();
+        } catch (QueryException $e) {
+            if ($this->isDuplicateVoucherCodeException($e)) {
+                return redirect()->back()->withErrors(['code' => 'Kode voucher sudah digunakan pada event ini.']);
+            }
+
+            throw $e;
+        }
 
         return redirect()->back()->with('voucher', 'Voucher berhasil disimpan');
     }
@@ -240,5 +264,12 @@ class AddController extends Controller
         } catch (Exception $e) {
             return back()->with('error', $e->getMessage());
         }
+    }
+
+    private function isDuplicateVoucherCodeException(QueryException $e): bool
+    {
+        return str_contains($e->getMessage(), 'vouchers_event_uid_code_unique')
+            || str_contains($e->getMessage(), 'UNIQUE constraint failed')
+            || str_contains($e->getMessage(), 'Duplicate entry');
     }
 }
