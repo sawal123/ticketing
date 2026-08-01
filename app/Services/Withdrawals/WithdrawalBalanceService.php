@@ -3,8 +3,8 @@
 namespace App\Services\Withdrawals;
 
 use App\Models\Cart;
-use App\Models\HargaCart;
 use App\Models\Penarikan;
+use App\Services\Reports\FinancialSnapshotService;
 use Illuminate\Support\Facades\DB;
 
 class WithdrawalBalanceService
@@ -29,17 +29,9 @@ class WithdrawalBalanceService
     public function grossEarningsFor(string $ownerUid): int
     {
         $carts = Cart::query()
-            ->select([
-                'carts.uid',
-                'carts.gross_amount as cart_gross_amount',
-                'transactions.gross_amount as transaction_gross_amount',
-                'transactions.amount as transaction_amount',
-            ])
+            ->with('hargaCarts')
+            ->select('carts.*')
             ->join('events', 'events.uid', '=', 'carts.event_uid')
-            ->leftJoin('transactions', function ($join) {
-                $join->on('transactions.invoice', '=', 'carts.invoice')
-                    ->orOn('transactions.uid', '=', 'carts.uid');
-            })
             ->where('carts.status', Cart::STATUS_SUCCESS)
             ->where('events.user_uid', $ownerUid)
             ->where(function ($query) {
@@ -49,35 +41,8 @@ class WithdrawalBalanceService
             ->get()
             ->unique('uid');
 
-        if ($carts->isEmpty()) {
-            return 0;
-        }
-
-        $fallbackByCart = HargaCart::query()
-            ->whereIn('uid', $carts->pluck('uid')->all())
-            ->get()
-            ->groupBy('uid')
-            ->map(fn ($items) => $items->sum(function (HargaCart $item) {
-                $lineTotal = (int) $item->quantity * (int) $item->harga_ticket;
-                $discount = (int) ($item->disc ?? 0);
-
-                return max(0, $lineTotal - $discount);
-            }));
-
-        return (int) $carts->sum(function ($cart) use ($fallbackByCart) {
-            foreach ([
-                $cart->cart_gross_amount,
-                $cart->transaction_gross_amount,
-                $cart->transaction_amount,
-            ] as $amount) {
-                $normalized = (int) $amount;
-                if ($normalized > 0) {
-                    return $normalized;
-                }
-            }
-
-            return (int) ($fallbackByCart[$cart->uid] ?? 0);
-        });
+        return (int) app(FinancialSnapshotService::class)
+            ->collectionTotals($carts)['owner_revenue'];
     }
 
     public function deductedWithdrawalsFor(?string $ownerUid = null, ?array $statuses = null): int

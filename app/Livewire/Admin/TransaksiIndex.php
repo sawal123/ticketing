@@ -11,12 +11,19 @@ class TransaksiIndex extends Component
     use WithPagination;
 
     public $search = '';
+
     public $status = 'SUCCESS'; // Default to SUCCESS
+
     public $date = '';
+
     public $paymentType = 'all'; // all, cash, non-cash
+
     public $eventUid = '';
+
     public $selectedTrx = null;
+
     public $discount = 0;
+
     public $voucherCode = null;
 
     protected $queryString = [
@@ -27,10 +34,25 @@ class TransaksiIndex extends Component
         'eventUid' => ['except' => ''],
     ];
 
-    public function updatingSearch() { $this->resetPage(); }
-    public function updatingStatus() { $this->resetPage(); }
-    public function updatingDate() { $this->resetPage(); }
-    public function updatingPaymentType() { $this->resetPage(); }
+    public function updatingSearch()
+    {
+        $this->resetPage();
+    }
+
+    public function updatingStatus()
+    {
+        $this->resetPage();
+    }
+
+    public function updatingDate()
+    {
+        $this->resetPage();
+    }
+
+    public function updatingPaymentType()
+    {
+        $this->resetPage();
+    }
 
     public function resetFilters()
     {
@@ -44,15 +66,15 @@ class TransaksiIndex extends Component
     public function openDetail($id)
     {
         $this->selectedTrx = Cart::with(['event', 'users', 'hargaCarts'])->findOrFail($id);
-        
+
         $this->discount = 0;
         $this->voucherCode = null;
-        
-        $cartVoucher = \App\Models\CartVoucher::where('uid', $this->selectedTrx->uid)->first();
-        if ($cartVoucher) {
-            $this->voucherCode = $cartVoucher->code;
-            $this->discount = $cartVoucher->nominal;
+
+        $hargaCartWithVoucher = $this->selectedTrx->hargaCarts->whereNotNull('voucher')->first();
+        if ($hargaCartWithVoucher) {
+            $this->voucherCode = $hargaCartWithVoucher->voucher;
         }
+        $this->discount = $this->selectedTrx->hargaCarts->sum(fn ($item) => (int) ($item->disc ?? 0));
 
         $this->dispatch('open-modal', name: 'trx-detail-modal');
     }
@@ -82,19 +104,19 @@ class TransaksiIndex extends Component
             })
             // Search (Invoice, Email, Name)
             ->when($this->search, function ($query) {
-                $query->where(function($q) {
-                    $q->where('invoice', 'like', '%' . $this->search . '%')
-                      ->orWhereHas('users', function ($u) {
-                          $u->where('name', 'like', '%' . $this->search . '%')
-                            ->orWhere('email', 'like', '%' . $this->search . '%');
-                      });
+                $query->where(function ($q) {
+                    $q->where('invoice', 'like', '%'.$this->search.'%')
+                        ->orWhereHas('users', function ($u) {
+                            $u->where('name', 'like', '%'.$this->search.'%')
+                                ->orWhere('email', 'like', '%'.$this->search.'%');
+                        });
                 });
             })
             ->latest()
             ->paginate(15);
 
         return view('livewire.admin.transaksi-index', [
-            'transactions' => $transactions
+            'transactions' => $transactions,
         ])->layout('admin.layout', ['title' => 'Daftar Transaksi']);
     }
 }

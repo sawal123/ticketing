@@ -111,6 +111,7 @@
                 <th>Kategori Tiket</th>
                 <th>Qty</th>
                 <th class="text-right">Harga Satuan</th>
+                <th class="text-right">Diskon</th>
                 <th class="text-right">Total</th>
                 <th>Kehadiran</th>
             </tr>
@@ -125,7 +126,8 @@
                     <td>{{ $trx->kategori_harga }}</td>
                     <td>{{ $trx->quantity }}</td>
                     <td class="text-right">Rp {{ number_format($trx->harga_ticket, 0, ',', '.') }}</td>
-                    <td class="text-right">Rp {{ number_format($trx->quantity * $trx->harga_ticket, 0, ',', '.') }}</td>
+                    <td class="text-right">Rp {{ number_format($trx->disc ?? 0, 0, ',', '.') }}</td>
+                    <td class="text-right">Rp {{ number_format(($trx->quantity * $trx->harga_ticket) - ($trx->disc ?? 0) + ($trx->pajak ?? 0), 0, ',', '.') }}</td>
                     <td>
                         @if($trx->konfirmasi == '1')
                             <span class="badge" style="background: #ecfdf5; color: #065f46;">Hadir</span>
@@ -134,12 +136,12 @@
                         @endif
                     </td>
                 </tr>
-                @php $totalGrand += ($trx->quantity * $trx->harga_ticket); @endphp
+                @php $totalGrand += (($trx->quantity * $trx->harga_ticket) - ($trx->disc ?? 0) + ($trx->pajak ?? 0)); @endphp
             @endforeach
         </tbody>
         <tfoot>
             <tr style="background: #f8fafc; font-weight: bold;">
-                <td colspan="6" class="text-right">TOTAL PENDAPATAN KOTOR (TIKET)</td>
+                <td colspan="7" class="text-right">TOTAL OMZET SNAPSHOT</td>
                 <td class="text-right">Rp {{ number_format($totalGrand, 0, ',', '.') }}</td>
                 <td></td>
             </tr>
