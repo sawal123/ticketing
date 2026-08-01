@@ -10,6 +10,7 @@ use App\Models\Harga;
 use App\Models\HargaCart;
 use App\Models\Partner;
 use App\Models\Transaction;
+use App\Services\Reports\FinancialSnapshotService;
 use App\Services\Tickets\GateTokenService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -494,11 +495,31 @@ class DemoIndex extends Component
         $this->isGenderModalOpen = ! $this->isGenderModalOpen;
     }
 
+    private function snapshotCartQuery(?string $ownerId = null)
+    {
+        $query = Cart::query()
+            ->from('carts')
+            ->join('events', 'events.uid', '=', 'carts.event_uid')
+            ->where('carts.status', Cart::STATUS_SUCCESS)
+            ->whereNull('carts.deleted_at');
+
+        if ($ownerId !== null) {
+            $query->where('events.user_uid', $ownerId);
+        }
+
+        app(FinancialSnapshotService::class)->joinLineSnapshots($query);
+
+        return $query;
+    }
+
     public function render()
     {
         $user = auth()->user();
         $isAdmin = $user->role === 'admin';
         $ownerId = ($user->role === 'staff') ? $user->parent_uid : $user->uid;
+        $ownerScope = $isAdmin ? null : $ownerId;
+        $snapshot = app(FinancialSnapshotService::class);
+        $ownerRevenueExpression = $snapshot->ownerRevenueSqlExpression();
 
         $availablePartners = Partner::query()
             ->where('user_uid', $ownerId)
@@ -506,61 +527,23 @@ class DemoIndex extends Component
             ->orderBy('name')
             ->get();
 
-        // RUMUS DASAR PERHITUNGAN
-        $rumusDasar = "
-            (
-                (harga_carts.quantity * harga_carts.harga_ticket) - 
-                COALESCE(
-                    CASE 
-                        WHEN LOWER(vouchers.unit) = '%' OR LOWER(vouchers.unit) = 'persen' 
-                        THEN 
-                            CASE 
-                                WHEN vouchers.max_disc > 0 AND ((harga_carts.quantity * harga_carts.harga_ticket) * (vouchers.nominal / 100)) > vouchers.max_disc
-                                THEN vouchers.max_disc
-                                ELSE (harga_carts.quantity * harga_carts.harga_ticket) * (vouchers.nominal / 100)
-                            END
-                        ELSE vouchers.nominal 
-                    END, 
-                0)
-            ) 
-            * (1 + (COALESCE(events.fee, 0) / 100))
-        ";
-
-        $queryBase = HargaCart::join('carts', 'carts.uid', '=', 'harga_carts.uid')
-            ->join('events', 'events.uid', '=', 'carts.event_uid')
-            ->leftJoin('vouchers', function ($join) {
-                $join->on('vouchers.code', '=', 'harga_carts.voucher')
-                    ->on('vouchers.event_uid', '=', 'events.uid');
-            })
-            ->where('carts.status', 'SUCCESS');
-
-        if (! $isAdmin) {
-            $queryBase->where('events.user_uid', $ownerId);
-        }
-
         // STATISTIK UTAMA
-        $stats = (clone $queryBase)->select(
-            DB::raw("SUM($rumusDasar) as total_omset")
+        $stats = $this->snapshotCartQuery($ownerScope)->select(
+            DB::raw("SUM($ownerRevenueExpression) as total_omset")
         )->first();
 
-        $totalTiketQuery = HargaCart::join('carts', 'carts.uid', '=', 'harga_carts.uid')
+        $totalTiket = (int) $this->snapshotCartQuery($ownerScope)
+            ->selectRaw('SUM(COALESCE(line_snapshots.total_quantity, 0)) as total_tiket')
+            ->value('total_tiket');
+
+        $totalTransaksi = (int) Cart::query()
+            ->from('carts')
             ->join('events', 'events.uid', '=', 'carts.event_uid')
-            ->where('carts.status', 'SUCCESS')
-            ->whereNull('carts.deleted_at');
-
-        if (! $isAdmin) {
-            $totalTiketQuery->where('events.user_uid', $ownerId);
-        }
-
-        $totalTiket = $totalTiketQuery->sum('harga_carts.quantity');
-
-        $totalTransaksiQuery = Cart::where('status', 'SUCCESS');
-        if (! $isAdmin) {
-            $totalTransaksiQuery->whereHas('event', function ($q) use ($ownerId) {
-                $q->where('user_uid', $ownerId);
-            });
-        }
-        $totalTransaksi = $totalTransaksiQuery->count();
+            ->where('carts.status', Cart::STATUS_SUCCESS)
+            ->whereNull('carts.deleted_at')
+            ->when(! $isAdmin, fn ($query) => $query->where('events.user_uid', $ownerId))
+            ->distinct('carts.uid')
+            ->count('carts.uid');
 
         $totalEvent = Event::query();
         if (! $isAdmin) {
@@ -580,15 +563,15 @@ class DemoIndex extends Component
             return Carbon::now()->subDays($days)->format('Y-m-d');
         });
 
-        $dailyData = (clone $queryBase)
-            ->where('carts.created_at', '>=', now()->subDays(7))
+        $dailyData = $this->snapshotCartQuery($ownerScope)
+            ->where('carts.created_at', '>=', now()->subDays(7)->startOfDay())
             ->select(
                 DB::raw('DATE(carts.created_at) as date'),
-                DB::raw("SUM($rumusDasar) as revenue"),
-                DB::raw("SUM(CASE WHEN carts.payment_type = 'cash' THEN harga_carts.quantity ELSE 0 END) as cash_qty"),
-                DB::raw("SUM(CASE WHEN carts.payment_type != 'cash' THEN harga_carts.quantity ELSE 0 END) as noncash_qty")
+                DB::raw("SUM($ownerRevenueExpression) as revenue"),
+                DB::raw("SUM(CASE WHEN carts.payment_type = 'cash' THEN COALESCE(line_snapshots.total_quantity, 0) ELSE 0 END) as cash_qty"),
+                DB::raw("SUM(CASE WHEN carts.payment_type IS NULL OR carts.payment_type != 'cash' THEN COALESCE(line_snapshots.total_quantity, 0) ELSE 0 END) as noncash_qty")
             )
-            ->groupBy('date')
+            ->groupBy(DB::raw('DATE(carts.created_at)'))
             ->get()
             ->keyBy('date');
 
@@ -598,9 +581,14 @@ class DemoIndex extends Component
         $chartNonCashQty = $last7Days->map(fn ($date) => (int) ($dailyData->has($date) ? $dailyData[$date]->noncash_qty : 0))->toArray();
 
         // GENDER & AGE DEMOGRAPHICS
-        $demographics = (clone $queryBase)
-            ->join('users', 'users.uid', '=', 'carts.user_uid')
+        $demographics = Cart::query()
+            ->from('carts')
+            ->join('events', 'events.uid', '=', 'carts.event_uid')
+            ->leftJoin('users', 'users.uid', '=', 'carts.user_uid')
             ->leftJoin('cashes', 'cashes.uid', '=', 'carts.uid')
+            ->where('carts.status', Cart::STATUS_SUCCESS)
+            ->whereNull('carts.deleted_at')
+            ->when(! $isAdmin, fn ($query) => $query->where('events.user_uid', $ownerId))
             ->selectRaw("
                 CASE WHEN carts.payment_type = 'cash' THEN cashes.gender ELSE users.gender END as gender,
                 CASE WHEN carts.payment_type = 'cash' THEN cashes.lahir ELSE users.birthday END as birthday
