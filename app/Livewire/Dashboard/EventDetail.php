@@ -216,6 +216,7 @@ class EventDetail extends Component
             ->join('harga_carts', 'harga_carts.uid', '=', 'carts.uid')
             ->select([
                 'carts.created_at',
+                'carts.uid as cart_uid',
                 'carts.invoice',
                 DB::raw("CASE WHEN carts.payment_type = 'cash' THEN COALESCE(cashes.name, 'Data Pembeli Tidak Ditemukan') ELSE users.name END as buyer_name"),
                 DB::raw("CASE WHEN carts.payment_type = 'cash' THEN COALESCE(cashes.email, '-') ELSE users.email END as buyer_email"),
@@ -278,6 +279,27 @@ class EventDetail extends Component
         return $query->orderBy('carts.created_at', 'desc');
     }
 
+    protected function exportSnapshotTotalsFromRows($rows): array
+    {
+        $cartUids = $rows->pluck('cart_uid')->filter()->unique()->values();
+
+        if ($cartUids->isEmpty()) {
+            return [
+                'ticket_total' => 0,
+                'discount_total' => 0,
+                'total_quantity' => 0,
+                'tax_total' => 0,
+                'owner_revenue' => 0,
+            ];
+        }
+
+        $carts = Cart::with('hargaCarts')
+            ->whereIn('uid', $cartUids)
+            ->get();
+
+        return app(FinancialSnapshotService::class)->collectionTotals($carts);
+    }
+
     public function exportExcel()
     {
         $fileName = 'transaksi-event-'.Str::slug($this->getEventData()->event).'-'.now()->format('YmdHis').'.csv';
@@ -292,11 +314,19 @@ class EventDetail extends Component
 
         $callback = function () {
             $file = fopen('php://output', 'w');
+            $rows = $this->getExportQuery()->get();
+            $exportTotals = $this->exportSnapshotTotalsFromRows($rows);
+            $seenCartTaxes = [];
+
             // Header Row
-            fputcsv($file, ['Tanggal', 'Invoice', 'Nama Pembeli', 'Email', 'Kategori Tiket', 'Qty', 'Harga Satuan', 'Diskon', 'Total Snapshot', 'Status Kehadiran']);
+            fputcsv($file, ['Tanggal', 'Invoice', 'Nama Pembeli', 'Email', 'Kategori Tiket', 'Qty', 'Harga Satuan', 'Diskon', 'Pajak Snapshot', 'Total Item Snapshot', 'Status Kehadiran']);
 
             // Data Rows (Optimized with cursor)
-            $this->getExportQuery()->cursor()->each(function ($row) use ($file) {
+            $rows->each(function ($row) use ($file, &$seenCartTaxes) {
+                $lineTotal = ((int) $row->quantity * (int) $row->harga_ticket) - (int) ($row->disc ?? 0);
+                $taxSnapshot = isset($seenCartTaxes[$row->cart_uid]) ? 0 : (int) ($row->pajak ?? 0);
+                $seenCartTaxes[$row->cart_uid] = true;
+
                 fputcsv($file, [
                     $row->created_at,
                     $row->invoice,
@@ -306,10 +336,13 @@ class EventDetail extends Component
                     $row->quantity,
                     $row->harga_ticket,
                     (int) ($row->disc ?? 0),
-                    (($row->quantity * $row->harga_ticket) - (int) ($row->disc ?? 0) + (int) ($row->pajak ?? 0)),
+                    $taxSnapshot,
+                    $lineTotal,
                     $row->konfirmasi == '1' ? 'Hadir' : 'Belum Hadir',
                 ]);
             });
+
+            fputcsv($file, ['', '', '', '', '', '', '', '', 'TOTAL OMZET SNAPSHOT', (int) $exportTotals['owner_revenue'], '']);
 
             fclose($file);
         };
@@ -321,6 +354,7 @@ class EventDetail extends Component
     {
         $event = $this->getEventData();
         $transactions = $this->getExportQuery()->get();
+        $exportTotals = $this->exportSnapshotTotalsFromRows($transactions);
 
         $filter_info = 'Semua Data';
         if ($this->filterPayment !== 'all' || $this->filterRange || $this->searchTransaction) {
@@ -341,6 +375,7 @@ class EventDetail extends Component
             'event' => $event,
             'transactions' => $transactions,
             'filter_info' => $filter_info,
+            'exportTotals' => $exportTotals,
         ])->render();
 
         return response()->streamDownload(function () use ($html) {

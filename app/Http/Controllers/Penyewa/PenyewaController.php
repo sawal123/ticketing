@@ -380,7 +380,9 @@ class PenyewaController extends Controller
         // 3. TERAPKAN FILTER
         // ==========================================================
         if ($request->uid) {
-            $event = Event::where('uid', $request->uid)->first();
+            $event = Event::where('uid', $request->uid)
+                ->where('user_uid', $ownerId)
+                ->first();
             $cartQuery->where('events.uid', $request->uid);
             $omsetQuery->where('events.uid', $request->uid);
             $tiketQuery->where('events.uid', $request->uid);
@@ -468,7 +470,9 @@ class PenyewaController extends Controller
         // 3. TERAPKAN FILTER PENCARIAN
         // ==========================================================
         if ($request->uid) {
-            $event = Event::where('uid', $request->uid)->first();
+            $event = Event::where('uid', $request->uid)
+                ->where('user_uid', $ownerId)
+                ->first();
             $cartQuery->where('events.uid', $request->uid);
             $omsetQuery->where('events.uid', $request->uid);
             $tiketQuery->where('events.uid', $request->uid);

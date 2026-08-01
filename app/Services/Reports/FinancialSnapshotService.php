@@ -105,7 +105,8 @@ class FinancialSnapshotService
         $ownerRevenueTotal = 0;
 
         foreach ($carts as $cart) {
-            $lines = $cart->relationLoaded('hargaCarts') ? $cart->hargaCarts : collect();
+            $cart->loadMissing('hargaCarts');
+            $lines = $cart->hargaCarts;
             $cartTicketTotal = (int) $lines->sum(fn ($item) => (int) $item->quantity * (int) $item->harga_ticket);
             $cartDiscountTotal = (int) $lines->sum(fn ($item) => (int) ($item->disc ?? 0));
             $ticketTotal += $cartTicketTotal;

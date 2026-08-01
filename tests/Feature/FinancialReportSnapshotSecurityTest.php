@@ -167,6 +167,132 @@ class FinancialReportSnapshotSecurityTest extends TestCase
         $this->assertSame(198000, app(WithdrawalBalanceService::class)->grossEarningsFor($tenant->uid));
     }
 
+    public function test_export_totals_do_not_double_count_cart_tax_for_multi_line_cart(): void
+    {
+        $tenant = $this->user();
+        $event = $this->event($tenant, ['fee' => 10]);
+        $hargaA = $this->harga($event, ['kategori' => 'A', 'harga' => 100000]);
+        $hargaB = $this->harga($event, ['kategori' => 'B', 'harga' => 50000]);
+        $voucher = $this->voucher($tenant, $event, [
+            'code' => 'MULTI10',
+            'nominal' => 10000,
+        ]);
+        $cart = $this->cart($tenant, $event, [
+            'payment_type' => 'cash',
+            'gross_amount' => 154000,
+            'internet_fee' => 0,
+            'pajak' => 14000,
+            'pajak_persen' => 10,
+        ]);
+
+        $this->hargaCart($cart, $event, $hargaA, [
+            'quantity' => 1,
+            'harga_ticket' => 100000,
+            'voucher' => $voucher->code,
+            'disc' => 10000,
+        ]);
+        $this->hargaCart($cart, $event, $hargaB, [
+            'quantity' => 1,
+            'harga_ticket' => 50000,
+            'disc' => 0,
+        ]);
+
+        $this->mutateMasterData($event, $hargaA, $voucher);
+        $hargaB->update(['harga' => 1]);
+        $this->actingAs($tenant);
+
+        $component = new DashboardEventDetail;
+        $component->eventUid = $event->uid;
+
+        $exportQuery = (new ReflectionClass($component))->getMethod('getExportQuery');
+        $exportQuery->setAccessible(true);
+        $rows = $exportQuery->invoke($component)->get();
+
+        $totalsMethod = (new ReflectionClass($component))->getMethod('exportSnapshotTotalsFromRows');
+        $totalsMethod->setAccessible(true);
+        $totals = $totalsMethod->invoke($component, $rows);
+
+        $this->assertSame(154000, (int) $totals['owner_revenue']);
+        $this->assertSame(140000, (int) $rows->sum(fn ($row) => ((int) $row->quantity * (int) $row->harga_ticket) - (int) $row->disc));
+        $this->assertSame(28000, (int) $rows->sum('pajak'));
+
+        $html = view('exports.transactions-pdf', [
+            'event' => $event,
+            'transactions' => $rows,
+            'filter_info' => 'Test',
+            'exportTotals' => $totals,
+        ])->render();
+
+        $this->assertStringContainsString('154.000', $html);
+        $this->assertStringNotContainsString('168.000', $html);
+
+        ob_start();
+        $component->exportExcel()->sendContent();
+        $csv = ob_get_clean();
+
+        $this->assertStringContainsString('"TOTAL OMZET SNAPSHOT",154000', $csv);
+        $this->assertStringNotContainsString('168000', $csv);
+    }
+
+    public function test_legacy_cash_event_filter_is_owner_scoped(): void
+    {
+        $tenantA = $this->user(['email' => 'tenant-a-cash-filter@example.test']);
+        [$tenantB, $eventB] = $this->successfulCashSnapshot();
+        View::share('user', $tenantA);
+
+        $this->actingAs($tenantA)
+            ->get('/dashboard/old/cash?uid='.$eventB->uid)
+            ->assertOk()
+            ->assertViewHas('event', null)
+            ->assertViewHas('totalHargaCart', 0)
+            ->assertViewHas('cart', fn ($cart) => $cart->isEmpty());
+
+        $this->assertNotSame($tenantA->uid, $tenantB->uid);
+    }
+
+    public function test_legacy_online_event_filter_is_owner_scoped(): void
+    {
+        $tenantA = $this->user(['email' => 'tenant-a-online-filter@example.test']);
+        [$tenantB, $eventB] = $this->successfulCashSnapshot([
+            'payment_type' => 'bank_transfer',
+        ]);
+        View::share('user', $tenantA);
+
+        $this->actingAs($tenantA)
+            ->get('/dashboard/old/transaksi?uid='.$eventB->uid)
+            ->assertOk()
+            ->assertViewHas('event', null)
+            ->assertViewHas('totalPenjualan', 0)
+            ->assertViewHas('cart', fn ($cart) => $cart->isEmpty());
+
+        $this->assertNotSame($tenantA->uid, $tenantB->uid);
+    }
+
+    public function test_owner_revenue_for_cart_works_without_preloaded_harga_carts(): void
+    {
+        [, , , , $cart] = $this->successfulCashSnapshot();
+        $freshCart = Cart::where('uid', $cart->uid)->firstOrFail();
+
+        $this->assertFalse($freshCart->relationLoaded('hargaCarts'));
+        $this->assertSame(198000, app(FinancialSnapshotService::class)->ownerRevenueForCart($freshCart));
+    }
+
+    public function test_collection_totals_loads_missing_harga_carts(): void
+    {
+        [, , , , $cart] = $this->successfulCashSnapshot();
+        $freshCart = Cart::where('uid', $cart->uid)->firstOrFail();
+
+        $this->assertFalse($freshCart->relationLoaded('hargaCarts'));
+
+        $totals = app(FinancialSnapshotService::class)->collectionTotals(collect([$freshCart]));
+
+        $this->assertSame(200000, $totals['ticket_total']);
+        $this->assertSame(20000, $totals['discount_total']);
+        $this->assertSame(2, $totals['total_quantity']);
+        $this->assertSame(18000, $totals['tax_total']);
+        $this->assertSame(198000, $totals['owner_revenue']);
+    }
+
     private function successfulCashSnapshot(array $cartOverrides = []): array
     {
         $tenant = $this->user();
