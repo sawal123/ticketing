@@ -60,7 +60,7 @@ class ReportExportFilterSecurityTest extends TestCase
         $this->assertStringContainsString("'-SUM(1,1)\",2,100000,20000,18000,180000", $csv);
     }
 
-    public function test_export_pdf_escapes_user_controlled_fields(): void
+    public function test_export_print_returns_html_file_and_escapes_user_controlled_fields(): void
     {
         [$tenant, $event] = $this->successfulCashSnapshot([
             'invoice' => '<b>INV</b>',
@@ -73,16 +73,33 @@ class ReportExportFilterSecurityTest extends TestCase
 
         $component = new DashboardEventDetail;
         $component->eventUid = $event->uid;
+        $response = $component->exportPrint();
+
+        $this->assertStringContainsString('text/html', $response->headers->get('content-type'));
+        $this->assertStringContainsString('.html', $response->headers->get('content-disposition'));
 
         ob_start();
-        $component->exportPdf()->sendContent();
+        $response->sendContent();
         $html = ob_get_clean();
 
+        $this->assertStringStartsNotWith('%PDF', $html);
+        $this->assertStringContainsString('<!DOCTYPE html>', $html);
         $this->assertStringNotContainsString('<script>alert(1)</script>', $html);
         $this->assertStringNotContainsString('<img src=x onerror=alert(1)>', $html);
         $this->assertStringNotContainsString('<svg onload=alert(1)>', $html);
         $this->assertStringContainsString('&lt;script&gt;alert(1)&lt;/script&gt;', $html);
         $this->assertStringContainsString('&lt;b&gt;INV&lt;/b&gt;', $html);
+    }
+
+    public function test_dashboard_event_detail_export_label_is_print_not_pdf(): void
+    {
+        [$tenant, $event] = $this->successfulCashSnapshot();
+
+        Livewire::actingAs($tenant)
+            ->test(DashboardEventDetail::class, ['uid' => $event->uid])
+            ->set('activeTab', 'transaksi')
+            ->assertSee('Export Print')
+            ->assertDontSee('Export PDF');
     }
 
     public function test_dashboard_event_detail_filter_inputs_are_sanitized(): void

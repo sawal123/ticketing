@@ -216,7 +216,7 @@ class FinancialReportSnapshotSecurityTest extends TestCase
         $this->assertSame(140000, (int) $rows->sum(fn ($row) => ((int) $row->quantity * (int) $row->harga_ticket) - (int) $row->disc));
         $this->assertSame(28000, (int) $rows->sum('pajak'));
 
-        $html = view('exports.transactions-pdf', [
+        $html = view('exports.transactions-print', [
             'event' => $event,
             'transactions' => $rows,
             'filter_info' => 'Test',

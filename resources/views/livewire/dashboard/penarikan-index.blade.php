@@ -61,7 +61,7 @@
             </div>
             {{-- <div class="flex items-center gap-2">
                 <x-admin.button variant="secondary" size="sm" icon="file-text">
-                    Export PDF
+                    Export Print
                 </x-admin.button>
                 <x-admin.button variant="secondary" size="sm" icon="file-spreadsheet">
                     Export Excel
