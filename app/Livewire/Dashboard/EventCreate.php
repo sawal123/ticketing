@@ -21,7 +21,7 @@ class EventCreate extends Component
 
     public $event;
 
-    public $pajak = 0;
+    public $fee = 0;
 
     public $start_sale;
 
@@ -56,7 +56,7 @@ class EventCreate extends Component
             }
 
             $this->event = $eventData->event;
-            $this->pajak = $eventData->fee;
+            $this->fee = $eventData->fee;
             $this->start_sale = $eventData->start_sale ? Carbon::parse($eventData->start_sale)->format('Y-m-d H:i') : null;
             $this->tanggal = $eventData->tanggal ? Carbon::parse($eventData->tanggal)->format('Y-m-d H:i') : null;
             $this->alamat = $eventData->alamat;
@@ -75,7 +75,7 @@ class EventCreate extends Component
     {
         return [
             'event' => 'required|string|max:255',
-            'pajak' => 'nullable|numeric|min:0',
+            'fee' => 'required|numeric|min:0|max:100',
             'start_sale' => 'required|date',
             'tanggal' => 'required|date|after:start_sale',
             'alamat' => 'required|string',
@@ -120,7 +120,7 @@ class EventCreate extends Component
             'event' => $this->event,
             'alamat' => $this->alamat,
             'tanggal' => $this->tanggal,
-            'pajak' => $this->pajak,
+            'fee' => $this->fee,
             'start_sale' => $this->start_sale,
             'deskripsi' => $this->deskripsi,
             'map' => $this->map,
@@ -134,7 +134,6 @@ class EventCreate extends Component
             $data['uid'] = $uid;
             $data['user_uid'] = $ownerId;
             $data['status'] = 'inactive';
-            $data['fee'] = 0;
             $data['slug'] = $slug;
             $data['konfirmasi'] = null;
 

@@ -3,6 +3,7 @@
 namespace App\Livewire\Admin;
 
 use App\Models\Cart;
+use App\Models\CartVoucher;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -11,12 +12,19 @@ class TransaksiIndex extends Component
     use WithPagination;
 
     public $search = '';
+
     public $status = 'SUCCESS'; // Default to SUCCESS
+
     public $date = '';
+
     public $paymentType = 'all'; // all, cash, non-cash
+
     public $eventUid = '';
+
     public $selectedTrx = null;
+
     public $discount = 0;
+
     public $voucherCode = null;
 
     protected $queryString = [
@@ -27,10 +35,25 @@ class TransaksiIndex extends Component
         'eventUid' => ['except' => ''],
     ];
 
-    public function updatingSearch() { $this->resetPage(); }
-    public function updatingStatus() { $this->resetPage(); }
-    public function updatingDate() { $this->resetPage(); }
-    public function updatingPaymentType() { $this->resetPage(); }
+    public function updatingSearch()
+    {
+        $this->resetPage();
+    }
+
+    public function updatingStatus()
+    {
+        $this->resetPage();
+    }
+
+    public function updatingDate()
+    {
+        $this->resetPage();
+    }
+
+    public function updatingPaymentType()
+    {
+        $this->resetPage();
+    }
 
     public function resetFilters()
     {
@@ -44,11 +67,13 @@ class TransaksiIndex extends Component
     public function openDetail($id)
     {
         $this->selectedTrx = Cart::with(['event', 'users', 'hargaCarts'])->findOrFail($id);
-        
+
         $this->discount = 0;
         $this->voucherCode = null;
-        
-        $cartVoucher = \App\Models\CartVoucher::where('uid', $this->selectedTrx->uid)->first();
+
+        $cartVoucher = CartVoucher::where('uid', $this->selectedTrx->uid)
+            ->where('event_uid', $this->selectedTrx->event_uid)
+            ->first();
         if ($cartVoucher) {
             $this->voucherCode = $cartVoucher->code;
             $this->discount = $cartVoucher->nominal;
@@ -82,19 +107,19 @@ class TransaksiIndex extends Component
             })
             // Search (Invoice, Email, Name)
             ->when($this->search, function ($query) {
-                $query->where(function($q) {
-                    $q->where('invoice', 'like', '%' . $this->search . '%')
-                      ->orWhereHas('users', function ($u) {
-                          $u->where('name', 'like', '%' . $this->search . '%')
-                            ->orWhere('email', 'like', '%' . $this->search . '%');
-                      });
+                $query->where(function ($q) {
+                    $q->where('invoice', 'like', '%'.$this->search.'%')
+                        ->orWhereHas('users', function ($u) {
+                            $u->where('name', 'like', '%'.$this->search.'%')
+                                ->orWhere('email', 'like', '%'.$this->search.'%');
+                        });
                 });
             })
             ->latest()
             ->paginate(15);
 
         return view('livewire.admin.transaksi-index', [
-            'transactions' => $transactions
+            'transactions' => $transactions,
         ])->layout('admin.layout', ['title' => 'Daftar Transaksi']);
     }
 }

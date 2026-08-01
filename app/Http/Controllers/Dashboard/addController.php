@@ -27,7 +27,7 @@ class addController extends Controller
     {
         $validate = Validator::make($request->all(), [
             'event' => 'required|string|max:255',
-            'fee' => 'required|numeric',
+            'fee' => 'required|numeric|min:0|max:100',
             'alamat' => 'required|string|max:255',
             'tanggal' => 'required|string',
             'map' => 'required|string|max:255',

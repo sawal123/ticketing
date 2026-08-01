@@ -98,7 +98,7 @@
                     </td>
                     <td class="px-5 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div class="flex items-center gap-2">
-                            <button wire:click="viewTransactions('{{ $voucher->code }}')"
+                            <button wire:click="viewTransactions({{ $voucher->id }})"
                                 class="p-2 text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-xl transition-colors"
                                 title="Lihat Transaksi">
                                 <i data-lucide="list" class="w-4 h-4"></i>

@@ -92,9 +92,10 @@ class EditController extends Controller
     public function editHarga(Request $request)
     {
         $request->validate([
+            'id' => 'required|integer',
             'kategori' => 'required|string|max:255',
             'qty' => 'required|integer|min:0',
-            'harga' => 'required|numeric|min:0',
+            'harga' => 'required|integer|min:0',
         ]);
 
         $id = $request->id;
@@ -107,8 +108,8 @@ class EditController extends Controller
         // dd($request->kategori);
         $harga->update([
             'kategori' => $request->kategori,
-            'qty' => $request->qty,
-            'harga' => $request->harga,
+            'qty' => (int) $request->qty,
+            'harga' => (int) $request->harga,
         ]);
 
         return redirect()->back()->with('editHarga', 'Harga Berhasil Di Ubah');

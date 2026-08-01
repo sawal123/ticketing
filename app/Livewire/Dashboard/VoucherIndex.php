@@ -169,7 +169,6 @@ class VoucherIndex extends Component
             'min_beli' => $this->min_beli,
             'max_disc' => $this->max_disc ?? 0,
             'limit' => $this->limit,
-            'status' => $this->status,
         ];
 
         if ($this->isEditMode) {
@@ -178,6 +177,7 @@ class VoucherIndex extends Component
         } else {
             $data['uid'] = Str::uuid();
             $data['digunakan'] = 0;
+            $data['status'] = 'active';
             Voucher::create($data);
             session()->flash('success', 'Voucher berhasil dibuat.');
         }
@@ -208,12 +208,15 @@ class VoucherIndex extends Component
         session()->flash('success', 'Voucher berhasil dihapus.');
     }
 
-    public function viewTransactions($code)
+    public function viewTransactions($id)
     {
-        $this->selectedVoucherCode = $code;
-        $this->transactions = Cart::whereHas('hargaCarts', function ($q) use ($code) {
-            $q->where('voucher', $code);
-        })
+        $voucher = $this->ownedVoucherQuery($id)->firstOrFail();
+        $this->selectedVoucherCode = $voucher->code;
+        $this->transactions = Cart::where('event_uid', $voucher->event_uid)
+            ->whereHas('hargaCarts', function ($q) use ($voucher) {
+                $q->where('voucher', $voucher->code)
+                    ->where('event_uid', $voucher->event_uid);
+            })
             ->where('status', 'SUCCESS')
             ->with(['users', 'hargaCarts' => function ($q) {
                 $q->with('masterHarga');
@@ -261,11 +264,14 @@ class VoucherIndex extends Component
         }
 
         $vouchers = $vouchersQuery->with(['event'])->withCount([
-            'cartVoucher',
+            'cartVoucher as cart_voucher_count' => function ($q) {
+                $q->whereColumn('cart_vouchers.event_uid', 'vouchers.event_uid');
+            },
             'hargaCart as success_count' => function ($q) {
-                $q->whereHas('cart', function ($p) {
-                    $p->where('status', 'SUCCESS');
-                });
+                $q->whereColumn('harga_carts.event_uid', 'vouchers.event_uid')
+                    ->whereHas('cart', function ($p) {
+                        $p->where('status', 'SUCCESS');
+                    });
             },
         ])->latest()->paginate(10);
 
