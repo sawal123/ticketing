@@ -9,6 +9,7 @@ use App\Models\Cash;
 use App\Models\Event;
 use App\Models\Harga;
 use App\Models\HargaCart;
+use App\Models\Partner;
 use App\Models\Transaction;
 use App\Services\Tickets\GateTokenService;
 use Illuminate\Http\Exceptions\HttpResponseException;
@@ -17,6 +18,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Throwable;
 
 class CashController extends Controller
@@ -33,7 +35,7 @@ class CashController extends Controller
             'ttl' => 'required|string|max:100',
             'gender' => 'required|string|max:50',
             'nomor' => 'nullable|string|max:30',
-            'partner' => 'nullable|string|max:255',
+            'partner' => 'nullable|string|max:100',
         ]);
 
         $ownerUid = Auth::user()->uid;
@@ -44,7 +46,7 @@ class CashController extends Controller
         $ttl = $validated['ttl'];
         $gender = $validated['gender'];
         $nomor = $validated['nomor'] ?? '080000000000';
-        $partner = $validated['partner'] ?? null;
+        $partnerUid = $validated['partner'] ?? null;
         $cart = null;
         $pajakPersen = 0;
 
@@ -61,7 +63,7 @@ class CashController extends Controller
                 $ttl,
                 $gender,
                 $nomor,
-                $partner
+                $partnerUid
             ) {
                 $event = Event::query()
                     ->where('uid', $validated['event_uid'])
@@ -69,6 +71,21 @@ class CashController extends Controller
                     ->where('konfirmasi', '1')
                     ->where('status', 'active')
                     ->firstOrFail();
+
+                $partner = null;
+                if (filled($partnerUid)) {
+                    $partner = Partner::query()
+                        ->where('uid', $partnerUid)
+                        ->where('user_uid', $ownerUid)
+                        ->where('status', 'active')
+                        ->first();
+
+                    if (! $partner) {
+                        throw ValidationException::withMessages([
+                            'partner' => 'Partner tidak valid.',
+                        ]);
+                    }
+                }
 
                 $harga = Harga::query()
                     ->whereKey($validated['harga_id'])
@@ -128,7 +145,7 @@ class CashController extends Controller
 
                 $cash = new Cash([
                     'uid' => $cartUid,
-                    'uid_partner' => $partner,
+                    'uid_partner' => $partner?->uid,
                     'uid_user' => $ownerUid,
                     'uid_event' => $event->uid,
                     'name' => $nama,
@@ -147,6 +164,8 @@ class CashController extends Controller
                 app(GateTokenService::class)->issueIfEnabled($cart);
             }, 3);
         } catch (HttpResponseException $e) {
+            throw $e;
+        } catch (ValidationException $e) {
             throw $e;
         } catch (Throwable $e) {
             return back()->with('error', $e->getMessage());

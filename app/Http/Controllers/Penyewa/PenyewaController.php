@@ -217,7 +217,11 @@ class PenyewaController extends Controller
         $persenWanita = $totalDemografi > 0 ? ($wanita / $totalDemografi) * 100 : 0;
 
         $dataUser = [$pria, $wanita, $persenPria, $persenWanita];
-        $partner = Partner::where('referensi', $ownerId)->where('status', 'active')->get();
+        $partner = Partner::query()
+            ->where('user_uid', $ownerId)
+            ->where('status', 'active')
+            ->orderBy('name')
+            ->get();
 
         // 8. DATA 1 EVENT AKTIF UNTUK BANNER DASHBOARD
         $events = Event::where('user_uid', $ownerId)
@@ -691,7 +695,7 @@ class PenyewaController extends Controller
             $provinsi = ['null', 'data'];
         }
 
-        $partner = Partner::where('referensi', $ownerId)->get();
+        $partner = Partner::where('user_uid', $ownerId)->get();
 
         // dd($provinsi[]);
         return view(
