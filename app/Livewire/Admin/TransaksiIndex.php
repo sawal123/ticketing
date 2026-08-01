@@ -3,6 +3,7 @@
 namespace App\Livewire\Admin;
 
 use App\Models\Cart;
+use Carbon\Carbon;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -33,6 +34,55 @@ class TransaksiIndex extends Component
         'paymentType' => ['except' => 'all'],
         'eventUid' => ['except' => ''],
     ];
+
+    private function allowedStatuses(): array
+    {
+        return [
+            'all',
+            Cart::STATUS_SUCCESS,
+            Cart::STATUS_PENDING,
+            Cart::STATUS_UNPAID,
+            Cart::STATUS_EXPIRED,
+            'FAILED',
+            Cart::STATUS_CANCELLED,
+            Cart::STATUS_RESERVED,
+            Cart::STATUS_PAYMENT_REVIEW,
+        ];
+    }
+
+    private function allowedPaymentTypes(): array
+    {
+        return ['all', 'cash', 'non-cash'];
+    }
+
+    private function sanitizeFilters(): void
+    {
+        $this->search = mb_substr(trim((string) $this->search), 0, 100);
+        $this->eventUid = mb_substr(trim((string) $this->eventUid), 0, 100);
+
+        if (! in_array($this->status, $this->allowedStatuses(), true)) {
+            $this->status = 'SUCCESS';
+        }
+
+        if (! in_array($this->paymentType, $this->allowedPaymentTypes(), true)) {
+            $this->paymentType = 'all';
+        }
+
+        $this->date = trim((string) $this->date);
+        if ($this->date !== '' && ! $this->validDate($this->date)) {
+            $this->date = '';
+            session()->flash('error', 'Filter tanggal tidak valid.');
+        }
+    }
+
+    private function validDate(string $date): bool
+    {
+        try {
+            return Carbon::createFromFormat('Y-m-d', $date)->format('Y-m-d') === $date;
+        } catch (\Throwable) {
+            return false;
+        }
+    }
 
     public function updatingSearch()
     {
@@ -81,6 +131,8 @@ class TransaksiIndex extends Component
 
     public function render()
     {
+        $this->sanitizeFilters();
+
         $transactions = Cart::query()
             ->with(['users', 'event', 'hargaCarts'])
             // Status Filter
