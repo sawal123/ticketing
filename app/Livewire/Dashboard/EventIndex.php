@@ -3,7 +3,13 @@
 namespace App\Livewire\Dashboard;
 
 use App\Models\Cart;
+use App\Models\Cash;
 use App\Models\Event;
+use App\Models\Harga;
+use App\Models\HargaCart;
+use App\Models\Transaction;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -11,14 +17,6 @@ use Livewire\WithPagination;
 class EventIndex extends Component
 {
     use WithPagination;
-
-    private const BLOCKING_TRANSACTION_STATUSES = [
-        Cart::STATUS_SUCCESS,
-        Cart::STATUS_PENDING,
-        Cart::STATUS_RESERVED,
-        Cart::STATUS_PAYMENT_REVIEW,
-        Cart::STATUS_UNPAID,
-    ];
 
     #[Layout('layouts.unified')]
     public $search = '';
@@ -40,21 +38,62 @@ class EventIndex extends Component
 
     public function deletePendingEvent(string $uid): void
     {
-        $event = $this->ownedEventQuery($uid)->firstOrFail();
+        try {
+            DB::transaction(function () use ($uid) {
+                $event = $this->ownedEventQuery($uid)
+                    ->lockForUpdate()
+                    ->first();
 
-        if ($this->eventHasTransactions($event)) {
-            session()->flash('error', 'Event tidak dapat dihapus karena sudah memiliki transaksi.');
+                if (! $event) {
+                    throw ValidationException::withMessages([
+                        'event' => 'Event tidak ditemukan atau bukan milik Anda.',
+                    ]);
+                }
+
+                if ($event->konfirmasi !== null || strtolower((string) $event->status) === 'active') {
+                    throw ValidationException::withMessages([
+                        'event' => 'Event yang sudah aktif/terkonfirmasi tidak dapat dihapus.',
+                    ]);
+                }
+
+                $tickets = Harga::query()
+                    ->where('uid', $event->uid)
+                    ->lockForUpdate()
+                    ->get();
+
+                if ($tickets->contains(fn (Harga $ticket) => (int) ($ticket->sold_qty ?? 0) > 0
+                    || (int) ($ticket->reserved_qty ?? 0) > 0)) {
+                    throw ValidationException::withMessages([
+                        'event' => 'Event tidak dapat dihapus karena sudah memiliki tiket terjual atau reserved.',
+                    ]);
+                }
+
+                $relatedCart = Cart::query()
+                    ->where('event_uid', $event->uid)
+                    ->whereNull('deleted_at')
+                    ->lockForUpdate()
+                    ->first();
+
+                if ($relatedCart) {
+                    throw ValidationException::withMessages([
+                        'event' => 'Event tidak dapat dihapus karena sudah memiliki transaksi.',
+                    ]);
+                }
+
+                if ($this->eventHasHistoricalRecords($event->uid)) {
+                    throw ValidationException::withMessages([
+                        'event' => 'Event tidak dapat dihapus karena sudah memiliki riwayat transaksi.',
+                    ]);
+                }
+
+                $event->delete();
+            }, 3);
+        } catch (ValidationException $e) {
+            session()->flash('error', $e->errors()['event'][0] ?? 'Event tidak dapat dihapus.');
 
             return;
         }
 
-        if ($event->konfirmasi !== null) {
-            session()->flash('error', 'Event yang sudah disetujui tidak dapat dihapus dari halaman ini.');
-
-            return;
-        }
-
-        $event->delete();
         session()->flash('message', 'Event menunggu persetujuan berhasil dihapus.');
         $this->resetPage();
     }
@@ -68,11 +107,11 @@ class EventIndex extends Component
             ->when($user->role !== 'admin', fn ($query) => $query->where('user_uid', $ownerId));
     }
 
-    private function eventHasTransactions(Event $event): bool
+    private function eventHasHistoricalRecords(string $eventUid): bool
     {
-        return Cart::where('event_uid', $event->uid)
-            ->whereIn('status', self::BLOCKING_TRANSACTION_STATUSES)
-            ->exists();
+        return HargaCart::query()->where('event_uid', $eventUid)->exists()
+            || Transaction::query()->where('event_uid', $eventUid)->exists()
+            || Cash::query()->where('uid_event', $eventUid)->exists();
     }
 
     public function render()

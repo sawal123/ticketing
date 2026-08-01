@@ -4,15 +4,19 @@ namespace App\Http\Controllers\Penyewa;
 
 use App\Http\Controllers\Controller;
 use App\Models\Cart;
+use App\Models\Cash;
 use App\Models\Event;
 use App\Models\EventDate;
 use App\Models\Harga;
+use App\Models\HargaCart;
 use App\Models\Partner;
 use App\Models\Talent;
+use App\Models\Transaction;
 use App\Models\Voucher;
 use App\Services\SecureImageStorage;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class DeleteController extends Controller
 {
@@ -28,35 +32,72 @@ class DeleteController extends Controller
 
     public function eventDelete($uid)
     {
-        DB::transaction(function () use ($uid) {
-            $event = $this->ownedEventQuery($uid)->lockForUpdate()->firstOrFail();
+        $coverToDelete = null;
+        $talentImagesToDelete = [];
 
-            if ($this->eventHasTransactions($event)) {
-                redirect()->back()
-                    ->with('error', 'Event tidak dapat dihapus karena sudah memiliki transaksi.')
-                    ->throwResponse();
-            }
+        try {
+            DB::transaction(function () use ($uid, &$coverToDelete, &$talentImagesToDelete) {
+                $event = $this->ownedEventQuery($uid)->lockForUpdate()->firstOrFail();
 
-            $eventDate = EventDate::where('uid', $event->uid)->lockForUpdate()->first();
-            $hargaEvent = Harga::where('uid', $event->uid)->lockForUpdate()->get();
-            $talentEvent = Talent::where('uid', $event->uid)->lockForUpdate()->get();
+                if ($event->konfirmasi !== null || strtolower((string) $event->status) === 'active') {
+                    throw ValidationException::withMessages([
+                        'event' => 'Event yang sudah aktif/terkonfirmasi tidak dapat dihapus.',
+                    ]);
+                }
 
-            $this->images->delete('cover', $event->cover);
-            $event->forceDelete();
+                $eventDate = EventDate::where('uid', $event->uid)->lockForUpdate()->first();
+                $hargaEvent = Harga::where('uid', $event->uid)->lockForUpdate()->get();
+                $talentEvent = Talent::where('uid', $event->uid)->lockForUpdate()->get();
 
-            if ($eventDate) {
-                $eventDate->delete();
-            }
+                if ($hargaEvent->contains(fn (Harga $harga) => (int) ($harga->sold_qty ?? 0) > 0
+                    || (int) ($harga->reserved_qty ?? 0) > 0)) {
+                    throw ValidationException::withMessages([
+                        'event' => 'Event tidak dapat dihapus karena sudah memiliki tiket terjual atau reserved.',
+                    ]);
+                }
 
-            foreach ($talentEvent as $talent) {
-                $this->images->delete('talent', $talent->gambar);
-                $talent->delete();
-            }
+                $relatedCart = Cart::query()
+                    ->where('event_uid', $event->uid)
+                    ->whereNull('deleted_at')
+                    ->lockForUpdate()
+                    ->first();
 
-            foreach ($hargaEvent as $harga) {
-                $harga->delete();
-            }
-        });
+                if ($relatedCart) {
+                    throw ValidationException::withMessages([
+                        'event' => 'Event tidak dapat dihapus karena sudah memiliki transaksi.',
+                    ]);
+                }
+
+                if ($this->eventHasHistoricalRecords($event->uid)) {
+                    throw ValidationException::withMessages([
+                        'event' => 'Event tidak dapat dihapus karena sudah memiliki riwayat transaksi.',
+                    ]);
+                }
+
+                $coverToDelete = $event->cover;
+                $event->forceDelete();
+
+                if ($eventDate) {
+                    $eventDate->delete();
+                }
+
+                foreach ($talentEvent as $talent) {
+                    $talentImagesToDelete[] = $talent->gambar;
+                    $talent->delete();
+                }
+
+                foreach ($hargaEvent as $harga) {
+                    $harga->delete();
+                }
+            }, 3);
+        } catch (ValidationException $e) {
+            return redirect()->back()->with('error', $e->errors()['event'][0] ?? 'Event tidak dapat dihapus.');
+        }
+
+        $this->images->delete('cover', $coverToDelete);
+        foreach ($talentImagesToDelete as $talentImage) {
+            $this->images->delete('talent', $talentImage);
+        }
 
         return redirect()->back()->with('hapus', 'Data Event Berhasil dihapus');
     }
@@ -145,11 +186,11 @@ class DeleteController extends Controller
             });
     }
 
-    private function eventHasTransactions(Event $event): bool
+    private function eventHasHistoricalRecords(string $eventUid): bool
     {
-        return Cart::where('event_uid', $event->uid)
-            ->whereIn('status', self::BLOCKING_TRANSACTION_STATUSES)
-            ->exists();
+        return HargaCart::query()->where('event_uid', $eventUid)->exists()
+            || Transaction::query()->where('event_uid', $eventUid)->exists()
+            || Cash::query()->where('uid_event', $eventUid)->exists();
     }
 
     private function hargaHasTransactions(Harga $harga): bool
