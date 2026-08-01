@@ -2,33 +2,35 @@
 
 namespace App\Livewire\Dashboard;
 
+use App\Jobs\SendStaffInvitationJob;
 use App\Models\User;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Str;
+use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Livewire\WithPagination;
-use Livewire\Attributes\Layout;
-use Illuminate\Support\Str;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\URL;
-use App\Jobs\SendStaffInvitationJob;
 
 class StaffIndex extends Component
 {
     use WithPagination;
 
     #[Layout('layouts.unified')]
-    
     public $search = '';
-    
-    // Form properties
+
     public $staff_id;
+
     public $name;
+
     public $email;
+
     public $isEditMode = false;
 
-    protected $rules = [
-        'name' => 'required|string|max:255',
-        'email' => 'required|email|max:255',
-    ];
+    public function mount(): void
+    {
+        abort_unless(Auth::user()?->role === 'penyewa', 403);
+    }
 
     public function resetForm()
     {
@@ -44,78 +46,71 @@ class StaffIndex extends Component
 
     public function save()
     {
-        $user = Auth::user();
-        $ownerId = ($user->role === 'staff') ? $user->parent_uid : $user->uid;
-
         if ($this->isEditMode) {
             $this->validate([
                 'name' => 'required|string|max:255',
-                'email' => 'required|email|unique:users,email,' . $this->staff_id,
             ]);
 
-            $staff = User::findOrFail($this->staff_id);
+            $staff = $this->ownedStaffQuery()
+                ->whereKey($this->staff_id)
+                ->firstOrFail();
+
             $staff->update([
                 'name' => $this->name,
-                'email' => $this->email,
             ]);
+
             session()->flash('success', 'Data staff berhasil diperbarui.');
         } else {
-            // Create or Convert staff user
-            $existingUser = User::where('email', $this->email)->first();
+            $this->validate([
+                'name' => 'required|string|max:255',
+                'email' => 'required|email|max:255',
+            ]);
 
-            if ($existingUser) {
-                if (in_array($existingUser->role, ['admin', 'penyewa'])) {
-                    $this->addError('email', 'Email ini sudah terdaftar sebagai ' . $existingUser->role . ' dan tidak dapat dijadikan staff.');
-                    return;
-                }
+            $email = Str::lower(trim((string) $this->email));
+            $existingUser = User::where('email', $email)->first();
 
-                if ($existingUser->role === 'staff') {
-                    $this->addError('email', 'Email ini sudah terdaftar sebagai staff.');
-                    return;
-                }
+            if ($existingUser?->role === User::STAFF_ROLE && $existingUser->parent_uid === $this->ownerUid()) {
+                $this->addError('email', 'Staff dengan email ini sudah terdaftar.');
 
-                // If role is 'user', convert to 'staff'
-                $existingUser->update([
-                    'role' => 'staff',
-                    'parent_uid' => $ownerId,
-                    'name' => $this->name, // Update name to the one provided in the form
-                ]);
-                $staff = $existingUser;
-                $message = 'User dengan email ini telah berhasil diubah menjadi staff.';
-            } else {
-                $this->validate([
-                    'name' => 'required|string|max:255',
-                    'email' => 'required|email|unique:users,email',
-                ]);
-
-                $staff = User::create([
-                    'uid' => (string) Str::uuid(),
-                    'parent_uid' => $ownerId,
-                    'name' => $this->name,
-                    'email' => $this->email,
-                    'role' => 'staff',
-                    'password' => bcrypt(Str::random(16)),
-                    'birthday' => '2000-01-01',
-                    'nomor' => '-',
-                    'alamat' => '-',
-                    'kota' => '-',
-                    'gender' => 'pria',
-                    'gambar' => 'default.png',
-                ]);
-                $message = 'Undangan staff berhasil dikirim ke ' . $staff->email;
+                return;
             }
 
-            // Create verification URL
+            if ($existingUser?->role === User::STAFF_ROLE) {
+                $this->addError('email', 'Email tidak dapat digunakan sebagai staff.');
+
+                return;
+            }
+
+            if ($existingUser) {
+                $this->addError('email', 'Email sudah terdaftar. Pemilik akun harus menerima undangan staff terlebih dahulu.');
+
+                return;
+            }
+
+            $staff = User::create([
+                'uid' => (string) Str::uuid(),
+                'parent_uid' => $this->ownerUid(),
+                'name' => $this->name,
+                'email' => $email,
+                'role' => User::STAFF_ROLE,
+                'password' => Hash::make(Str::random(40)),
+                'birthday' => '2000-01-01',
+                'nomor' => '-',
+                'alamat' => '-',
+                'kota' => '-',
+                'gender' => 'pria',
+                'gambar' => 'default.png',
+            ]);
+
             $verifyUrl = URL::temporarySignedRoute(
                 'staff.verify',
                 now()->addHours(24),
                 ['uid' => $staff->uid]
             );
 
-            // Send invitation email
             dispatch(new SendStaffInvitationJob($staff->email, $staff->name, $verifyUrl));
 
-            session()->flash('success', $message);
+            session()->flash('success', 'Undangan staff berhasil dikirim ke '.$staff->email);
         }
 
         $this->dispatch('close-modal', name: 'staff-modal');
@@ -124,36 +119,49 @@ class StaffIndex extends Component
 
     public function confirmDelete($id)
     {
-        $this->staff_id = $id;
+        $staff = $this->ownedStaffQuery()
+            ->whereKey($id)
+            ->firstOrFail();
+
+        $this->staff_id = $staff->id;
         $this->dispatch('open-modal', name: 'delete-modal');
     }
 
     public function delete()
     {
-        $staff = User::findOrFail($this->staff_id);
-        if ($staff->role === 'staff') {
-            $staff->delete();
-            session()->flash('success', 'Staff berhasil dihapus.');
-        }
+        $staff = $this->ownedStaffQuery()
+            ->whereKey($this->staff_id)
+            ->firstOrFail();
+
+        $staff->delete();
+        session()->flash('success', 'Staff berhasil dihapus.');
+
         $this->dispatch('close-modal', name: 'delete-modal');
     }
 
     public function render()
     {
-        $user = Auth::user();
-        $ownerId = ($user->role === 'staff') ? $user->parent_uid : $user->uid;
-
-        $staffs = User::where('role', 'staff')
-            ->where('parent_uid', $ownerId)
-            ->where(function($q) {
-                $q->where('name', 'like', '%' . $this->search . '%')
-                  ->orWhere('email', 'like', '%' . $this->search . '%');
+        $staffs = $this->ownedStaffQuery()
+            ->where(function ($q) {
+                $q->where('name', 'like', '%'.$this->search.'%')
+                    ->orWhere('email', 'like', '%'.$this->search.'%');
             })
             ->latest()
             ->paginate(10);
 
         return view('livewire.dashboard.staff-index', [
-            'staffs' => $staffs
+            'staffs' => $staffs,
         ]);
+    }
+
+    private function ownedStaffQuery()
+    {
+        return User::where('role', User::STAFF_ROLE)
+            ->where('parent_uid', $this->ownerUid());
+    }
+
+    private function ownerUid(): string
+    {
+        return Auth::user()->uid;
     }
 }

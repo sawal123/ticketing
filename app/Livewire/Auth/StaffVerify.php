@@ -5,19 +5,23 @@ namespace App\Livewire\Auth;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Request;
 use Livewire\Component;
 
 class StaffVerify extends Component
 {
     public $uid;
+
     public $staff;
-    
+
     // Form fields
     public $password;
+
     public $password_confirmation;
+
     public $nomor;
+
     public $birthday;
+
     public $alamat;
 
     public $isSuccess = false;
@@ -25,12 +29,15 @@ class StaffVerify extends Component
     public function mount($uid)
     {
         // Check signature from request
-        if (!request()->hasValidSignature()) {
+        if (! request()->hasValidSignature()) {
             abort(401, 'Link verifikasi sudah kadaluarsa atau tidak valid.');
         }
 
         $this->uid = $uid;
-        $this->staff = User::where('uid', $uid)->firstOrFail();
+        $this->staff = User::where('uid', $uid)
+            ->where('role', User::STAFF_ROLE)
+            ->whereNotNull('parent_uid')
+            ->firstOrFail();
 
         if ($this->staff->email_verified_at) {
             return redirect('/login')->with('success', 'Akun sudah diverifikasi. Silakan login.');

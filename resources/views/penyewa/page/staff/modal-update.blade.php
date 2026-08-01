@@ -25,8 +25,7 @@
                     <div class="row mb-4">
                         <label class="col-md-3 form-label">Email</label>
                         <div class="col-md-9">
-                            <input type="email" class="form-control" name="email" id="edit_email" required
-                                autocomplete="off">
+                            <input type="email" class="form-control" id="edit_email" autocomplete="off" disabled>
                         </div>
                     </div>
                 </div>
