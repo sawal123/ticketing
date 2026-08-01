@@ -196,6 +196,7 @@ class DemoIndex extends Component
             'buyerEmail' => 'required|email',
             'buyerBirthday' => 'required|date',
             'buyerGender' => 'required|in:pria,wanita',
+            'partnerId' => 'nullable|string|max:100',
         ]);
 
         try {
@@ -205,6 +206,8 @@ class DemoIndex extends Component
             DB::transaction(function () use (&$emailPayload, &$result) {
                 $user = auth()->user();
                 $ownerId = ($user->role === 'staff') ? $user->parent_uid : $user->uid;
+                $partnerUid = filled($this->partnerId) ? (string) $this->partnerId : null;
+                $partner = null;
 
                 $event = Event::where('uid', $this->selectedEventId)
                     ->where('konfirmasi', '1')
@@ -249,6 +252,20 @@ class DemoIndex extends Component
                         'model' => $ticket,
                         'qty' => $requestedQty,
                     ];
+                }
+
+                if ($partnerUid !== null) {
+                    $partner = Partner::query()
+                        ->where('uid', $partnerUid)
+                        ->where('user_uid', $ownerId)
+                        ->where('status', 'active')
+                        ->first();
+
+                    if (! $partner) {
+                        throw ValidationException::withMessages([
+                            'partnerId' => 'Partner tidak valid.',
+                        ]);
+                    }
                 }
 
                 $subtotal = collect($validatedTickets)->sum(fn ($item) => (int) $item['model']->harga * $item['qty']);
@@ -308,7 +325,7 @@ class DemoIndex extends Component
 
                 Cash::create([
                     'uid' => $cart->uid,
-                    'uid_partner' => $this->partnerId,
+                    'uid_partner' => $partner?->uid,
                     'uid_user' => $user->uid,
                     'uid_event' => $event->uid,
                     'name' => $this->buyerName,
@@ -483,14 +500,11 @@ class DemoIndex extends Component
         $isAdmin = $user->role === 'admin';
         $ownerId = ($user->role === 'staff') ? $user->parent_uid : $user->uid;
 
-        // Fetch Partners for the form
-        $partners = Partner::query();
-        if (! $isAdmin) {
-            $partners->where('referensi', $ownerId)->where('status', 'active');
-        } else {
-            $partners->where('status', 'active');
-        }
-        $availablePartners = $partners->get();
+        $availablePartners = Partner::query()
+            ->where('user_uid', $ownerId)
+            ->where('status', 'active')
+            ->orderBy('name')
+            ->get();
 
         // RUMUS DASAR PERHITUNGAN
         $rumusDasar = "
