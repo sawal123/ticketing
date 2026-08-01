@@ -38,7 +38,7 @@
                             <option value="" selected>Pilih Partner (optional)</option>
                             @foreach ($partner as $key => $partners)
                                 <option value="{{ $partners->uid }}" class="{{ $key + 1 }}">
-                                    {{ $partners->name }}</option>
+                                    {{ $partners->name }}{{ $partners->referensi ? ' - '.$partners->referensi : '' }}</option>
                             @endforeach
                         </select>
                     </div>
