@@ -14,6 +14,7 @@ use App\Models\Talent;
 use App\Models\User;
 // use Illuminate\Support\Facades\DB;
 use App\Models\Voucher;
+use App\Services\Withdrawals\WithdrawalBalanceService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -611,6 +612,7 @@ class PenyewaController extends Controller
     {
         $user = Auth::user();
         $ownerId = ($user->role === 'staff') ? $user->parent_uid : $user->uid;
+        $withdrawalBalances = app(WithdrawalBalanceService::class);
 
         // Rumus Dasar Perhitungan (Sama dengan Dashboard)
         $rumusDasar = "
@@ -628,13 +630,7 @@ class PenyewaController extends Controller
         ";
 
         // 1. Hitung Total Saldo (Semua Payment Type KECUALI Cash)
-        $totalCart = HargaCart::join('carts', 'carts.uid', '=', 'harga_carts.uid')
-            ->join('events', 'events.uid', '=', 'carts.event_uid')
-            ->leftJoin('vouchers', 'vouchers.code', '=', 'harga_carts.voucher')
-            ->where('carts.status', 'SUCCESS')
-            ->where('events.user_uid', $ownerId)
-            ->where('carts.payment_type', '!=', 'cash')
-            ->sum(DB::raw($rumusDasar));
+        $totalCart = $withdrawalBalances->grossEarningsFor($ownerId);
 
         // 2. Hitung Total Cash
         $ars = HargaCart::join('carts', 'carts.uid', '=', 'harga_carts.uid')
@@ -649,14 +645,10 @@ class PenyewaController extends Controller
         $penarikan = Penarikan::where('uid_user', $ownerId)->latest()->get();
 
         // 4. Hitung Total Pending (BUG DIPERBAIKI & LEBIH CEPAT TANPA FOREACH)
-        $arss = Penarikan::where('uid_user', $ownerId)
-            ->where('status', 'PENDING')
-            ->sum('amount');
+        $arss = $withdrawalBalances->deductedWithdrawalsFor($ownerId, ['PENDING', 'PROCESSING']);
 
         // 5. Hitung Total Sukses/Paid (LEBIH CEPAT TANPA FOREACH)
-        $sc = Penarikan::where('uid_user', $ownerId)
-            ->where('status', 'SUCCESS')
-            ->sum('amount');
+        $sc = $withdrawalBalances->deductedWithdrawalsFor($ownerId, ['SUCCESS']);
 
         return view(
             'penyewa.page.money',

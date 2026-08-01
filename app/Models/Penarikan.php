@@ -10,9 +10,23 @@ class Penarikan extends Model
 {
     use HasFactory, SoftDeletes;
 
+    public const STATUS_PENDING = 'PENDING';
+
+    public const STATUS_PROCESSING = 'PROCESSING';
+
+    public const STATUS_SUCCESS = 'SUCCESS';
+
+    public const STATUS_REJECTED = 'REJECTED';
+
+    public const STATUS_CANCELLED = 'CANCELLED';
+
+    public const STATUS_FAILED = 'FAILED';
+
     protected $fillable = ['uid', 'uid_user', 'amount', 'note', 'kwitansi', 'status', 'approved_at'];
 
     protected $casts = [
+        'amount' => 'integer',
+        'kwitansi' => 'integer',
         'approved_at' => 'datetime',
     ];
 
