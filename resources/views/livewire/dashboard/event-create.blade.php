@@ -34,7 +34,7 @@
                     <label class="block text-[11px] font-black text-slate-400 uppercase tracking-[0.1em] mb-2">Event Tax
                         (%)</label>
                     <div class="relative">
-                        <x-admin.input type="number" wire:model="pajak" placeholder="15" />
+                        <x-admin.input type="number" wire:model="fee" min="0" max="100" placeholder="15" />
                         <div class="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
                             <span class="text-slate-400 font-bold">%</span>
                         </div>

@@ -62,7 +62,6 @@ class EventDetail extends Component
         'kategori' => '',
         'qty' => 0,
         'harga' => 0,
-        'status' => 'active',
     ];
 
     public $editingHargaId;
@@ -71,7 +70,6 @@ class EventDetail extends Component
         'kategori' => '',
         'qty' => 0,
         'harga' => 0,
-        'status' => 'active',
     ];
 
     // For Delete Modal
@@ -418,7 +416,6 @@ class EventDetail extends Component
             'kategori' => '',
             'qty' => 0,
             'harga' => 0,
-            'status' => 'active',
         ];
 
         $this->dispatch('open-modal', name: 'add-ticket-modal');
@@ -437,15 +434,17 @@ class EventDetail extends Component
                     ->where(fn ($query) => $query->where('uid', $this->eventUid)),
             ],
             'newHarga.qty' => 'required|integer|min:0',
-            'newHarga.harga' => 'required|numeric|min:0',
-            'newHarga.status' => 'required|in:active,inactive',
+            'newHarga.harga' => 'required|integer|min:0',
         ], [
             'newHarga.kategori.unique' => 'Nama kategori tiket sudah digunakan pada event ini.',
         ]);
 
         Harga::create([
             'uid' => $this->eventUid,
-            ...$validated['newHarga'],
+            'kategori' => $validated['newHarga']['kategori'],
+            'qty' => (int) $validated['newHarga']['qty'],
+            'harga' => (int) $validated['newHarga']['harga'],
+            'status' => 'active',
         ]);
 
         $this->dispatch('close-modal', name: 'add-ticket-modal');
@@ -460,7 +459,6 @@ class EventDetail extends Component
             'kategori' => $harga->kategori,
             'qty' => $harga->qty,
             'harga' => $harga->harga,
-            'status' => $harga->status,
         ];
 
         $this->dispatch('open-modal', name: 'edit-ticket-modal');
@@ -471,7 +469,7 @@ class EventDetail extends Component
         $this->validate([
             'editingHarga.kategori' => 'required',
             'editingHarga.qty' => 'required|integer|min:0',
-            'editingHarga.harga' => 'required|numeric',
+            'editingHarga.harga' => 'required|integer|min:0',
         ]);
 
         $harga = $this->authorizedHarga($this->editingHargaId);
@@ -483,7 +481,11 @@ class EventDetail extends Component
             return;
         }
 
-        $harga->update($this->editingHarga);
+        $harga->update([
+            'kategori' => $this->editingHarga['kategori'],
+            'qty' => (int) $this->editingHarga['qty'],
+            'harga' => (int) $this->editingHarga['harga'],
+        ]);
 
         $this->dispatch('close-modal', name: 'edit-ticket-modal');
         session()->flash('message', 'Data tiket berhasil diperbarui.');

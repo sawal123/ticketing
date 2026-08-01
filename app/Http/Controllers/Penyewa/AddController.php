@@ -105,7 +105,7 @@ class AddController extends Controller
             'uid' => 'required|string',
             'kategori' => 'required|string|max:255',
             'qty' => 'required|integer|min:0',
-            'harga' => 'required|numeric|min:0',
+            'harga' => 'required|integer|min:0',
         ]);
 
         $eventOwner = Event::where('uid', $request->uid)->where('user_uid', Auth::user()->uid)->firstOrFail();
@@ -116,8 +116,9 @@ class AddController extends Controller
             $harga = new Harga([
                 'uid' => $eventOwner->uid,
                 'kategori' => $request->kategori,
-                'qty' => $request->qty,
-                'harga' => $request->harga,
+                'qty' => (int) $request->qty,
+                'harga' => (int) $request->harga,
+                'status' => 'active',
             ]);
             try {
                 $harga->save();

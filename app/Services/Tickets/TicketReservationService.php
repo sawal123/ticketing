@@ -321,6 +321,7 @@ class TicketReservationService
     protected function markVoucherUsage(Cart $cart): bool
     {
         $cartVoucher = CartVoucher::where('uid', $cart->uid)
+            ->where('event_uid', $cart->event_uid)
             ->whereNotNull('code')
             ->where('code', '!=', '')
             ->first();

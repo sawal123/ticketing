@@ -482,15 +482,6 @@
                     <x-admin.input type="number" wire:model="editingHarga.harga" required />
                 </div>
             </div>
-            <div>
-                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Status</label>
-                <select wire:model="editingHarga.status"
-                    class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-800 dark:text-slate-200 text-sm focus:ring-2 focus:ring-indigo-500 transition-all">
-                    <option value="active">Aktif</option>
-                    <option value="inactive">Nonaktif</option>
-                </select>
-            </div>
-
             <div class="flex justify-end gap-3 mt-6">
                 <x-admin.button type="button" x-on:click="show = false" variant="ghost"
                     wire:loading.attr="disabled" wire:target="updateTicket"
