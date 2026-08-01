@@ -42,6 +42,7 @@ class TicketPricingService
     public function calculateVoucherDiscount(Cart $cart, int $ticketTotal): int
     {
         $cartVoucher = CartVoucher::where('uid', $cart->uid)
+            ->where('event_uid', $cart->event_uid)
             ->whereNotNull('code')
             ->where('code', '!=', '')
             ->first();

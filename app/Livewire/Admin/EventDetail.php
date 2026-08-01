@@ -38,7 +38,6 @@ class EventDetail extends Component
         'kategori' => '',
         'qty' => 0,
         'harga' => 0,
-        'status' => 'active',
     ];
 
     // For Delete Modal
@@ -235,7 +234,6 @@ class EventDetail extends Component
             'kategori' => $harga->kategori,
             'qty' => $harga->qty,
             'harga' => $harga->harga,
-            'status' => $harga->status,
         ];
 
         $this->dispatch('open-modal', name: 'edit-ticket-modal');
@@ -244,13 +242,17 @@ class EventDetail extends Component
     public function updateTicket()
     {
         $this->validate([
-            'editingHarga.kategori' => 'required',
-            'editingHarga.qty' => 'required|numeric',
-            'editingHarga.harga' => 'required|numeric',
+            'editingHarga.kategori' => 'required|string|max:255',
+            'editingHarga.qty' => 'required|integer|min:0',
+            'editingHarga.harga' => 'required|integer|min:0',
         ]);
 
         $harga = Harga::findOrFail($this->editingHargaId);
-        $harga->update($this->editingHarga);
+        $harga->update([
+            'kategori' => $this->editingHarga['kategori'],
+            'qty' => (int) $this->editingHarga['qty'],
+            'harga' => (int) $this->editingHarga['harga'],
+        ]);
 
         $this->dispatch('close-modal', name: 'edit-ticket-modal');
         session()->flash('message', 'Data tiket berhasil diperbarui.');
@@ -309,10 +311,14 @@ class EventDetail extends Component
                 ->first();
 
             if ($selectedTransaction) {
-                $cartVoucher = CartVoucher::where('uid', $this->selectedTransactionId)->first();
+                $cartVoucher = CartVoucher::where('uid', $this->selectedTransactionId)
+                    ->where('event_uid', $selectedTransaction->event_uid)
+                    ->first();
                 if ($cartVoucher) {
                     $voucherCode = $cartVoucher->code;
-                    $voucher = Voucher::where('code', $voucherCode)->first();
+                    $voucher = Voucher::where('code', $voucherCode)
+                        ->where('event_uid', $selectedTransaction->event_uid)
+                        ->first();
                     if ($voucher) {
                         $totalTickets = $selectedTransaction->hargaCarts->sum(fn ($i) => $i->quantity * $i->harga_ticket);
                         if ($voucher->unit === 'rupiah') {

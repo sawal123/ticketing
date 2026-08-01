@@ -40,8 +40,12 @@ class BuyTicketController extends Controller
         $event = Event::where('uid', $cart->event_uid)->first();
         $harga = HargaCart::where('uid', $cart->uid)->get();
         // dd($harga);
-        $cartV = CartVoucher::where('uid', $cart->uid)->first();
-        $voucher = $cartV && $cartV->code ? Voucher::where('code', $cartV->code)->first() : null;
+        $cartV = CartVoucher::where('uid', $cart->uid)
+            ->where('event_uid', $cart->event_uid)
+            ->first();
+        $voucher = $cartV && $cartV->code ? Voucher::where('code', $cartV->code)
+            ->where('event_uid', $cart->event_uid)
+            ->first() : null;
         // dd($voucher);
 
         $iFee = PaymentGateway::where('slug', $cart->payment_type)->first();
@@ -129,7 +133,7 @@ class BuyTicketController extends Controller
     {
 
         $request->validate([
-            'code' => 'required|alpha_num',
+            'code' => 'required|string|max:100',
             'cartUid' => 'required',
         ]);
         $code = $request->code;
@@ -162,7 +166,9 @@ class BuyTicketController extends Controller
             return redirect()->back()->with('vError', 'Voucher Expired');
         }
 
-        $cVoucher = CartVoucher::where('uid', $cart)->first();
+        $cVoucher = CartVoucher::where('uid', $cart)
+            ->where('event_uid', $cartModel->event_uid)
+            ->first();
         $carts = HargaCart::where('uid', $cart)->orderBy('id')->first();
 
         if ($code === null && $cVoucher) {
@@ -180,6 +186,7 @@ class BuyTicketController extends Controller
         if ($cVoucher) {
             $cVoucher->code = $code;
             $cVoucher->uid_vouchers = $voucher->uid;
+            $cVoucher->event_uid = $cartModel->event_uid;
             $cVoucher->save();
         } else {
             CartVoucher::create([
@@ -215,7 +222,9 @@ class BuyTicketController extends Controller
             return redirect()->back()->with('vError', 'Reservation sudah expired atau cart tidak valid.');
         }
 
-        $cVoucher = CartVoucher::where('uid', $cart->uid)->first();
+        $cVoucher = CartVoucher::where('uid', $cart->uid)
+            ->where('event_uid', $cart->event_uid)
+            ->first();
         if ($cVoucher) {
             $cVoucher->code = '';
             $cVoucher->save();

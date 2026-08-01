@@ -42,6 +42,7 @@ class editController extends Controller
     public function editEvent(Request $request)
     {
         $request->validate([
+            'fee' => 'required|numeric|min:0|max:100',
             'cover' => SecureImageStorage::rules(),
         ]);
 
