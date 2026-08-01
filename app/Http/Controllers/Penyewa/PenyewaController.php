@@ -346,7 +346,8 @@ class PenyewaController extends Controller
     {
         $user = Auth::user();
         $ownerId = ($user->role === 'staff') ? $user->parent_uid : $user->uid;
-        $filter = $request->filter;
+        $filter = $this->validLegacyDateFilter($request->filter) ? $request->filter : null;
+        $eventUid = $this->validLegacyUidFilter($request->uid) ? $request->uid : null;
         $event = null;
         $snapshot = app(FinancialSnapshotService::class);
         $ownerRevenueExpression = $snapshot->ownerRevenueSqlExpression();
@@ -379,13 +380,13 @@ class PenyewaController extends Controller
         // ==========================================================
         // 3. TERAPKAN FILTER
         // ==========================================================
-        if ($request->uid) {
-            $event = Event::where('uid', $request->uid)
+        if ($eventUid) {
+            $event = Event::where('uid', $eventUid)
                 ->where('user_uid', $ownerId)
                 ->first();
-            $cartQuery->where('events.uid', $request->uid);
-            $omsetQuery->where('events.uid', $request->uid);
-            $tiketQuery->where('events.uid', $request->uid);
+            $cartQuery->where('events.uid', $eventUid);
+            $omsetQuery->where('events.uid', $eventUid);
+            $tiketQuery->where('events.uid', $eventUid);
         }
 
         if (! empty($filter)) {
@@ -426,7 +427,7 @@ class PenyewaController extends Controller
             'totalPenjualan' => $totalOmsetOnline,
             'totalFee' => $totalTiketOnline,
             'filter' => $filter,
-            'uid' => $request->uid,
+            'uid' => $eventUid,
         ]);
     }
 
@@ -434,7 +435,8 @@ class PenyewaController extends Controller
     {
         $user = Auth::user();
         $ownerId = ($user->role === 'staff') ? $user->parent_uid : $user->uid;
-        $filter = $request->filter;
+        $filter = $this->validLegacyDateFilter($request->filter) ? $request->filter : null;
+        $eventUid = $this->validLegacyUidFilter($request->uid) ? $request->uid : null;
 
         $use = User::all();
         $event = null;
@@ -469,13 +471,13 @@ class PenyewaController extends Controller
         // ==========================================================
         // 3. TERAPKAN FILTER PENCARIAN
         // ==========================================================
-        if ($request->uid) {
-            $event = Event::where('uid', $request->uid)
+        if ($eventUid) {
+            $event = Event::where('uid', $eventUid)
                 ->where('user_uid', $ownerId)
                 ->first();
-            $cartQuery->where('events.uid', $request->uid);
-            $omsetQuery->where('events.uid', $request->uid);
-            $tiketQuery->where('events.uid', $request->uid);
+            $cartQuery->where('events.uid', $eventUid);
+            $omsetQuery->where('events.uid', $eventUid);
+            $tiketQuery->where('events.uid', $eventUid);
         }
 
         if (! empty($filter)) {
@@ -505,8 +507,32 @@ class PenyewaController extends Controller
             'qtyTiket' => $qtyTiket,
             'sellTiket' => $totalTiketCash,
             'filter' => $filter,
-            'uid' => $request->uid,
+            'uid' => $eventUid,
         ]);
+    }
+
+    private function validLegacyDateFilter(mixed $filter): bool
+    {
+        if (blank($filter)) {
+            return false;
+        }
+
+        $filter = (string) $filter;
+
+        try {
+            return Carbon::createFromFormat('Y-m-d', $filter)->format('Y-m-d') === $filter;
+        } catch (\Throwable) {
+            return false;
+        }
+    }
+
+    private function validLegacyUidFilter(mixed $uid): bool
+    {
+        if (blank($uid)) {
+            return false;
+        }
+
+        return mb_strlen((string) $uid) <= 100;
     }
 
     public function voucher()

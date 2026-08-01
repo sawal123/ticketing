@@ -54,6 +54,74 @@ class EventDetail extends Component
         'filterRange' => ['except' => null],
     ];
 
+    private function allowedPaymentFilters(): array
+    {
+        return ['all', 'cash', 'non-cash'];
+    }
+
+    private function allowedTabs(): array
+    {
+        return ['umum', 'tiket', 'transaksi'];
+    }
+
+    private function sanitizeFilters(): void
+    {
+        if (! in_array($this->filterPayment, $this->allowedPaymentFilters(), true)) {
+            $this->filterPayment = 'all';
+        }
+
+        if (! in_array($this->activeTab, $this->allowedTabs(), true)) {
+            $this->activeTab = 'umum';
+        }
+
+        $this->searchTransaction = mb_substr(trim((string) $this->searchTransaction), 0, 100);
+
+        if ($this->filterRange !== null) {
+            $this->filterRange = mb_substr(trim((string) $this->filterRange), 0, 32) ?: null;
+        }
+
+        if ($this->filterRange !== null && $this->normalizedDateRange() === null) {
+            $this->filterRange = null;
+            session()->flash('error', 'Filter tanggal tidak valid.');
+        }
+    }
+
+    private function normalizedDateRange(): ?array
+    {
+        if (blank($this->filterRange)) {
+            return null;
+        }
+
+        $dates = explode(' to ', (string) $this->filterRange);
+
+        if (count($dates) > 2) {
+            return null;
+        }
+
+        try {
+            $start = Carbon::createFromFormat('Y-m-d', trim($dates[0]))->startOfDay();
+            $end = isset($dates[1])
+                ? Carbon::createFromFormat('Y-m-d', trim($dates[1]))->endOfDay()
+                : $start->copy()->endOfDay();
+        } catch (\Throwable) {
+            return null;
+        }
+
+        if ($start->format('Y-m-d') !== trim($dates[0])) {
+            return null;
+        }
+
+        if (isset($dates[1]) && $end->format('Y-m-d') !== trim($dates[1])) {
+            return null;
+        }
+
+        if ($end->lt($start) || $start->diffInDays($end) > 366) {
+            return null;
+        }
+
+        return [$start, $end];
+    }
+
     public function mount($uid)
     {
         $this->eventUid = $uid;
@@ -75,6 +143,8 @@ class EventDetail extends Component
 
     protected function getMetricsData()
     {
+        $this->sanitizeFilters();
+
         $query = Cart::where('event_uid', $this->eventUid)->where('status', 'SUCCESS');
         $query = $this->applyFilters($query);
 
@@ -101,6 +171,8 @@ class EventDetail extends Component
 
     protected function applyFilters($query)
     {
+        $dateRange = $this->normalizedDateRange();
+
         return $query->when($this->filterPayment !== 'all', function ($q) {
             if ($this->filterPayment === 'cash') {
                 $q->where('payment_type', 'cash');
@@ -108,16 +180,8 @@ class EventDetail extends Component
                 $q->where('payment_type', '!=', 'cash');
             }
         })
-            ->when($this->filterRange, function ($q) {
-                $dates = explode(' to ', $this->filterRange);
-                if (count($dates) === 2) {
-                    $q->whereBetween('created_at', [
-                        Carbon::parse($dates[0])->startOfDay(),
-                        Carbon::parse($dates[1])->endOfDay(),
-                    ]);
-                } else {
-                    $q->whereDate('created_at', Carbon::parse($dates[0]));
-                }
+            ->when($dateRange, function ($q) use ($dateRange) {
+                $q->whereBetween('created_at', $dateRange);
             })
             ->when($this->searchTransaction, function ($q) {
                 $q->where(function ($sub) {
@@ -147,6 +211,7 @@ class EventDetail extends Component
     public function setTab($tab)
     {
         $this->activeTab = $tab;
+        $this->sanitizeFilters();
         $this->resetPage();
     }
 
@@ -271,13 +336,16 @@ class EventDetail extends Component
 
     public function updated($propertyName)
     {
-        if (in_array($propertyName, ['filterPayment', 'filterRange', 'searchTransaction'])) {
+        if (in_array($propertyName, ['filterPayment', 'filterRange', 'searchTransaction', 'activeTab'])) {
+            $this->sanitizeFilters();
             $this->resetPage();
         }
     }
 
     public function render()
     {
+        $this->sanitizeFilters();
+
         $event = $this->getEventData();
         $metrics = $this->getMetricsData();
 

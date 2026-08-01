@@ -11,6 +11,7 @@ use App\Models\Harga;
 use App\Models\Talent;
 use App\Services\Reports\FinancialSnapshotService;
 use App\Services\SecureImageStorage;
+use App\Support\ExportSanitizer;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -102,6 +103,84 @@ class EventDetail extends Component
         'filterRange' => ['except' => null],
     ];
 
+    private function allowedPerPage(): array
+    {
+        return [10, 25, 50, 100];
+    }
+
+    private function allowedPaymentFilters(): array
+    {
+        return ['all', 'cash', 'non-cash'];
+    }
+
+    private function allowedTabs(): array
+    {
+        return ['umum', 'tiket', 'transaksi'];
+    }
+
+    private function sanitizeFilters(): void
+    {
+        $this->perPage = (int) $this->perPage;
+        if (! in_array($this->perPage, $this->allowedPerPage(), true)) {
+            $this->perPage = 10;
+        }
+
+        if (! in_array($this->filterPayment, $this->allowedPaymentFilters(), true)) {
+            $this->filterPayment = 'all';
+        }
+
+        if (! in_array($this->activeTab, $this->allowedTabs(), true)) {
+            $this->activeTab = 'umum';
+        }
+
+        $this->searchTransaction = mb_substr(trim((string) $this->searchTransaction), 0, 100);
+
+        if ($this->filterRange !== null) {
+            $this->filterRange = mb_substr(trim((string) $this->filterRange), 0, 32) ?: null;
+        }
+
+        if ($this->filterRange !== null && $this->normalizedDateRange() === null) {
+            $this->filterRange = null;
+            session()->flash('error', 'Filter tanggal tidak valid.');
+        }
+    }
+
+    private function normalizedDateRange(): ?array
+    {
+        if (blank($this->filterRange)) {
+            return null;
+        }
+
+        $dates = explode(' to ', (string) $this->filterRange);
+
+        if (count($dates) > 2) {
+            return null;
+        }
+
+        try {
+            $start = Carbon::createFromFormat('Y-m-d', trim($dates[0]))->startOfDay();
+            $end = isset($dates[1])
+                ? Carbon::createFromFormat('Y-m-d', trim($dates[1]))->endOfDay()
+                : $start->copy()->endOfDay();
+        } catch (\Throwable) {
+            return null;
+        }
+
+        if ($start->format('Y-m-d') !== trim($dates[0])) {
+            return null;
+        }
+
+        if (isset($dates[1]) && $end->format('Y-m-d') !== trim($dates[1])) {
+            return null;
+        }
+
+        if ($end->lt($start) || $start->diffInDays($end) > 366) {
+            return null;
+        }
+
+        return [$start, $end];
+    }
+
     public function mount($uid)
     {
         $this->eventUid = $uid;
@@ -133,6 +212,8 @@ class EventDetail extends Component
 
     protected function getMetricsData()
     {
+        $this->sanitizeFilters();
+
         $query = Cart::where('event_uid', $this->eventUid)->where('status', 'SUCCESS');
         $query = $this->applyFilters($query);
 
@@ -161,6 +242,8 @@ class EventDetail extends Component
 
     protected function applyFilters($query)
     {
+        $dateRange = $this->normalizedDateRange();
+
         return $query->when($this->filterPayment !== 'all', function ($q) {
             if ($this->filterPayment === 'cash') {
                 $q->where('payment_type', 'cash');
@@ -168,16 +251,8 @@ class EventDetail extends Component
                 $q->where('payment_type', '!=', 'cash');
             }
         })
-            ->when($this->filterRange, function ($q) {
-                $dates = explode(' to ', $this->filterRange);
-                if (count($dates) === 2) {
-                    $q->whereBetween('carts.created_at', [
-                        Carbon::parse($dates[0])->startOfDay(),
-                        Carbon::parse($dates[1])->endOfDay(),
-                    ]);
-                } else {
-                    $q->whereDate('carts.created_at', Carbon::parse($dates[0]));
-                }
+            ->when($dateRange, function ($q) use ($dateRange) {
+                $q->whereBetween('carts.created_at', $dateRange);
             })
             ->when($this->searchTransaction, function ($q) {
                 $q->where(function ($sub) {
@@ -210,6 +285,9 @@ class EventDetail extends Component
      */
     protected function getExportQuery()
     {
+        $this->sanitizeFilters();
+        $dateRange = $this->normalizedDateRange();
+
         $query = DB::table('carts')
             ->join('users', 'users.uid', '=', 'carts.user_uid')
             ->leftJoin('cashes', 'cashes.uid', '=', 'carts.uid')
@@ -244,16 +322,8 @@ class EventDetail extends Component
             }
         }
 
-        if ($this->filterRange) {
-            $dates = explode(' to ', $this->filterRange);
-            if (count($dates) === 2) {
-                $query->whereBetween('carts.created_at', [
-                    Carbon::parse($dates[0])->startOfDay(),
-                    Carbon::parse($dates[1])->endOfDay(),
-                ]);
-            } else {
-                $query->whereDate('carts.created_at', Carbon::parse($dates[0]));
-            }
+        if ($dateRange) {
+            $query->whereBetween('carts.created_at', $dateRange);
         }
 
         if ($this->searchTransaction) {
@@ -302,6 +372,8 @@ class EventDetail extends Component
 
     public function exportExcel()
     {
+        $this->sanitizeFilters();
+
         $fileName = 'transaksi-event-'.Str::slug($this->getEventData()->event).'-'.now()->format('YmdHis').'.csv';
 
         $headers = [
@@ -327,22 +399,22 @@ class EventDetail extends Component
                 $taxSnapshot = isset($seenCartTaxes[$row->cart_uid]) ? 0 : (int) ($row->pajak ?? 0);
                 $seenCartTaxes[$row->cart_uid] = true;
 
-                fputcsv($file, [
+                fputcsv($file, ExportSanitizer::csvRow([
                     $row->created_at,
                     $row->invoice,
                     $row->buyer_name,
                     $row->buyer_email,
                     $row->kategori_harga,
-                    $row->quantity,
-                    $row->harga_ticket,
+                    (int) $row->quantity,
+                    (int) $row->harga_ticket,
                     (int) ($row->disc ?? 0),
                     $taxSnapshot,
                     $lineTotal,
                     $row->konfirmasi == '1' ? 'Hadir' : 'Belum Hadir',
-                ]);
+                ]));
             });
 
-            fputcsv($file, ['', '', '', '', '', '', '', '', 'TOTAL OMZET SNAPSHOT', (int) $exportTotals['owner_revenue'], '']);
+            fputcsv($file, ExportSanitizer::csvRow(['', '', '', '', '', '', '', '', 'TOTAL OMZET SNAPSHOT', (int) $exportTotals['owner_revenue'], '']));
 
             fclose($file);
         };
@@ -352,6 +424,8 @@ class EventDetail extends Component
 
     public function exportPdf()
     {
+        $this->sanitizeFilters();
+
         $event = $this->getEventData();
         $transactions = $this->getExportQuery()->get();
         $exportTotals = $this->exportSnapshotTotalsFromRows($transactions);
@@ -386,6 +460,7 @@ class EventDetail extends Component
     public function setTab($tab)
     {
         $this->activeTab = $tab;
+        $this->sanitizeFilters();
         $this->resetPage();
     }
 
@@ -546,13 +621,16 @@ class EventDetail extends Component
 
     public function updated($propertyName)
     {
-        if (in_array($propertyName, ['filterPayment', 'filterRange', 'searchTransaction'])) {
+        if (in_array($propertyName, ['filterPayment', 'filterRange', 'searchTransaction', 'perPage', 'activeTab'])) {
+            $this->sanitizeFilters();
             $this->resetPage();
         }
     }
 
     public function render()
     {
+        $this->sanitizeFilters();
+
         $event = $this->getEventData();
         $metrics = $this->getMetricsData();
 
