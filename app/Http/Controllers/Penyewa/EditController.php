@@ -15,7 +15,6 @@ use App\Models\Voucher;
 use App\Services\SecureImageStorage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
@@ -116,48 +115,55 @@ class EditController extends Controller
 
     public function editRekening(Request $request)
     {
+        $request->validate([
+            'current_password' => 'required|string',
+            'nama' => 'required|string|max:255',
+            'bank' => 'required|string|max:100',
+            'norek' => ['required', 'string', 'max:50', 'regex:/^[0-9]+$/'],
+        ]);
 
-        $rek = Bank::where('uid', Auth::user()->uid)->first();
-        if ($rek) {
-            $rek->nama = $request->nama;
-            $rek->bank = $request->bank;
-            $rek->norek = $request->norek;
-            // $rek->save();
+        $user = User::where('uid', Auth::user()->uid)->firstOrFail();
+
+        if (! Hash::check($request->current_password, $user->password)) {
+            return redirect()->back()->withErrors([
+                'current_password' => 'Password konfirmasi tidak sesuai.',
+            ]);
         }
-        try {
-            $rek->save();
 
-            return redirect()->back()->with('editRek', 'Rekening Berhasil Di Update');
-        } catch (\Exception $e) {
-            DB::rollback();
+        $rek = Bank::where(function ($query) use ($user) {
+            $query->where('uid_user', $user->uid)
+                ->orWhere('uid', $user->uid);
+        })->first() ?? new Bank;
+        $rek->uid = $user->uid;
+        $rek->uid_user = $user->uid;
+        $rek->nama = $request->nama;
+        $rek->bank = $request->bank;
+        $rek->norek = $request->norek;
+        $rek->save();
 
-            return redirect()->back()->with('error', 'Gagal Update. Silahkan coba lagi.');
-        }
+        return redirect()->back()->with('editRek', 'Rekening Berhasil Di Update');
     }
 
     public function editProfile(Request $request)
     {
-        // 1. VALIDASI LANGSUNG (Lebih ringkas, tambahkan validasi gambar agar aman)
         $request->validate([
-            'nama' => 'required|string',
-            'nomor' => 'required|numeric',
-            'email' => 'required|email',
-            'date' => 'required|string',
-            'gender' => 'required|string',
-            'provinsi' => 'required|string',
-            'alamat' => 'required|string',
+            'nama' => 'required|string|max:255',
+            'nomor' => 'nullable|string|max:30',
+            'date' => 'nullable|string|max:255',
+            'gender' => 'nullable|string|max:50',
+            'provinsi' => 'nullable|string|max:100',
+            'alamat' => 'nullable|string|max:500',
             'img' => SecureImageStorage::rules(),
         ]);
 
-        $user = User::where('uid', Auth::user()->uid)->first();
+        $user = User::where('uid', Auth::user()->uid)->firstOrFail();
 
         $user->name = $request->nama;
-        $user->nomor = $request->nomor;
-        $user->email = $request->email;
-        $user->birthday = $request->date;
-        $user->gender = $request->gender;
-        $user->kota = $request->provinsi;
-        $user->alamat = $request->alamat;
+        $user->nomor = $request->nomor ?? $user->nomor;
+        $user->birthday = $request->date ?? $user->birthday;
+        $user->gender = $request->gender ?? $user->gender;
+        $user->kota = $request->provinsi ?? $user->kota;
+        $user->alamat = $request->alamat ?? $user->alamat;
 
         $oldImage = null;
         if ($request->hasFile('img')) {
@@ -165,14 +171,12 @@ class EditController extends Controller
             $user->gambar = $this->images->storeBasename($request->file('img'), 'user');
         }
 
-        // 3. SIMPAN DATA
         try {
             $user->save();
             $this->images->delete('user', $oldImage);
 
             return redirect()->back()->with('editProfile', 'Informasi Berhasil Di Update');
         } catch (\Exception $e) {
-            // Dihapus DB::rollback() karena kita hanya melakukan 1 save() (tidak pakai beginTransaction)
             return redirect()->back()->with('error', 'Gagal Update Profile. Silahkan coba lagi.');
         }
     }
@@ -298,23 +302,28 @@ class EditController extends Controller
 
     public function updatePassword(Request $request)
     {
-        // 1. Validasi Input
-        // 'confirmed' otomatis akan mengecek apakah 'new_password' sama dengan 'new_password_confirmation'
         $request->validate([
-            'current_password' => 'required',
-            'new_password' => 'required|min:8|confirmed',
+            'current_password' => 'required|string',
+            'new_password' => 'required|string|min:8|confirmed|regex:/^(?=.*[A-Za-z])(?=.*\d).+$/',
+        ], [
+            'new_password.regex' => 'Password harus mengandung huruf dan angka.',
         ]);
 
-        $user = Auth::user();
+        $user = User::where('uid', Auth::user()->uid)->firstOrFail();
 
-        // 2. Cek apakah password lama yang dimasukkan benar
         if (! Hash::check($request->current_password, $user->password)) {
-            return redirect()->back()->with('error', 'Password saat ini yang Anda masukkan salah!');
+            return redirect()->back()->withErrors([
+                'current_password' => 'Password saat ini yang Anda masukkan salah!',
+            ]);
         }
 
-        // 3. Simpan Password Baru (Jangan lupa dienkripsi dengan Hash::make)
-        $user->password = Hash::make($request->new_password);
-        $user->save();
+        $user->forceFill([
+            'password' => Hash::make($request->new_password),
+            'remember_token' => Str::random(60),
+        ])->save();
+
+        $user->tokens()->delete();
+        $request->session()->regenerate();
 
         return redirect()->back()->with('editProfile', 'Password berhasil diubah untuk alasan keamanan!');
     }

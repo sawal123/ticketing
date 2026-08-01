@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\SecureImageStorage;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 
@@ -54,6 +55,8 @@ class SettingsIndex extends Component
 
     public $nomor_rekening;
 
+    public $bank_current_password;
+
     public $deletingBankId;
 
     public $isEditBank = false;
@@ -65,6 +68,8 @@ class SettingsIndex extends Component
     public function mount()
     {
         $user = Auth::user();
+        abort_unless($user?->role === 'penyewa', 403);
+
         $this->name = $user->name;
         $this->email = $user->email;
         $this->nomor = $user->nomor;
@@ -100,18 +105,16 @@ class SettingsIndex extends Component
     {
         $this->validate([
             'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email,'.Auth::id(),
-            'nomor' => 'required|numeric',
+            'nomor' => 'nullable|string|max:30',
             'birthday' => 'nullable|date',
-            'gender' => 'nullable|string',
-            'kota' => 'nullable|string',
-            'alamat' => 'nullable|string',
+            'gender' => 'nullable|string|max:50',
+            'kota' => 'nullable|string|max:100',
+            'alamat' => 'nullable|string|max:500',
             'new_gambar' => SecureImageStorage::rules(),
         ]);
 
-        $user = User::find(Auth::id());
+        $user = User::where('uid', Auth::user()->uid)->firstOrFail();
         $user->name = $this->name;
-        $user->email = $this->email;
         $user->nomor = $this->nomor;
         $user->birthday = $this->birthday;
         $user->gender = $this->gender;
@@ -127,6 +130,7 @@ class SettingsIndex extends Component
         }
 
         $user->save();
+        $this->email = $user->email;
         app(SecureImageStorage::class)->delete('user', $oldImage);
 
         session()->flash('success', 'Profil berhasil diperbarui.');
@@ -135,11 +139,13 @@ class SettingsIndex extends Component
     public function updatePassword()
     {
         $this->validate([
-            'current_password' => 'required',
-            'new_password' => 'required|min:8|confirmed',
+            'current_password' => 'required|string',
+            'new_password' => 'required|string|min:8|confirmed|regex:/^(?=.*[A-Za-z])(?=.*\d).+$/',
+        ], [
+            'new_password.regex' => 'Password harus mengandung huruf dan angka.',
         ]);
 
-        $user = Auth::user();
+        $user = User::where('uid', Auth::user()->uid)->firstOrFail();
 
         if (! Hash::check($this->current_password, $user->password)) {
             $this->addError('current_password', 'Password saat ini salah.');
@@ -147,8 +153,13 @@ class SettingsIndex extends Component
             return;
         }
 
-        $user->password = Hash::make($this->new_password);
-        $user->save();
+        $user->forceFill([
+            'password' => Hash::make($this->new_password),
+            'remember_token' => Str::random(60),
+        ])->save();
+
+        $user->tokens()->delete();
+        request()->session()->regenerate();
 
         $this->reset(['current_password', 'new_password', 'new_password_confirmation']);
         session()->flash('success', 'Password berhasil diubah.');
@@ -168,18 +179,27 @@ class SettingsIndex extends Component
             $this->reset(['bank_id', 'nama_rekening', 'bank_name', 'nomor_rekening']);
             $this->isEditBank = false;
         }
+        $this->bank_current_password = null;
         $this->dispatch('open-modal', name: 'bank-modal');
     }
 
     public function saveBank()
     {
         $this->validate([
+            'bank_current_password' => 'required|string',
             'nama_rekening' => 'required|string|max:255',
-            'bank_name' => 'required|string',
-            'nomor_rekening' => 'required|numeric',
+            'bank_name' => 'required|string|max:100',
+            'nomor_rekening' => ['required', 'string', 'max:50', 'regex:/^[0-9]+$/'],
         ]);
 
         $ownerId = $this->getOwnerId();
+        $user = User::where('uid', Auth::user()->uid)->firstOrFail();
+
+        if (! Hash::check($this->bank_current_password, $user->password)) {
+            $this->addError('bank_current_password', 'Password konfirmasi tidak sesuai.');
+
+            return;
+        }
 
         if ($this->isEditBank) {
             $bank = $this->bankQuery($ownerId)->findOrFail($this->bank_id);
@@ -203,6 +223,7 @@ class SettingsIndex extends Component
         $bank->norek = $this->nomor_rekening;
         $bank->save();
 
+        $this->bank_current_password = null;
         $this->loadBanks();
         $this->dispatch('close-modal', name: 'bank-modal');
         session()->flash('success', $this->isEditBank ? 'Rekening berhasil diperbarui.' : 'Rekening berhasil ditambahkan.');
@@ -230,9 +251,7 @@ class SettingsIndex extends Component
 
     protected function getOwnerId()
     {
-        $user = Auth::user();
-
-        return $user->role === 'staff' ? $user->parent_uid : $user->uid;
+        return Auth::user()->uid;
     }
 
     protected function bankQuery($ownerId)

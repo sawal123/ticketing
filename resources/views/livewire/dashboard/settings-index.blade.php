@@ -87,7 +87,7 @@
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <x-admin.input label="Nama Lengkap" wire:model="name" placeholder="Nama Lengkap" error="{{ $errors->first('name') }}" />
-                            <x-admin.input label="Alamat Email" wire:model="email" type="email" placeholder="email@example.com" error="{{ $errors->first('email') }}" />
+                            <x-admin.input label="Alamat Email" wire:model="email" type="email" placeholder="email@example.com" readonly />
                         </div>
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -236,6 +236,7 @@
 
             <x-admin.input label="Nomor Rekening" wire:model="nomor_rekening" placeholder="Contoh: 1234567890" error="{{ $errors->first('nomor_rekening') }}" />
             <x-admin.input label="Nama Pemilik Rekening" wire:model="nama_rekening" placeholder="Contoh: Jhon Doe" error="{{ $errors->first('nama_rekening') }}" />
+            <x-admin.input label="Password Saat Ini" wire:model="bank_current_password" type="password" revealable placeholder="Konfirmasi password akun" error="{{ $errors->first('bank_current_password') }}" />
 
             <div class="flex justify-end gap-3 pt-4">
                 <x-admin.button type="button" variant="secondary" x-on:click="show = false">
