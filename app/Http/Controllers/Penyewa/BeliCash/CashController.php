@@ -11,10 +11,11 @@ use App\Models\Harga;
 use App\Models\HargaCart;
 use App\Models\Transaction;
 use App\Services\Tickets\GateTokenService;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Throwable;
 
@@ -22,121 +23,131 @@ class CashController extends Controller
 {
     public function createCash(Request $request)
     {
-        $validate = Validator::make($request->all(), [
-            'uid' => 'string|required',
-            'event' => 'string|required|max:255',
-            'ticket' => 'string|required',
-            'qty' => 'numeric|required',
-            'name' => 'required|string',
-            'email' => 'required|email',
-            'alamat' => 'nullable|string',
-            'ttl' => 'required|string',
-            'total' => 'nullable|numeric',
-            'gender' => 'required',
-            'nomor' => 'nullable|numeric',
-        ]);
-        $validate->validate();
-
-        $string = Str::random(3);
-        $string2 = Str::random(2);
-        $date = date('Ymd');
-        $number = mt_rand(1000, 9999999999);
-        $invoice = str_pad($string.$number, 10, '0', STR_PAD_LEFT);
-        $str = Str::uuid();
-        $order_id = 'CASH-'.$date.$invoice;
-
-        $uid = $request->uid;
-        $partner = $request->partner;
-        $event_name = $request->event;
-        $ticket_name = $request->ticket;
-        $qty = (int) $request->qty;
-        $nama = $request->name;
-        $email = $request->email;
-        $alamat = $request->alamat ?? '-';
-        $ttl = $request->ttl;
-        $total = $request->total ?? 0;
-        $gender = $request->gender;
-        $nomor = $request->nomor ?? '080000000000';
-        $konfirmasi = $request->konfirmasi;
-
-        // 1. Ambil Data Event untuk dapet % Pajak
-        $events = Event::where('event', $event_name)->first();
-        if (! $events) {
-            return back()->with('error', 'Event tidak ditemukan');
-        }
-
-        // 2. Ambil Harga Tiket
-        $kategoriTicket = Harga::where('uid', $events->uid)
-            ->where('kategori', $ticket_name)
-            ->first();
-
-        if (! $kategoriTicket) {
-            return back()->with('error', 'Kategori tiket tidak ditemukan');
-        }
-
-        // 3. LOGIKA HITUNG ULANG PAJAK (BACKEND)
-        $subtotal = $kategoriTicket->harga * $qty;
-        $pajakPersen = $events->fee ?? 0;
-        $nilaiPajak = ($pajakPersen / 100) * $subtotal;
-        $totalFinal = $subtotal + $nilaiPajak;
-
-        $str = Str::uuid();
-        $date = date('Ymd');
-        $invoice = 'CASH-'.$date.Str::upper(Str::random(10));
-
-        $cart = new Cart([
-            'uid' => $str,
-            'user_uid' => $uid,
-            'event_uid' => $events->uid,
-            'invoice' => $invoice,
-            'status' => 'SUCCESS',
-            'konfirmasi' => $konfirmasi,
-            'payment_type' => 'cash',
+        $validated = $request->validate([
+            'event_uid' => 'required|string',
+            'harga_id' => 'required|integer',
+            'qty' => 'required|integer|min:1|max:5',
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|max:255',
+            'alamat' => 'nullable|string|max:500',
+            'ttl' => 'required|string|max:100',
+            'gender' => 'required|string|max:50',
+            'nomor' => 'nullable|string|max:30',
+            'partner' => 'nullable|string|max:255',
         ]);
 
-        $hargaCart = new HargaCart([
-            'orderBy' => '1',
-            'uid' => $str,
-            'event_uid' => $events->uid,
-            'quantity' => $qty,
-            'harga_ticket' => $kategoriTicket->harga,
-            'kategori_harga' => $kategoriTicket->kategori,
-            // Jika tabel HargaCart punya kolom disc/tax, simpan di sana juga
-        ]);
-
-        $transaksi = new Transaction([
-            'uid' => $str,
-            'user_uid' => $uid,
-            'event_uid' => $events->uid,
-            'amount' => $totalFinal, // SIMPAN TOTAL YANG SUDAH TERMASUK PAJAK
-            'invoice' => $invoice,
-            'payment_type' => 'cash',
-            'status_transaksi' => 'SUCCESS',
-        ]);
-
-        // ... (Proses simpan Cash, User, dan Email tetap sama)
-
-        $cash = new Cash([
-            'uid' => $str,
-            'uid_partner' => $partner,
-            'uid_user' => $uid,
-            'uid_event' => $events->uid,
-            'name' => $nama,
-            'email' => $email,
-            'nomor' => $nomor,
-            'alamat' => $alamat,
-            'lahir' => $ttl,
-            'gender' => $gender,
-        ]);
+        $ownerUid = Auth::user()->uid;
+        $qty = (int) $validated['qty'];
+        $nama = $validated['name'];
+        $email = $validated['email'];
+        $alamat = $validated['alamat'] ?? '-';
+        $ttl = $validated['ttl'];
+        $gender = $validated['gender'];
+        $nomor = $validated['nomor'] ?? '080000000000';
+        $partner = $validated['partner'] ?? null;
+        $cart = null;
+        $pajakPersen = 0;
 
         try {
-            DB::transaction(function () use ($cart, $hargaCart, $transaksi, $cash) {
+            DB::transaction(function () use (
+                &$cart,
+                &$pajakPersen,
+                $validated,
+                $ownerUid,
+                $qty,
+                $nama,
+                $email,
+                $alamat,
+                $ttl,
+                $gender,
+                $nomor,
+                $partner
+            ) {
+                $event = Event::query()
+                    ->where('uid', $validated['event_uid'])
+                    ->where('user_uid', $ownerUid)
+                    ->where('konfirmasi', '1')
+                    ->where('status', 'active')
+                    ->firstOrFail();
+
+                $harga = Harga::query()
+                    ->whereKey($validated['harga_id'])
+                    ->where('uid', $event->uid)
+                    ->where('status', 'active')
+                    ->lockForUpdate()
+                    ->firstOrFail();
+
+                if ($qty > $harga->remainingQty()) {
+                    return back()->with('error', 'Stok tiket tidak mencukupi.')->throwResponse();
+                }
+
+                $subtotal = (int) $harga->harga * $qty;
+                $pajakPersen = (int) ($event->fee ?? 0);
+                $nilaiPajak = (int) round(($pajakPersen / 100) * $subtotal);
+                $totalFinal = $subtotal + $nilaiPajak;
+                $cartUid = (string) Str::uuid();
+                $invoice = 'CASH-'.date('Ymd').Str::upper(Str::random(10));
+
+                $cart = new Cart([
+                    'uid' => $cartUid,
+                    'user_uid' => $ownerUid,
+                    'event_uid' => $event->uid,
+                    'invoice' => $invoice,
+                    'status' => Cart::STATUS_SUCCESS,
+                    'konfirmasi' => null,
+                    'payment_type' => 'cash',
+                    'gross_amount' => $totalFinal,
+                    'paid_at' => now(),
+                    'pajak' => $nilaiPajak,
+                    'pajak_persen' => $pajakPersen,
+                ]);
+
+                $hargaCart = new HargaCart([
+                    'orderBy' => '1',
+                    'uid' => $cartUid,
+                    'harga_id' => $harga->id,
+                    'event_uid' => $event->uid,
+                    'quantity' => $qty,
+                    'harga_ticket' => $harga->harga,
+                    'kategori_harga' => $harga->kategori,
+                    'voucher' => null,
+                    'disc' => 0,
+                ]);
+
+                $transaksi = new Transaction([
+                    'uid' => $cartUid,
+                    'user_uid' => $ownerUid,
+                    'event_uid' => $event->uid,
+                    'amount' => $totalFinal,
+                    'gross_amount' => $totalFinal,
+                    'invoice' => $invoice,
+                    'payment_type' => 'cash',
+                    'status_transaksi' => Cart::STATUS_SUCCESS,
+                    'paid_at' => now(),
+                ]);
+
+                $cash = new Cash([
+                    'uid' => $cartUid,
+                    'uid_partner' => $partner,
+                    'uid_user' => $ownerUid,
+                    'uid_event' => $event->uid,
+                    'name' => $nama,
+                    'email' => $email,
+                    'nomor' => $nomor,
+                    'alamat' => $alamat,
+                    'lahir' => $ttl,
+                    'gender' => $gender,
+                ]);
+
                 $cart->save();
                 $hargaCart->save();
                 $transaksi->save();
                 $cash->save();
+                $harga->increment('sold_qty', $qty);
                 app(GateTokenService::class)->issueIfEnabled($cart);
             }, 3);
+        } catch (HttpResponseException $e) {
+            throw $e;
         } catch (Throwable $e) {
             return back()->with('error', $e->getMessage());
         }
