@@ -533,7 +533,17 @@ class editController extends Controller
 
         DB::transaction(function () use ($request) {
             $penarikan = Penarikan::where('uid', $request->uid)->lockForUpdate()->firstOrFail();
-            $penarikan->status = 'SUCCESS';
+
+            if (! in_array(strtoupper((string) $penarikan->status), [
+                Penarikan::STATUS_PENDING,
+                Penarikan::STATUS_PROCESSING,
+            ], true)) {
+                return back()
+                    ->with('error', 'Penarikan hanya dapat disetujui jika masih pending atau processing.')
+                    ->throwResponse();
+            }
+
+            $penarikan->status = Penarikan::STATUS_SUCCESS;
             $penarikan->approved_at = now();
             $penarikan->save();
         }, 3);

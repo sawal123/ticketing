@@ -169,7 +169,7 @@ class WithdrawalSecurityTest extends TestCase
         $this->assertSame(Penarikan::STATUS_PENDING, $withdrawalB->fresh()->status);
     }
 
-    public function test_admin_can_update_withdrawal_status(): void
+    public function test_admin_can_approve_pending_withdrawal_through_legacy_route(): void
     {
         [$tenant] = $this->tenantWithEvent();
         $admin = $this->user(['role' => 'admin', 'email' => 'admin@example.test']);
@@ -185,6 +185,105 @@ class WithdrawalSecurityTest extends TestCase
 
         $this->assertSame(Penarikan::STATUS_SUCCESS, $withdrawal->status);
         $this->assertNotNull($withdrawal->approved_at);
+    }
+
+    public function test_admin_can_approve_processing_withdrawal_through_livewire(): void
+    {
+        [$tenant] = $this->tenantWithEvent();
+        $admin = $this->user(['role' => 'admin', 'email' => 'admin-processing@example.test']);
+        $withdrawal = $this->withdrawal($tenant, 50000, Penarikan::STATUS_PROCESSING);
+
+        Livewire::actingAs($admin)
+            ->test(AdminPenarikanIndex::class)
+            ->call('approve', $withdrawal->uid);
+
+        $withdrawal->refresh();
+
+        $this->assertSame(Penarikan::STATUS_SUCCESS, $withdrawal->status);
+        $this->assertNotNull($withdrawal->approved_at);
+    }
+
+    public function test_admin_cannot_approve_success_rejected_cancelled_or_failed_withdrawals_through_legacy_route(): void
+    {
+        [$tenant] = $this->tenantWithEvent();
+        $admin = $this->user(['role' => 'admin', 'email' => 'admin-terminal@example.test']);
+
+        foreach ([
+            Penarikan::STATUS_SUCCESS,
+            Penarikan::STATUS_REJECTED,
+            Penarikan::STATUS_CANCELLED,
+            Penarikan::STATUS_FAILED,
+        ] as $status) {
+            $approvedAt = now()->subDay();
+            $withdrawal = $this->withdrawal($tenant, 50000, $status, [
+                'approved_at' => $approvedAt,
+            ]);
+
+            $this->actingAs($admin)
+                ->from('/admin/old/penarikan')
+                ->post('/admin/old/editPenarikan', ['uid' => $withdrawal->uid])
+                ->assertRedirect('/admin/old/penarikan')
+                ->assertSessionHas('error', 'Penarikan hanya dapat disetujui jika masih pending atau processing.');
+
+            $withdrawal->refresh();
+
+            $this->assertSame($status, $withdrawal->status);
+            $this->assertSame($approvedAt->toDateTimeString(), $withdrawal->approved_at?->toDateTimeString());
+        }
+    }
+
+    public function test_admin_cannot_approve_success_rejected_cancelled_or_failed_withdrawals_through_livewire(): void
+    {
+        [$tenant] = $this->tenantWithEvent();
+        $admin = $this->user(['role' => 'admin', 'email' => 'admin-livewire-terminal@example.test']);
+
+        foreach ([
+            Penarikan::STATUS_SUCCESS,
+            Penarikan::STATUS_REJECTED,
+            Penarikan::STATUS_CANCELLED,
+            Penarikan::STATUS_FAILED,
+        ] as $status) {
+            $approvedAt = now()->subDay();
+            $withdrawal = $this->withdrawal($tenant, 50000, $status, [
+                'approved_at' => $approvedAt,
+            ]);
+
+            Livewire::actingAs($admin)
+                ->test(AdminPenarikanIndex::class)
+                ->call('approve', $withdrawal->uid);
+
+            $withdrawal->refresh();
+
+            $this->assertSame($status, $withdrawal->status);
+            $this->assertSame($approvedAt->toDateTimeString(), $withdrawal->approved_at?->toDateTimeString());
+        }
+    }
+
+    public function test_rejected_withdrawal_cannot_be_approved_after_another_success_withdrawal_uses_balance(): void
+    {
+        [$tenant, $event] = $this->tenantWithEvent();
+        $admin = $this->user(['role' => 'admin', 'email' => 'admin-double@example.test']);
+        $this->paidOnlineCart($tenant, $event, 100000);
+        $withdrawalA = $this->withdrawal($tenant, 100000, Penarikan::STATUS_REJECTED, [
+            'approved_at' => now()->subDays(2),
+        ]);
+        $this->withdrawal($tenant, 100000, Penarikan::STATUS_SUCCESS, [
+            'approved_at' => now()->subDay(),
+        ]);
+
+        $this->actingAs($admin)
+            ->from('/admin/old/penarikan')
+            ->post('/admin/old/editPenarikan', ['uid' => $withdrawalA->uid])
+            ->assertRedirect('/admin/old/penarikan')
+            ->assertSessionHas('error', 'Penarikan hanya dapat disetujui jika masih pending atau processing.');
+
+        $withdrawalA->refresh();
+
+        $this->assertSame(Penarikan::STATUS_REJECTED, $withdrawalA->status);
+        $this->assertSame(100000, (int) Penarikan::where('uid_user', $tenant->uid)
+            ->where('status', Penarikan::STATUS_SUCCESS)
+            ->sum('amount'));
+        $this->assertSame(0, app(WithdrawalBalanceService::class)->availableBalanceFor($tenant->uid));
     }
 
     public function test_non_admin_cannot_mount_admin_withdrawal_component(): void

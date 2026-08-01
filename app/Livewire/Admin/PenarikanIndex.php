@@ -62,13 +62,29 @@ class PenarikanIndex extends Component
     {
         abort_unless(strtolower((string) Auth::user()?->role) === 'admin', 403);
 
-        DB::transaction(function () use ($uid) {
+        $approved = DB::transaction(function () use ($uid) {
             $penarikan = Penarikan::where('uid', $uid)->lockForUpdate()->firstOrFail();
+
+            if (! in_array(strtoupper((string) $penarikan->status), [
+                Penarikan::STATUS_PENDING,
+                Penarikan::STATUS_PROCESSING,
+            ], true)) {
+                return false;
+            }
+
             $penarikan->update([
-                'status' => 'SUCCESS',
+                'status' => Penarikan::STATUS_SUCCESS,
                 'approved_at' => now(),
             ]);
+
+            return true;
         }, 3);
+
+        if (! $approved) {
+            session()->flash('error', 'Penarikan hanya dapat disetujui jika masih pending atau processing.');
+
+            return;
+        }
 
         session()->flash('message', 'Penarikan berhasil disetujui!');
     }
