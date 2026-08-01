@@ -174,15 +174,41 @@ class PenarikanIndex extends Component
 
     public function delete()
     {
-        $penarikan = $this->ownedPenarikanQuery()
-            ->where('id', $this->penarikan_id)
-            ->firstOrFail();
-
-        if (strtoupper((string) $penarikan->status) === 'PENDING') {
-            $penarikan->delete();
-            session()->flash('success', 'Permintaan penarikan dibatalkan.');
+        if (! $this->penarikan_id) {
+            return;
         }
+
+        $ownerId = $this->ownerUid();
+
+        try {
+            DB::transaction(function () use ($ownerId) {
+                $penarikan = Penarikan::query()
+                    ->whereKey($this->penarikan_id)
+                    ->where('uid_user', $ownerId)
+                    ->where('status', Penarikan::STATUS_PENDING)
+                    ->lockForUpdate()
+                    ->first();
+
+                if (! $penarikan) {
+                    throw ValidationException::withMessages([
+                        'withdrawal' => 'Penarikan tidak dapat dibatalkan karena status sudah berubah.',
+                    ]);
+                }
+
+                $penarikan->delete();
+            }, 3);
+        } catch (ValidationException $e) {
+            $this->addError('withdrawal', $e->errors()['withdrawal'][0] ?? 'Penarikan tidak dapat dibatalkan.');
+            $this->penarikan_id = null;
+            $this->dispatch('close-modal', name: 'delete-modal');
+            $this->calculateStats();
+
+            return;
+        }
+
+        $this->penarikan_id = null;
         $this->dispatch('close-modal', name: 'delete-modal');
+        session()->flash('success', 'Permintaan penarikan dibatalkan.');
         $this->calculateStats();
     }
 
