@@ -13,11 +13,13 @@ use App\Models\Talent;
 use App\Models\User;
 use App\Models\Voucher;
 use App\Services\SecureImageStorage;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class EditController extends Controller
 {
@@ -213,9 +215,12 @@ class EditController extends Controller
 
     public function editVoucher(Request $request)
     {
+        $code = Str::upper(trim((string) $request->code));
+        $request->merge(['code' => $code]);
+
         // Validasi input dari form
         $validate = Validator::make($request->all(), [
-            'code' => 'string|required|max:50',
+            'code' => ['required', 'string', 'max:50', 'regex:/^[A-Z0-9_-]+$/'],
             'unit' => 'string|required|max:255',
             'min' => 'required|numeric',
             'max' => 'numeric',
@@ -228,6 +233,16 @@ class EditController extends Controller
         $voucher = $this->ownedVoucherByIdQuery($request->id)->firstOrFail();
         $targetEvent = $this->ownedEventQuery($request->event)->firstOrFail();
 
+        Validator::make(['code' => $code], [
+            'code' => [
+                Rule::unique('vouchers', 'code')
+                    ->where(fn ($query) => $query->where('event_uid', $targetEvent->uid))
+                    ->ignore($voucher->id),
+            ],
+        ], [
+            'code.unique' => 'Kode voucher sudah digunakan pada event ini.',
+        ])->validate();
+
         // Tentukan nominal berdasarkan unit (rupiah atau persen)
         if ($request->unit === 'rupiah') {
             $nominal = $request->nominalRupiah;
@@ -236,7 +251,7 @@ class EditController extends Controller
         }
 
         // Update data voucher
-        $voucher->code = $request->code;
+        $voucher->code = $code;
         $voucher->unit = $request->unit;
         $voucher->nominal = $nominal;
         $voucher->min_beli = $request->min;
@@ -245,7 +260,15 @@ class EditController extends Controller
         $voucher->event_uid = $targetEvent->uid; // Update event_uid (mengaitkan voucher dengan event baru)
 
         // Simpan perubahan
-        $voucher->save();
+        try {
+            $voucher->save();
+        } catch (QueryException $e) {
+            if ($this->isDuplicateVoucherCodeException($e)) {
+                return redirect()->back()->withErrors(['code' => 'Kode voucher sudah digunakan pada event ini.']);
+            }
+
+            throw $e;
+        }
 
         // Redirect dengan pesan berhasil
         return redirect()->back()->with('voucher', 'Voucher berhasil diperbarui');
@@ -299,6 +322,13 @@ class EditController extends Controller
             ->sum('quantity');
 
         return max((int) $harga->sold_qty + (int) $harga->reserved_qty, $cartQuantity);
+    }
+
+    private function isDuplicateVoucherCodeException(QueryException $e): bool
+    {
+        return str_contains($e->getMessage(), 'vouchers_event_uid_code_unique')
+            || str_contains($e->getMessage(), 'UNIQUE constraint failed')
+            || str_contains($e->getMessage(), 'Duplicate entry');
     }
 
     public function updatePassword(Request $request)

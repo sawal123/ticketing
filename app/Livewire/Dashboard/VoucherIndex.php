@@ -5,8 +5,10 @@ namespace App\Livewire\Dashboard;
 use App\Models\Cart;
 use App\Models\Event;
 use App\Models\Voucher;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -140,9 +142,25 @@ class VoucherIndex extends Component
 
     public function save()
     {
+        $this->code = $this->normalizeCode($this->code);
+        $ownerId = $this->ownerId();
+        $ignoreId = $this->isEditMode ? $this->voucher_id : null;
+
         $rules = [
-            'code' => 'required|string|max:50',
-            'selected_event_uid' => 'required',
+            'code' => [
+                'required',
+                'string',
+                'max:50',
+                'regex:/^[A-Z0-9_-]+$/',
+                Rule::unique('vouchers', 'code')
+                    ->where(fn ($query) => $query->where('event_uid', $this->selected_event_uid))
+                    ->ignore($ignoreId),
+            ],
+            'selected_event_uid' => [
+                'required',
+                'string',
+                Rule::exists('events', 'uid')->where('user_uid', $ownerId),
+            ],
             'unit' => 'required|in:persen,rupiah',
             'nominal' => 'required|numeric|min:0'.($this->unit === 'persen' ? '|max:100' : ''),
             'min_beli' => 'required|numeric|min:0',
@@ -156,8 +174,6 @@ class VoucherIndex extends Component
             $this->max_disc = $this->nominal;
         }
 
-        $user = Auth::user();
-        $ownerId = ($user->role === 'staff') ? $user->parent_uid : $user->uid;
         $this->ownedEventQuery($this->selected_event_uid)->firstOrFail();
 
         $data = [
@@ -171,15 +187,25 @@ class VoucherIndex extends Component
             'limit' => $this->limit,
         ];
 
-        if ($this->isEditMode) {
-            $this->ownedVoucherQuery($this->voucher_id)->firstOrFail()->update($data);
-            session()->flash('success', 'Voucher berhasil diperbarui.');
-        } else {
-            $data['uid'] = Str::uuid();
-            $data['digunakan'] = 0;
-            $data['status'] = 'active';
-            Voucher::create($data);
-            session()->flash('success', 'Voucher berhasil dibuat.');
+        try {
+            if ($this->isEditMode) {
+                $this->ownedVoucherQuery($this->voucher_id)->firstOrFail()->update($data);
+                session()->flash('success', 'Voucher berhasil diperbarui.');
+            } else {
+                $data['uid'] = Str::uuid();
+                $data['digunakan'] = 0;
+                $data['status'] = 'active';
+                Voucher::create($data);
+                session()->flash('success', 'Voucher berhasil dibuat.');
+            }
+        } catch (QueryException $e) {
+            if ($this->isDuplicateVoucherCodeException($e)) {
+                $this->addError('code', 'Kode voucher sudah digunakan pada event ini.');
+
+                return;
+            }
+
+            throw $e;
         }
 
         $this->dispatch('close-modal', name: 'voucher-modal');
@@ -289,19 +315,32 @@ class VoucherIndex extends Component
 
     private function ownedVoucherQuery($id)
     {
-        $user = Auth::user();
-        $ownerId = ($user->role === 'staff') ? $user->parent_uid : $user->uid;
-
         return Voucher::where('id', $id)
-            ->when($user->role !== 'admin', fn ($query) => $query->where('user_uid', $ownerId));
+            ->when(Auth::user()->role !== 'admin', fn ($query) => $query->where('user_uid', $this->ownerId()));
     }
 
     private function ownedEventQuery(string $uid)
     {
-        $user = Auth::user();
-        $ownerId = ($user->role === 'staff') ? $user->parent_uid : $user->uid;
-
         return Event::where('uid', $uid)
-            ->when($user->role !== 'admin', fn ($query) => $query->where('user_uid', $ownerId));
+            ->when(Auth::user()->role !== 'admin', fn ($query) => $query->where('user_uid', $this->ownerId()));
+    }
+
+    private function ownerId(): string
+    {
+        $user = Auth::user();
+
+        return ($user->role === 'staff') ? $user->parent_uid : $user->uid;
+    }
+
+    private function normalizeCode($code): string
+    {
+        return Str::upper(trim((string) $code));
+    }
+
+    private function isDuplicateVoucherCodeException(QueryException $e): bool
+    {
+        return str_contains($e->getMessage(), 'vouchers_event_uid_code_unique')
+            || str_contains($e->getMessage(), 'UNIQUE constraint failed')
+            || str_contains($e->getMessage(), 'Duplicate entry');
     }
 }

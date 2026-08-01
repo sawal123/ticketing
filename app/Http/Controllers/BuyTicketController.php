@@ -12,6 +12,7 @@ use App\Services\Tickets\TicketPricingService;
 use App\Services\Tickets\TicketReservationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class BuyTicketController extends Controller
@@ -135,7 +136,7 @@ class BuyTicketController extends Controller
             'code' => 'required|string|max:100',
             'cartUid' => 'required',
         ]);
-        $code = $request->code;
+        $code = Str::upper(trim((string) $request->code));
         $cart = $request->cartUid;
 
         $cartModel = Cart::where('uid', $cart)
