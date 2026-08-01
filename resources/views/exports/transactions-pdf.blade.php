@@ -111,13 +111,19 @@
                 <th>Kategori Tiket</th>
                 <th>Qty</th>
                 <th class="text-right">Harga Satuan</th>
+                <th class="text-right">Diskon</th>
                 <th class="text-right">Total</th>
                 <th>Kehadiran</th>
             </tr>
         </thead>
         <tbody>
-            @php $totalGrand = 0; @endphp
+            @php $seenCartTaxes = []; @endphp
             @foreach($transactions as $trx)
+                @php
+                    $lineTotal = ((int) $trx->quantity * (int) $trx->harga_ticket) - (int) ($trx->disc ?? 0);
+                    $taxSnapshot = empty($seenCartTaxes[$trx->cart_uid]) ? (int) ($trx->pajak ?? 0) : 0;
+                    $seenCartTaxes[$trx->cart_uid] = true;
+                @endphp
                 <tr>
                     <td>{{ \Carbon\Carbon::parse($trx->created_at)->format('d/m/y H:i') }}</td>
                     <td class="font-mono">{{ $trx->invoice }}</td>
@@ -125,7 +131,8 @@
                     <td>{{ $trx->kategori_harga }}</td>
                     <td>{{ $trx->quantity }}</td>
                     <td class="text-right">Rp {{ number_format($trx->harga_ticket, 0, ',', '.') }}</td>
-                    <td class="text-right">Rp {{ number_format($trx->quantity * $trx->harga_ticket, 0, ',', '.') }}</td>
+                    <td class="text-right">Rp {{ number_format($trx->disc ?? 0, 0, ',', '.') }}</td>
+                    <td class="text-right">Rp {{ number_format($lineTotal + $taxSnapshot, 0, ',', '.') }}</td>
                     <td>
                         @if($trx->konfirmasi == '1')
                             <span class="badge" style="background: #ecfdf5; color: #065f46;">Hadir</span>
@@ -134,13 +141,12 @@
                         @endif
                     </td>
                 </tr>
-                @php $totalGrand += ($trx->quantity * $trx->harga_ticket); @endphp
             @endforeach
         </tbody>
         <tfoot>
             <tr style="background: #f8fafc; font-weight: bold;">
-                <td colspan="6" class="text-right">TOTAL PENDAPATAN KOTOR (TIKET)</td>
-                <td class="text-right">Rp {{ number_format($totalGrand, 0, ',', '.') }}</td>
+                <td colspan="7" class="text-right">TOTAL OMZET SNAPSHOT</td>
+                <td class="text-right">Rp {{ number_format((int) ($exportTotals['owner_revenue'] ?? 0), 0, ',', '.') }}</td>
                 <td></td>
             </tr>
         </tfoot>

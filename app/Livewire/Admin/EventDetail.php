@@ -5,11 +5,9 @@ namespace App\Livewire\Admin;
 use App\Jobs\sendEmailETransaksi;
 use App\Jobs\sendEmailTrnsaksi;
 use App\Models\Cart;
-use App\Models\CartVoucher;
 use App\Models\Event;
 use App\Models\Harga;
-use App\Models\HargaCart;
-use App\Models\Voucher;
+use App\Services\Reports\FinancialSnapshotService;
 use Carbon\Carbon;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -80,22 +78,17 @@ class EventDetail extends Component
         $query = Cart::where('event_uid', $this->eventUid)->where('status', 'SUCCESS');
         $query = $this->applyFilters($query);
 
-        $transactionIds = $query->pluck('uid');
-        $totalTransactions = $transactionIds->count();
+        $carts = (clone $query)->with('hargaCarts')->get();
+        $totalTransactions = $carts->count();
+        $snapshotTotals = app(FinancialSnapshotService::class)->collectionTotals($carts);
 
-        $hargaCarts = HargaCart::whereIn('uid', $transactionIds)->get();
-
-        $totalRevenue = $hargaCarts->sum(fn ($item) => $item->quantity * $item->harga_ticket);
-        $totalTicketsSold = $hargaCarts->sum('quantity');
-
-        $totalPajak = $query->sum('pajak');
         $totalInternetFee = $query->sum('internet_fee');
 
         return [
             'total_transactions' => $totalTransactions,
-            'total_revenue' => $totalRevenue,
-            'total_tickets' => $totalTicketsSold,
-            'total_pajak' => $totalPajak,
+            'total_revenue' => $snapshotTotals['owner_revenue'],
+            'total_tickets' => $snapshotTotals['total_quantity'],
+            'total_pajak' => $snapshotTotals['tax_total'],
             'total_internet_fee' => $totalInternetFee,
         ];
     }
@@ -311,23 +304,11 @@ class EventDetail extends Component
                 ->first();
 
             if ($selectedTransaction) {
-                $cartVoucher = CartVoucher::where('uid', $this->selectedTransactionId)
-                    ->where('event_uid', $selectedTransaction->event_uid)
-                    ->first();
-                if ($cartVoucher) {
-                    $voucherCode = $cartVoucher->code;
-                    $voucher = Voucher::where('code', $voucherCode)
-                        ->where('event_uid', $selectedTransaction->event_uid)
-                        ->first();
-                    if ($voucher) {
-                        $totalTickets = $selectedTransaction->hargaCarts->sum(fn ($i) => $i->quantity * $i->harga_ticket);
-                        if ($voucher->unit === 'rupiah') {
-                            $discount = $voucher->nominal;
-                        } elseif ($voucher->unit === 'persen') {
-                            $discount = ($voucher->nominal / 100) * $totalTickets;
-                        }
-                    }
+                $hargaCartWithVoucher = $selectedTransaction->hargaCarts->whereNotNull('voucher')->first();
+                if ($hargaCartWithVoucher) {
+                    $voucherCode = $hargaCartWithVoucher->voucher;
                 }
+                $discount = $selectedTransaction->hargaCarts->sum(fn ($i) => (int) ($i->disc ?? 0));
             }
         }
 

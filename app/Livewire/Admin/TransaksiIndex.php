@@ -3,7 +3,6 @@
 namespace App\Livewire\Admin;
 
 use App\Models\Cart;
-use App\Models\CartVoucher;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -71,13 +70,11 @@ class TransaksiIndex extends Component
         $this->discount = 0;
         $this->voucherCode = null;
 
-        $cartVoucher = CartVoucher::where('uid', $this->selectedTrx->uid)
-            ->where('event_uid', $this->selectedTrx->event_uid)
-            ->first();
-        if ($cartVoucher) {
-            $this->voucherCode = $cartVoucher->code;
-            $this->discount = $cartVoucher->nominal;
+        $hargaCartWithVoucher = $this->selectedTrx->hargaCarts->whereNotNull('voucher')->first();
+        if ($hargaCartWithVoucher) {
+            $this->voucherCode = $hargaCartWithVoucher->voucher;
         }
+        $this->discount = $this->selectedTrx->hargaCarts->sum(fn ($item) => (int) ($item->disc ?? 0));
 
         $this->dispatch('open-modal', name: 'trx-detail-modal');
     }

@@ -8,9 +8,8 @@ use App\Models\Cart;
 use App\Models\Cash;
 use App\Models\Event;
 use App\Models\Harga;
-use App\Models\HargaCart;
 use App\Models\Talent;
-use App\Models\Voucher;
+use App\Services\Reports\FinancialSnapshotService;
 use App\Services\SecureImageStorage;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -137,59 +136,18 @@ class EventDetail extends Component
         $query = Cart::where('event_uid', $this->eventUid)->where('status', 'SUCCESS');
         $query = $this->applyFilters($query);
 
-        $transactionIds = (clone $query)->distinct()->pluck('uid');
-        $totalTransactions = $transactionIds->count();
-
-        $hargaCarts = HargaCart::whereIn('uid', $transactionIds)->get();
-
-        $grossRevenue = $hargaCarts->sum(fn ($item) => $item->quantity * $item->harga_ticket);
-        $totalTicketsSold = $hargaCarts->sum('quantity');
-
-        $totalPajak = (clone $query)->sum('pajak');
-        $totalInternetFee = (clone $query)->sum('internet_fee');
-
-        // Calculate Total Discount based on HargaCart to sync with UI "Terpakai" count
-        $totalDiscount = 0;
-
-        $hargaCartsWithVoucher = $hargaCarts->whereNotNull('voucher');
-
-        foreach ($hargaCartsWithVoucher as $hc) {
-            $voucher = Voucher::where('code', $hc->voucher)
-                ->where('event_uid', $this->eventUid)
-                ->first();
-
-            if ($voucher) {
-                $itemTotal = $hc->quantity * $hc->harga_ticket;
-                $discountValue = 0;
-
-                if (strtolower($voucher->unit) === 'rupiah') {
-                    $discountValue = $voucher->nominal;
-                } elseif (strtolower($voucher->unit) === 'persen' || $voucher->unit === '%') {
-                    $discountValue = ($voucher->nominal / 100) * $itemTotal;
-                    if ($voucher->max_disc > 0 && $discountValue > $voucher->max_disc) {
-                        $discountValue = $voucher->max_disc;
-                    }
-                }
-
-                $totalDiscount += $discountValue;
-            }
-        }
-
-        $event = $this->getEventData();
-        $feePercent = $event->fee ?? 0;
-
-        // Calculate Total Pajak based on net revenue (after discount)
-        // to match the Dashboard Omset formula: (Gross - Discount) * (1 + Fee%)
-        $totalPajak = ($grossRevenue - $totalDiscount) * ($feePercent / 100);
+        $carts = (clone $query)->with('hargaCarts')->get();
+        $totalTransactions = $carts->count();
+        $snapshotTotals = app(FinancialSnapshotService::class)->collectionTotals($carts);
         $totalInternetFee = (clone $query)->sum('internet_fee');
 
         return [
             'total_transactions' => $totalTransactions,
-            'total_revenue' => $grossRevenue,
-            'total_tickets' => $totalTicketsSold,
-            'total_pajak' => $totalPajak,
+            'total_revenue' => $snapshotTotals['owner_revenue'],
+            'total_tickets' => $snapshotTotals['total_quantity'],
+            'total_pajak' => $snapshotTotals['tax_total'],
             'total_internet_fee' => $totalInternetFee,
-            'total_discount' => $totalDiscount,
+            'total_discount' => $snapshotTotals['discount_total'],
         ];
     }
 
@@ -258,14 +216,19 @@ class EventDetail extends Component
             ->join('harga_carts', 'harga_carts.uid', '=', 'carts.uid')
             ->select([
                 'carts.created_at',
+                'carts.uid as cart_uid',
                 'carts.invoice',
                 DB::raw("CASE WHEN carts.payment_type = 'cash' THEN COALESCE(cashes.name, 'Data Pembeli Tidak Ditemukan') ELSE users.name END as buyer_name"),
                 DB::raw("CASE WHEN carts.payment_type = 'cash' THEN COALESCE(cashes.email, '-') ELSE users.email END as buyer_email"),
                 'harga_carts.kategori_harga',
                 'harga_carts.quantity',
                 'harga_carts.harga_ticket',
+                'harga_carts.disc',
                 'carts.payment_type',
                 'carts.konfirmasi',
+                'carts.pajak',
+                'carts.internet_fee',
+                'carts.gross_amount',
             ])
             ->where('carts.event_uid', $this->eventUid)
             ->where('carts.status', 'SUCCESS')
@@ -316,6 +279,27 @@ class EventDetail extends Component
         return $query->orderBy('carts.created_at', 'desc');
     }
 
+    protected function exportSnapshotTotalsFromRows($rows): array
+    {
+        $cartUids = $rows->pluck('cart_uid')->filter()->unique()->values();
+
+        if ($cartUids->isEmpty()) {
+            return [
+                'ticket_total' => 0,
+                'discount_total' => 0,
+                'total_quantity' => 0,
+                'tax_total' => 0,
+                'owner_revenue' => 0,
+            ];
+        }
+
+        $carts = Cart::with('hargaCarts')
+            ->whereIn('uid', $cartUids)
+            ->get();
+
+        return app(FinancialSnapshotService::class)->collectionTotals($carts);
+    }
+
     public function exportExcel()
     {
         $fileName = 'transaksi-event-'.Str::slug($this->getEventData()->event).'-'.now()->format('YmdHis').'.csv';
@@ -330,11 +314,19 @@ class EventDetail extends Component
 
         $callback = function () {
             $file = fopen('php://output', 'w');
+            $rows = $this->getExportQuery()->get();
+            $exportTotals = $this->exportSnapshotTotalsFromRows($rows);
+            $seenCartTaxes = [];
+
             // Header Row
-            fputcsv($file, ['Tanggal', 'Invoice', 'Nama Pembeli', 'Email', 'Kategori Tiket', 'Qty', 'Harga Satuan', 'Total', 'Status Kehadiran']);
+            fputcsv($file, ['Tanggal', 'Invoice', 'Nama Pembeli', 'Email', 'Kategori Tiket', 'Qty', 'Harga Satuan', 'Diskon', 'Pajak Snapshot', 'Total Item Snapshot', 'Status Kehadiran']);
 
             // Data Rows (Optimized with cursor)
-            $this->getExportQuery()->cursor()->each(function ($row) use ($file) {
+            $rows->each(function ($row) use ($file, &$seenCartTaxes) {
+                $lineTotal = ((int) $row->quantity * (int) $row->harga_ticket) - (int) ($row->disc ?? 0);
+                $taxSnapshot = isset($seenCartTaxes[$row->cart_uid]) ? 0 : (int) ($row->pajak ?? 0);
+                $seenCartTaxes[$row->cart_uid] = true;
+
                 fputcsv($file, [
                     $row->created_at,
                     $row->invoice,
@@ -343,10 +335,14 @@ class EventDetail extends Component
                     $row->kategori_harga,
                     $row->quantity,
                     $row->harga_ticket,
-                    ($row->quantity * $row->harga_ticket),
+                    (int) ($row->disc ?? 0),
+                    $taxSnapshot,
+                    $lineTotal,
                     $row->konfirmasi == '1' ? 'Hadir' : 'Belum Hadir',
                 ]);
             });
+
+            fputcsv($file, ['', '', '', '', '', '', '', '', 'TOTAL OMZET SNAPSHOT', (int) $exportTotals['owner_revenue'], '']);
 
             fclose($file);
         };
@@ -358,6 +354,7 @@ class EventDetail extends Component
     {
         $event = $this->getEventData();
         $transactions = $this->getExportQuery()->get();
+        $exportTotals = $this->exportSnapshotTotalsFromRows($transactions);
 
         $filter_info = 'Semua Data';
         if ($this->filterPayment !== 'all' || $this->filterRange || $this->searchTransaction) {
@@ -378,6 +375,7 @@ class EventDetail extends Component
             'event' => $event,
             'transactions' => $transactions,
             'filter_info' => $filter_info,
+            'exportTotals' => $exportTotals,
         ])->render();
 
         return response()->streamDownload(function () use ($html) {
@@ -587,21 +585,8 @@ class EventDetail extends Component
                 $hargaCartWithVoucher = $selectedTransaction->hargaCarts->whereNotNull('voucher')->first();
                 if ($hargaCartWithVoucher) {
                     $voucherCode = $hargaCartWithVoucher->voucher;
-                    $voucher = Voucher::where('code', $voucherCode)
-                        ->where('event_uid', $this->eventUid)
-                        ->first();
-                    if ($voucher) {
-                        $totalTickets = $selectedTransaction->hargaCarts->sum(fn ($i) => $i->quantity * $i->harga_ticket);
-                        if (strtolower($voucher->unit) === 'rupiah') {
-                            $discount = $voucher->nominal;
-                        } elseif (strtolower($voucher->unit) === 'persen' || $voucher->unit === '%') {
-                            $discount = ($voucher->nominal / 100) * $totalTickets;
-                            if ($voucher->max_disc > 0 && $discount > $voucher->max_disc) {
-                                $discount = $voucher->max_disc;
-                            }
-                        }
-                    }
                 }
+                $discount = $selectedTransaction->hargaCarts->sum(fn ($i) => (int) ($i->disc ?? 0));
             }
         }
 

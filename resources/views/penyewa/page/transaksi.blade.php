@@ -2,7 +2,7 @@
 
 @section('content')
     <div class="page-header">
-        <h1 class="page-title">Transaksi Online {{ $event->event }}</h1>
+        <h1 class="page-title">Transaksi Online {{ $event->event ?? 'Semua Event' }}</h1>
         <div>
             <ol class="breadcrumb">
                 <li class="breadcrumb-item"><a href="javascript:void(0)">Dashboard</a></li>
