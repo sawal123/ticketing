@@ -136,6 +136,93 @@ class VoucherTaxTicketSecurityTest extends TestCase
         $this->assertDatabaseCount('cart_vouchers', 0);
     }
 
+    public function test_cart_owner_can_open_detail_ticket_with_owner_url_parameter(): void
+    {
+        [$owner, $event] = $this->tenantWithEvent();
+        $cart = $this->cart($owner, $event, Cart::STATUS_RESERVED);
+        $this->hargaCart($cart, $this->harga($event), 100000);
+
+        $this->actingAs($owner)
+            ->get('/detail-ticket/'.$cart->uid.'/'.$owner->uid)
+            ->assertOk();
+    }
+
+    public function test_other_user_cannot_open_detail_ticket_even_with_correct_owner_url_parameter(): void
+    {
+        [$owner, $event] = $this->tenantWithEvent(['email' => 'detail-owner@example.test']);
+        $otherUser = $this->user(['email' => 'detail-other@example.test']);
+        $cart = $this->cart($owner, $event, Cart::STATUS_RESERVED);
+        $this->hargaCart($cart, $this->harga($event), 100000);
+
+        $this->actingAs($otherUser)
+            ->get('/detail-ticket/'.$cart->uid.'/'.$owner->uid)
+            ->assertRedirect('/');
+    }
+
+    public function test_cart_owner_can_open_detail_ticket_even_when_url_user_parameter_is_spoofed(): void
+    {
+        [$owner, $event] = $this->tenantWithEvent(['email' => 'detail-owner-spoof@example.test']);
+        $otherUser = $this->user(['email' => 'detail-param-spoof@example.test']);
+        $cart = $this->cart($owner, $event, Cart::STATUS_RESERVED);
+        $this->hargaCart($cart, $this->harga($event), 100000);
+
+        $this->actingAs($owner)
+            ->get('/detail-ticket/'.$cart->uid.'/'.$otherUser->uid)
+            ->assertOk();
+    }
+
+    public function test_check_voucher_still_uses_authenticated_user_for_cart_scope(): void
+    {
+        [$owner, $event] = $this->tenantWithEvent(['email' => 'voucher-owner-auth@example.test']);
+        $otherUser = $this->user(['email' => 'voucher-other-auth@example.test']);
+        $voucher = $this->voucher($owner, $event, ['code' => 'AUTHONLY']);
+        $cart = $this->cart($owner, $event, Cart::STATUS_RESERVED);
+        $this->hargaCart($cart, $this->harga($event), 100000);
+
+        $this->actingAs($otherUser)
+            ->from('/detail-ticket/'.$cart->uid.'/'.$owner->uid)
+            ->post('/checkVoucer', [
+                'cartUid' => $cart->uid,
+                'code' => $voucher->code,
+            ])
+            ->assertRedirect('/detail-ticket/'.$cart->uid.'/'.$owner->uid)
+            ->assertSessionHas('vError');
+
+        $this->assertDatabaseCount('cart_vouchers', 0);
+    }
+
+    public function test_voucher_dashboard_counts_are_scoped_by_event_uid_when_codes_match(): void
+    {
+        [$tenantA, $eventA] = $this->tenantWithEvent(['email' => 'tenant-a-count@example.test']);
+        [$tenantB, $eventB] = $this->tenantWithEvent(['email' => 'tenant-b-count@example.test']);
+        $voucherA = $this->voucher($tenantA, $eventA, ['code' => 'COUNTME']);
+        $voucherB = $this->voucher($tenantB, $eventB, ['code' => 'COUNTME']);
+        $this->successfulVoucherCart($tenantA, $eventA, $voucherA, 'INV-COUNT-A');
+        $this->successfulVoucherCart($tenantB, $eventB, $voucherB, 'INV-COUNT-B');
+
+        Livewire::actingAs($tenantA)
+            ->test(VoucherIndex::class)
+            ->assertViewHas('vouchers', function ($vouchers) use ($voucherA, $voucherB) {
+                $itemA = $vouchers->getCollection()->firstWhere('id', $voucherA->id);
+                $itemB = $vouchers->getCollection()->firstWhere('id', $voucherB->id);
+
+                return $itemA
+                    && ! $itemB
+                    && (int) $itemA->success_count === 1
+                    && (int) $itemA->cart_voucher_count === 1;
+            });
+
+        Livewire::actingAs($tenantB)
+            ->test(VoucherIndex::class)
+            ->assertViewHas('vouchers', function ($vouchers) use ($voucherB) {
+                $itemB = $vouchers->getCollection()->firstWhere('id', $voucherB->id);
+
+                return $itemB
+                    && (int) $itemB->success_count === 1
+                    && (int) $itemB->cart_voucher_count === 1;
+            });
+    }
+
     public function test_livewire_create_event_saves_fee_to_events_fee(): void
     {
         $tenant = $this->user(['role' => 'penyewa']);

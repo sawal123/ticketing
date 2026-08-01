@@ -29,12 +29,11 @@ class BuyTicketController extends Controller
         $this->payment();
         // dd($this->data_pay);
         // ?order_id=INV-05484&status_code=200&transaction_status=settlement
-        $cart = Cart::where('uid', $uid)->where('user_uid', $user)->first();
+        $cart = Cart::where('uid', $uid)
+            ->where('user_uid', Auth::user()->uid)
+            ->first();
         // dd($cart);
         if ($cart == null) {
-            return redirect('/');
-        }
-        if ($user != Auth::user()->uid) {
             return redirect('/');
         }
         $event = Event::where('uid', $cart->event_uid)->first();

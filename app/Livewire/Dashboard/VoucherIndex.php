@@ -264,11 +264,14 @@ class VoucherIndex extends Component
         }
 
         $vouchers = $vouchersQuery->with(['event'])->withCount([
-            'cartVoucher',
+            'cartVoucher as cart_voucher_count' => function ($q) {
+                $q->whereColumn('cart_vouchers.event_uid', 'vouchers.event_uid');
+            },
             'hargaCart as success_count' => function ($q) {
-                $q->whereHas('cart', function ($p) {
-                    $p->where('status', 'SUCCESS');
-                });
+                $q->whereColumn('harga_carts.event_uid', 'vouchers.event_uid')
+                    ->whereHas('cart', function ($p) {
+                        $p->where('status', 'SUCCESS');
+                    });
             },
         ])->latest()->paginate(10);
 
