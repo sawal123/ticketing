@@ -85,7 +85,7 @@
 </head>
 <body>
     <div class="no-print" style="text-align: right;">
-        <button onclick="window.print()" class="btn-print" style="color: white;">Cetak Laporan / Simpan PDF</button>
+        <button onclick="window.print()" class="btn-print" style="color: white;">Cetak Laporan / Simpan HTML</button>
     </div>
 
     <div class="header">

@@ -280,7 +280,7 @@ class EventDetail extends Component
     }
 
     /**
-     * Optimized query for exports (Excel/PDF)
+     * Optimized query for exports (CSV/Print)
      * Avoids N+1 and minimizes object hydration
      */
     protected function getExportQuery()
@@ -422,7 +422,7 @@ class EventDetail extends Component
         return response()->stream($callback, 200, $headers);
     }
 
-    public function exportPdf()
+    public function exportPrint()
     {
         $this->sanitizeFilters();
 
@@ -445,16 +445,25 @@ class EventDetail extends Component
             $filter_info = implode(', ', $parts);
         }
 
-        $html = view('exports.transactions-pdf', [
+        $html = view('exports.transactions-print', [
             'event' => $event,
             'transactions' => $transactions,
             'filter_info' => $filter_info,
             'exportTotals' => $exportTotals,
         ])->render();
 
+        $fileName = 'transaksi-event-'.Str::slug($event->event).'-'.now()->format('YmdHis').'.html';
+
         return response()->streamDownload(function () use ($html) {
             echo $html;
-        }, 'transaksi-event-'.Str::slug($event->event).'.html');
+        }, $fileName, [
+            'Content-Type' => 'text/html; charset=UTF-8',
+        ]);
+    }
+
+    public function exportPdf()
+    {
+        return $this->exportPrint();
     }
 
     public function setTab($tab)
