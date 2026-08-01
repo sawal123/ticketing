@@ -6,7 +6,7 @@
                 <h6 class="modal-title">Penarikan Dana</h6><button aria-label="Close" class="btn-close"
                     data-bs-dismiss="modal"><span aria-hidden="true">&times;</span></button>
             </div>
-            <form action="{{ url('dashboard/addPenarikan') }}" method="post" enctype="multipart/form-data">
+            <form action="{{ url('dashboard/old/addPenarikan') }}" method="post" enctype="multipart/form-data">
                 @csrf
                 <div class="modal-body">
                     {{-- <input type="hidden" name="uid" value="{{ $eventDetail->uid }}"> --}}

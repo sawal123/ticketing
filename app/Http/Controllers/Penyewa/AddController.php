@@ -3,16 +3,18 @@
 namespace App\Http\Controllers\Penyewa;
 
 use App\Http\Controllers\Controller;
-use App\Models\Cart;
 use App\Models\Event;
 use App\Models\EventDate;
 use App\Models\Harga;
 use App\Models\Partner;
 use App\Models\Penarikan;
 use App\Models\Talent;
+use App\Models\User;
 use App\Models\Voucher;
 use App\Services\SecureImageStorage;
+use App\Services\Withdrawals\WithdrawalBalanceService;
 use Exception;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -169,57 +171,39 @@ class AddController extends Controller
 
     public function addPenarikan(Request $request)
     {
-        $validate = Validator::make($request->all(), [
-            'amount' => 'required|numeric',
+        $request->validate([
+            'amount' => ['required', 'integer', 'min:10000', 'max:100000000'],
         ]);
-        $validate->validate();
+
+        $ownerUid = Auth::user()->uid;
         $amount = (int) $request->amount;
 
-        $totalHargaCart = Cart::select(['harga_carts.harga_ticket', 'harga_carts.quantity'])
-            ->join('harga_carts', 'harga_carts.uid', '=', 'carts.uid')
-            ->join('events', 'events.uid', '=', 'carts.event_uid')
-            ->where('carts.payment_type', '!=', 'cash')
-            ->where('carts.status', 'SUCCESS')
-            ->where('events.user_uid', Auth::user()->uid)
-            ->get();
-        $totalSaldo = 0;
-
-        $success = Penarikan::where('status', 'SUCCESS')
-            ->where('uid_user', Auth::user()->uid)
-            ->get();
-        $paid = 0;
-        foreach ($success as $key => $paids) {
-            $paid += (int) $success[$key]->amount;
-        }
-
-        foreach ($totalHargaCart as $key => $tHC) {
-            $totalSaldo += ($totalHargaCart[$key]->harga_ticket * $totalHargaCart[$key]->quantity);
-        }
-        $totali = 0;
-        $totali = $totalSaldo - $paid;
-        if ($totali < 1) {
-            return redirect()->back()->with('error', 'Saldo Anda tidak mencukupi!');
-        }
-        // dd($totali);
-        if ($totali < $amount) {
-            return redirect()->back()->with('error', 'Saldo Anda tidak mencukupi!');
-        } else {
-            $uid = Str::uuid();
-            $penarikan = new Penarikan([
-                'uid' => $uid,
-                'uid_user' => Auth::user()->uid,
-                'amount' => $request->amount,
-                'note' => 'Penarikan',
-                'kwitansi' => $totalSaldo,
-                'status' => 'PENDING',
-            ]);
-        }
-
-        // dd($penarikan);
         try {
-            $penarikan->save();
+            DB::transaction(function () use ($ownerUid, $amount) {
+                User::where('uid', $ownerUid)->lockForUpdate()->firstOrFail();
+
+                $availableBalance = app(WithdrawalBalanceService::class)
+                    ->availableBalanceFor($ownerUid);
+
+                if ($availableBalance < 1 || $amount > $availableBalance) {
+                    return back()
+                        ->with('error', 'Saldo Anda tidak mencukupi.')
+                        ->throwResponse();
+                }
+
+                Penarikan::create([
+                    'uid' => (string) Str::uuid(),
+                    'uid_user' => $ownerUid,
+                    'amount' => $amount,
+                    'note' => 'Penarikan',
+                    'kwitansi' => $availableBalance,
+                    'status' => 'PENDING',
+                ]);
+            }, 3);
 
             return redirect()->back()->with('penarikan', 'Penarikan berhasil diajukan');
+        } catch (HttpResponseException $e) {
+            throw $e;
         } catch (Exception $e) {
             return redirect()->back()->with('error', 'Pengajuan Gagal!');
         }

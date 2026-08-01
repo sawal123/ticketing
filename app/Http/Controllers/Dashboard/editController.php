@@ -525,13 +525,28 @@ class editController extends Controller
 
     public function editStatusInvoice(Request $request)
     {
-        $status = $request->uid;
-        // dd($status);
-        $penarikan = Penarikan::where('uid', $request->uid)->first();
-        // dd($penarikan);
-        $penarikan->status = 'SUCCESS';
-        $penarikan->approved_at = now();
-        $penarikan->save();
+        abort_unless(strtolower((string) Auth::user()?->role) === 'admin', 403);
+
+        $request->validate([
+            'uid' => 'required|string',
+        ]);
+
+        DB::transaction(function () use ($request) {
+            $penarikan = Penarikan::where('uid', $request->uid)->lockForUpdate()->firstOrFail();
+
+            if (! in_array(strtoupper((string) $penarikan->status), [
+                Penarikan::STATUS_PENDING,
+                Penarikan::STATUS_PROCESSING,
+            ], true)) {
+                return back()
+                    ->with('error', 'Penarikan hanya dapat disetujui jika masih pending atau processing.')
+                    ->throwResponse();
+            }
+
+            $penarikan->status = Penarikan::STATUS_SUCCESS;
+            $penarikan->approved_at = now();
+            $penarikan->save();
+        }, 3);
 
         return redirect()->back()->with('success', 'Konfirmasi Berhasil');
     }

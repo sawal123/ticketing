@@ -2,10 +2,13 @@
 
 namespace App\Livewire\Dashboard;
 
-use App\Models\Cart;
 use App\Models\Penarikan;
+use App\Models\User;
+use App\Services\Withdrawals\WithdrawalBalanceService;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -34,7 +37,7 @@ class PenarikanIndex extends Component
     public $successWithdrawal = 0;
 
     protected $rules = [
-        'amount' => 'required|numeric|min:10000',
+        'amount' => 'required|integer|min:10000|max:100000000',
         'note' => 'nullable|string|max:255',
     ];
 
@@ -45,50 +48,12 @@ class PenarikanIndex extends Component
 
     public function calculateStats()
     {
-        $user = Auth::user();
-        $ownerId = ($user->role === 'staff') ? $user->parent_uid : $user->uid;
+        $ownerId = $this->ownerUid();
+        $balances = app(WithdrawalBalanceService::class);
 
-        // Total Saldo (SUCCESS & NOT Cash)
-        // We use the same formula as in PenyewaController for consistency
-        $rumusDasar = "
-            (
-                (harga_carts.quantity * harga_carts.harga_ticket) - 
-                COALESCE(
-                    CASE 
-                        WHEN LOWER(vouchers.unit) = '%' OR LOWER(vouchers.unit) = 'persen' 
-                        THEN 
-                            CASE 
-                                WHEN vouchers.max_disc > 0 AND ((harga_carts.quantity * harga_carts.harga_ticket) * (vouchers.nominal / 100)) > vouchers.max_disc
-                                THEN vouchers.max_disc
-                                ELSE (harga_carts.quantity * harga_carts.harga_ticket) * (vouchers.nominal / 100)
-                            END
-                        ELSE vouchers.nominal 
-                    END, 
-                0)
-            ) 
-            * (1 + (COALESCE(events.fee, 0) / 100))
-        ";
-
-        $this->totalSaldo = \App\Models\HargaCart::join('carts', 'carts.uid', '=', 'harga_carts.uid')
-            ->join('events', 'events.uid', '=', 'carts.event_uid')
-            ->leftJoin('vouchers', function($join) {
-                $join->on('vouchers.code', '=', 'harga_carts.voucher')
-                     ->on('vouchers.event_uid', '=', 'events.uid');
-            })
-            ->where('carts.status', 'SUCCESS')
-            ->where('events.user_uid', $ownerId)
-            ->where('carts.payment_type', '!=', 'cash')
-            ->sum(\Illuminate\Support\Facades\DB::raw($rumusDasar));
-
-        // Pending Withdrawal
-        $this->pendingWithdrawal = Penarikan::where('uid_user', $ownerId)
-            ->where('status', 'pending')
-            ->sum('amount');
-
-        // Success Withdrawal
-        $this->successWithdrawal = Penarikan::where('uid_user', $ownerId)
-            ->where('status', 'success')
-            ->sum('amount');
+        $this->totalSaldo = $balances->grossEarningsFor($ownerId);
+        $this->pendingWithdrawal = $balances->deductedWithdrawalsFor($ownerId, ['PENDING', 'PROCESSING']);
+        $this->successWithdrawal = $balances->deductedWithdrawalsFor($ownerId, ['SUCCESS']);
     }
 
     public function resetForm()
@@ -105,9 +70,11 @@ class PenarikanIndex extends Component
 
     public function openEditModal($id)
     {
-        $penarikan = Penarikan::findOrFail($id);
+        $penarikan = $this->ownedPenarikanQuery()
+            ->where('id', $id)
+            ->firstOrFail();
 
-        if ($penarikan->status !== 'pending') {
+        if (strtoupper((string) $penarikan->status) !== 'PENDING') {
             session()->flash('error', 'Hanya penarikan pending yang dapat diedit.');
 
             return;
@@ -124,47 +91,66 @@ class PenarikanIndex extends Component
     public function save()
     {
         $this->validate();
-        $user = Auth::user();
-        $ownerId = ($user->role === 'staff') ? $user->parent_uid : $user->uid;
+        $ownerId = $this->ownerUid();
+        $amount = (int) $this->amount;
+        $note = $this->note;
 
-        // Check if balance is enough
-        $availableBalance = $this->totalSaldo - $this->successWithdrawal - $this->pendingWithdrawal;
+        try {
+            DB::transaction(function () use ($ownerId, $amount, $note) {
+                User::where('uid', $ownerId)->lockForUpdate()->firstOrFail();
 
-        if (! $this->isEditMode && $this->amount > $availableBalance) {
-            $this->addError('amount', 'Saldo tidak mencukupi.');
+                $balances = app(WithdrawalBalanceService::class);
+                $availableBalance = $balances->availableBalanceFor($ownerId);
 
-            return;
+                if ($this->isEditMode) {
+                    $penarikan = $this->ownedPenarikanQuery()
+                        ->where('id', $this->penarikan_id)
+                        ->lockForUpdate()
+                        ->firstOrFail();
+
+                    if (strtoupper((string) $penarikan->status) !== 'PENDING') {
+                        throw ValidationException::withMessages([
+                            'amount' => 'Hanya penarikan pending yang dapat diedit.',
+                        ]);
+                    }
+
+                    if ($amount > ($availableBalance + (int) $penarikan->amount)) {
+                        throw ValidationException::withMessages([
+                            'amount' => 'Saldo tidak mencukupi.',
+                        ]);
+                    }
+
+                    $penarikan->update([
+                        'amount' => $amount,
+                        'note' => $note,
+                        'kwitansi' => $availableBalance + (int) $penarikan->amount,
+                    ]);
+
+                    return;
+                }
+
+                if ($availableBalance < 1 || $amount > $availableBalance) {
+                    throw ValidationException::withMessages([
+                        'amount' => 'Saldo tidak mencukupi.',
+                    ]);
+                }
+
+                Penarikan::create([
+                    'uid' => (string) Str::uuid(),
+                    'uid_user' => $ownerId,
+                    'amount' => $amount,
+                    'note' => $note,
+                    'kwitansi' => $availableBalance,
+                    'status' => 'PENDING',
+                ]);
+            }, 3);
+        } catch (ValidationException $e) {
+            throw $e;
         }
 
-        if ($this->isEditMode) {
-            $penarikan = Penarikan::findOrFail($this->penarikan_id);
-            if ($penarikan->status !== 'pending') {
-                return;
-            }
-
-            // Check balance again for update
-            $oldAmount = $penarikan->amount;
-            if ($this->amount > ($availableBalance + $oldAmount)) {
-                $this->addError('amount', 'Saldo tidak mencukupi.');
-
-                return;
-            }
-
-            $penarikan->update([
-                'amount' => $this->amount,
-                'note' => $this->note,
-            ]);
-            session()->flash('success', 'Permintaan penarikan diperbarui.');
-        } else {
-            Penarikan::create([
-                'uid' => (string) Str::uuid(),
-                'uid_user' => $ownerId,
-                'amount' => $this->amount,
-                'note' => $this->note,
-                'status' => 'pending',
-            ]);
-            session()->flash('success', 'Permintaan penarikan berhasil dikirim.');
-        }
+        session()->flash('success', $this->isEditMode
+            ? 'Permintaan penarikan diperbarui.'
+            : 'Permintaan penarikan berhasil dikirim.');
 
         $this->dispatch('close-modal', name: 'penarikan-modal');
         $this->resetForm();
@@ -173,8 +159,11 @@ class PenarikanIndex extends Component
 
     public function confirmDelete($id)
     {
-        $penarikan = Penarikan::findOrFail($id);
-        if ($penarikan->status !== 'pending') {
+        $penarikan = $this->ownedPenarikanQuery()
+            ->where('id', $id)
+            ->firstOrFail();
+
+        if (strtoupper((string) $penarikan->status) !== 'PENDING') {
             session()->flash('error', 'Hanya penarikan pending yang dapat dihapus.');
 
             return;
@@ -185,8 +174,11 @@ class PenarikanIndex extends Component
 
     public function delete()
     {
-        $penarikan = Penarikan::findOrFail($this->penarikan_id);
-        if ($penarikan->status === 'pending') {
+        $penarikan = $this->ownedPenarikanQuery()
+            ->where('id', $this->penarikan_id)
+            ->firstOrFail();
+
+        if (strtoupper((string) $penarikan->status) === 'PENDING') {
             $penarikan->delete();
             session()->flash('success', 'Permintaan penarikan dibatalkan.');
         }
@@ -196,13 +188,14 @@ class PenarikanIndex extends Component
 
     public function render()
     {
-        $user = Auth::user();
-        $ownerId = ($user->role === 'staff') ? $user->parent_uid : $user->uid;
+        $ownerId = $this->ownerUid();
 
         $penarikans = Penarikan::where('uid_user', $ownerId)
             ->when($this->search, function ($q) {
-                $q->where('note', 'like', '%'.$this->search.'%')
-                    ->orWhere('amount', 'like', '%'.$this->search.'%');
+                $q->where(function ($query) {
+                    $query->where('note', 'like', '%'.$this->search.'%')
+                        ->orWhere('amount', 'like', '%'.$this->search.'%');
+                });
             })
             ->latest()
             ->paginate(10);
@@ -210,5 +203,17 @@ class PenarikanIndex extends Component
         return view('livewire.dashboard.penarikan-index', [
             'penarikans' => $penarikans,
         ]);
+    }
+
+    private function ownerUid(): string
+    {
+        $user = Auth::user();
+
+        return ($user->role === 'staff') ? $user->parent_uid : $user->uid;
+    }
+
+    private function ownedPenarikanQuery()
+    {
+        return Penarikan::where('uid_user', $this->ownerUid());
     }
 }
