@@ -258,6 +258,11 @@
     <!-- Delete Bank Confirmation Modal -->
     <x-admin.modal-delete name="delete-bank-modal" title="Hapus Rekening Bank?"
         message="Rekening bank ini akan dihapus dari akun Anda. Anda perlu menambahkan rekening kembali sebelum mengajukan penarikan saldo.">
+        <div class="mb-4">
+            <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5 uppercase tracking-wider">Masukkan password saat ini untuk menghapus rekening</label>
+            <x-admin.input wire:model.defer="deleteBankPassword" type="password" placeholder="Password saat ini" error="{{ $errors->first('deleteBankPassword') }}" />
+            @error('deleteBankPassword') <p class="mt-1 text-xs text-rose-500">{{ $message }}</p> @enderror
+        </div>
         <x-admin.button wire:click="deleteBank" variant="danger" icon="trash-2" loading-target="deleteBank"
             class="w-full !py-3">
             Ya, Hapus Rekening

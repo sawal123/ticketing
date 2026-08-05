@@ -59,6 +59,8 @@ class SettingsIndex extends Component
 
     public $deletingBankId;
 
+    public $deleteBankPassword;
+
     public $isEditBank = false;
 
     public $available_banks = [];
@@ -233,6 +235,7 @@ class SettingsIndex extends Component
     {
         $this->bankQuery($this->getOwnerId())->findOrFail($id);
         $this->deletingBankId = $id;
+        $this->deleteBankPassword = null;
         $this->dispatch('open-modal', name: 'delete-bank-modal');
     }
 
@@ -242,8 +245,36 @@ class SettingsIndex extends Component
             return;
         }
 
-        $this->bankQuery($this->getOwnerId())->findOrFail($this->deletingBankId)->delete();
+        $this->validate([
+            'deleteBankPassword' => 'required|string',
+        ]);
+
+        $user = Auth::user();
+
+        if ($user->role === 'staff') {
+            abort(403);
+        }
+
+        if (! Hash::check($this->deleteBankPassword, $user->password)) {
+            $this->addError('deleteBankPassword', 'Password saat ini tidak sesuai.');
+            $this->deleteBankPassword = null;
+
+            return;
+        }
+
+        $bank = $this->bankQuery($this->getOwnerId())->find($this->deletingBankId);
+
+        if (! $bank) {
+            $this->addError('deleteBankPassword', 'Rekening tidak ditemukan atau bukan milik Anda.');
+            $this->deleteBankPassword = null;
+
+            return;
+        }
+
+        $bank->delete();
+
         $this->deletingBankId = null;
+        $this->deleteBankPassword = null;
         $this->loadBanks();
         $this->dispatch('close-modal', name: 'delete-bank-modal');
         session()->flash('success', 'Rekening berhasil dihapus.');
