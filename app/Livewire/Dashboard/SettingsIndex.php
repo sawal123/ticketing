@@ -245,9 +245,18 @@ class SettingsIndex extends Component
             return;
         }
 
-        $this->validate([
-            'deleteBankPassword' => 'required|string',
+        $validator = validator([
+            'deleteBankPassword' => $this->deleteBankPassword,
+        ], [
+            'deleteBankPassword' => ['required', 'string'],
         ]);
+
+        if ($validator->fails()) {
+            $this->setErrorBag($validator->errors());
+            $this->deleteBankPassword = null;
+
+            return;
+        }
 
         $user = Auth::user();
 
