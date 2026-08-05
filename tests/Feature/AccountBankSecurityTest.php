@@ -303,6 +303,71 @@ class AccountBankSecurityTest extends TestCase
         $this->assertDatabaseCount('banks', 0);
     }
 
+    public function test_user_can_delete_own_bank_with_correct_password(): void
+    {
+        $tenant = $this->user(['password' => Hash::make('Password123')]);
+        $bank = $this->bank($tenant);
+
+        Livewire::actingAs($tenant)
+            ->test(SettingsIndex::class)
+            ->call('confirmDeleteBank', $bank->id)
+            ->set('deleteBankPassword', 'Password123')
+            ->call('deleteBank')
+            ->assertHasNoErrors()
+            ->assertSet('deleteBankPassword', null);
+
+        $this->assertDatabaseCount('banks', 0);
+    }
+
+    public function test_user_cannot_delete_bank_with_empty_password(): void
+    {
+        $tenant = $this->user(['password' => Hash::make('Password123')]);
+        $bank = $this->bank($tenant);
+
+        Livewire::actingAs($tenant)
+            ->test(SettingsIndex::class)
+            ->call('confirmDeleteBank', $bank->id)
+            ->set('deleteBankPassword', '')
+            ->call('deleteBank')
+            ->assertHasErrors('deleteBankPassword')
+            ->assertSet('deleteBankPassword', null);
+
+        $this->assertDatabaseHas('banks', ['id' => $bank->id]);
+    }
+
+    public function test_user_cannot_delete_bank_with_wrong_password(): void
+    {
+        $tenant = $this->user(['password' => Hash::make('Password123')]);
+        $bank = $this->bank($tenant);
+
+        Livewire::actingAs($tenant)
+            ->test(SettingsIndex::class)
+            ->call('confirmDeleteBank', $bank->id)
+            ->set('deleteBankPassword', 'Wrongpass123')
+            ->call('deleteBank')
+            ->assertHasErrors('deleteBankPassword')
+            ->assertSet('deleteBankPassword', null);
+
+        $this->assertDatabaseHas('banks', ['id' => $bank->id]);
+    }
+
+    public function test_user_cannot_delete_other_tenant_bank_even_with_correct_password(): void
+    {
+        $tenantA = $this->user(['password' => Hash::make('Password123')]);
+        $tenantB = $this->user(['password' => Hash::make('Password123')]);
+        $bankB = $this->bank($tenantB);
+
+        Livewire::actingAs($tenantA)
+            ->test(SettingsIndex::class)
+            ->set('deletingBankId', $bankB->id)
+            ->set('deleteBankPassword', 'Password123')
+            ->call('deleteBank')
+            ->assertHasErrors('deleteBankPassword')
+            ->assertSet('deleteBankPassword', null);
+
+        $this->assertDatabaseHas('banks', ['id' => $bankB->id]);
+    }
+
     public function test_staff_cannot_edit_bank_route(): void
     {
         $owner = $this->user(['role' => 'penyewa']);

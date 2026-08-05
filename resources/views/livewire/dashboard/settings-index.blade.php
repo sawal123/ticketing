@@ -46,183 +46,226 @@
         <!-- Main Content -->
         <div class="lg:col-span-3 relative min-h-[400px]">
             <!-- Loading State -->
-            <div wire:loading wire:target="setTab" class="absolute inset-0 z-50 bg-slate-50/50 dark:bg-slate-900/50 backdrop-blur-sm flex flex-col items-center justify-center rounded-2xl transition-all duration-300">
+            <div wire:loading wire:target="setTab"
+                class="absolute inset-0 z-50 bg-slate-50/50 dark:bg-slate-900/50 backdrop-blur-sm flex flex-col items-center justify-center rounded-2xl transition-all duration-300">
                 <div class="flex flex-col items-center justify-center space-y-4">
                     <div class="relative">
                         <div class="w-12 h-12 border-4 border-indigo-100 dark:border-slate-700 rounded-full"></div>
-                        <div class="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin absolute inset-0"></div>
+                        <div
+                            class="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin absolute inset-0">
+                        </div>
                     </div>
-                    <p class="text-sm text-slate-500 dark:text-slate-400 font-medium animate-pulse">Menyiapkan pengaturan...</p>
+                    <p class="text-sm text-slate-500 dark:text-slate-400 font-medium animate-pulse">Menyiapkan
+                        pengaturan...</p>
                 </div>
             </div>
 
             <div wire:loading.remove wire:target="setTab">
                 @if ($activeTab === 'profile')
-                <x-admin.card title="Informasi Profil" icon="user">
-                    <form wire:submit.prevent="updateProfile" class="space-y-6">
-                        <div class="flex flex-col md:flex-row items-center gap-6">
-                            <div class="relative group">
-                                <div class="w-24 h-24 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-700 border-2 border-slate-200 dark:border-slate-600">
-                                    @if ($new_gambar)
-                                        <img src="{{ $new_gambar->temporaryUrl() }}" class="w-full h-full object-cover">
-                                    @elseif ($gambar)
-                                        <img src="{{ asset('storage/user/' . $gambar) }}" class="w-full h-full object-cover">
-                                    @else
-                                        <div class="w-full h-full flex items-center justify-center text-slate-400">
-                                            <i data-lucide="user" class="w-10 h-10"></i>
-                                        </div>
-                                    @endif
+                    <x-admin.card title="Informasi Profil" icon="user">
+                        <form wire:submit.prevent="updateProfile" class="space-y-6">
+                            <div class="flex flex-col md:flex-row items-center gap-6">
+                                <div class="relative group">
+                                    <div
+                                        class="w-24 h-24 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-700 border-2 border-slate-200 dark:border-slate-600">
+                                        @if ($new_gambar)
+                                            <img src="{{ $new_gambar->temporaryUrl() }}"
+                                                class="w-full h-full object-cover">
+                                        @elseif ($gambar)
+                                            <img src="{{ asset('storage/user/' . $gambar) }}"
+                                                class="w-full h-full object-cover">
+                                        @else
+                                            <div class="w-full h-full flex items-center justify-center text-slate-400">
+                                                <i data-lucide="user" class="w-10 h-10"></i>
+                                            </div>
+                                        @endif
+                                    </div>
+                                    <label for="profile-photo"
+                                        class="absolute bottom-0 right-0 w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center text-white cursor-pointer hover:bg-indigo-700 transition-colors shadow-lg">
+                                        <i data-lucide="camera" class="w-4 h-4"></i>
+                                        <input type="file" id="profile-photo" wire:model="new_gambar" class="hidden"
+                                            accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp">
+                                    </label>
                                 </div>
-                                <label for="profile-photo" class="absolute bottom-0 right-0 w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center text-white cursor-pointer hover:bg-indigo-700 transition-colors shadow-lg">
-                                    <i data-lucide="camera" class="w-4 h-4"></i>
-                                    <input type="file" id="profile-photo" wire:model="new_gambar" class="hidden" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp">
-                                </label>
+                                <div class="flex-1 text-center md:text-left">
+                                    <h3 class="text-lg font-bold text-slate-800 dark:text-white">{{ $name }}
+                                    </h3>
+                                    <p class="text-sm text-slate-500 dark:text-slate-400">{{ $email }}</p>
+                                    <p
+                                        class="text-xs text-indigo-600 dark:text-indigo-400 mt-1 font-medium uppercase tracking-wider">
+                                        {{ auth()->user()->role }}</p>
+                                </div>
                             </div>
-                            <div class="flex-1 text-center md:text-left">
-                                <h3 class="text-lg font-bold text-slate-800 dark:text-white">{{ $name }}</h3>
-                                <p class="text-sm text-slate-500 dark:text-slate-400">{{ $email }}</p>
-                                <p class="text-xs text-indigo-600 dark:text-indigo-400 mt-1 font-medium uppercase tracking-wider">{{ auth()->user()->role }}</p>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <x-admin.input label="Nama Lengkap" wire:model="name" placeholder="Nama Lengkap"
+                                    error="{{ $errors->first('name') }}" />
+                                <x-admin.input label="Alamat Email" wire:model="email" type="email"
+                                    placeholder="email@example.com" readonly />
                             </div>
-                        </div>
 
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <x-admin.input label="Nama Lengkap" wire:model="name" placeholder="Nama Lengkap" error="{{ $errors->first('name') }}" />
-                            <x-admin.input label="Alamat Email" wire:model="email" type="email" placeholder="email@example.com" readonly />
-                        </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <x-admin.input label="Nomor WhatsApp" wire:model="nomor" placeholder="08123456789"
+                                    error="{{ $errors->first('nomor') }}" />
+                                <x-admin.input label="Tanggal Lahir" wire:model="birthday" type="date"
+                                    error="{{ $errors->first('birthday') }}" />
+                            </div>
 
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <x-admin.input label="Nomor WhatsApp" wire:model="nomor" placeholder="08123456789" error="{{ $errors->first('nomor') }}" />
-                            <x-admin.input label="Tanggal Lahir" wire:model="birthday" type="date" error="{{ $errors->first('birthday') }}" />
-                        </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div class="w-full">
+                                    <label
+                                        class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5 uppercase tracking-wider">
+                                        Jenis Kelamin
+                                    </label>
+                                    <select wire:model="gender"
+                                        class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-800 dark:text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all duration-200">
+                                        <option value="">Pilih Jenis Kelamin</option>
+                                        <option value="Laki-laki">Laki-laki</option>
+                                        <option value="Perempuan">Perempuan</option>
+                                    </select>
+                                    @error('gender')
+                                        <p class="mt-1 text-xs text-rose-500">{{ $message }}</p>
+                                    @enderror
+                                </div>
+                                <x-admin.input label="Kota/Provinsi" wire:model="kota" placeholder="Contoh: Jakarta"
+                                    error="{{ $errors->first('kota') }}" />
+                            </div>
 
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div class="w-full">
-                                <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5 uppercase tracking-wider">
-                                    Jenis Kelamin
+                                <label
+                                    class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5 uppercase tracking-wider">
+                                    Alamat Lengkap
                                 </label>
-                                <select wire:model="gender" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-800 dark:text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all duration-200">
-                                    <option value="">Pilih Jenis Kelamin</option>
-                                    <option value="Laki-laki">Laki-laki</option>
-                                    <option value="Perempuan">Perempuan</option>
-                                </select>
-                                @error('gender') <p class="mt-1 text-xs text-rose-500">{{ $message }}</p> @enderror
+                                <textarea wire:model="alamat" rows="3"
+                                    class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-800 dark:text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all duration-200"
+                                    placeholder="Alamat Lengkap..."></textarea>
+                                @error('alamat')
+                                    <p class="mt-1 text-xs text-rose-500">{{ $message }}</p>
+                                @enderror
                             </div>
-                            <x-admin.input label="Kota/Provinsi" wire:model="kota" placeholder="Contoh: Jakarta" error="{{ $errors->first('kota') }}" />
-                        </div>
 
-                        <div class="w-full">
-                            <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5 uppercase tracking-wider">
-                                Alamat Lengkap
-                            </label>
-                            <textarea wire:model="alamat" rows="3" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-800 dark:text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all duration-200" placeholder="Alamat Lengkap..."></textarea>
-                            @error('alamat') <p class="mt-1 text-xs text-rose-500">{{ $message }}</p> @enderror
-                        </div>
-
-                        <div class="flex justify-end">
-                            <x-admin.button type="submit" variant="primary" wire:loading.attr="disabled">
-                                <span wire:loading.remove>Simpan Perubahan</span>
-                                <span wire:loading.flex class="items-center gap-2">
-                                    <i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i>
-                                    Memproses...
-                                </span>
-                            </x-admin.button>
-                        </div>
-                    </form>
-                </x-admin.card>
-            @endif
-
-            @if ($activeTab === 'security')
-                <x-admin.card title="Keamanan Akun" icon="lock">
-                    <form wire:submit.prevent="updatePassword" class="space-y-6">
-                        <div class="max-w-md space-y-4">
-                            <x-admin.input label="Password Saat Ini" wire:model="current_password" type="password" revealable placeholder="••••••••" error="{{ $errors->first('current_password') }}" />
-                            <hr class="border-slate-100 dark:border-slate-700 my-4">
-                            <x-admin.input label="Password Baru" wire:model="new_password" type="password" revealable placeholder="••••••••" error="{{ $errors->first('new_password') }}" />
-                            <x-admin.input label="Konfirmasi Password Baru" wire:model="new_password_confirmation" type="password" revealable placeholder="••••••••" />
-                        </div>
-
-                        <div class="flex justify-end">
-                            <x-admin.button type="submit" variant="primary" wire:loading.attr="disabled">
-                                <span wire:loading.remove>Update Password</span>
-                                <span wire:loading.flex class="items-center gap-2">
-                                    <i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i>
-                                    Memproses...
-                                </span>
-                            </x-admin.button>
-                        </div>
-                    </form>
-                </x-admin.card>
-            @endif
-
-            @if ($activeTab === 'bank')
-                <div class="space-y-6">
-                    <div class="flex items-center justify-between">
-                        <h3 class="text-lg font-bold text-slate-800 dark:text-white">Rekening Bank</h3>
-                        <x-admin.button wire:click="openBankModal" icon="plus" variant="primary"
-                            loading-target="openBankModal"
-                            :disabled="count($banks) >= 1"
-                            title="{{ count($banks) >= 1 ? 'Maksimal 1 rekening diperbolehkan' : 'Tambah Bank' }}"
-                            class="{{ count($banks) >= 1 ? 'opacity-50 cursor-not-allowed' : '' }}">
-                            Tambah Bank
-                        </x-admin.button>
-                    </div>
-
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        @forelse($banks as $bank)
-                            <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 relative group overflow-hidden shadow-sm hover:shadow-md transition-all duration-300">
-                                <div class="absolute top-0 right-0 w-24 h-24 bg-indigo-50 dark:bg-indigo-900/10 rounded-bl-full -mr-10 -mt-10 transition-transform duration-500 group-hover:scale-110"></div>
-                                
-                                <div class="flex justify-between items-start relative z-10">
-                                    <div class="space-y-1">
-                                        <p class="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">{{ $bank->bank }}</p>
-                                        <h4 class="text-xl font-mono font-bold text-slate-800 dark:text-white">{{ $bank->norek }}</h4>
-                                        <p class="text-sm text-slate-500 dark:text-slate-400 font-medium">{{ $bank->nama }}</p>
-                                    </div>
-                                    <div class="flex gap-1">
-                                        <button wire:click="openBankModal({{ $bank->id }})" class="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-xl transition-colors">
-                                            <i data-lucide="edit-3" class="w-4 h-4"></i>
-                                        </button>
-                                        <x-admin.button wire:click="confirmDeleteBank({{ $bank->id }})" variant="ghost"
-                                            size="sm" icon="trash-2"
-                                            loading-target="confirmDeleteBank({{ $bank->id }})"
-                                            class="!p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20"
-                                            title="Hapus Rekening" />
-                                    </div>
-                                </div>
-                            </div>
-                        @empty
-                            <div class="col-span-full py-12 flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-800/50 rounded-3xl border-2 border-dashed border-slate-200 dark:border-slate-700">
-                                <div class="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center text-slate-300 dark:text-slate-600 mb-4">
-                                    <i data-lucide="credit-card" class="w-8 h-8"></i>
-                                </div>
-                                <h4 class="text-slate-800 dark:text-white font-bold">Belum Ada Rekening</h4>
-                                <p class="text-slate-500 dark:text-slate-400 text-sm mt-1">Tambahkan rekening bank Anda untuk melakukan penarikan saldo.</p>
-                                <x-admin.button wire:click="openBankModal" icon="plus" variant="primary" size="sm"
-                                    loading-target="openBankModal" class="mt-5">
-                                    Tambah Rekening
+                            <div class="flex justify-end">
+                                <x-admin.button type="submit" variant="primary" wire:loading.attr="disabled">
+                                    <span wire:loading.remove>Simpan Perubahan</span>
+                                    <span wire:loading.flex class="items-center gap-2">
+                                        <i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i>
+                                        Memproses...
+                                    </span>
                                 </x-admin.button>
                             </div>
-                        @endforelse
+                        </form>
+                    </x-admin.card>
+                @endif
+
+                @if ($activeTab === 'security')
+                    <x-admin.card title="Keamanan Akun" icon="lock">
+                        <form wire:submit.prevent="updatePassword" class="space-y-6">
+                            <div class="max-w-md space-y-4">
+                                <x-admin.input label="Password Saat Ini" wire:model="current_password"
+                                    type="password" revealable placeholder="••••••••"
+                                    error="{{ $errors->first('current_password') }}" />
+                                <hr class="border-slate-100 dark:border-slate-700 my-4">
+                                <x-admin.input label="Password Baru" wire:model="new_password" type="password"
+                                    revealable placeholder="••••••••" error="{{ $errors->first('new_password') }}" />
+                                <x-admin.input label="Konfirmasi Password Baru" wire:model="new_password_confirmation"
+                                    type="password" revealable placeholder="••••••••" />
+                            </div>
+
+                            <div class="flex justify-end">
+                                <x-admin.button type="submit" variant="primary" wire:loading.attr="disabled">
+                                    <span wire:loading.remove>Update Password</span>
+                                    <span wire:loading.flex class="items-center gap-2">
+                                        <i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i>
+                                        Memproses...
+                                    </span>
+                                </x-admin.button>
+                            </div>
+                        </form>
+                    </x-admin.card>
+                @endif
+
+                @if ($activeTab === 'bank')
+                    <div class="space-y-6">
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-lg font-bold text-slate-800 dark:text-white">Rekening Bank</h3>
+                            <x-admin.button wire:click="openBankModal" icon="plus" variant="primary"
+                                loading-target="openBankModal" :disabled="count($banks) >= 1"
+                                title="{{ count($banks) >= 1 ? 'Maksimal 1 rekening diperbolehkan' : 'Tambah Bank' }}"
+                                class="{{ count($banks) >= 1 ? 'opacity-50 cursor-not-allowed' : '' }}">
+                                Tambah Bank
+                            </x-admin.button>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            @forelse($banks as $bank)
+                                <div
+                                    class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 relative group overflow-hidden shadow-sm hover:shadow-md transition-all duration-300">
+                                    <div
+                                        class="absolute top-0 right-0 w-24 h-24 bg-indigo-50 dark:bg-indigo-900/10 rounded-bl-full -mr-10 -mt-10 transition-transform duration-500 group-hover:scale-110">
+                                    </div>
+
+                                    <div class="flex justify-between items-start relative z-10">
+                                        <div class="space-y-1">
+                                            <p
+                                                class="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">
+                                                {{ $bank->bank }}</p>
+                                            <h4 class="text-xl font-mono font-bold text-slate-800 dark:text-white">
+                                                {{ $bank->norek }}</h4>
+                                            <p class="text-sm text-slate-500 dark:text-slate-400 font-medium">
+                                                {{ $bank->nama }}</p>
+                                        </div>
+                                        <div class="flex gap-1">
+                                            <button wire:click="openBankModal({{ $bank->id }})"
+                                                class="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-xl transition-colors">
+                                                <i data-lucide="edit-3" class="w-4 h-4"></i>
+                                            </button>
+                                            <x-admin.button wire:click="confirmDeleteBank({{ $bank->id }})"
+                                                variant="ghost" size="sm" icon="trash-2"
+                                                loading-target="confirmDeleteBank({{ $bank->id }})"
+                                                class="!p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20"
+                                                title="Hapus Rekening" />
+                                        </div>
+                                    </div>
+                                </div>
+                            @empty
+                                <div
+                                    class="col-span-full py-12 flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-800/50 rounded-3xl border-2 border-dashed border-slate-200 dark:border-slate-700">
+                                    <div
+                                        class="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center text-slate-300 dark:text-slate-600 mb-4">
+                                        <i data-lucide="credit-card" class="w-8 h-8"></i>
+                                    </div>
+                                    <h4 class="text-slate-800 dark:text-white font-bold">Belum Ada Rekening</h4>
+                                    <p class="text-slate-500 dark:text-slate-400 text-sm mt-1">Tambahkan rekening bank
+                                        Anda untuk melakukan penarikan saldo.</p>
+                                    <x-admin.button wire:click="openBankModal" icon="plus" variant="primary"
+                                        size="sm" loading-target="openBankModal" class="mt-5">
+                                        Tambah Rekening
+                                    </x-admin.button>
+                                </div>
+                            @endforelse
+                        </div>
                     </div>
-                </div>
-            @endif
+                @endif
             </div>
         </div>
     </div>
 
     <!-- Bank Modal -->
-    <x-admin.modal name="bank-modal" title="{{ $isEditBank ? 'Edit Rekening Bank' : 'Tambah Rekening Bank' }}" icon="credit-card">
+    <x-admin.modal name="bank-modal" title="{{ $isEditBank ? 'Edit Rekening Bank' : 'Tambah Rekening Bank' }}"
+        icon="credit-card">
         <form wire:submit.prevent="saveBank" class="space-y-4">
             <div class="w-full">
-                <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5 uppercase tracking-wider">
+                <label
+                    class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5 uppercase tracking-wider">
                     Nama Bank
                 </label>
-                <select wire:model="bank_name" class="w-full px-4 py-2.5 rounded-xl border {{ $errors->has('bank_name') ? 'border-rose-500 ring-1 ring-rose-500' : 'border-slate-200 dark:border-slate-600' }} bg-slate-50 dark:bg-slate-700 text-slate-800 dark:text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all duration-200">
+                <select wire:model="bank_name"
+                    class="w-full px-4 py-2.5 rounded-xl border {{ $errors->has('bank_name') ? 'border-rose-500 ring-1 ring-rose-500' : 'border-slate-200 dark:border-slate-600' }} bg-slate-50 dark:bg-slate-700 text-slate-800 dark:text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all duration-200">
                     <option value="">Pilih Bank</option>
-                    @foreach($available_banks as $b)
+                    @foreach ($available_banks as $b)
                         <option value="{{ $b->name }}">{{ $b->name }}</option>
                     @endforeach
-                    @if($available_banks->isEmpty())
+                    @if ($available_banks->isEmpty())
                         <option value="BCA">BCA</option>
                         <option value="BNI">BNI</option>
                         <option value="BRI">BRI</option>
@@ -231,12 +274,17 @@
                         <option value="Permata">Permata</option>
                     @endif
                 </select>
-                @error('bank_name') <p class="mt-1 text-xs text-rose-500">{{ $message }}</p> @enderror
+                @error('bank_name')
+                    <p class="mt-1 text-xs text-rose-500">{{ $message }}</p>
+                @enderror
             </div>
 
-            <x-admin.input label="Nomor Rekening" wire:model="nomor_rekening" placeholder="Contoh: 1234567890" error="{{ $errors->first('nomor_rekening') }}" />
-            <x-admin.input label="Nama Pemilik Rekening" wire:model="nama_rekening" placeholder="Contoh: Jhon Doe" error="{{ $errors->first('nama_rekening') }}" />
-            <x-admin.input label="Password Saat Ini" wire:model="bank_current_password" type="password" revealable placeholder="Konfirmasi password akun" error="{{ $errors->first('bank_current_password') }}" />
+            <x-admin.input label="Nomor Rekening" wire:model="nomor_rekening" placeholder="Contoh: 1234567890"
+                error="{{ $errors->first('nomor_rekening') }}" />
+            <x-admin.input label="Nama Pemilik Rekening" wire:model="nama_rekening" placeholder="Contoh: Jhon Doe"
+                error="{{ $errors->first('nama_rekening') }}" />
+            <x-admin.input label="Password Saat Ini" wire:model="bank_current_password" type="password" revealable
+                placeholder="Konfirmasi password akun" error="{{ $errors->first('bank_current_password') }}" />
 
             <div class="flex justify-end gap-3 pt-4">
                 <x-admin.button type="button" variant="secondary" x-on:click="show = false">
@@ -258,6 +306,16 @@
     <!-- Delete Bank Confirmation Modal -->
     <x-admin.modal-delete name="delete-bank-modal" title="Hapus Rekening Bank?"
         message="Rekening bank ini akan dihapus dari akun Anda. Anda perlu menambahkan rekening kembali sebelum mengajukan penarikan saldo.">
+        <div class="mb-4">
+            <label
+                class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5 uppercase tracking-wider">Masukkan
+                password saat ini untuk menghapus rekening</label>
+            <x-admin.input wire:model.defer="deleteBankPassword" type="password" placeholder="Password saat ini"
+                error="{{ $errors->first('deleteBankPassword') }}" />
+            @error('deleteBankPassword')
+                <p class="mt-1 text-xs text-rose-500">{{ $message }}</p>
+            @enderror
+        </div>
         <x-admin.button wire:click="deleteBank" variant="danger" icon="trash-2" loading-target="deleteBank"
             class="w-full !py-3">
             Ya, Hapus Rekening
