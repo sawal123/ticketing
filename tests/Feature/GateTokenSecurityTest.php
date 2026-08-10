@@ -6,6 +6,7 @@ use App\Http\Middleware\GlobalDataMiddleware;
 use App\Http\Middleware\LogActivityMiddleware;
 use App\Jobs\sendEmailETransaksi;
 use App\Jobs\sendEmailTrnsaksi;
+use App\Livewire\Admin\EventDetail;
 use App\Mail\MidtransPaymentNotification;
 use App\Models\Cart;
 use App\Models\Cash;
@@ -533,6 +534,286 @@ class GateTokenSecurityTest extends TestCase
         Queue::assertPushed(sendEmailTrnsaksi::class, fn (sendEmailTrnsaksi $job) => $job->cartUid === $cart->uid
             && $job->recipientEmail === 'cash-gate@example.test'
             && $job->isResend);
+    }
+
+    public function test_admin_manual_resend_online_queues_resend_job(): void
+    {
+        Queue::fake();
+        [$owner, $event, $buyer, $cart] = $this->ticket();
+        $this->tokens->issue($cart);
+
+        $component = app(EventDetail::class);
+        $component->mount($event->uid);
+        $component->resendEmailUid = $cart->uid;
+        $component->resendEmail();
+
+        Queue::assertPushed(sendEmailETransaksi::class, fn (sendEmailETransaksi $job) => $job->cartUid === $cart->uid
+            && $job->userUid === $buyer->uid
+            && $job->isResend);
+    }
+
+    public function test_admin_cannot_resend_scanned_online_success_ticket_without_issuing_credentials(): void
+    {
+        Queue::fake();
+        [$owner, $event, $buyer, $cart] = $this->ticket(cartAttributes: [
+            'scanned_at' => now(),
+        ]);
+
+        $component = app(EventDetail::class);
+        $component->mount($event->uid);
+        $component->resendEmailUid = $cart->uid;
+        $component->resendEmail();
+
+        Queue::assertNotPushed(sendEmailETransaksi::class);
+        $cart->refresh();
+        $this->assertNull($cart->gate_token_hash);
+        $this->assertNull($cart->gate_token_encrypted);
+        $this->assertNull($cart->gate_manual_code_hash);
+        $this->assertNull($cart->gate_manual_code_encrypted);
+        $this->assertSame('Tiket sudah digunakan dan tidak dapat dikirim ulang.', session('error'));
+    }
+
+    public function test_admin_cannot_resend_confirmed_online_ticket_and_does_not_rotate_or_backfill(): void
+    {
+        Queue::fake();
+        [$owner, $event, $buyer, $cart] = $this->ticket();
+        $token = $this->tokens->issue($cart);
+        $cart->forceFill([
+            'konfirmasi' => '1',
+            'gate_manual_code_hash' => null,
+            'gate_manual_code_encrypted' => null,
+        ])->save();
+        $before = $cart->fresh();
+
+        $component = app(EventDetail::class);
+        $component->mount($event->uid);
+        $component->resendEmailUid = $cart->uid;
+        $component->resendEmail();
+
+        Queue::assertNotPushed(sendEmailETransaksi::class);
+        $cart->refresh();
+        $this->assertSame(hash('sha256', $token), $cart->gate_token_hash);
+        $this->assertSame($before->gate_token_encrypted, $cart->gate_token_encrypted);
+        $this->assertSame($before->gate_token_version, $cart->gate_token_version);
+        $this->assertNull($cart->gate_manual_code_hash);
+        $this->assertNull($cart->gate_manual_code_encrypted);
+        $this->assertSame('Tiket sudah digunakan dan tidak dapat dikirim ulang.', session('error'));
+    }
+
+    public function test_online_email_job_returns_before_mailable_when_used_ticket_has_no_credentials(): void
+    {
+        \Illuminate\Support\Facades\Mail::fake();
+        [$owner, $event, $buyer, $cart] = $this->ticket(cartAttributes: [
+            'scanned_at' => now(),
+        ]);
+
+        (new sendEmailETransaksi($buyer, $cart, true))->handle();
+
+        \Illuminate\Support\Facades\Mail::assertNothingSent();
+        $cart->refresh();
+        $this->assertNull($cart->gate_token_hash);
+        $this->assertNull($cart->gate_token_encrypted);
+        $this->assertNull($cart->gate_manual_code_hash);
+        $this->assertNull($cart->gate_manual_code_encrypted);
+    }
+
+    public function test_resend_job_returns_if_ticket_is_scanned_after_dispatch_without_changing_credentials(): void
+    {
+        \Illuminate\Support\Facades\Mail::fake();
+        [$owner, $event, $buyer, $cart] = $this->ticket();
+        $this->tokens->issue($cart);
+        $before = $cart->fresh();
+        $job = new sendEmailETransaksi($buyer, $before, true);
+
+        $cart->forceFill(['scanned_at' => now()])->save();
+        $job->handle();
+
+        \Illuminate\Support\Facades\Mail::assertNothingSent();
+        $cart->refresh();
+        $this->assertSame($before->gate_token_hash, $cart->gate_token_hash);
+        $this->assertSame($before->gate_token_encrypted, $cart->gate_token_encrypted);
+        $this->assertSame($before->gate_token_version, $cart->gate_token_version);
+        $this->assertSame($before->gate_manual_code_hash, $cart->gate_manual_code_hash);
+        $this->assertSame($before->gate_manual_code_encrypted, $cart->gate_manual_code_encrypted);
+    }
+
+    public function test_resend_job_returns_if_ticket_is_confirmed_after_dispatch_without_changing_credentials(): void
+    {
+        \Illuminate\Support\Facades\Mail::fake();
+        [$owner, $event, $buyer, $cart] = $this->ticket();
+        $this->tokens->issue($cart);
+        $before = $cart->fresh();
+        $job = new sendEmailETransaksi($buyer, $before, true);
+
+        $cart->forceFill(['konfirmasi' => '1'])->save();
+        $job->handle();
+
+        \Illuminate\Support\Facades\Mail::assertNothingSent();
+        $cart->refresh();
+        $this->assertSame($before->gate_token_hash, $cart->gate_token_hash);
+        $this->assertSame($before->gate_token_encrypted, $cart->gate_token_encrypted);
+        $this->assertSame($before->gate_token_version, $cart->gate_token_version);
+        $this->assertSame($before->gate_manual_code_hash, $cart->gate_manual_code_hash);
+        $this->assertSame($before->gate_manual_code_encrypted, $cart->gate_manual_code_encrypted);
+    }
+
+    public function test_online_success_cart_without_gate_token_is_prepared_before_email_is_sent(): void
+    {
+        \Illuminate\Support\Facades\Mail::fake();
+        [$owner, $event, $buyer, $cart] = $this->ticket();
+
+        $this->assertNull($cart->gate_token_hash);
+        $this->assertNull($cart->gate_manual_code_hash);
+
+        (new sendEmailETransaksi($buyer, $cart))->handle();
+
+        $cart->refresh();
+        $this->assertNotNull($cart->gate_token_hash);
+        $this->assertNotNull($cart->gate_token_encrypted);
+        $this->assertNotNull($cart->gate_manual_code_hash);
+        $this->assertNotNull($cart->gate_manual_code_encrypted);
+        \Illuminate\Support\Facades\Mail::assertSent(MidtransPaymentNotification::class);
+    }
+
+    public function test_mailable_does_not_issue_or_backfill_gate_credentials(): void
+    {
+        [$owner, $event, $buyer, $cart] = $this->ticket();
+        $token = $this->tokens->issue($cart);
+        $cart->forceFill([
+            'gate_manual_code_hash' => null,
+            'gate_manual_code_encrypted' => null,
+        ])->save();
+        $before = $cart->fresh();
+
+        new MidtransPaymentNotification($buyer, $before);
+
+        $after = $cart->fresh();
+        $this->assertSame(hash('sha256', $token), $after->gate_token_hash);
+        $this->assertSame($before->gate_token_encrypted, $after->gate_token_encrypted);
+        $this->assertSame($before->gate_token_version, $after->gate_token_version);
+        $this->assertNull($after->gate_manual_code_hash);
+        $this->assertNull($after->gate_manual_code_encrypted);
+    }
+
+    public function test_resend_does_not_rotate_existing_gate_token_and_backfills_missing_manual_code_only(): void
+    {
+        \Illuminate\Support\Facades\Mail::fake();
+        [$owner, $event, $buyer, $cart] = $this->ticket();
+        $token = $this->tokens->issue($cart);
+        $cart->forceFill([
+            'gate_manual_code_hash' => null,
+            'gate_manual_code_encrypted' => null,
+        ])->save();
+        $before = $cart->fresh();
+
+        (new sendEmailETransaksi($buyer, $before, true))->handle();
+
+        $cart->refresh();
+        $this->assertSame(hash('sha256', $token), $cart->gate_token_hash);
+        $this->assertSame($before->gate_token_encrypted, $cart->gate_token_encrypted);
+        $this->assertSame($before->gate_token_version, $cart->gate_token_version);
+        $this->assertNotNull($cart->gate_manual_code_hash);
+        $this->assertNotNull($cart->gate_manual_code_encrypted);
+        \Illuminate\Support\Facades\Mail::assertSent(MidtransPaymentNotification::class, fn (MidtransPaymentNotification $mail) => $mail->isResend);
+    }
+
+    public function test_admin_manual_resend_cash_queues_resend_job(): void
+    {
+        Queue::fake();
+        [$owner, $event, $buyer, $cart] = $this->ticket();
+        $cart->update(['payment_type' => 'cash']);
+        Cash::create([
+            'uid' => $cart->uid,
+            'uid_user' => $owner->uid,
+            'uid_event' => $event->uid,
+            'name' => 'Admin Cash Buyer',
+            'email' => 'admin-cash@example.test',
+        ]);
+        $this->tokens->issue($cart);
+
+        $component = app(EventDetail::class);
+        $component->mount($event->uid);
+        $component->resendEmailUid = $cart->uid;
+        $component->resendEmail();
+
+        Queue::assertPushed(sendEmailTrnsaksi::class, fn (sendEmailTrnsaksi $job) => $job->cartUid === $cart->uid
+            && $job->recipientEmail === 'admin-cash@example.test'
+            && $job->isResend);
+    }
+
+    public function test_secure_online_ticket_url_uses_uid_proof_not_invoice_or_raw_token_and_opens_success_ticket(): void
+    {
+        [$owner, $event, $buyer, $cart] = $this->ticket();
+        $token = $this->tokens->issue($cart);
+        $mail = new MidtransPaymentNotification($buyer, $cart->fresh());
+
+        $this->assertStringContainsString('/ticket-access/'.$cart->uid, $mail->ticketUrl);
+        $this->assertStringContainsString('expires=', $mail->ticketUrl);
+        $this->assertStringContainsString('signature=', $mail->ticketUrl);
+        $this->assertStringNotContainsString($cart->invoice, $mail->ticketUrl);
+        $this->assertStringNotContainsString($token, $mail->ticketUrl);
+        $this->assertStringNotContainsString($cart->fresh()->gate_token_hash, $mail->ticketUrl);
+
+        $this->get($mail->ticketUrl)
+            ->assertOk()
+            ->assertSee($cart->invoice);
+    }
+
+    public function test_secure_online_ticket_url_rejects_bad_signature_bad_proof_and_rotated_old_proof(): void
+    {
+        [$owner, $event, $buyer, $cart] = $this->ticket();
+        $oldToken = $this->tokens->issue($cart);
+        $oldUrl = (new MidtransPaymentNotification($buyer, $cart->fresh()))->ticketUrl;
+
+        $expiredUrl = URL::temporarySignedRoute('online.ticket.show', now()->subMinute(), [
+            'uid' => $cart->uid,
+            'gate_access' => $this->tokens->ticketAccessProof($cart->fresh()),
+        ]);
+        $this->get($expiredUrl)
+            ->assertForbidden();
+
+        $this->get($oldUrl.'&tampered=1')
+            ->assertForbidden();
+
+        $badProofUrl = URL::temporarySignedRoute('online.ticket.show', now()->addMinute(), [
+            'uid' => $cart->uid,
+            'gate_access' => str_repeat('0', 64),
+        ]);
+        $this->get($badProofUrl)
+            ->assertForbidden();
+
+        $this->tokens->issue($cart->fresh(), true);
+        $cart->refresh();
+        $newToken = $this->tokens->tokenForQr($cart);
+        $newUrl = (new MidtransPaymentNotification($buyer, $cart, true))->ticketUrl;
+
+        $this->assertNotSame($oldToken, $newToken);
+        $this->get($oldUrl)
+            ->assertForbidden();
+        $this->get($newUrl)
+            ->assertOk()
+            ->assertSee($cart->invoice);
+        $this->assertStringNotContainsString($newToken, $newUrl);
+    }
+
+    public function test_admin_resend_legacy_online_cart_creates_valid_secure_ticket_url(): void
+    {
+        Queue::fake();
+        [$owner, $event, $buyer, $cart] = $this->ticket();
+
+        $component = app(EventDetail::class);
+        $component->mount($event->uid);
+        $component->resendEmailUid = $cart->uid;
+        $component->resendEmail();
+
+        $cart->refresh();
+        $this->assertNotNull($cart->gate_token_hash);
+        Queue::assertPushed(sendEmailETransaksi::class, fn (sendEmailETransaksi $job) => $job->isResend);
+
+        $mail = new MidtransPaymentNotification($buyer, $cart);
+        $this->get($mail->ticketUrl)
+            ->assertOk()
+            ->assertSee($cart->invoice);
     }
 
     public function test_missing_manual_code_backfill_does_not_rotate_existing_gate_token(): void

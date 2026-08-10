@@ -219,7 +219,7 @@ class TicketReservationService
         $cart->midtrans_status = Cart::STATUS_SUCCESS;
         $cart->save();
 
-        app(GateTokenService::class)->issueIfEnabled($cart);
+        app(GateTokenService::class)->ensureTicketAccessReady($cart);
 
         Transaction::updateOrCreate(
             ['invoice' => $cart->invoice],

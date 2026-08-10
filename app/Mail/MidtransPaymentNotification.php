@@ -6,12 +6,15 @@ use App\Models\Cart;
 use App\Models\Event;
 use App\Models\User;
 use App\Services\Tickets\GateTokenService;
+use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Attachment;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\URL;
+use Throwable;
 
 class MidtransPaymentNotification extends Mailable
 {
@@ -34,10 +37,15 @@ class MidtransPaymentNotification extends Mailable
     ) {
         $this->user = $user;
         $this->cart = $cart;
-        $this->event = Event::where('uid', $this->cart->event_uid)->select('event')->firstOrFail();
-        $this->ticketUrl = route('barcode.generate', [
-            'data' => $this->cart->invoice,
-        ]);
+        $this->event = Event::where('uid', $this->cart->event_uid)->select('event', 'tanggal')->firstOrFail();
+        $this->ticketUrl = URL::temporarySignedRoute(
+            'online.ticket.show',
+            $this->ticketUrlExpiresAt(),
+            [
+                'uid' => $this->cart->uid,
+                'gate_access' => app(GateTokenService::class)->ticketAccessProof($this->cart),
+            ],
+        );
     }
 
     /**
@@ -82,5 +90,16 @@ class MidtransPaymentNotification extends Mailable
         return [
             // Attachment::fromPath(public_path('/pdf'))
         ];
+    }
+
+    private function ticketUrlExpiresAt(): Carbon
+    {
+        try {
+            $expiresAt = Carbon::parse($this->event->tanggal)->addDay();
+
+            return $expiresAt->isFuture() ? $expiresAt : now()->addDays(7);
+        } catch (Throwable) {
+            return now()->addDays(30);
+        }
     }
 }

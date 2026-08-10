@@ -35,7 +35,7 @@ class MidtransPaymentNotificationTest extends TestCase
         $this->createSchema();
     }
 
-    public function test_midtrans_payment_notification_email_renders_ticket_url_from_cart_invoice_and_recipient(): void
+    public function test_midtrans_payment_notification_email_renders_secure_ticket_url_and_recipient(): void
     {
         Mail::fake();
 
@@ -60,8 +60,12 @@ class MidtransPaymentNotificationTest extends TestCase
                 $mail->envelope()->subject,
             );
             $this->assertFalse($mail->content()->with['isResendTicket']);
-            $this->assertStringContainsString('/generate-barcode/'.$cart->invoice, $html);
-            $this->assertStringContainsString('/generate-barcode/'.$cart->invoice, $mail->ticketUrl);
+            $this->assertStringContainsString('/ticket-access/'.$cart->uid, html_entity_decode($html, ENT_QUOTES));
+            $this->assertStringContainsString('/ticket-access/'.$cart->uid, $mail->ticketUrl);
+            $this->assertStringContainsString('expires=', $mail->ticketUrl);
+            $this->assertStringContainsString('signature=', $mail->ticketUrl);
+            $this->assertStringNotContainsString('/generate-barcode/', $mail->ticketUrl);
+            $this->assertStringNotContainsString($cart->invoice, $mail->ticketUrl);
             $this->assertStringContainsString('INV-CART-123', $html);
             $this->assertStringContainsString('Midtrans Render Event', $html);
             $this->assertStringNotContainsString('Barcode lama tidak berlaku lagi', $html);

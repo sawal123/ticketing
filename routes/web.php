@@ -116,6 +116,9 @@ Route::post('/generate-barcode/{data}/login', [BarcodeController::class, 'login'
 Route::get('/cash-ticket/{uid}', [BarcodeController::class, 'showCashTicket'])
     ->middleware(['signed', 'throttle:30,1'])
     ->name('cash.ticket.show');
+Route::get('/ticket-access/{uid}', [BarcodeController::class, 'showOnlineTicket'])
+    ->middleware(['signed', 'throttle:30,1'])
+    ->name('online.ticket.show');
 Route::get('/generate-barcode/{data}', [BarcodeController::class, 'generateBarcode'])->name('barcode.generate');
 
 Route::middleware(['auth'])->group(function () {

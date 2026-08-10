@@ -8,6 +8,7 @@ use App\Models\Cart;
 use App\Models\Event;
 use App\Models\Harga;
 use App\Services\Reports\FinancialSnapshotService;
+use App\Services\Tickets\GateTokenService;
 use Carbon\Carbon;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -422,6 +423,12 @@ class EventDetail extends Component
             return;
         }
 
+        if ($cart->scanned_at || (string) $cart->konfirmasi === '1') {
+            session()->flash('error', 'Tiket sudah digunakan dan tidak dapat dikirim ulang.');
+
+            return;
+        }
+
         try {
             if ($cart->payment_type === 'cash') {
                 $cash = $cart->cashBuyer;
@@ -432,7 +439,7 @@ class EventDetail extends Component
                         return;
                     }
 
-                    dispatch(new sendEmailTrnsaksi($cash->email, $cash->name, $cart->uid));
+                    dispatch(new sendEmailTrnsaksi($cash->email, $cash->name, $cart->uid, true));
                 } else {
                     session()->flash('error', 'Data pembeli tunai tidak ditemukan.');
 
@@ -441,7 +448,9 @@ class EventDetail extends Component
             } else {
                 $user = $cart->users;
                 if ($user) {
-                    dispatch(new sendEmailETransaksi($user, $cart));
+                    app(GateTokenService::class)->ensureTicketAccessReady($cart);
+                    $cart->refresh();
+                    dispatch(new sendEmailETransaksi($user, $cart, true));
                 } else {
                     session()->flash('error', 'Data pembeli tidak ditemukan.');
 

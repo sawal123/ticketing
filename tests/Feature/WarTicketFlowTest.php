@@ -29,6 +29,7 @@ class WarTicketFlowTest extends TestCase
         Config::set('cache.default', 'array');
         Config::set('queue.default', 'sync');
         Config::set('services.midtrans.serverKey', 'test-server-key');
+        Config::set('gate-tokens.key', 'base64:'.base64_encode(str_repeat('w', 32)));
 
         DB::purge('sqlite');
         DB::reconnect('sqlite');
@@ -279,6 +280,8 @@ class WarTicketFlowTest extends TestCase
         $this->assertSame(0, (int) $harga->reserved_qty);
         $this->assertSame(2, (int) $harga->sold_qty);
         $this->assertSame(Cart::STATUS_SUCCESS, $cart->fresh()->status);
+        $this->assertNotNull($cart->fresh()->gate_token_hash);
+        $this->assertNotNull($cart->fresh()->gate_manual_code_hash);
         $this->assertSame(1, (int) $voucher->fresh()->digunakan);
         $this->assertDatabaseCount('voucher_usages', 1);
         Queue::assertPushed(sendEmailETransaksi::class, 1);
@@ -367,6 +370,15 @@ class WarTicketFlowTest extends TestCase
             $table->string('user_uid');
             $table->string('event_uid');
             $table->string('invoice')->nullable();
+            $table->char('gate_token_hash', 64)->nullable()->unique();
+            $table->text('gate_token_encrypted')->nullable();
+            $table->char('gate_manual_code_hash', 64)->nullable()->unique();
+            $table->text('gate_manual_code_encrypted')->nullable();
+            $table->timestamp('gate_token_issued_at')->nullable();
+            $table->timestamp('scanned_at')->nullable();
+            $table->string('scanned_by')->nullable();
+            $table->string('scan_device_id')->nullable();
+            $table->unsignedInteger('gate_token_version')->default(1);
             $table->string('status');
             $table->string('konfirmasi')->nullable();
             $table->text('link')->nullable();
