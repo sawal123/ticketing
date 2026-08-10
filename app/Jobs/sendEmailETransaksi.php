@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Mail\MidtransPaymentNotification;
 use App\Models\Cart;
 use App\Models\User;
+use App\Services\Tickets\GateTokenService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -56,6 +57,8 @@ class sendEmailETransaksi implements ShouldBeUnique, ShouldQueue
     {
         $user = User::where('uid', $this->userUid)->firstOrFail();
         $cart = Cart::where('uid', $this->cartUid)->firstOrFail();
+        app(GateTokenService::class)->ensureTicketAccessReady($cart);
+        $cart->refresh();
 
         Mail::to($user)->send(new MidtransPaymentNotification($user, $cart, $this->isResend));
     }

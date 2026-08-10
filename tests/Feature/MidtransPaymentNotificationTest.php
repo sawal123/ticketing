@@ -62,6 +62,7 @@ class MidtransPaymentNotificationTest extends TestCase
             $this->assertFalse($mail->content()->with['isResendTicket']);
             $this->assertStringContainsString('/ticket-access/'.$cart->uid, html_entity_decode($html, ENT_QUOTES));
             $this->assertStringContainsString('/ticket-access/'.$cart->uid, $mail->ticketUrl);
+            $this->assertStringContainsString('expires=', $mail->ticketUrl);
             $this->assertStringContainsString('signature=', $mail->ticketUrl);
             $this->assertStringNotContainsString('/generate-barcode/', $mail->ticketUrl);
             $this->assertStringNotContainsString($cart->invoice, $mail->ticketUrl);

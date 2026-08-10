@@ -8,6 +8,7 @@ use App\Models\Cart;
 use App\Models\Event;
 use App\Models\Harga;
 use App\Services\Reports\FinancialSnapshotService;
+use App\Services\Tickets\GateTokenService;
 use Carbon\Carbon;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -441,6 +442,8 @@ class EventDetail extends Component
             } else {
                 $user = $cart->users;
                 if ($user) {
+                    app(GateTokenService::class)->ensureTicketAccessReady($cart);
+                    $cart->refresh();
                     dispatch(new sendEmailETransaksi($user, $cart, true));
                 } else {
                     session()->flash('error', 'Data pembeli tidak ditemukan.');

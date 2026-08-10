@@ -122,6 +122,29 @@ class GateTokenService
         return true;
     }
 
+    public function ensureTicketAccessReady(Cart $cart): bool
+    {
+        if ($cart->status !== Cart::STATUS_SUCCESS
+            || $cart->scanned_at
+            || (string) $cart->konfirmasi === '1') {
+            return false;
+        }
+
+        if ($cart->gate_token_hash && $cart->gate_token_encrypted) {
+            if (! $cart->gate_manual_code_hash && ! $cart->gate_manual_code_encrypted) {
+                $this->issueMissingManualCode($cart);
+
+                return true;
+            }
+
+            return false;
+        }
+
+        $this->issue($cart);
+
+        return true;
+    }
+
     public function tokenForQr(Cart $cart): string
     {
         if (! $cart->gate_token_encrypted || ! $cart->gate_token_hash) {
