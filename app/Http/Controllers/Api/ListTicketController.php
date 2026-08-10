@@ -41,7 +41,8 @@ class ListTicketController extends Controller
             'carts.uid',
             'carts.invoice',
             'carts.konfirmasi',
-            'carts.updated_at as waktu_verifikasi',
+            'carts.created_at',
+            'carts.scanned_at',
             'events.event as event_name',
             'events.cover as event_cover',
             'users.name as user_name',
@@ -54,8 +55,17 @@ class ListTicketController extends Controller
             ->where('carts.status', 'SUCCESS')
             // Menjumlahkan quantity tiket dari relasi hargaCarts
             ->withSum('hargaCarts as total_qty', 'quantity')
-            ->orderBy('carts.updated_at', 'desc') // Tampilkan yang baru di-scan di urutan teratas
-            ->get();
+            ->orderBy('carts.scanned_at', 'desc') // Tampilkan yang baru di-scan di urutan teratas
+            ->get()
+            ->transform(function (Cart $ticket) {
+                $verifiedAt = $ticket->scanned_at?->format('d M Y H:i');
+
+                $ticket->purchase_date = $ticket->created_at?->format('d M Y H:i');
+                $ticket->verified_at = $verifiedAt;
+                $ticket->waktu_verifikasi = $verifiedAt;
+
+                return $ticket;
+            });
 
         // 2. Berikan Response JSON
         if ($verifiedTickets->isNotEmpty()) {
@@ -88,6 +98,7 @@ class ListTicketController extends Controller
                 'invoice',
                 'konfirmasi',
                 'created_at',
+                'scanned_at',
                 'status'
             ])
             ->where('uid', $uid)
@@ -118,6 +129,7 @@ class ListTicketController extends Controller
                 'buyer_name' => $ticket->users->name ?? '-',
                 'email' => $ticket->users->email ?? '-',
                 'order_date' => $ticket->created_at->format('d M Y H:i'),
+                'verified_at' => $ticket->scanned_at?->format('d M Y H:i'),
                 'status_verifikasi' => $ticket->konfirmasi == '1' ? 'Terverifikasi' : 'Belum Terverifikasi',
                 'ticket_items' => $ticket->hargaCarts->map(function ($item) {
                     return [
