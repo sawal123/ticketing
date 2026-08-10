@@ -60,6 +60,10 @@ class sendEmailETransaksi implements ShouldBeUnique, ShouldQueue
         app(GateTokenService::class)->ensureTicketAccessReady($cart);
         $cart->refresh();
 
+        if (! $cart->gate_token_hash || ! $cart->gate_token_encrypted) {
+            return;
+        }
+
         Mail::to($user)->send(new MidtransPaymentNotification($user, $cart, $this->isResend));
     }
 }

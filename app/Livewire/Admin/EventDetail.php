@@ -423,6 +423,12 @@ class EventDetail extends Component
             return;
         }
 
+        if ($cart->scanned_at || (string) $cart->konfirmasi === '1') {
+            session()->flash('error', 'Tiket sudah digunakan dan tidak dapat dikirim ulang.');
+
+            return;
+        }
+
         try {
             if ($cart->payment_type === 'cash') {
                 $cash = $cart->cashBuyer;

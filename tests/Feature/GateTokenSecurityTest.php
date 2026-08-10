@@ -552,6 +552,71 @@ class GateTokenSecurityTest extends TestCase
             && $job->isResend);
     }
 
+    public function test_admin_cannot_resend_scanned_online_success_ticket_without_issuing_credentials(): void
+    {
+        Queue::fake();
+        [$owner, $event, $buyer, $cart] = $this->ticket(cartAttributes: [
+            'scanned_at' => now(),
+        ]);
+
+        $component = app(EventDetail::class);
+        $component->mount($event->uid);
+        $component->resendEmailUid = $cart->uid;
+        $component->resendEmail();
+
+        Queue::assertNotPushed(sendEmailETransaksi::class);
+        $cart->refresh();
+        $this->assertNull($cart->gate_token_hash);
+        $this->assertNull($cart->gate_token_encrypted);
+        $this->assertNull($cart->gate_manual_code_hash);
+        $this->assertNull($cart->gate_manual_code_encrypted);
+        $this->assertSame('Tiket sudah digunakan dan tidak dapat dikirim ulang.', session('error'));
+    }
+
+    public function test_admin_cannot_resend_confirmed_online_ticket_and_does_not_rotate_or_backfill(): void
+    {
+        Queue::fake();
+        [$owner, $event, $buyer, $cart] = $this->ticket();
+        $token = $this->tokens->issue($cart);
+        $cart->forceFill([
+            'konfirmasi' => '1',
+            'gate_manual_code_hash' => null,
+            'gate_manual_code_encrypted' => null,
+        ])->save();
+        $before = $cart->fresh();
+
+        $component = app(EventDetail::class);
+        $component->mount($event->uid);
+        $component->resendEmailUid = $cart->uid;
+        $component->resendEmail();
+
+        Queue::assertNotPushed(sendEmailETransaksi::class);
+        $cart->refresh();
+        $this->assertSame(hash('sha256', $token), $cart->gate_token_hash);
+        $this->assertSame($before->gate_token_encrypted, $cart->gate_token_encrypted);
+        $this->assertSame($before->gate_token_version, $cart->gate_token_version);
+        $this->assertNull($cart->gate_manual_code_hash);
+        $this->assertNull($cart->gate_manual_code_encrypted);
+        $this->assertSame('Tiket sudah digunakan dan tidak dapat dikirim ulang.', session('error'));
+    }
+
+    public function test_online_email_job_returns_before_mailable_when_used_ticket_has_no_credentials(): void
+    {
+        \Illuminate\Support\Facades\Mail::fake();
+        [$owner, $event, $buyer, $cart] = $this->ticket(cartAttributes: [
+            'scanned_at' => now(),
+        ]);
+
+        (new sendEmailETransaksi($buyer, $cart, true))->handle();
+
+        \Illuminate\Support\Facades\Mail::assertNothingSent();
+        $cart->refresh();
+        $this->assertNull($cart->gate_token_hash);
+        $this->assertNull($cart->gate_token_encrypted);
+        $this->assertNull($cart->gate_manual_code_hash);
+        $this->assertNull($cart->gate_manual_code_encrypted);
+    }
+
     public function test_online_success_cart_without_gate_token_is_prepared_before_email_is_sent(): void
     {
         \Illuminate\Support\Facades\Mail::fake();
