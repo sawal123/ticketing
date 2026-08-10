@@ -57,6 +57,11 @@ class sendEmailETransaksi implements ShouldBeUnique, ShouldQueue
     {
         $user = User::where('uid', $this->userUid)->firstOrFail();
         $cart = Cart::where('uid', $this->cartUid)->firstOrFail();
+
+        if ($this->isResend && ($cart->scanned_at || (string) $cart->konfirmasi === '1')) {
+            return;
+        }
+
         app(GateTokenService::class)->ensureTicketAccessReady($cart);
         $cart->refresh();
 

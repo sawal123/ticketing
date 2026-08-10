@@ -617,6 +617,46 @@ class GateTokenSecurityTest extends TestCase
         $this->assertNull($cart->gate_manual_code_encrypted);
     }
 
+    public function test_resend_job_returns_if_ticket_is_scanned_after_dispatch_without_changing_credentials(): void
+    {
+        \Illuminate\Support\Facades\Mail::fake();
+        [$owner, $event, $buyer, $cart] = $this->ticket();
+        $this->tokens->issue($cart);
+        $before = $cart->fresh();
+        $job = new sendEmailETransaksi($buyer, $before, true);
+
+        $cart->forceFill(['scanned_at' => now()])->save();
+        $job->handle();
+
+        \Illuminate\Support\Facades\Mail::assertNothingSent();
+        $cart->refresh();
+        $this->assertSame($before->gate_token_hash, $cart->gate_token_hash);
+        $this->assertSame($before->gate_token_encrypted, $cart->gate_token_encrypted);
+        $this->assertSame($before->gate_token_version, $cart->gate_token_version);
+        $this->assertSame($before->gate_manual_code_hash, $cart->gate_manual_code_hash);
+        $this->assertSame($before->gate_manual_code_encrypted, $cart->gate_manual_code_encrypted);
+    }
+
+    public function test_resend_job_returns_if_ticket_is_confirmed_after_dispatch_without_changing_credentials(): void
+    {
+        \Illuminate\Support\Facades\Mail::fake();
+        [$owner, $event, $buyer, $cart] = $this->ticket();
+        $this->tokens->issue($cart);
+        $before = $cart->fresh();
+        $job = new sendEmailETransaksi($buyer, $before, true);
+
+        $cart->forceFill(['konfirmasi' => '1'])->save();
+        $job->handle();
+
+        \Illuminate\Support\Facades\Mail::assertNothingSent();
+        $cart->refresh();
+        $this->assertSame($before->gate_token_hash, $cart->gate_token_hash);
+        $this->assertSame($before->gate_token_encrypted, $cart->gate_token_encrypted);
+        $this->assertSame($before->gate_token_version, $cart->gate_token_version);
+        $this->assertSame($before->gate_manual_code_hash, $cart->gate_manual_code_hash);
+        $this->assertSame($before->gate_manual_code_encrypted, $cart->gate_manual_code_encrypted);
+    }
+
     public function test_online_success_cart_without_gate_token_is_prepared_before_email_is_sent(): void
     {
         \Illuminate\Support\Facades\Mail::fake();
