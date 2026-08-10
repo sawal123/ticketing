@@ -354,6 +354,9 @@ class GateTokenSecurityTest extends TestCase
 
         $list = $this->getJson("/api/event/{$event->uid}/verified-tickets")
             ->assertOk()
+            ->assertJsonPath('data.0.purchase_date', $cart->fresh()->created_at->format('d M Y H:i'))
+            ->assertJsonPath('data.0.verified_at', $cart->fresh()->scanned_at->format('d M Y H:i'))
+            ->assertJsonPath('data.0.waktu_verifikasi', $cart->fresh()->scanned_at->format('d M Y H:i'))
             ->assertJsonMissing([
                 'gate_token_hash',
                 'gate_token_encrypted',
@@ -362,6 +365,11 @@ class GateTokenSecurityTest extends TestCase
                 'manual_code',
             ]);
         $this->assertStringNotContainsString($manualCanonical, $list->getContent());
+
+        $this->getJson("/api/ticket/{$cart->uid}/detail")
+            ->assertOk()
+            ->assertJsonPath('data.order_date', $cart->fresh()->created_at->format('d M Y H:i'))
+            ->assertJsonPath('data.verified_at', $cart->fresh()->scanned_at->format('d M Y H:i'));
     }
 
     public function test_already_scanned_manual_ticket_returns_conflict(): void
