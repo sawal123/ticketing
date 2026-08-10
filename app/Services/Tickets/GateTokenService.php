@@ -218,21 +218,31 @@ class GateTokenService
 
     public function cashTicketProof(Cart $cart): string
     {
-        if (! $cart->gate_token_hash) {
-            throw new RuntimeException('Gate token belum diterbitkan untuk tiket ini.');
-        }
-
-        return hash_hmac('sha256', $this->cashProofPayload($cart), $this->keyBytes());
+        return $this->ticketAccessProof($cart);
     }
 
     public function validCashTicketProof(Cart $cart, ?string $proof): bool
     {
-        return is_string($proof)
-            && preg_match('/^[a-f0-9]{64}$/D', $proof) === 1
-            && hash_equals($this->cashTicketProof($cart), $proof);
+        return $this->validTicketAccessProof($cart, $proof);
     }
 
-    private function cashProofPayload(Cart $cart): string
+    public function ticketAccessProof(Cart $cart): string
+    {
+        if (! $cart->gate_token_hash) {
+            throw new RuntimeException('Gate token belum diterbitkan untuk tiket ini.');
+        }
+
+        return hash_hmac('sha256', $this->ticketAccessProofPayload($cart), $this->keyBytes());
+    }
+
+    public function validTicketAccessProof(Cart $cart, ?string $proof): bool
+    {
+        return is_string($proof)
+            && preg_match('/^[a-f0-9]{64}$/D', $proof) === 1
+            && hash_equals($this->ticketAccessProof($cart), $proof);
+    }
+
+    private function ticketAccessProofPayload(Cart $cart): string
     {
         return implode('|', [
             $cart->uid,

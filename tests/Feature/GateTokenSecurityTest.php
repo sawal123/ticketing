@@ -6,6 +6,7 @@ use App\Http\Middleware\GlobalDataMiddleware;
 use App\Http\Middleware\LogActivityMiddleware;
 use App\Jobs\sendEmailETransaksi;
 use App\Jobs\sendEmailTrnsaksi;
+use App\Livewire\Admin\EventDetail;
 use App\Mail\MidtransPaymentNotification;
 use App\Models\Cart;
 use App\Models\Cash;
@@ -533,6 +534,92 @@ class GateTokenSecurityTest extends TestCase
         Queue::assertPushed(sendEmailTrnsaksi::class, fn (sendEmailTrnsaksi $job) => $job->cartUid === $cart->uid
             && $job->recipientEmail === 'cash-gate@example.test'
             && $job->isResend);
+    }
+
+    public function test_admin_manual_resend_online_queues_resend_job(): void
+    {
+        Queue::fake();
+        [$owner, $event, $buyer, $cart] = $this->ticket();
+        $this->tokens->issue($cart);
+
+        $component = app(EventDetail::class);
+        $component->mount($event->uid);
+        $component->resendEmailUid = $cart->uid;
+        $component->resendEmail();
+
+        Queue::assertPushed(sendEmailETransaksi::class, fn (sendEmailETransaksi $job) => $job->cartUid === $cart->uid
+            && $job->userUid === $buyer->uid
+            && $job->isResend);
+    }
+
+    public function test_admin_manual_resend_cash_queues_resend_job(): void
+    {
+        Queue::fake();
+        [$owner, $event, $buyer, $cart] = $this->ticket();
+        $cart->update(['payment_type' => 'cash']);
+        Cash::create([
+            'uid' => $cart->uid,
+            'uid_user' => $owner->uid,
+            'uid_event' => $event->uid,
+            'name' => 'Admin Cash Buyer',
+            'email' => 'admin-cash@example.test',
+        ]);
+        $this->tokens->issue($cart);
+
+        $component = app(EventDetail::class);
+        $component->mount($event->uid);
+        $component->resendEmailUid = $cart->uid;
+        $component->resendEmail();
+
+        Queue::assertPushed(sendEmailTrnsaksi::class, fn (sendEmailTrnsaksi $job) => $job->cartUid === $cart->uid
+            && $job->recipientEmail === 'admin-cash@example.test'
+            && $job->isResend);
+    }
+
+    public function test_secure_online_ticket_url_uses_uid_proof_not_invoice_or_raw_token_and_opens_success_ticket(): void
+    {
+        [$owner, $event, $buyer, $cart] = $this->ticket();
+        $token = $this->tokens->issue($cart);
+        $mail = new MidtransPaymentNotification($buyer, $cart->fresh());
+
+        $this->assertStringContainsString('/ticket-access/'.$cart->uid, $mail->ticketUrl);
+        $this->assertStringNotContainsString($cart->invoice, $mail->ticketUrl);
+        $this->assertStringNotContainsString($token, $mail->ticketUrl);
+        $this->assertStringNotContainsString($cart->fresh()->gate_token_hash, $mail->ticketUrl);
+
+        $this->get($mail->ticketUrl)
+            ->assertOk()
+            ->assertSee($cart->invoice);
+    }
+
+    public function test_secure_online_ticket_url_rejects_bad_signature_bad_proof_and_rotated_old_proof(): void
+    {
+        [$owner, $event, $buyer, $cart] = $this->ticket();
+        $oldToken = $this->tokens->issue($cart);
+        $oldUrl = (new MidtransPaymentNotification($buyer, $cart->fresh()))->ticketUrl;
+
+        $this->get($oldUrl.'&tampered=1')
+            ->assertForbidden();
+
+        $badProofUrl = URL::signedRoute('online.ticket.show', [
+            'uid' => $cart->uid,
+            'gate_access' => str_repeat('0', 64),
+        ]);
+        $this->get($badProofUrl)
+            ->assertForbidden();
+
+        $this->tokens->issue($cart->fresh(), true);
+        $cart->refresh();
+        $newToken = $this->tokens->tokenForQr($cart);
+        $newUrl = (new MidtransPaymentNotification($buyer, $cart, true))->ticketUrl;
+
+        $this->assertNotSame($oldToken, $newToken);
+        $this->get($oldUrl)
+            ->assertForbidden();
+        $this->get($newUrl)
+            ->assertOk()
+            ->assertSee($cart->invoice);
+        $this->assertStringNotContainsString($newToken, $newUrl);
     }
 
     public function test_missing_manual_code_backfill_does_not_rotate_existing_gate_token(): void

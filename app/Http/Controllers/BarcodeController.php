@@ -138,6 +138,41 @@ class BarcodeController extends Controller
         ])->header('Cache-Control', 'private, no-store, max-age=0');
     }
 
+    public function showOnlineTicket(Request $request, string $uid)
+    {
+        $cart = Cart::query()
+            ->with(['users', 'event', 'hargaCarts'])
+            ->where('uid', $uid)
+            ->where('payment_type', '!=', 'cash')
+            ->where('status', Cart::STATUS_SUCCESS)
+            ->first();
+
+        if (! $cart || ! $cart->users || ! $cart->event || $cart->hargaCarts->isEmpty()) {
+            return $this->barcodeError('Tiket online tidak ditemukan atau sudah tidak dapat diakses.', 404);
+        }
+
+        try {
+            if (! $cart->gate_token_hash
+                || ! $this->gateTokens->validTicketAccessProof($cart, $request->query('gate_access'))) {
+                return $this->barcodeError('Tautan tiket online tidak valid.', 403);
+            }
+
+            $gateCredential = $this->gateTokens->tokenForQr($cart);
+            $manualCode = $this->manualCodeForView($cart);
+        } catch (\RuntimeException) {
+            return $this->barcodeError('Credential gate tiket tidak valid.', 409);
+        }
+
+        return response()->view('barcode', [
+            'barcodeData' => QrCode::size(250)->generate($gateCredential),
+            'invoice' => $cart->invoice,
+            'manualCode' => $manualCode,
+            'event' => $cart->event,
+            'hargaC' => $cart->hargaCarts,
+            'userBarcode' => $cart->users,
+        ])->header('Cache-Control', 'private, no-store, max-age=0');
+    }
+
     private function userCanViewTicket(Cart $cart): bool
     {
         $user = Auth::user();

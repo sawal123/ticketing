@@ -12,6 +12,7 @@ use Illuminate\Mail\Mailables\Attachment;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\URL;
 
 class MidtransPaymentNotification extends Mailable
 {
@@ -35,8 +36,9 @@ class MidtransPaymentNotification extends Mailable
         $this->user = $user;
         $this->cart = $cart;
         $this->event = Event::where('uid', $this->cart->event_uid)->select('event')->firstOrFail();
-        $this->ticketUrl = route('barcode.generate', [
-            'data' => $this->cart->invoice,
+        $this->ticketUrl = URL::signedRoute('online.ticket.show', [
+            'uid' => $this->cart->uid,
+            'gate_access' => app(GateTokenService::class)->ticketAccessProof($this->cart),
         ]);
     }
 

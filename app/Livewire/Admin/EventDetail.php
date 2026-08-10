@@ -432,7 +432,7 @@ class EventDetail extends Component
                         return;
                     }
 
-                    dispatch(new sendEmailTrnsaksi($cash->email, $cash->name, $cart->uid));
+                    dispatch(new sendEmailTrnsaksi($cash->email, $cash->name, $cart->uid, true));
                 } else {
                     session()->flash('error', 'Data pembeli tunai tidak ditemukan.');
 
@@ -441,7 +441,7 @@ class EventDetail extends Component
             } else {
                 $user = $cart->users;
                 if ($user) {
-                    dispatch(new sendEmailETransaksi($user, $cart));
+                    dispatch(new sendEmailETransaksi($user, $cart, true));
                 } else {
                     session()->flash('error', 'Data pembeli tidak ditemukan.');
 
