@@ -155,8 +155,40 @@
                 </div>
             </div>
 
-            <x-admin.input label="Nominal Penarikan" type="number" wire:model="amount" placeholder="Min. Rp 10.000"
-                error="{{ $errors->first('amount') }}" />
+            <div class="bg-slate-50 dark:bg-slate-700/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-700">
+                <div class="text-xs text-slate-500 dark:text-slate-400 font-bold uppercase mb-3">Rekening Tujuan</div>
+                @if(filled($selectedBank['bank_name'] ?? null) || filled($selectedBank['bank_account_name'] ?? null) || filled($selectedBank['bank_account_number'] ?? null))
+                    <div class="grid grid-cols-1 gap-3 md:grid-cols-3">
+                        <div>
+                            <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Nama Bank</p>
+                            <p class="mt-1 text-sm font-semibold text-slate-800 dark:text-white">{{ $selectedBank['bank_name'] ?: '-' }}</p>
+                        </div>
+                        <div>
+                            <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Nomor Rekening</p>
+                            <p class="mt-1 text-sm font-semibold text-slate-800 dark:text-white">{{ $selectedBank['bank_account_number'] ?: '-' }}</p>
+                        </div>
+                        <div>
+                            <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Nama Pemilik</p>
+                            <p class="mt-1 text-sm font-semibold text-slate-800 dark:text-white">{{ $selectedBank['bank_account_name'] ?: '-' }}</p>
+                        </div>
+                    </div>
+                @else
+                    <p class="text-sm font-semibold text-slate-500 dark:text-slate-400">Rekening belum tersedia</p>
+                @endif
+            </div>
+
+            <div>
+                <div class="mb-1.5 flex items-center justify-between gap-3">
+                    <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
+                        Nominal Penarikan
+                    </label>
+                    <x-admin.button type="button" wire:click="fillWithdrawAll" variant="secondary" size="sm" icon="wallet">
+                        Tarik Semua
+                    </x-admin.button>
+                </div>
+                <x-admin.input type="number" wire:model="amount" placeholder="Min. Rp 10.000"
+                    error="{{ $errors->first('amount') }}" />
+            </div>
 
             <x-admin.input label="Catatan (Opsional)" wire:model="note" placeholder="Contoh: Penarikan profit event X"
                 error="{{ $errors->first('note') }}" />

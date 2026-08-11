@@ -31,6 +31,12 @@ class PenarikanIndex extends Component
 
     public $isEditMode = false;
 
+    public array $selectedBank = [
+        'bank_name' => null,
+        'bank_account_name' => null,
+        'bank_account_number' => null,
+    ];
+
     // Stats
     public $totalSaldo = 0;
 
@@ -61,12 +67,18 @@ class PenarikanIndex extends Component
     public function resetForm()
     {
         $this->reset(['penarikan_id', 'amount', 'note', 'isEditMode']);
+        $this->selectedBank = [
+            'bank_name' => null,
+            'bank_account_name' => null,
+            'bank_account_number' => null,
+        ];
     }
 
     public function openCreateModal()
     {
         $this->resetForm();
         $this->isEditMode = false;
+        $this->selectedBank = $this->activeBankDetailsFor($this->ownerUid());
         $this->dispatch('open-modal', name: 'penarikan-modal');
     }
 
@@ -86,8 +98,27 @@ class PenarikanIndex extends Component
         $this->amount = $penarikan->amount;
         $this->note = $penarikan->note;
         $this->isEditMode = true;
+        $this->selectedBank = $this->snapshotBankDetailsFor($penarikan);
 
         $this->dispatch('open-modal', name: 'penarikan-modal');
+    }
+
+    public function fillWithdrawAll(): void
+    {
+        $ownerId = $this->ownerUid();
+        $availableBalance = app(WithdrawalBalanceService::class)->availableBalanceFor($ownerId);
+
+        if ($this->isEditMode && $this->penarikan_id) {
+            $penarikan = $this->ownedPenarikanQuery()
+                ->where('id', $this->penarikan_id)
+                ->firstOrFail();
+
+            $this->amount = $availableBalance + (int) $penarikan->amount;
+
+            return;
+        }
+
+        $this->amount = $availableBalance;
     }
 
     public function save()
@@ -268,6 +299,37 @@ class PenarikanIndex extends Component
             'bank_name' => $bank->bank,
             'bank_account_name' => $bank->nama,
             'bank_account_number' => $bank->norek,
+        ];
+    }
+
+    private function activeBankDetailsFor(string $uid): array
+    {
+        $bank = Bank::where(function ($q) use ($uid) {
+            $q->where('uid_user', $uid)
+                ->orWhere('uid', $uid);
+        })->latest()->first();
+
+        if (! $bank) {
+            return [
+                'bank_name' => null,
+                'bank_account_name' => null,
+                'bank_account_number' => null,
+            ];
+        }
+
+        return [
+            'bank_name' => $bank->bank,
+            'bank_account_name' => $bank->nama,
+            'bank_account_number' => $bank->norek,
+        ];
+    }
+
+    private function snapshotBankDetailsFor(Penarikan $penarikan): array
+    {
+        return [
+            'bank_name' => $penarikan->bank_name,
+            'bank_account_name' => $penarikan->bank_account_name,
+            'bank_account_number' => $penarikan->bank_account_number,
         ];
     }
 }
