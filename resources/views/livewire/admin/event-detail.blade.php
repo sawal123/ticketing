@@ -349,7 +349,7 @@
                     </div>
                 </x-admin.card>
 
-                <x-admin.table title="Daftar Transaksi Terfilter" :headers="['User', 'Invoice', 'Payment', 'Tanggal', 'Aksi']" :count="$transactions->total()">
+                <x-admin.table title="Daftar Transaksi Terfilter" :headers="['User', 'Invoice', 'Payment', 'Verifikasi', 'Tanggal', 'Aksi']" :count="$transactions->total()">
                     @forelse($transactions as $trx)
                         @php
                             $buyer = $trx->payment_type === 'cash' ? $trx->cashBuyer : $trx->users;
@@ -359,6 +359,10 @@
                             $buyerEmail = $trx->payment_type === 'cash'
                                 ? ($buyer->email ?? '-')
                                 : ($buyer->email ?? '');
+                            $isVerified = filled($trx->scanned_at) || (string) $trx->konfirmasi === '1';
+                            $verificationClass = $isVerified
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-700'
+                                : 'bg-slate-50 text-slate-600 border-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:border-slate-600';
                         @endphp
                         <tr class="table-row-hover transition-colors">
                             <td class="px-5 py-4 whitespace-nowrap">
@@ -386,6 +390,11 @@
                                     {{ strtoupper($trx->payment_type ?? 'N/A') }}
                                 </span>
                             </td>
+                            <td class="px-5 py-4">
+                                <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border {{ $verificationClass }}">
+                                    {{ $isVerified ? 'Terverifikasi' : 'Belum Diverifikasi' }}
+                                </span>
+                            </td>
                             <td class="px-5 py-4 text-sm text-slate-600 dark:text-slate-400">
                                 {{ $trx->created_at->format('d M Y, H:i') }}
                             </td>
@@ -402,7 +411,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="5" class="px-5 py-12 text-center">
+                            <td colspan="6" class="px-5 py-12 text-center">
                                 <div class="flex flex-col items-center justify-center text-slate-400">
                                     <i data-lucide="search-x" class="w-12 h-12 mb-2 opacity-20"></i>
                                     <p>Tidak ada transaksi yang sesuai dengan filter.</p>
@@ -562,6 +571,7 @@
                         ? ($buyer->email ?? '-')
                         : ($buyer->email ?? 'N/A');
                     $operator = $selectedTransaction->users;
+                    $isVerified = filled($selectedTransaction->scanned_at) || (string) $selectedTransaction->konfirmasi === '1';
                 @endphp
                 <div class="space-y-6">
                     <!-- Transaction Info -->
@@ -577,6 +587,31 @@
                                 class="px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-bold border border-emerald-100">
                                 {{ $selectedTransaction->status }}
                             </span>
+                        </div>
+                    </div>
+
+                    <!-- Verification Info -->
+                    <div class="rounded-2xl border border-slate-100 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-700/50">
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Status Verifikasi</h4>
+                        <div class="grid grid-cols-1 gap-3 md:grid-cols-3">
+                            <div>
+                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Status</p>
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold border {{ $isVerified ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-600 border-slate-200' }}">
+                                    {{ $isVerified ? 'Terverifikasi' : 'Belum Diverifikasi' }}
+                                </span>
+                            </div>
+                            <div>
+                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Tanggal Verifikasi</p>
+                                <p class="text-sm font-semibold text-slate-800 dark:text-white">
+                                    {{ $selectedTransaction->scanned_at ? $selectedTransaction->scanned_at->format('d M Y') : '-' }}
+                                </p>
+                            </div>
+                            <div>
+                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Waktu Verifikasi</p>
+                                <p class="text-sm font-semibold text-slate-800 dark:text-white">
+                                    {{ $selectedTransaction->scanned_at ? $selectedTransaction->scanned_at->format('H:i:s') : 'Waktu verifikasi tidak tersedia' }}
+                                </p>
+                            </div>
                         </div>
                     </div>
 
