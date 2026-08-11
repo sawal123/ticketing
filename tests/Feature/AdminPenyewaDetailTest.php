@@ -219,7 +219,7 @@ class AdminPenyewaDetailTest extends TestCase
             ->set('nomor', $penyewa->nomor)
             ->set('role', 'user')
             ->call('save')
-            ->assertSee('Role penyewa tidak dapat diubah karena akun masih memiliki event.');
+            ->assertHasErrors(['role']);
 
         $this->assertDatabaseHas('users', [
             'id' => $penyewa->id,

@@ -133,7 +133,10 @@ class UserIndex extends Component
                 $oldRole = $user->role;
 
                 if ($oldRole === 'penyewa' && $this->role !== 'penyewa' && $this->userHasEvents($user->uid)) {
-                    session()->flash('error', 'Role penyewa tidak dapat diubah karena akun masih memiliki event.');
+                    $this->addError(
+                        'role',
+                        'Role penyewa tidak dapat diubah karena akun masih memiliki event.'
+                    );
 
                     return;
                 }
