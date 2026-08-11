@@ -184,17 +184,29 @@ class UserIndex extends Component
             
             // For Cash, we link via Cart UID matching Cash UID
             // But user wants "all history for this email"
-            $this->historyItems = \App\Models\Cart::with(['event', 'hargaCarts'])
-                ->whereIn('uid', Cash::where('email', $cash->email)->pluck('uid'))
-                ->latest()
+            $this->historyItems = \App\Models\Cart::query()
+                ->select(['id', 'uid', 'user_uid', 'event_uid', 'invoice', 'status', 'konfirmasi', 'scanned_at', 'created_at'])
+                ->with([
+                    'event:id,uid,event',
+                    'hargaCarts:id,uid,kategori_harga,quantity,harga_ticket',
+                ])
+                ->whereIn('uid', Cash::where('email', $cash->email)->select('uid'))
+                ->latest('created_at')
+                ->limit(20)
                 ->get();
         } else {
             $user = User::findOrFail($id);
             $this->historyUser = $user;
             
-            $this->historyItems = \App\Models\Cart::with(['event', 'hargaCarts'])
+            $this->historyItems = \App\Models\Cart::query()
+                ->select(['id', 'uid', 'user_uid', 'event_uid', 'invoice', 'status', 'konfirmasi', 'scanned_at', 'created_at'])
+                ->with([
+                    'event:id,uid,event',
+                    'hargaCarts:id,uid,kategori_harga,quantity,harga_ticket',
+                ])
                 ->where('user_uid', $user->uid)
-                ->latest()
+                ->latest('created_at')
+                ->limit(20)
                 ->get();
         }
     }

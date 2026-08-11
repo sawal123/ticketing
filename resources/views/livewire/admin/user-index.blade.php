@@ -290,10 +290,19 @@
                                     'PENDING' => 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
                                     default => 'bg-slate-100 text-slate-700 dark:bg-slate-900/30 dark:text-slate-400',
                                 };
+                                $isVerified = filled($cart->scanned_at) || (string) $cart->konfirmasi === '1';
+                                $verificationColor = $isVerified
+                                    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                                    : 'bg-slate-100 text-slate-700 dark:bg-slate-900/30 dark:text-slate-400';
                             @endphp
-                            <span class="px-2 py-0.5 rounded text-[10px] font-bold {{ $statusColor }}">
-                                {{ $cart->status }}
-                            </span>
+                            <div class="flex flex-col items-end gap-1">
+                                <span class="px-2 py-0.5 rounded text-[10px] font-bold {{ $statusColor }}">
+                                    {{ $cart->status }}
+                                </span>
+                                <span class="px-2 py-0.5 rounded text-[10px] font-bold {{ $verificationColor }}">
+                                    {{ $isVerified ? 'Terverifikasi' : 'Belum Diverifikasi' }}
+                                </span>
+                            </div>
                         </div>
                         
                         <div class="grid grid-cols-2 gap-4 mb-3 p-2 bg-slate-50 dark:bg-slate-900/50 rounded-lg">
