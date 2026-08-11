@@ -36,6 +36,7 @@ use App\Livewire\Admin\EventIndex;
 use App\Livewire\Admin\FasilitasIndex;
 use App\Livewire\Admin\MonitoringIndex;
 use App\Livewire\Admin\PaymentGatewayIndex;
+use App\Livewire\Admin\PenyewaDetail;
 use App\Livewire\Admin\PenarikanIndex;
 use App\Livewire\Admin\SettingIndex;
 use App\Livewire\Admin\SliderIndex;
@@ -238,6 +239,7 @@ Route::prefix('admin')
         Route::get('/activity', ActivityIndex::class)->name('admin.activity');
         Route::get('/monitoring', MonitoringIndex::class)->name('admin.monitoring');
         Route::get('/user', UserIndex::class)->name('admin.user');
+        Route::get('/user/penyewa/{uid}', PenyewaDetail::class)->name('admin.user.penyewa.detail');
         Route::get('/category', CategoryIndex::class)->name('admin.category');
         Route::get('/fasilitas', FasilitasIndex::class)->name('admin.fasilitas');
         Route::get('/email-blast', EmailBlast::class)->name('admin.email-blast');
