@@ -6,6 +6,7 @@ use Livewire\Component;
 
 use App\Models\User;
 use App\Models\Cash;
+use App\Models\Event;
 use Livewire\WithPagination;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Hash;
@@ -17,6 +18,7 @@ class UserIndex extends Component
     public $search = '';
     public $activeTab = 'user';
     public $editingId = null;
+    public $deletingId = null;
     public $isModalOpen = false;
 
     // Form fields
@@ -129,6 +131,16 @@ class UserIndex extends Component
             if ($this->editingId) {
                 $user = User::find($this->editingId);
                 $oldRole = $user->role;
+
+                if ($oldRole === 'penyewa' && $this->role !== 'penyewa' && $this->userHasEvents($user->uid)) {
+                    $this->addError(
+                        'role',
+                        'Role penyewa tidak dapat diubah karena akun masih memiliki event.'
+                    );
+
+                    return;
+                }
+
                 $user->update($data);
 
                 if ($oldRole !== $this->role) {
@@ -193,12 +205,27 @@ class UserIndex extends Component
             if ($this->activeTab === 'cashes') {
                 Cash::findOrFail($this->deletingId)->delete();
             } else {
-                User::findOrFail($this->deletingId)->delete();
+                $user = User::findOrFail($this->deletingId);
+
+                if ($user->role === 'penyewa' && $this->userHasEvents($user->uid)) {
+                    session()->flash('error', 'Penyewa tidak dapat dihapus karena masih memiliki event.');
+                    $this->dispatch('close-modal', name: 'delete-user-modal');
+                    $this->deletingId = null;
+
+                    return;
+                }
+
+                $user->delete();
             }
             $this->dispatch('close-modal', name: 'delete-user-modal');
             $this->deletingId = null;
             session()->flash('message', 'Data berhasil dihapus.');
         }
+    }
+
+    private function userHasEvents(string $uid): bool
+    {
+        return Event::where('user_uid', $uid)->exists();
     }
 
     protected function getLocation($ip)

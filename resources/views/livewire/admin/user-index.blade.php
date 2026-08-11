@@ -44,6 +44,12 @@
             {{ session('message') }}
         </div>
     @endif
+    @if (session()->has('error'))
+        <div class="mb-4 p-4 bg-rose-50 dark:bg-rose-900/30 border border-rose-200 dark:border-rose-700 rounded-xl text-rose-700 dark:text-rose-400 flex items-center gap-2">
+            <i data-lucide="alert-circle" class="w-5 h-5"></i>
+            {{ session('error') }}
+        </div>
+    @endif
 
     <div class="space-y-4">
         <!-- Search & Filters -->
@@ -98,15 +104,27 @@
                     </td>
                     <td class="px-5 py-4 text-center">
                         <div class="flex items-center justify-center gap-2">
-                            <x-admin.button 
-                                x-on:click="$dispatch('open-modal', { name: 'history-modal' })"
-                                wire:click="openHistory({{ $user->id }})" 
-                                variant="ghost" 
-                                size="sm" 
-                                icon="history"
-                                class="text-emerald-600"
-                                title="Riwayat Transaksi"
-                            />
+                            @if($activeTab === 'penyewa')
+                                <a href="{{ route('admin.user.penyewa.detail', $user->uid) }}" wire:navigate>
+                                    <x-admin.button
+                                        variant="ghost"
+                                        size="sm"
+                                        icon="eye"
+                                        class="text-emerald-600"
+                                        title="Detail Penyewa"
+                                    />
+                                </a>
+                            @else
+                                <x-admin.button
+                                    x-on:click="$dispatch('open-modal', { name: 'history-modal' })"
+                                    wire:click="openHistory({{ $user->id }})"
+                                    variant="ghost"
+                                    size="sm"
+                                    icon="history"
+                                    class="text-emerald-600"
+                                    title="Riwayat Transaksi"
+                                />
+                            @endif
                             <x-admin.button 
                                 wire:click="edit({{ $user->id }})" 
                                 wire:loading.attr="disabled"
