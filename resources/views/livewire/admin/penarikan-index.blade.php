@@ -109,7 +109,13 @@
                             </a>
                         @endif
                         
-                        <x-admin.button variant="ghost" size="sm" icon="eye" title="Detail">
+                        <x-admin.button
+                            wire:click="openDetail('{{ $item->uid }}')"
+                            variant="ghost"
+                            size="sm"
+                            icon="eye"
+                            title="Detail"
+                        >
                         </x-admin.button>
                     </div>
                 </td>
@@ -129,4 +135,83 @@
             {{ $penarikans->links('components.admin.pagination') }}
         </x-slot>
     </x-admin.table>
+
+    <x-admin.modal name="penarikan-detail-modal" title="Detail Penarikan" icon="eye" maxWidth="lg">
+        @if($selectedPenarikan)
+            @php
+                $display = fn ($value) => filled($value) ? $value : '-';
+            @endphp
+            <div class="space-y-6">
+                <div>
+                    <h4 class="mb-3 text-xs font-bold uppercase tracking-wider text-slate-400">Penyewa</h4>
+                    <dl class="grid grid-cols-1 gap-4 md:grid-cols-3">
+                        <div>
+                            <dt class="text-xs font-semibold text-slate-400">Nama</dt>
+                            <dd class="mt-1 font-semibold text-slate-800 dark:text-white">{{ $display($selectedPenarikan->user->name ?? null) }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-xs font-semibold text-slate-400">Email</dt>
+                            <dd class="mt-1 font-semibold text-slate-800 dark:text-white">{{ $display($selectedPenarikan->user->email ?? null) }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-xs font-semibold text-slate-400">Nomor HP</dt>
+                            <dd class="mt-1 font-semibold text-slate-800 dark:text-white">{{ $display($selectedPenarikan->user->nomor ?? null) }}</dd>
+                        </div>
+                    </dl>
+                </div>
+
+                <div class="border-t border-slate-200 pt-5 dark:border-slate-700">
+                    <h4 class="mb-3 text-xs font-bold uppercase tracking-wider text-slate-400">Penarikan</h4>
+                    <dl class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                        <div>
+                            <dt class="text-xs font-semibold text-slate-400">UID</dt>
+                            <dd class="mt-1 font-mono text-sm font-semibold text-slate-800 dark:text-white">{{ $display($selectedPenarikan->uid) }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-xs font-semibold text-slate-400">Jumlah</dt>
+                            <dd class="mt-1 font-semibold text-slate-800 dark:text-white">Rp {{ number_format((int) $selectedPenarikan->amount, 0, ',', '.') }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-xs font-semibold text-slate-400">Saldo Saat Pengajuan / Kwitansi</dt>
+                            <dd class="mt-1 font-semibold text-slate-800 dark:text-white">Rp {{ number_format((int) $selectedPenarikan->kwitansi, 0, ',', '.') }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-xs font-semibold text-slate-400">Status</dt>
+                            <dd class="mt-1 font-semibold text-slate-800 dark:text-white">{{ $display($selectedPenarikan->status) }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-xs font-semibold text-slate-400">Tanggal Pengajuan</dt>
+                            <dd class="mt-1 font-semibold text-slate-800 dark:text-white">{{ $selectedPenarikan->created_at?->format('d M Y, H:i') ?? '-' }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-xs font-semibold text-slate-400">Tanggal Disetujui</dt>
+                            <dd class="mt-1 font-semibold text-slate-800 dark:text-white">{{ $selectedPenarikan->approved_at?->format('d M Y, H:i') ?? '-' }}</dd>
+                        </div>
+                        <div class="md:col-span-2">
+                            <dt class="text-xs font-semibold text-slate-400">Catatan</dt>
+                            <dd class="mt-1 font-semibold text-slate-800 dark:text-white">{{ $display($selectedPenarikan->note) }}</dd>
+                        </div>
+                    </dl>
+                </div>
+
+                <div class="border-t border-slate-200 pt-5 dark:border-slate-700">
+                    <h4 class="mb-3 text-xs font-bold uppercase tracking-wider text-slate-400">Rekening Tujuan</h4>
+                    <dl class="grid grid-cols-1 gap-4 md:grid-cols-3">
+                        <div>
+                            <dt class="text-xs font-semibold text-slate-400">Nama Bank</dt>
+                            <dd class="mt-1 font-semibold text-slate-800 dark:text-white">{{ $display($selectedBank['bank_name'] ?? null) }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-xs font-semibold text-slate-400">Nomor Rekening</dt>
+                            <dd class="mt-1 font-semibold text-slate-800 dark:text-white">{{ $display($selectedBank['bank_account_number'] ?? null) }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-xs font-semibold text-slate-400">Nama Pemilik</dt>
+                            <dd class="mt-1 font-semibold text-slate-800 dark:text-white">{{ $display($selectedBank['bank_account_name'] ?? null) }}</dd>
+                        </div>
+                    </dl>
+                </div>
+            </div>
+        @endif
+    </x-admin.modal>
 </div>

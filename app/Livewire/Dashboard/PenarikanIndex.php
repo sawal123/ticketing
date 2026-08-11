@@ -2,11 +2,13 @@
 
 namespace App\Livewire\Dashboard;
 
+use App\Models\Bank;
 use App\Models\Penarikan;
 use App\Models\User;
 use App\Services\Withdrawals\WithdrawalBalanceService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
@@ -142,7 +144,7 @@ class PenarikanIndex extends Component
                     'note' => $note,
                     'kwitansi' => $availableBalance,
                     'status' => 'PENDING',
-                ]);
+                ] + $this->bankSnapshotFor($ownerId));
             }, 3);
         } catch (ValidationException $e) {
             throw $e;
@@ -241,5 +243,31 @@ class PenarikanIndex extends Component
     private function ownedPenarikanQuery()
     {
         return Penarikan::where('uid_user', $this->ownerUid());
+    }
+
+    private function bankSnapshotFor(string $uid): array
+    {
+        if (! Schema::hasColumn('penarikans', 'bank_name')) {
+            return [];
+        }
+
+        $bank = Bank::where(function ($q) use ($uid) {
+            $q->where('uid_user', $uid)
+                ->orWhere('uid', $uid);
+        })->latest()->first();
+
+        if (! $bank) {
+            return [
+                'bank_name' => null,
+                'bank_account_name' => null,
+                'bank_account_number' => null,
+            ];
+        }
+
+        return [
+            'bank_name' => $bank->bank,
+            'bank_account_name' => $bank->nama,
+            'bank_account_number' => $bank->norek,
+        ];
     }
 }
