@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Livewire\Admin\UserIndex;
+use App\Models\Cash;
 use App\Models\Cart;
 use App\Models\Event;
 use App\Models\HargaCart;
@@ -166,6 +167,48 @@ class AdminUserHistoryTest extends TestCase
 
         $this->assertSame(2, substr_count($html, 'Terverifikasi'));
         $this->assertSame(1, substr_count($html, 'Belum Diverifikasi'));
+    }
+
+    public function test_history_cashes_tetap_menampilkan_seluruh_transaksi_berdasarkan_email(): void
+    {
+        $admin = $this->makeUser(['uid' => 'admin-uid', 'role' => 'admin']);
+        $user = $this->makeUser(['uid' => 'buyer-uid', 'role' => 'user']);
+        $event = $this->makeEvent();
+        $email = 'cash@example.test';
+        $firstCashId = null;
+
+        for ($i = 1; $i <= 25; $i++) {
+            $cash = Cash::create([
+                'uid' => 'cash-cart-'.$i,
+                'name' => 'Cash Buyer',
+                'email' => $email,
+                'nomor' => '08123456789',
+            ]);
+
+            $firstCashId ??= $cash->id;
+
+            $cart = $this->makeCart($user, $event, [
+                'uid' => $cash->uid,
+                'invoice' => 'CASH-INV-'.$i,
+                'created_at' => now()->subMinutes(25 - $i),
+                'updated_at' => now()->subMinutes(25 - $i),
+            ]);
+            $this->makeHargaCart($cart);
+        }
+
+        $component = Livewire::actingAs($admin)
+            ->test(UserIndex::class)
+            ->set('activeTab', 'cashes')
+            ->call('openHistory', $firstCashId);
+
+        $historyItems = $component->get('historyItems');
+
+        $this->assertCount(25, $historyItems);
+        $this->assertSame('CASH-INV-25', $historyItems->first()->invoice);
+        $this->assertSame('CASH-INV-1', $historyItems->last()->invoice);
+
+        $component->assertSee('CASH-INV-25')
+            ->assertSee('CASH-INV-1');
     }
 
     private function makeUser(array $overrides = []): User

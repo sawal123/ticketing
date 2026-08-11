@@ -214,6 +214,50 @@ class AdminPenarikanDetailTest extends TestCase
         ]);
     }
 
+    public function test_migration_backfill_chunk_by_id_memproses_semua_legacy_penarikan(): void
+    {
+        Schema::drop('penarikans');
+        $this->createPenarikansTable(withSnapshot: false);
+
+        $tenant = $this->makeUser(['uid' => 'tenant-bulk', 'role' => 'penyewa']);
+        $this->makeBank($tenant, [
+            'bank' => 'Bulk Bank',
+            'nama' => 'Bulk Owner',
+            'norek' => '250250',
+        ]);
+
+        $rows = [];
+        for ($i = 1; $i <= 250; $i++) {
+            $rows[] = [
+                'uid' => 'legacy-bulk-'.$i,
+                'uid_user' => $tenant->uid,
+                'amount' => '10000',
+                'note' => 'Legacy bulk',
+                'kwitansi' => '100000',
+                'status' => Penarikan::STATUS_PENDING,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ];
+        }
+
+        DB::table('penarikans')->insert($rows);
+
+        $this->snapshotMigration()->up();
+
+        $this->assertSame(250, DB::table('penarikans')->where('bank_name', 'Bulk Bank')->count());
+        $this->assertSame(0, DB::table('penarikans')->whereNull('bank_name')->count());
+
+        $this->assertDatabaseHas('penarikans', [
+            'uid' => 'legacy-bulk-250',
+            'uid_user' => $tenant->uid,
+            'amount' => '10000',
+            'status' => Penarikan::STATUS_PENDING,
+            'bank_name' => 'Bulk Bank',
+            'bank_account_name' => 'Bulk Owner',
+            'bank_account_number' => '250250',
+        ]);
+    }
+
     public function test_invoice_penarikan_menggunakan_snapshot_rekening(): void
     {
         $admin = $this->makeUser(['uid' => 'admin-uid', 'role' => 'admin']);

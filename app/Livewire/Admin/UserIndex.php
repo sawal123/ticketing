@@ -192,7 +192,6 @@ class UserIndex extends Component
                 ])
                 ->whereIn('uid', Cash::where('email', $cash->email)->select('uid'))
                 ->latest('created_at')
-                ->limit(20)
                 ->get();
         } else {
             $user = User::findOrFail($id);

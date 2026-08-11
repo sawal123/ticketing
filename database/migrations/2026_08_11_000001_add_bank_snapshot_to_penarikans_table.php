@@ -32,8 +32,7 @@ return new class extends Migration
                     ->orWhereNull('bank_account_name')
                     ->orWhereNull('bank_account_number');
             })
-            ->orderBy('id')
-            ->chunk(100, function ($penarikans) use ($banksHasDeletedAt) {
+            ->chunkById(100, function ($penarikans) use ($banksHasDeletedAt) {
                 foreach ($penarikans as $penarikan) {
                     $bankQuery = DB::table('banks')
                         ->where(function ($query) use ($penarikan) {
