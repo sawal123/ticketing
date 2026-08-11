@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Admin;
 
+use App\Models\Bank;
 use App\Models\Penarikan;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -15,6 +16,14 @@ class PenarikanIndex extends Component
     public $search = '';
 
     public $statusFilter = 'all'; // all, pending, success, failed
+
+    public $selectedPenarikan = null;
+
+    public array $selectedBank = [
+        'bank_name' => null,
+        'bank_account_name' => null,
+        'bank_account_number' => null,
+    ];
 
     protected $queryString = [
         'search' => ['except' => ''],
@@ -87,5 +96,39 @@ class PenarikanIndex extends Component
         }
 
         session()->flash('message', 'Penarikan berhasil disetujui!');
+    }
+
+    public function openDetail(string $uid): void
+    {
+        abort_unless(strtolower((string) Auth::user()?->role) === 'admin', 403);
+
+        $penarikan = Penarikan::with('user')
+            ->where('uid', $uid)
+            ->firstOrFail();
+
+        $this->selectedPenarikan = $penarikan;
+        $this->selectedBank = $this->bankDetailsFor($penarikan);
+
+        $this->dispatch('open-modal', name: 'penarikan-detail-modal');
+    }
+
+    private function bankDetailsFor(Penarikan $penarikan): array
+    {
+        $fallbackBank = null;
+
+        if (! filled($penarikan->bank_name)
+            || ! filled($penarikan->bank_account_name)
+            || ! filled($penarikan->bank_account_number)) {
+            $fallbackBank = Bank::where(function ($q) use ($penarikan) {
+                $q->where('uid_user', $penarikan->uid_user)
+                    ->orWhere('uid', $penarikan->uid_user);
+            })->latest()->first();
+        }
+
+        return [
+            'bank_name' => filled($penarikan->bank_name) ? $penarikan->bank_name : ($fallbackBank->bank ?? null),
+            'bank_account_name' => filled($penarikan->bank_account_name) ? $penarikan->bank_account_name : ($fallbackBank->nama ?? null),
+            'bank_account_number' => filled($penarikan->bank_account_number) ? $penarikan->bank_account_number : ($fallbackBank->norek ?? null),
+        ];
     }
 }

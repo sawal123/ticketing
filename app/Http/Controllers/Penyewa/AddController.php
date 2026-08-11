@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Penyewa;
 
 use App\Http\Controllers\Controller;
+use App\Models\Bank;
 use App\Models\Event;
 use App\Models\EventDate;
 use App\Models\Harga;
@@ -20,6 +21,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -223,7 +225,7 @@ class AddController extends Controller
                     'note' => 'Penarikan',
                     'kwitansi' => $availableBalance,
                     'status' => 'PENDING',
-                ]);
+                ] + $this->bankSnapshotFor($ownerUid));
             }, 3);
 
             return redirect()->back()->with('penarikan', 'Penarikan berhasil diajukan');
@@ -271,5 +273,31 @@ class AddController extends Controller
         return str_contains($e->getMessage(), 'vouchers_event_uid_code_unique')
             || str_contains($e->getMessage(), 'UNIQUE constraint failed')
             || str_contains($e->getMessage(), 'Duplicate entry');
+    }
+
+    private function bankSnapshotFor(string $uid): array
+    {
+        if (! Schema::hasColumn('penarikans', 'bank_name')) {
+            return [];
+        }
+
+        $bank = Bank::where(function ($q) use ($uid) {
+            $q->where('uid_user', $uid)
+                ->orWhere('uid', $uid);
+        })->latest()->first();
+
+        if (! $bank) {
+            return [
+                'bank_name' => null,
+                'bank_account_name' => null,
+                'bank_account_number' => null,
+            ];
+        }
+
+        return [
+            'bank_name' => $bank->bank,
+            'bank_account_name' => $bank->nama,
+            'bank_account_number' => $bank->norek,
+        ];
     }
 }

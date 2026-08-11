@@ -38,6 +38,9 @@ class Controller extends BaseController
                 'penarikans.amount',
                 'penarikans.kwitansi',
                 'penarikans.status',
+                'penarikans.bank_name',
+                'penarikans.bank_account_name',
+                'penarikans.bank_account_number',
                 'penarikans.created_at',
                 'penarikans.updated_at',
                 'users.name',
@@ -53,7 +56,21 @@ class Controller extends BaseController
                 abort(403);
             }
 
-            $bank = Bank::where('uid', $penarikan->uid_user)->first();
+            $fallbackBank = null;
+            if (! filled($penarikan->bank_name)
+                || ! filled($penarikan->bank_account_name)
+                || ! filled($penarikan->bank_account_number)) {
+                $fallbackBank = Bank::where(function ($q) use ($penarikan) {
+                    $q->where('uid_user', $penarikan->uid_user)
+                        ->orWhere('uid', $penarikan->uid_user);
+                })->latest()->first();
+            }
+
+            $bank = (object) [
+                'nama' => filled($penarikan->bank_account_name) ? $penarikan->bank_account_name : ($fallbackBank->nama ?? '-'),
+                'bank' => filled($penarikan->bank_name) ? $penarikan->bank_name : ($fallbackBank->bank ?? '-'),
+                'norek' => filled($penarikan->bank_account_number) ? $penarikan->bank_account_number : ($fallbackBank->norek ?? '-'),
+            ];
             $cekBank = Bank::all();
             $user = User::all();
             $sbank = [];

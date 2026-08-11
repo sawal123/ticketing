@@ -22,7 +22,18 @@ class Penarikan extends Model
 
     public const STATUS_FAILED = 'FAILED';
 
-    protected $fillable = ['uid', 'uid_user', 'amount', 'note', 'kwitansi', 'status', 'approved_at'];
+    protected $fillable = [
+        'uid',
+        'uid_user',
+        'amount',
+        'note',
+        'kwitansi',
+        'status',
+        'approved_at',
+        'bank_name',
+        'bank_account_name',
+        'bank_account_number',
+    ];
 
     protected $casts = [
         'amount' => 'integer',
