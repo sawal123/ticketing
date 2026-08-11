@@ -393,12 +393,14 @@ class EventDetail extends Component
 
         $callback = function () {
             $file = fopen('php://output', 'w');
+            fwrite($file, "\xEF\xBB\xBF");
+            fwrite($file, "sep=;\r\n");
             $rows = $this->getExportQuery()->get();
             $exportTotals = $this->exportSnapshotTotalsFromRows($rows);
             $seenCartTaxes = [];
 
             // Header Row
-            fputcsv($file, ['Tanggal', 'Invoice', 'Nama Pembeli', 'Email', 'Kategori Tiket', 'Qty', 'Harga Satuan', 'Diskon', 'Pajak Snapshot', 'Total Item Snapshot', 'Status Kehadiran', 'Status Verifikasi', 'Tanggal Verifikasi', 'Waktu Verifikasi']);
+            fputcsv($file, ['Tanggal', 'Invoice', 'Nama Pembeli', 'Email', 'Kategori Tiket', 'Qty', 'Harga Satuan', 'Diskon', 'Pajak Snapshot', 'Total Item Snapshot', 'Status Kehadiran', 'Status Verifikasi', 'Tanggal Verifikasi', 'Waktu Verifikasi'], ';');
 
             // Data Rows (Optimized with cursor)
             $rows->each(function ($row) use ($file, &$seenCartTaxes) {
@@ -423,10 +425,10 @@ class EventDetail extends Component
                     $isVerified ? 'Terverifikasi' : 'Belum Diverifikasi',
                     $scannedAt ? $scannedAt->format('d M Y') : 'Tidak tersedia',
                     $scannedAt ? $scannedAt->format('H:i:s') : 'Tidak tersedia',
-                ]));
+                ]), ';');
             });
 
-            fputcsv($file, ExportSanitizer::csvRow(['', '', '', '', '', '', '', '', 'TOTAL OMZET SNAPSHOT', (int) $exportTotals['owner_revenue'], '', '', '', '']));
+            fputcsv($file, ExportSanitizer::csvRow(['', '', '', '', '', '', '', '', 'TOTAL OMZET SNAPSHOT', (int) $exportTotals['owner_revenue'], '', '', '', '']), ';');
 
             fclose($file);
         };

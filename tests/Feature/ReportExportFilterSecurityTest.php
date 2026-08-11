@@ -59,13 +59,25 @@ class ReportExportFilterSecurityTest extends TestCase
         ob_start();
         $component->exportExcel()->sendContent();
         $csv = ob_get_clean();
+        $rows = $this->csvRows($csv);
 
+        $this->assertStringStartsWith("\xEF\xBB\xBFsep=;\r\n", $csv);
+        $this->assertSame('sep=', $rows[0][0]);
+        $this->assertSame('', $rows[0][1]);
+        $this->assertSame(['Tanggal', 'Invoice', 'Nama Pembeli', 'Email', 'Kategori Tiket'], array_slice($rows[1], 0, 5));
+        $this->assertSame(14, count($rows[1]));
+        $this->assertSame(14, count($rows[2]));
+        $this->assertSame("'@evil", $rows[2][1]);
+        $this->assertSame("'=  HYPERLINK(\"http://evil.test\",\"klik\")", $rows[2][2]);
+        $this->assertSame("'+evil@example.test", $rows[2][3]);
+        $this->assertSame("'-SUM(1,1)", $rows[2][4]);
+        $this->assertSame('198000', $rows[2][9]);
         $this->assertStringContainsString("'@evil", $csv);
         $this->assertStringContainsString("'=  HYPERLINK", $csv);
         $this->assertStringContainsString("'+evil@example.test", $csv);
         $this->assertStringContainsString("'-SUM(1,1)", $csv);
         $this->assertStringNotContainsString("=\r\nHYPERLINK", $csv);
-        $this->assertStringContainsString("'-SUM(1,1)\",2,100000,20000,18000,198000", $csv);
+        $this->assertStringContainsString("'-SUM(1,1);2;100000;20000;18000;198000", $csv);
     }
 
     public function test_export_print_returns_html_file_and_escapes_user_controlled_fields(): void
@@ -271,7 +283,7 @@ class ReportExportFilterSecurityTest extends TestCase
         $component->exportExcel()->sendContent();
         $csv = ob_get_clean();
 
-        $this->assertStringContainsString('"TOTAL OMZET SNAPSHOT",198000', $csv);
+        $this->assertStringContainsString('"TOTAL OMZET SNAPSHOT";198000', $csv);
         $this->assertStringNotContainsString('999999', $csv);
     }
 
@@ -307,11 +319,11 @@ class ReportExportFilterSecurityTest extends TestCase
         $this->assertStringContainsString('Status Verifikasi', $csv);
         $this->assertStringContainsString('Tanggal Verifikasi', $csv);
         $this->assertStringContainsString('Waktu Verifikasi', $csv);
-        $this->assertStringContainsString('Terverifikasi,"11 Aug 2026",10:11:12', $csv);
+        $this->assertStringContainsString('Terverifikasi;"11 Aug 2026";10:11:12', $csv);
         $this->assertStringContainsString('INV-LEGACY-VERIFIED', $csv);
-        $this->assertStringContainsString('Terverifikasi,"Tidak tersedia","Tidak tersedia"', $csv);
+        $this->assertStringContainsString('Terverifikasi;"Tidak tersedia";"Tidak tersedia"', $csv);
         $this->assertStringContainsString('INV-NOT-VERIFIED', $csv);
-        $this->assertStringContainsString('"Belum Diverifikasi","Tidak tersedia","Tidak tersedia"', $csv);
+        $this->assertStringContainsString('"Belum Diverifikasi";"Tidak tersedia";"Tidak tersedia"', $csv);
     }
 
     public function test_export_legacy_tax_uses_financial_snapshot_fallback(): void
@@ -341,8 +353,8 @@ class ReportExportFilterSecurityTest extends TestCase
         $csv = ob_get_clean();
 
         $this->assertStringContainsString('INV-LEGACY-TAX', $csv);
-        $this->assertStringContainsString('10000,110000', $csv);
-        $this->assertStringContainsString('"TOTAL OMZET SNAPSHOT",110000', $csv);
+        $this->assertStringContainsString('10000;110000', $csv);
+        $this->assertStringContainsString('"TOTAL OMZET SNAPSHOT";110000', $csv);
 
         $response = $component->exportPrint();
         ob_start();
@@ -509,5 +521,15 @@ class ReportExportFilterSecurityTest extends TestCase
             'disc' => 0,
             'kategori_harga' => $harga->kategori,
         ], $overrides));
+    }
+
+    private function csvRows(string $csv): array
+    {
+        $csv = preg_replace('/^\xEF\xBB\xBF/', '', $csv);
+
+        return array_values(array_filter(array_map(
+            fn ($line) => str_getcsv($line, ';'),
+            preg_split('/\r\n|\n|\r/', trim($csv))
+        ), fn ($row) => $row !== [null] && $row !== false));
     }
 }
