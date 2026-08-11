@@ -287,11 +287,16 @@ class EventDetail extends Component
     {
         $this->sanitizeFilters();
         $dateRange = $this->normalizedDateRange();
+        $snapshots = app(FinancialSnapshotService::class);
 
         $query = DB::table('carts')
             ->join('users', 'users.uid', '=', 'carts.user_uid')
             ->leftJoin('cashes', 'cashes.uid', '=', 'carts.uid')
-            ->join('harga_carts', 'harga_carts.uid', '=', 'carts.uid')
+            ->join('harga_carts', 'harga_carts.uid', '=', 'carts.uid');
+
+        $snapshots->joinLineSnapshots($query);
+
+        $query
             ->select([
                 'carts.created_at',
                 'carts.uid as cart_uid',
@@ -304,9 +309,11 @@ class EventDetail extends Component
                 'harga_carts.disc',
                 'carts.payment_type',
                 'carts.konfirmasi',
+                'carts.scanned_at',
                 'carts.pajak',
                 'carts.internet_fee',
                 'carts.gross_amount',
+                DB::raw($snapshots->taxSnapshotSqlExpression().' as tax_snapshot'),
             ])
             ->where('carts.event_uid', $this->eventUid)
             ->where('carts.status', 'SUCCESS')
@@ -391,13 +398,15 @@ class EventDetail extends Component
             $seenCartTaxes = [];
 
             // Header Row
-            fputcsv($file, ['Tanggal', 'Invoice', 'Nama Pembeli', 'Email', 'Kategori Tiket', 'Qty', 'Harga Satuan', 'Diskon', 'Pajak Snapshot', 'Total Item Snapshot', 'Status Kehadiran']);
+            fputcsv($file, ['Tanggal', 'Invoice', 'Nama Pembeli', 'Email', 'Kategori Tiket', 'Qty', 'Harga Satuan', 'Diskon', 'Pajak Snapshot', 'Total Item Snapshot', 'Status Kehadiran', 'Status Verifikasi', 'Tanggal Verifikasi', 'Waktu Verifikasi']);
 
             // Data Rows (Optimized with cursor)
             $rows->each(function ($row) use ($file, &$seenCartTaxes) {
                 $lineTotal = ((int) $row->quantity * (int) $row->harga_ticket) - (int) ($row->disc ?? 0);
-                $taxSnapshot = isset($seenCartTaxes[$row->cart_uid]) ? 0 : (int) ($row->pajak ?? 0);
+                $taxSnapshot = isset($seenCartTaxes[$row->cart_uid]) ? 0 : (int) ($row->tax_snapshot ?? 0);
                 $seenCartTaxes[$row->cart_uid] = true;
+                $scannedAt = filled($row->scanned_at) ? Carbon::parse($row->scanned_at) : null;
+                $isVerified = $scannedAt !== null || (string) $row->konfirmasi === '1';
 
                 fputcsv($file, ExportSanitizer::csvRow([
                     $row->created_at,
@@ -409,12 +418,15 @@ class EventDetail extends Component
                     (int) $row->harga_ticket,
                     (int) ($row->disc ?? 0),
                     $taxSnapshot,
-                    $lineTotal,
+                    $lineTotal + $taxSnapshot,
                     $row->konfirmasi == '1' ? 'Hadir' : 'Belum Hadir',
+                    $isVerified ? 'Terverifikasi' : 'Belum Diverifikasi',
+                    $scannedAt ? $scannedAt->format('d M Y') : 'Tidak tersedia',
+                    $scannedAt ? $scannedAt->format('H:i:s') : 'Tidak tersedia',
                 ]));
             });
 
-            fputcsv($file, ExportSanitizer::csvRow(['', '', '', '', '', '', '', '', 'TOTAL OMZET SNAPSHOT', (int) $exportTotals['owner_revenue'], '']));
+            fputcsv($file, ExportSanitizer::csvRow(['', '', '', '', '', '', '', '', 'TOTAL OMZET SNAPSHOT', (int) $exportTotals['owner_revenue'], '', '', '', '']));
 
             fclose($file);
         };

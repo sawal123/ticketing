@@ -14,6 +14,7 @@ use App\Models\HargaCart;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Models\Voucher;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\View;
@@ -27,6 +28,13 @@ class ReportExportFilterSecurityTest extends TestCase
 
     protected function setUp(): void
     {
+        putenv('DB_CONNECTION=sqlite');
+        putenv('DB_DATABASE=:memory:');
+        $_ENV['DB_CONNECTION'] = 'sqlite';
+        $_ENV['DB_DATABASE'] = ':memory:';
+        $_SERVER['DB_CONNECTION'] = 'sqlite';
+        $_SERVER['DB_DATABASE'] = ':memory:';
+
         parent::setUp();
 
         $this->withoutMiddleware([GlobalDataMiddleware::class, LogActivityMiddleware::class]);
@@ -57,7 +65,7 @@ class ReportExportFilterSecurityTest extends TestCase
         $this->assertStringContainsString("'+evil@example.test", $csv);
         $this->assertStringContainsString("'-SUM(1,1)", $csv);
         $this->assertStringNotContainsString("=\r\nHYPERLINK", $csv);
-        $this->assertStringContainsString("'-SUM(1,1)\",2,100000,20000,18000,180000", $csv);
+        $this->assertStringContainsString("'-SUM(1,1)\",2,100000,20000,18000,198000", $csv);
     }
 
     public function test_export_print_returns_html_file_and_escapes_user_controlled_fields(): void
@@ -265,6 +273,84 @@ class ReportExportFilterSecurityTest extends TestCase
 
         $this->assertStringContainsString('"TOTAL OMZET SNAPSHOT",198000', $csv);
         $this->assertStringNotContainsString('999999', $csv);
+    }
+
+    public function test_export_includes_ticket_verification_status_and_scanned_at_time(): void
+    {
+        [$tenant, $event, $harga, , $scannedCart] = $this->successfulCashSnapshot();
+        $scannedCart->forceFill([
+            'scanned_at' => Carbon::parse('2026-08-11 10:11:12'),
+        ])->save();
+
+        $legacyCart = $this->cart($tenant, $event, [
+            'invoice' => 'INV-LEGACY-VERIFIED',
+            'gross_amount' => 100000,
+            'konfirmasi' => '1',
+        ]);
+        $this->hargaCart($legacyCart, $event, $harga);
+
+        $unverifiedCart = $this->cart($tenant, $event, [
+            'invoice' => 'INV-NOT-VERIFIED',
+            'gross_amount' => 100000,
+        ]);
+        $this->hargaCart($unverifiedCart, $event, $harga);
+
+        $this->actingAs($tenant);
+
+        $component = new DashboardEventDetail;
+        $component->eventUid = $event->uid;
+
+        ob_start();
+        $component->exportExcel()->sendContent();
+        $csv = ob_get_clean();
+
+        $this->assertStringContainsString('Status Verifikasi', $csv);
+        $this->assertStringContainsString('Tanggal Verifikasi', $csv);
+        $this->assertStringContainsString('Waktu Verifikasi', $csv);
+        $this->assertStringContainsString('Terverifikasi,"11 Aug 2026",10:11:12', $csv);
+        $this->assertStringContainsString('INV-LEGACY-VERIFIED', $csv);
+        $this->assertStringContainsString('Terverifikasi,"Tidak tersedia","Tidak tersedia"', $csv);
+        $this->assertStringContainsString('INV-NOT-VERIFIED', $csv);
+        $this->assertStringContainsString('"Belum Diverifikasi","Tidak tersedia","Tidak tersedia"', $csv);
+    }
+
+    public function test_export_legacy_tax_uses_financial_snapshot_fallback(): void
+    {
+        $tenant = $this->user();
+        $event = $this->event($tenant);
+        $harga = $this->harga($event, ['harga' => 100000]);
+        $cart = $this->cart($tenant, $event, [
+            'invoice' => 'INV-LEGACY-TAX',
+            'gross_amount' => 110000,
+            'internet_fee' => 0,
+            'pajak' => 0,
+        ]);
+        $this->hargaCart($cart, $event, $harga, [
+            'quantity' => 1,
+            'harga_ticket' => 100000,
+            'disc' => 0,
+        ]);
+
+        $this->actingAs($tenant);
+
+        $component = new DashboardEventDetail;
+        $component->eventUid = $event->uid;
+
+        ob_start();
+        $component->exportExcel()->sendContent();
+        $csv = ob_get_clean();
+
+        $this->assertStringContainsString('INV-LEGACY-TAX', $csv);
+        $this->assertStringContainsString('10000,110000', $csv);
+        $this->assertStringContainsString('"TOTAL OMZET SNAPSHOT",110000', $csv);
+
+        $response = $component->exportPrint();
+        ob_start();
+        $response->sendContent();
+        $html = ob_get_clean();
+
+        $this->assertStringContainsString('Rp 110.000', $html);
+        $this->assertStringContainsString('TOTAL OMZET SNAPSHOT', $html);
     }
 
     private function successfulCashSnapshot(array $overrides = []): array
