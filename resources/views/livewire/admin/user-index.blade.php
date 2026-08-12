@@ -12,28 +12,68 @@
     <!-- Tab Navigation -->
     <div class="mb-6 flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl w-fit">
         <button 
-            wire:click="setTab('user')" 
-            class="px-4 py-2 rounded-lg text-sm font-semibold transition-all {{ $activeTab === 'user' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300' }}"
+            type="button"
+            wire:click="setTab('user')"
+            wire:loading.attr="disabled"
+            wire:target="setTab('user')"
+            class="px-4 py-2 rounded-lg text-sm font-semibold transition-all disabled:pointer-events-none disabled:opacity-60 {{ $activeTab === 'user' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300' }}"
         >
-            User
+            <span wire:loading.remove wire:target="setTab('user')">User</span>
+            <span wire:loading.flex wire:target="setTab('user')" class="items-center gap-2">
+                <svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-90" fill="currentColor" d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z"></path>
+                </svg>
+                User
+            </span>
         </button>
         <button 
-            wire:click="setTab('admin')" 
-            class="px-4 py-2 rounded-lg text-sm font-semibold transition-all {{ $activeTab === 'admin' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300' }}"
+            type="button"
+            wire:click="setTab('admin')"
+            wire:loading.attr="disabled"
+            wire:target="setTab('admin')"
+            class="px-4 py-2 rounded-lg text-sm font-semibold transition-all disabled:pointer-events-none disabled:opacity-60 {{ $activeTab === 'admin' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300' }}"
         >
-            Admin
+            <span wire:loading.remove wire:target="setTab('admin')">Admin</span>
+            <span wire:loading.flex wire:target="setTab('admin')" class="items-center gap-2">
+                <svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-90" fill="currentColor" d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z"></path>
+                </svg>
+                Admin
+            </span>
         </button>
         <button 
-            wire:click="setTab('penyewa')" 
-            class="px-4 py-2 rounded-lg text-sm font-semibold transition-all {{ $activeTab === 'penyewa' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300' }}"
+            type="button"
+            wire:click="setTab('penyewa')"
+            wire:loading.attr="disabled"
+            wire:target="setTab('penyewa')"
+            class="px-4 py-2 rounded-lg text-sm font-semibold transition-all disabled:pointer-events-none disabled:opacity-60 {{ $activeTab === 'penyewa' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300' }}"
         >
-            Penyewa
+            <span wire:loading.remove wire:target="setTab('penyewa')">Penyewa</span>
+            <span wire:loading.flex wire:target="setTab('penyewa')" class="items-center gap-2">
+                <svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-90" fill="currentColor" d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z"></path>
+                </svg>
+                Penyewa
+            </span>
         </button>
         <button 
-            wire:click="setTab('cashes')" 
-            class="px-4 py-2 rounded-lg text-sm font-semibold transition-all {{ $activeTab === 'cashes' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300' }}"
+            type="button"
+            wire:click="setTab('cashes')"
+            wire:loading.attr="disabled"
+            wire:target="setTab('cashes')"
+            class="px-4 py-2 rounded-lg text-sm font-semibold transition-all disabled:pointer-events-none disabled:opacity-60 {{ $activeTab === 'cashes' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300' }}"
         >
-            Cashes
+            <span wire:loading.remove wire:target="setTab('cashes')">Cashes</span>
+            <span wire:loading.flex wire:target="setTab('cashes')" class="items-center gap-2">
+                <svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-90" fill="currentColor" d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z"></path>
+                </svg>
+                Cashes
+            </span>
         </button>
     </div>
 
@@ -66,106 +106,108 @@
         </x-admin.card>
 
         <!-- Table -->
-        <x-admin.table title="Daftar Pengguna ({{ ucfirst($activeTab) }})" :headers="['User', 'Kontak', 'Role', 'Bergabung', 'Aksi']" :count="$users->total()">
-            @forelse($users as $user)
-                <tr class="table-row-hover transition-colors">
-                    <td class="px-5 py-4 whitespace-nowrap">
-                        <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-slate-500 font-bold border border-slate-200 dark:border-slate-600">
-                                {{ substr($user->name, 0, 1) }}
+        <div wire:loading.class="opacity-60 pointer-events-none" wire:target="setTab('user'),setTab('admin'),setTab('penyewa'),setTab('cashes')" class="transition-opacity">
+            <x-admin.table title="Daftar Pengguna ({{ ucfirst($activeTab) }})" :headers="['User', 'Kontak', 'Role', 'Bergabung', 'Aksi']" :count="$users->total()">
+                @forelse($users as $user)
+                    <tr class="table-row-hover transition-colors">
+                        <td class="px-5 py-4 whitespace-nowrap">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-slate-500 font-bold border border-slate-200 dark:border-slate-600">
+                                    {{ substr($user->name, 0, 1) }}
+                                </div>
+                                <div class="flex flex-col">
+                                    <span class="font-bold text-slate-800 dark:text-white">{{ $user->name }}</span>
+                                    <span class="text-xs text-slate-500">{{ $user->email }}</span>
+                                </div>
                             </div>
-                            <div class="flex flex-col">
-                                <span class="font-bold text-slate-800 dark:text-white">{{ $user->name }}</span>
-                                <span class="text-xs text-slate-500">{{ $user->email }}</span>
-                            </div>
-                        </div>
-                    </td>
-                    <td class="px-5 py-4">
-                        <span class="text-sm text-slate-600 dark:text-slate-400 font-medium">
-                            {{ $user->nomor ?: '-' }}
-                        </span>
-                    </td>
-                    <td class="px-5 py-4">
-                        @php
-                            $roleName = $activeTab === 'cashes' ? 'Guest' : $user->role;
-                            $roleColor = match($roleName) {
-                                'admin' => 'bg-rose-50 text-rose-600 border-rose-200 dark:bg-rose-900/30 dark:text-rose-400 dark:border-rose-800',
-                                'penyewa' => 'bg-amber-50 text-amber-600 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800',
-                                'Guest' => 'bg-emerald-50 text-emerald-600 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800',
-                                default => 'bg-indigo-50 text-indigo-600 border-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-400 dark:border-indigo-800',
-                            };
-                        @endphp
-                        <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border {{ $roleColor }}">
-                            {{ $roleName }}
-                        </span>
-                    </td>
-                    <td class="px-5 py-4 text-sm text-slate-500 dark:text-slate-400">
-                        {{ $user->created_at->format('d M Y') }}
-                    </td>
-                    <td class="px-5 py-4 text-center">
-                        <div class="flex items-center justify-center gap-2">
-                            @if($activeTab === 'penyewa')
-                                <a href="{{ route('admin.user.penyewa.detail', $user->uid) }}" wire:navigate>
+                        </td>
+                        <td class="px-5 py-4">
+                            <span class="text-sm text-slate-600 dark:text-slate-400 font-medium">
+                                {{ $user->nomor ?: '-' }}
+                            </span>
+                        </td>
+                        <td class="px-5 py-4">
+                            @php
+                                $roleName = $activeTab === 'cashes' ? 'Guest' : $user->role;
+                                $roleColor = match($roleName) {
+                                    'admin' => 'bg-rose-50 text-rose-600 border-rose-200 dark:bg-rose-900/30 dark:text-rose-400 dark:border-rose-800',
+                                    'penyewa' => 'bg-amber-50 text-amber-600 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800',
+                                    'Guest' => 'bg-emerald-50 text-emerald-600 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800',
+                                    default => 'bg-indigo-50 text-indigo-600 border-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-400 dark:border-indigo-800',
+                                };
+                            @endphp
+                            <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border {{ $roleColor }}">
+                                {{ $roleName }}
+                            </span>
+                        </td>
+                        <td class="px-5 py-4 text-sm text-slate-500 dark:text-slate-400">
+                            {{ $user->created_at->format('d M Y') }}
+                        </td>
+                        <td class="px-5 py-4 text-center">
+                            <div class="flex items-center justify-center gap-2">
+                                @if($activeTab === 'penyewa')
+                                    <a href="{{ route('admin.user.penyewa.detail', $user->uid) }}" wire:navigate>
+                                        <x-admin.button
+                                            variant="ghost"
+                                            size="sm"
+                                            icon="eye"
+                                            class="text-emerald-600"
+                                            title="Detail Penyewa"
+                                        />
+                                    </a>
+                                @else
                                     <x-admin.button
+                                        x-on:click="$dispatch('open-modal', { name: 'history-modal' })"
+                                        wire:click="openHistory({{ $user->id }})"
                                         variant="ghost"
                                         size="sm"
-                                        icon="eye"
+                                        icon="history"
                                         class="text-emerald-600"
-                                        title="Detail Penyewa"
+                                        title="Riwayat Transaksi"
                                     />
-                                </a>
-                            @else
-                                <x-admin.button
-                                    x-on:click="$dispatch('open-modal', { name: 'history-modal' })"
-                                    wire:click="openHistory({{ $user->id }})"
-                                    variant="ghost"
-                                    size="sm"
-                                    icon="history"
-                                    class="text-emerald-600"
-                                    title="Riwayat Transaksi"
+                                @endif
+                                <x-admin.button 
+                                    wire:click="edit({{ $user->id }})" 
+                                    wire:loading.attr="disabled"
+                                    wire:target="edit({{ $user->id }})"
+                                    variant="ghost" 
+                                    size="sm" 
+                                    class="text-indigo-600 disabled:pointer-events-none disabled:opacity-60"
+                                    title="Edit"
+                                >
+                                    <i wire:loading.remove wire:target="edit({{ $user->id }})" data-lucide="pencil" class="w-4 h-4"></i>
+                                    <svg wire:loading wire:target="edit({{ $user->id }})" class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-90" fill="currentColor" d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z"></path>
+                                    </svg>
+                                </x-admin.button>
+                                <x-admin.button 
+                                    wire:click="confirmDelete({{ $user->id }})" 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    icon="trash-2"
+                                    class="text-rose-600"
+                                    title="Hapus"
                                 />
-                            @endif
-                            <x-admin.button 
-                                wire:click="edit({{ $user->id }})" 
-                                wire:loading.attr="disabled"
-                                wire:target="edit({{ $user->id }})"
-                                variant="ghost" 
-                                size="sm" 
-                                class="text-indigo-600 disabled:pointer-events-none disabled:opacity-60"
-                                title="Edit"
-                            >
-                                <i wire:loading.remove wire:target="edit({{ $user->id }})" data-lucide="pencil" class="w-4 h-4"></i>
-                                <svg wire:loading wire:target="edit({{ $user->id }})" class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                    <path class="opacity-90" fill="currentColor" d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z"></path>
-                                </svg>
-                            </x-admin.button>
-                            <x-admin.button 
-                                wire:click="confirmDelete({{ $user->id }})" 
-                                variant="ghost" 
-                                size="sm" 
-                                icon="trash-2"
-                                class="text-rose-600"
-                                title="Hapus"
-                            />
-                        </div>
-                    </td>
-                </tr>
-            @empty
-                <tr>
-                    <td colspan="5" class="px-5 py-12 text-center text-slate-400">
-                        <div class="flex flex-col items-center justify-center">
-                            <i data-lucide="users" class="w-12 h-12 mb-2 opacity-20"></i>
-                            <p>Tidak ada pengguna yang ditemukan dalam kategori ini.</p>
-                        </div>
-                    </td>
-                </tr>
-            @endforelse
+                            </div>
+                        </td>
+                    </tr>
+                @empty
+                    <tr>
+                        <td colspan="5" class="px-5 py-12 text-center text-slate-400">
+                            <div class="flex flex-col items-center justify-center">
+                                <i data-lucide="users" class="w-12 h-12 mb-2 opacity-20"></i>
+                                <p>Tidak ada pengguna yang ditemukan dalam kategori ini.</p>
+                            </div>
+                        </td>
+                    </tr>
+                @endforelse
 
-            <x-slot name="pagination">
-                {{ $users->links('components.admin.pagination') }}
-            </x-slot>
-        </x-admin.table>
+                <x-slot name="pagination">
+                    {{ $users->links('components.admin.pagination') }}
+                </x-slot>
+            </x-admin.table>
+        </div>
     </div>
 
     <!-- Create/Edit Modal -->
