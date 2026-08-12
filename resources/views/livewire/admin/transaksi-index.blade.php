@@ -105,8 +105,26 @@
                     {{ $trx->created_at->format('d M Y, H:i') }}
                 </td>
                 <td class="px-5 py-4 text-center">
-                    <x-admin.button wire:click="openDetail({{ $trx->id }})" variant="ghost" size="sm" icon="eye" class="text-indigo-600">
-                        Detail
+                    <x-admin.button
+                        x-on:click="$dispatch('open-modal', { name: 'trx-detail-modal' })"
+                        wire:click="openDetail({{ $trx->id }})"
+                        wire:loading.attr="disabled"
+                        wire:target="openDetail({{ $trx->id }})"
+                        variant="ghost"
+                        size="sm"
+                        class="text-indigo-600 disabled:pointer-events-none disabled:opacity-60"
+                    >
+                        <span wire:loading.remove wire:target="openDetail({{ $trx->id }})" class="flex items-center gap-2">
+                            <i data-lucide="eye" class="w-4 h-4"></i>
+                            Detail
+                        </span>
+                        <span wire:loading.flex wire:target="openDetail({{ $trx->id }})" class="items-center gap-2">
+                            <svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-90" fill="currentColor" d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z"></path>
+                            </svg>
+                            Memuat...
+                        </span>
                     </x-admin.button>
                 </td>
             </tr>
@@ -269,5 +287,3 @@
         });
     </script>
 </div>
-
-

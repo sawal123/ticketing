@@ -125,8 +125,6 @@ class TransaksiIndex extends Component
             $this->voucherCode = $hargaCartWithVoucher->voucher;
         }
         $this->discount = $this->selectedTrx->hargaCarts->sum(fn ($item) => (int) ($item->disc ?? 0));
-
-        $this->dispatch('open-modal', name: 'trx-detail-modal');
     }
 
     public function render()
