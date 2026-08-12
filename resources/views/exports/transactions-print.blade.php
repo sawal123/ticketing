@@ -114,6 +114,9 @@
                 <th class="text-right">Diskon</th>
                 <th class="text-right">Total</th>
                 <th>Kehadiran</th>
+                <th>Status Verifikasi</th>
+                <th>Tanggal Verifikasi</th>
+                <th>Waktu Verifikasi</th>
             </tr>
         </thead>
         <tbody>
@@ -121,8 +124,10 @@
             @foreach($transactions as $trx)
                 @php
                     $lineTotal = ((int) $trx->quantity * (int) $trx->harga_ticket) - (int) ($trx->disc ?? 0);
-                    $taxSnapshot = empty($seenCartTaxes[$trx->cart_uid]) ? (int) ($trx->pajak ?? 0) : 0;
+                    $taxSnapshot = empty($seenCartTaxes[$trx->cart_uid]) ? (int) ($trx->tax_snapshot ?? 0) : 0;
                     $seenCartTaxes[$trx->cart_uid] = true;
+                    $scannedAt = filled($trx->scanned_at) ? \Carbon\Carbon::parse($trx->scanned_at) : null;
+                    $isVerified = $scannedAt !== null || (string) $trx->konfirmasi === '1';
                 @endphp
                 <tr>
                     <td>{{ \Carbon\Carbon::parse($trx->created_at)->format('d/m/y H:i') }}</td>
@@ -140,6 +145,15 @@
                             <span class="badge" style="background: #f1f5f9; color: #475569;">Belum Hadir</span>
                         @endif
                     </td>
+                    <td>
+                        @if($isVerified)
+                            <span class="badge" style="background: #ecfdf5; color: #065f46;">Terverifikasi</span>
+                        @else
+                            <span class="badge" style="background: #f1f5f9; color: #475569;">Belum Diverifikasi</span>
+                        @endif
+                    </td>
+                    <td>{{ $scannedAt ? $scannedAt->format('d M Y') : 'Tidak tersedia' }}</td>
+                    <td>{{ $scannedAt ? $scannedAt->format('H:i:s') : 'Tidak tersedia' }}</td>
                 </tr>
             @endforeach
         </tbody>
@@ -147,7 +161,7 @@
             <tr style="background: #f8fafc; font-weight: bold;">
                 <td colspan="7" class="text-right">TOTAL OMZET SNAPSHOT</td>
                 <td class="text-right">Rp {{ number_format((int) ($exportTotals['owner_revenue'] ?? 0), 0, ',', '.') }}</td>
-                <td></td>
+                <td colspan="4"></td>
             </tr>
         </tfoot>
     </table>
