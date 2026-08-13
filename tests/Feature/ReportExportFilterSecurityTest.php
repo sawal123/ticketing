@@ -147,7 +147,7 @@ class ReportExportFilterSecurityTest extends TestCase
         $this->assertStringContainsString('Ringkasan Laporan', $html);
         $this->assertStringContainsString('TOTAL OMZET SELURUH DATA', $html);
         $this->assertSame(1, substr_count($html, 'TOTAL OMZET SELURUH DATA'));
-        $this->assertStringContainsString('Rp '.number_format((int) $totals['owner_revenue'], 0, ',', '.'), $html);
+        $this->assertStringContainsString('Rp ' . number_format((int) $totals['owner_revenue'], 0, ',', '.'), $html);
         $this->assertStringContainsString('Seluruh transaksi SUCCESS sesuai filter laporan.', $html);
         $this->assertStringContainsString('Omzet sudah termasuk pajak.', $html);
     }
@@ -235,7 +235,7 @@ class ReportExportFilterSecurityTest extends TestCase
             ->test(DashboardEventDetail::class, ['uid' => $event->uid])
             ->set('activeTab', 'transaksi')
             ->set('filterRange', '2026-02-01 to 2026-02-01')
-            ->assertViewHas('metrics', fn ($metrics) => (int) $metrics['total_revenue'] === 220000);
+            ->assertViewHas('metrics', fn($metrics) => (int) $metrics['total_revenue'] === 220000);
     }
 
     public function test_admin_transaction_filters_are_sanitized(): void
@@ -296,13 +296,13 @@ class ReportExportFilterSecurityTest extends TestCase
         View::share('user', $tenantA);
 
         $this->actingAs($tenantA)
-            ->get('/dashboard/old/cash?uid='.$eventB->uid)
+            ->get('/dashboard/old/cash?uid=' . $eventB->uid)
             ->assertOk()
             ->assertViewHas('event', null)
             ->assertViewHas('totalHargaCart', 0);
 
         $this->actingAs($tenantA)
-            ->get('/dashboard/old/transaksi?uid='.$eventB->uid)
+            ->get('/dashboard/old/transaksi?uid=' . $eventB->uid)
             ->assertOk()
             ->assertViewHas('event', null)
             ->assertViewHas('totalPenjualan', 0);
@@ -330,7 +330,7 @@ class ReportExportFilterSecurityTest extends TestCase
 
     public function test_export_includes_ticket_verification_status_and_scanned_at_time(): void
     {
-        [$tenant, $event, $harga, , $scannedCart] = $this->successfulCashSnapshot();
+        [$tenant, $event, $harga,, $scannedCart] = $this->successfulCashSnapshot();
         $scannedCart->forceFill([
             'scanned_at' => Carbon::parse('2026-08-11 10:11:12'),
         ])->save();
@@ -489,7 +489,7 @@ class ReportExportFilterSecurityTest extends TestCase
             'map' => 'https://example.test/map',
             'pajak' => 0,
             'start_sale' => now()->format('Y-m-d H:i:s'),
-            'slug' => 'report-filter-event-'.$uid,
+            'slug' => 'report-filter-event-' . $uid,
             'konfirmasi' => '1',
         ], $overrides));
     }
@@ -527,7 +527,7 @@ class ReportExportFilterSecurityTest extends TestCase
     private function cart(User $tenant, Event $event, array $overrides = []): Cart
     {
         $uid = (string) Str::uuid();
-        $invoice = $overrides['invoice'] ?? 'INV-'.$uid;
+        $invoice = $overrides['invoice'] ?? 'INV-' . $uid;
         unset($overrides['invoice']);
 
         $cart = Cart::create(array_merge([
@@ -580,8 +580,8 @@ class ReportExportFilterSecurityTest extends TestCase
         $csv = preg_replace('/^\xEF\xBB\xBF/', '', $csv);
 
         return array_values(array_filter(array_map(
-            fn ($line) => str_getcsv($line, ';'),
+            fn($line) => str_getcsv($line, ';'),
             preg_split('/\r\n|\n|\r/', trim($csv))
-        ), fn ($row) => $row !== [null] && $row !== false));
+        ), fn($row) => $row !== [null] && $row !== false));
     }
 }

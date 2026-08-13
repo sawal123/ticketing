@@ -1,12 +1,19 @@
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Laporan Transaksi - {{ $event->event }}</title>
     <style>
-        thead { display: table-header-group; }
-        tr { page-break-inside: avoid; }
+        thead {
+            display: table-header-group;
+        }
+
+        tr {
+            page-break-inside: avoid;
+        }
+
         body {
             font-family: 'Inter', system-ui, -apple-system, sans-serif;
             color: #1e293b;
@@ -14,31 +21,37 @@
             padding: 2rem;
             background: #fff;
         }
+
         .header {
             margin-bottom: 2rem;
             border-bottom: 2px solid #f1f5f9;
             padding-bottom: 1rem;
         }
+
         .header h1 {
             margin: 0;
             font-size: 1.5rem;
             color: #0f172a;
         }
+
         .meta {
             width: 100%;
             font-size: 0.875rem;
             color: #64748b;
             margin-top: 0.5rem;
         }
+
         .meta td {
             border: none;
             padding: 0;
         }
+
         table {
             width: 100%;
             border-collapse: collapse;
             margin-top: 1rem;
         }
+
         th {
             background: #f8fafc;
             text-align: left;
@@ -49,13 +62,21 @@
             color: #475569;
             border-bottom: 1px solid #e2e8f0;
         }
+
         td {
             padding: 0.75rem;
             font-size: 0.875rem;
             border-bottom: 1px solid #f1f5f9;
         }
-        .text-right { text-align: right; }
-        .font-mono { font-family: monospace; }
+
+        .text-right {
+            text-align: right;
+        }
+
+        .font-mono {
+            font-family: monospace;
+        }
+
         .badge {
             padding: 0.25rem 0.5rem;
             border-radius: 9999px;
@@ -63,12 +84,14 @@
             font-weight: 600;
             background: #f1f5f9;
         }
+
         .summary {
             margin-top: 2rem;
             padding-top: 1rem;
             border-top: 2px solid #e2e8f0;
             page-break-inside: avoid;
         }
+
         .summary h2 {
             margin: 0;
             font-size: 0.85rem;
@@ -76,23 +99,27 @@
             letter-spacing: 0.1em;
             color: #0f172a;
         }
+
         .summary .total-label {
             margin: 0.6rem 0 0;
             font-weight: 800;
             font-size: 0.8rem;
             color: #334155;
         }
+
         .summary .total-value {
             margin: 0.1rem 0 0.5rem;
             font-size: 1.4rem;
             font-weight: 800;
             color: #4f46e5;
         }
+
         .summary .summary-note {
             margin: 0;
             font-size: 0.75rem;
             color: #64748b;
         }
+
         .footer {
             margin-top: 2rem;
             text-align: center;
@@ -101,6 +128,7 @@
         }
     </style>
 </head>
+
 <body>
     <div class="header">
         <h1>Laporan Transaksi</h1>
@@ -134,9 +162,9 @@
         </thead>
         <tbody>
             @php $seenCartTaxes = []; @endphp
-            @foreach($transactions as $trx)
+            @foreach ($transactions as $trx)
                 @php
-                    $lineTotal = ((int) $trx->quantity * (int) $trx->harga_ticket) - (int) ($trx->disc ?? 0);
+                    $lineTotal = (int) $trx->quantity * (int) $trx->harga_ticket - (int) ($trx->disc ?? 0);
                     $taxSnapshot = empty($seenCartTaxes[$trx->cart_uid]) ? (int) ($trx->tax_snapshot ?? 0) : 0;
                     $seenCartTaxes[$trx->cart_uid] = true;
                     $scannedAt = filled($trx->scanned_at) ? \Carbon\Carbon::parse($trx->scanned_at) : null;
@@ -152,7 +180,7 @@
                     <td class="text-right">Rp {{ number_format($trx->disc ?? 0, 0, ',', '.') }}</td>
                     <td class="text-right">Rp {{ number_format($lineTotal + $taxSnapshot, 0, ',', '.') }}</td>
                     <td>
-                        @if($isVerified)
+                        @if ($isVerified)
                             <span class="badge" style="background: #ecfdf5; color: #065f46;">Terverifikasi</span>
                         @else
                             <span class="badge" style="background: #f1f5f9; color: #475569;">Belum Diverifikasi</span>
@@ -174,4 +202,5 @@
         Laporan ini digenerate secara otomatis oleh sistem TiketKonser Dashboard.
     </div>
 </body>
+
 </html>
