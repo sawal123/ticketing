@@ -12,6 +12,7 @@ use App\Http\Controllers\Dashboard\CashController;
 use App\Http\Controllers\Dashboard\DashboardController;
 use App\Http\Controllers\Dashboard\DeleteController;
 use App\Http\Controllers\Dashboard\editController;
+use App\Http\Controllers\Dashboard\EventTransactionPdfController;
 use App\Http\Controllers\Dashboard\PaymentGatewayController;
 use App\Http\Controllers\Dashboard\TController;
 use App\Http\Controllers\Dashboard\TransaksiController;
@@ -104,6 +105,9 @@ Route::get('/term', [landingController::class, 'term']);
 Route::get('/contact', [landingController::class, 'contact']);
 
 Route::get('/invoice/{uid}', [Controller::class, 'invoice'])->middleware('auth');
+Route::get('/dashboard/event/{uid}/export-pdf', EventTransactionPdfController::class)
+    ->middleware('auth')
+    ->name('event.transactions.pdf');
 Route::get('/penarikan/{uid}/transfer-proof', PenarikanTransferProofController::class)
     ->middleware('auth')
     ->name('penarikan.transfer-proof.show');

@@ -66,7 +66,7 @@ class FinancialReportSnapshotSecurityTest extends TestCase
             ->test(DashboardEventDetail::class, ['uid' => $event->uid])
             ->set('activeTab', 'transaksi')
             ->call('showTransactionDetail', $cart->uid)
-            ->assertViewHas('metrics', fn ($metrics) => (int) $metrics['total_revenue'] === 198000
+            ->assertViewHas('metrics', fn($metrics) => (int) $metrics['total_revenue'] === 198000
                 && (int) $metrics['total_discount'] === 20000
                 && (int) $metrics['total_pajak'] === 18000)
             ->assertViewHas('discount', 20000)
@@ -213,7 +213,7 @@ class FinancialReportSnapshotSecurityTest extends TestCase
         $totals = $totalsMethod->invoke($component, $rows);
 
         $this->assertSame(154000, (int) $totals['owner_revenue']);
-        $this->assertSame(140000, (int) $rows->sum(fn ($row) => ((int) $row->quantity * (int) $row->harga_ticket) - (int) $row->disc));
+        $this->assertSame(140000, (int) $rows->sum(fn($row) => ((int) $row->quantity * (int) $row->harga_ticket) - (int) $row->disc));
         $this->assertSame(28000, (int) $rows->sum('pajak'));
 
         $html = view('exports.transactions-print', [
@@ -230,7 +230,7 @@ class FinancialReportSnapshotSecurityTest extends TestCase
         $component->exportExcel()->sendContent();
         $csv = ob_get_clean();
 
-        $this->assertStringContainsString('"TOTAL OMZET SNAPSHOT",154000', $csv);
+        $this->assertStringContainsString('"TOTAL OMZET SELURUH DATA";154000', $csv);
         $this->assertStringNotContainsString('168000', $csv);
     }
 
@@ -241,11 +241,11 @@ class FinancialReportSnapshotSecurityTest extends TestCase
         View::share('user', $tenantA);
 
         $this->actingAs($tenantA)
-            ->get('/dashboard/old/cash?uid='.$eventB->uid)
+            ->get('/dashboard/old/cash?uid=' . $eventB->uid)
             ->assertOk()
             ->assertViewHas('event', null)
             ->assertViewHas('totalHargaCart', 0)
-            ->assertViewHas('cart', fn ($cart) => $cart->isEmpty());
+            ->assertViewHas('cart', fn($cart) => $cart->isEmpty());
 
         $this->assertNotSame($tenantA->uid, $tenantB->uid);
     }
@@ -259,18 +259,18 @@ class FinancialReportSnapshotSecurityTest extends TestCase
         View::share('user', $tenantA);
 
         $this->actingAs($tenantA)
-            ->get('/dashboard/old/transaksi?uid='.$eventB->uid)
+            ->get('/dashboard/old/transaksi?uid=' . $eventB->uid)
             ->assertOk()
             ->assertViewHas('event', null)
             ->assertViewHas('totalPenjualan', 0)
-            ->assertViewHas('cart', fn ($cart) => $cart->isEmpty());
+            ->assertViewHas('cart', fn($cart) => $cart->isEmpty());
 
         $this->assertNotSame($tenantA->uid, $tenantB->uid);
     }
 
     public function test_owner_revenue_for_cart_works_without_preloaded_harga_carts(): void
     {
-        [, , , , $cart] = $this->successfulCashSnapshot();
+        [,,,, $cart] = $this->successfulCashSnapshot();
         $freshCart = Cart::where('uid', $cart->uid)->firstOrFail();
 
         $this->assertFalse($freshCart->relationLoaded('hargaCarts'));
@@ -279,7 +279,7 @@ class FinancialReportSnapshotSecurityTest extends TestCase
 
     public function test_collection_totals_loads_missing_harga_carts(): void
     {
-        [, , , , $cart] = $this->successfulCashSnapshot();
+        [,,,, $cart] = $this->successfulCashSnapshot();
         $freshCart = Cart::where('uid', $cart->uid)->firstOrFail();
 
         $this->assertFalse($freshCart->relationLoaded('hargaCarts'));
@@ -372,7 +372,7 @@ class FinancialReportSnapshotSecurityTest extends TestCase
             'map' => 'https://example.test/map',
             'pajak' => 0,
             'start_sale' => now()->format('Y-m-d H:i:s'),
-            'slug' => 'snapshot-event-'.$uid,
+            'slug' => 'snapshot-event-' . $uid,
             'konfirmasi' => '1',
         ], $overrides));
     }
@@ -410,7 +410,7 @@ class FinancialReportSnapshotSecurityTest extends TestCase
     private function cart(User $tenant, Event $event, array $overrides = []): Cart
     {
         $uid = (string) Str::uuid();
-        $invoice = 'INV-'.$uid;
+        $invoice = 'INV-' . $uid;
         $cart = Cart::create(array_merge([
             'uid' => $uid,
             'user_uid' => $tenant->uid,

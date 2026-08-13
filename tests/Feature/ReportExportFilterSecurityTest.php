@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Http\Controllers\Dashboard\EventTransactionPdfController;
 use App\Http\Middleware\GlobalDataMiddleware;
 use App\Http\Middleware\LogActivityMiddleware;
 use App\Livewire\Admin\TransaksiIndex as AdminTransaksiIndex;
@@ -20,6 +21,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\Str;
 use Livewire\Livewire;
+use ReflectionClass;
 use Tests\TestCase;
 
 class ReportExportFilterSecurityTest extends TestCase
@@ -80,7 +82,175 @@ class ReportExportFilterSecurityTest extends TestCase
         $this->assertStringContainsString("'-SUM(1,1);2;100000;20000;18000;198000", $csv);
     }
 
-    public function test_export_print_returns_html_file_and_escapes_user_controlled_fields(): void
+    public function test_export_pdf_route_streams_pdf_inline_not_html(): void
+    {
+        [$tenant, $event] = $this->successfulCashSnapshot();
+
+        $response = $this->actingAs($tenant)
+            ->get(route('event.transactions.pdf', ['uid' => $event->uid]));
+
+        $response->assertOk();
+        $this->assertStringContainsString('application/pdf', (string) $response->headers->get('content-type'));
+        $this->assertStringContainsString('inline', (string) $response->headers->get('content-disposition'));
+        $this->assertStringContainsString('transaksi-event-', (string) $response->headers->get('content-disposition'));
+        $this->assertStringContainsString('.pdf', (string) $response->headers->get('content-disposition'));
+        $this->assertStringStartsWith('%PDF', $response->getContent());
+    }
+
+    public function test_export_pdf_route_authorizes_admin_owner_staff_and_rejects_others(): void
+    {
+        [$tenant, $event] = $this->successfulCashSnapshot();
+        $admin = $this->user(['role' => 'admin', 'email' => 'admin-pdf@example.test']);
+        $staff = $this->user([
+            'role' => 'staff',
+            'parent_uid' => $tenant->uid,
+            'email' => 'staff-pdf@example.test',
+        ]);
+        $otherTenant = $this->user(['email' => 'other-tenant-pdf@example.test']);
+
+        $this->actingAs($tenant)
+            ->get(route('event.transactions.pdf', ['uid' => $event->uid]))
+            ->assertOk();
+
+        $this->actingAs($staff)
+            ->get(route('event.transactions.pdf', ['uid' => $event->uid]))
+            ->assertOk();
+
+        $this->actingAs($admin)
+            ->get(route('event.transactions.pdf', ['uid' => $event->uid]))
+            ->assertOk();
+
+        $this->actingAs($otherTenant)
+            ->get(route('event.transactions.pdf', ['uid' => $event->uid]))
+            ->assertNotFound();
+    }
+
+    public function test_export_pdf_route_requires_authentication(): void
+    {
+        [$tenant, $event] = $this->successfulCashSnapshot();
+
+        $this->get(route('event.transactions.pdf', ['uid' => $event->uid]))
+            ->assertRedirect('/signin');
+    }
+
+    public function test_export_pdf_route_applies_payment_date_and_search_filters(): void
+    {
+        [$tenant, $event, $harga] = $this->successfulCashSnapshot();
+
+        $cashCart = $this->cart($tenant, $event, [
+            'invoice' => 'INV-FILTER-CASH',
+            'payment_type' => 'cash',
+        ]);
+        $cashCart->forceFill(['created_at' => '2026-03-01 10:00:00'])->save();
+        $this->hargaCart($cashCart, $event, $harga, ['quantity' => 1, 'harga_ticket' => 100000]);
+
+        $onlineCart = $this->cart($tenant, $event, [
+            'invoice' => 'INV-FILTER-ONLINE',
+            'payment_type' => 'bank_transfer',
+        ]);
+        $onlineCart->forceFill(['created_at' => '2026-03-02 10:00:00'])->save();
+        $this->hargaCart($onlineCart, $event, $harga, ['quantity' => 1, 'harga_ticket' => 100000]);
+
+        $controller = app(EventTransactionPdfController::class);
+        $exportQuery = (new ReflectionClass($controller))->getMethod('exportQuery');
+        $exportQuery->setAccessible(true);
+
+        $cashRows = $exportQuery->invoke($controller, $event->uid, [
+            'payment' => 'cash',
+            'search' => '',
+            'range' => null,
+            'dateRange' => null,
+        ])->get();
+
+        $this->assertTrue($cashRows->isNotEmpty());
+        $this->assertTrue($cashRows->every(fn($row) => $row->payment_type === 'cash'));
+
+        $rangeRows = $exportQuery->invoke($controller, $event->uid, [
+            'payment' => 'all',
+            'search' => '',
+            'range' => '2026-03-02 to 2026-03-02',
+            'dateRange' => [Carbon::parse('2026-03-02')->startOfDay(), Carbon::parse('2026-03-02')->endOfDay()],
+        ])->get();
+
+        $this->assertCount(1, $rangeRows);
+        $this->assertSame('INV-FILTER-ONLINE', $rangeRows->first()->invoice);
+
+        $searchRows = $exportQuery->invoke($controller, $event->uid, [
+            'payment' => 'all',
+            'search' => 'INV-FILTER-CASH',
+            'range' => null,
+            'dateRange' => null,
+        ])->get();
+
+        $this->assertCount(1, $searchRows);
+        $this->assertSame('INV-FILTER-CASH', $searchRows->first()->invoice);
+
+        $this->actingAs($tenant)
+            ->get(route('event.transactions.pdf', [
+                'uid' => $event->uid,
+                'payment' => 'cash',
+                'range' => '2026-03-01 to 2026-03-02',
+                'search' => 'INV-FILTER',
+            ]))
+            ->assertOk();
+    }
+
+    public function test_export_pdf_view_chunks_rows_into_page_blocks_with_repeated_header_and_single_summary(): void
+    {
+        [$tenant, $event, $harga] = $this->successfulCashSnapshot();
+
+        foreach (range(1, 40) as $index) {
+            $cart = $this->cart($tenant, $event, ['invoice' => 'INV-CHUNK-' . $index]);
+            $this->hargaCart($cart, $event, $harga, ['quantity' => 1, 'harga_ticket' => 100000]);
+        }
+
+        $this->actingAs($tenant);
+
+        $controller = app(EventTransactionPdfController::class);
+        $exportQuery = (new ReflectionClass($controller))->getMethod('exportQuery');
+        $exportQuery->setAccessible(true);
+        $rows = $exportQuery->invoke($controller, $event->uid, [
+            'payment' => 'all',
+            'search' => '',
+            'range' => null,
+            'dateRange' => null,
+        ])->get();
+
+        $html = view('exports.transactions-print', [
+            'event' => $event,
+            'transactions' => $rows,
+            'filter_info' => 'Test',
+            'exportTotals' => ['owner_revenue' => 123456, 'tax_total' => 18000],
+        ])->render();
+
+        $this->assertSame(3, substr_count($html, '>Invoice<'));
+        $this->assertSame(3, substr_count($html, 'class="page-block'));
+        $this->assertStringContainsString('table-layout: fixed', $html);
+        $this->assertStringContainsString('page-break-after: always', $html);
+        $this->assertStringNotContainsString('tr {' . "\n" . '            page-break-inside', $html);
+        $this->assertSame(1, substr_count($html, 'TOTAL PAJAK'));
+        $this->assertSame(1, substr_count($html, 'TOTAL OMZET SELURUH DATA'));
+        $this->assertStringContainsString('Rp 18.000', $html);
+        $this->assertStringContainsString('Rp 123.456', $html);
+    }
+
+    public function test_export_pdf_route_with_hundreds_of_rows_completes_without_memory_exhaustion(): void
+    {
+        [$tenant, $event, $harga] = $this->successfulCashSnapshot();
+
+        foreach (range(1, 120) as $index) {
+            $cart = $this->cart($tenant, $event, ['invoice' => 'INV-BIG-' . $index]);
+            $this->hargaCart($cart, $event, $harga, ['quantity' => 1, 'harga_ticket' => 100000]);
+        }
+
+        $response = $this->actingAs($tenant)
+            ->get(route('event.transactions.pdf', ['uid' => $event->uid]));
+
+        $response->assertOk();
+        $this->assertStringStartsWith('%PDF', $response->getContent());
+    }
+
+    public function test_export_pdf_view_drops_attendance_columns_keeps_verification_and_shows_summary_once(): void
     {
         [$tenant, $event] = $this->successfulCashSnapshot([
             'invoice' => '<b>INV</b>',
@@ -93,33 +263,54 @@ class ReportExportFilterSecurityTest extends TestCase
 
         $component = new DashboardEventDetail;
         $component->eventUid = $event->uid;
-        $response = $component->exportPrint();
 
-        $this->assertStringContainsString('text/html', $response->headers->get('content-type'));
-        $this->assertStringContainsString('.html', $response->headers->get('content-disposition'));
+        $exportQuery = (new ReflectionClass($component))->getMethod('getExportQuery');
+        $exportQuery->setAccessible(true);
+        $rows = $exportQuery->invoke($component)->get();
 
-        ob_start();
-        $response->sendContent();
-        $html = ob_get_clean();
+        $totalsMethod = (new ReflectionClass($component))->getMethod('exportSnapshotTotalsFromRows');
+        $totalsMethod->setAccessible(true);
+        $totals = $totalsMethod->invoke($component, $rows);
 
-        $this->assertStringStartsNotWith('%PDF', $html);
+        $html = view('exports.transactions-print', [
+            'event' => $event,
+            'transactions' => $rows,
+            'filter_info' => 'Test',
+            'exportTotals' => $totals,
+        ])->render();
+
         $this->assertStringContainsString('<!DOCTYPE html>', $html);
         $this->assertStringNotContainsString('<script>alert(1)</script>', $html);
+        $this->assertStringContainsString('&lt;script&gt;alert(1)&lt;/script&gt;', $html);
         $this->assertStringNotContainsString('<img src=x onerror=alert(1)>', $html);
         $this->assertStringNotContainsString('<svg onload=alert(1)>', $html);
-        $this->assertStringContainsString('&lt;script&gt;alert(1)&lt;/script&gt;', $html);
         $this->assertStringContainsString('&lt;b&gt;INV&lt;/b&gt;', $html);
+
+        $this->assertStringNotContainsString('>Kehadiran<', $html);
+        $this->assertStringNotContainsString('>Tanggal Verifikasi<', $html);
+        $this->assertStringNotContainsString('>Waktu Verifikasi<', $html);
+        $this->assertStringContainsString('>Status Verifikasi<', $html);
+        $this->assertStringNotContainsString('TOTAL OMZET SNAPSHOT', $html);
+        $this->assertStringContainsString('Ringkasan Laporan', $html);
+        $this->assertSame(1, substr_count($html, 'TOTAL PAJAK'));
+        $this->assertStringContainsString('Rp ' . number_format((int) $totals['tax_total'], 0, ',', '.'), $html);
+        $this->assertStringContainsString('Pajak sudah termasuk dalam Total Omzet.', $html);
+        $this->assertStringContainsString('TOTAL OMZET SELURUH DATA', $html);
+        $this->assertSame(1, substr_count($html, 'TOTAL OMZET SELURUH DATA'));
+        $this->assertStringContainsString('Rp ' . number_format((int) $totals['owner_revenue'], 0, ',', '.'), $html);
+        $this->assertStringContainsString('Seluruh transaksi SUCCESS sesuai filter laporan.', $html);
+        $this->assertStringContainsString('Omzet sudah termasuk pajak.', $html);
     }
 
-    public function test_dashboard_event_detail_export_label_is_print_not_pdf(): void
+    public function test_dashboard_event_detail_export_label_is_pdf_not_print(): void
     {
         [$tenant, $event] = $this->successfulCashSnapshot();
 
         Livewire::actingAs($tenant)
             ->test(DashboardEventDetail::class, ['uid' => $event->uid])
             ->set('activeTab', 'transaksi')
-            ->assertSee('Export Print')
-            ->assertDontSee('Export PDF');
+            ->assertSee('Export PDF')
+            ->assertDontSee('Export Print');
     }
 
     public function test_dashboard_event_detail_filter_inputs_are_sanitized(): void
@@ -194,7 +385,7 @@ class ReportExportFilterSecurityTest extends TestCase
             ->test(DashboardEventDetail::class, ['uid' => $event->uid])
             ->set('activeTab', 'transaksi')
             ->set('filterRange', '2026-02-01 to 2026-02-01')
-            ->assertViewHas('metrics', fn ($metrics) => (int) $metrics['total_revenue'] === 220000);
+            ->assertViewHas('metrics', fn($metrics) => (int) $metrics['total_revenue'] === 220000);
     }
 
     public function test_admin_transaction_filters_are_sanitized(): void
@@ -255,13 +446,13 @@ class ReportExportFilterSecurityTest extends TestCase
         View::share('user', $tenantA);
 
         $this->actingAs($tenantA)
-            ->get('/dashboard/old/cash?uid='.$eventB->uid)
+            ->get('/dashboard/old/cash?uid=' . $eventB->uid)
             ->assertOk()
             ->assertViewHas('event', null)
             ->assertViewHas('totalHargaCart', 0);
 
         $this->actingAs($tenantA)
-            ->get('/dashboard/old/transaksi?uid='.$eventB->uid)
+            ->get('/dashboard/old/transaksi?uid=' . $eventB->uid)
             ->assertOk()
             ->assertViewHas('event', null)
             ->assertViewHas('totalPenjualan', 0);
@@ -283,13 +474,14 @@ class ReportExportFilterSecurityTest extends TestCase
         $component->exportExcel()->sendContent();
         $csv = ob_get_clean();
 
-        $this->assertStringContainsString('"TOTAL OMZET SNAPSHOT";198000', $csv);
+        $this->assertStringContainsString('"TOTAL PAJAK SELURUH DATA";18000', $csv);
+        $this->assertStringContainsString('"TOTAL OMZET SELURUH DATA";198000', $csv);
         $this->assertStringNotContainsString('999999', $csv);
     }
 
     public function test_export_includes_ticket_verification_status_and_scanned_at_time(): void
     {
-        [$tenant, $event, $harga, , $scannedCart] = $this->successfulCashSnapshot();
+        [$tenant, $event, $harga,, $scannedCart] = $this->successfulCashSnapshot();
         $scannedCart->forceFill([
             'scanned_at' => Carbon::parse('2026-08-11 10:11:12'),
         ])->save();
@@ -354,15 +546,27 @@ class ReportExportFilterSecurityTest extends TestCase
 
         $this->assertStringContainsString('INV-LEGACY-TAX', $csv);
         $this->assertStringContainsString('10000;110000', $csv);
-        $this->assertStringContainsString('"TOTAL OMZET SNAPSHOT";110000', $csv);
+        $this->assertStringContainsString('"TOTAL PAJAK SELURUH DATA";10000', $csv);
+        $this->assertStringContainsString('"TOTAL OMZET SELURUH DATA";110000', $csv);
 
-        $response = $component->exportPrint();
-        ob_start();
-        $response->sendContent();
-        $html = ob_get_clean();
+        $exportQuery = (new ReflectionClass($component))->getMethod('getExportQuery');
+        $exportQuery->setAccessible(true);
+        $rows = $exportQuery->invoke($component)->get();
+
+        $totalsMethod = (new ReflectionClass($component))->getMethod('exportSnapshotTotalsFromRows');
+        $totalsMethod->setAccessible(true);
+        $totals = $totalsMethod->invoke($component, $rows);
+
+        $html = view('exports.transactions-print', [
+            'event' => $event,
+            'transactions' => $rows,
+            'filter_info' => 'Test',
+            'exportTotals' => $totals,
+        ])->render();
 
         $this->assertStringContainsString('Rp 110.000', $html);
-        $this->assertStringContainsString('TOTAL OMZET SNAPSHOT', $html);
+        $this->assertStringContainsString('TOTAL OMZET SELURUH DATA', $html);
+        $this->assertStringNotContainsString('TOTAL OMZET SNAPSHOT', $html);
     }
 
     private function successfulCashSnapshot(array $overrides = []): array
@@ -437,7 +641,7 @@ class ReportExportFilterSecurityTest extends TestCase
             'map' => 'https://example.test/map',
             'pajak' => 0,
             'start_sale' => now()->format('Y-m-d H:i:s'),
-            'slug' => 'report-filter-event-'.$uid,
+            'slug' => 'report-filter-event-' . $uid,
             'konfirmasi' => '1',
         ], $overrides));
     }
@@ -475,7 +679,7 @@ class ReportExportFilterSecurityTest extends TestCase
     private function cart(User $tenant, Event $event, array $overrides = []): Cart
     {
         $uid = (string) Str::uuid();
-        $invoice = $overrides['invoice'] ?? 'INV-'.$uid;
+        $invoice = $overrides['invoice'] ?? 'INV-' . $uid;
         unset($overrides['invoice']);
 
         $cart = Cart::create(array_merge([
@@ -528,8 +732,8 @@ class ReportExportFilterSecurityTest extends TestCase
         $csv = preg_replace('/^\xEF\xBB\xBF/', '', $csv);
 
         return array_values(array_filter(array_map(
-            fn ($line) => str_getcsv($line, ';'),
+            fn($line) => str_getcsv($line, ';'),
             preg_split('/\r\n|\n|\r/', trim($csv))
-        ), fn ($row) => $row !== [null] && $row !== false));
+        ), fn($row) => $row !== [null] && $row !== false));
     }
 }
