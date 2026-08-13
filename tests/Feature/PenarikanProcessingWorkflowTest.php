@@ -231,6 +231,52 @@ class PenarikanProcessingWorkflowTest extends TestCase
             ->assertSee('Dokumen ini diterbitkan otomatis oleh sistem GoTik sebagai referensi administrasi.');
     }
 
+    public function test_tenant_cannot_open_invoice_for_terminal_statuses(): void
+    {
+        [$tenant] = $this->tenantWithEvent();
+        $admin = $this->user(['role' => 'admin', 'email' => 'admin-terminal-invoice@example.test']);
+        $this->adminBank($admin);
+
+        foreach (
+            [
+                Penarikan::STATUS_REJECTED,
+                Penarikan::STATUS_CANCELLED,
+                Penarikan::STATUS_FAILED,
+            ] as $status
+        ) {
+            $penarikan = $this->withdrawal($tenant, 50000, $status);
+
+            $this->actingAs($tenant)
+                ->get('/invoice/' . $penarikan->uid)
+                ->assertForbidden();
+        }
+    }
+
+    public function test_admin_can_open_invoice_for_terminal_statuses_with_neutral_display(): void
+    {
+        [$tenant] = $this->tenantWithEvent();
+        $admin = $this->user(['role' => 'admin', 'email' => 'admin-terminal-view@example.test']);
+        $this->adminBank($admin);
+
+        $terminalNotes = [
+            Penarikan::STATUS_REJECTED => 'Permintaan penarikan ditolak.',
+            Penarikan::STATUS_CANCELLED => 'Permintaan penarikan dibatalkan.',
+            Penarikan::STATUS_FAILED => 'Permintaan penarikan gagal diproses.',
+        ];
+
+        foreach ($terminalNotes as $status => $note) {
+            $penarikan = $this->withdrawal($tenant, 50000, $status);
+
+            $this->actingAs($admin)
+                ->get('/invoice/' . $penarikan->uid)
+                ->assertOk()
+                ->assertSee($status)
+                ->assertSee($note)
+                ->assertDontSee('menunggu proses administrasi')
+                ->assertDontSee('bg-emerald-50 text-emerald-700');
+        }
+    }
+
     private function tenantWithEvent(array $userOverrides = []): array
     {
         $tenant = $this->user(array_merge(['role' => 'penyewa'], $userOverrides));

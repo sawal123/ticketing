@@ -52,7 +52,17 @@ class Controller extends BaseController
 
         if ($penarikan) {
             $viewer = Auth::user();
-            if ($viewer->role !== 'admin' && $viewer->uid !== $penarikan->uid_user) {
+            $isAdmin = $viewer !== null && strtolower((string) $viewer->role) === 'admin';
+
+            if (! $isAdmin && $viewer->uid !== $penarikan->uid_user) {
+                abort(403);
+            }
+
+            if (! $isAdmin && ! in_array(strtoupper((string) $penarikan->status), [
+                Penarikan::STATUS_PENDING,
+                Penarikan::STATUS_PROCESSING,
+                Penarikan::STATUS_SUCCESS,
+            ], true)) {
                 abort(403);
             }
 

@@ -84,7 +84,8 @@
                                 $statusBadgeClass = match (strtoupper((string) $penarikan->status)) {
                                     'PENDING' => 'bg-amber-50 text-amber-700 border-amber-100',
                                     'PROCESSING' => 'bg-sky-50 text-sky-700 border-sky-100',
-                                    default => 'bg-emerald-50 text-emerald-700 border-emerald-100',
+                                    'SUCCESS' => 'bg-emerald-50 text-emerald-700 border-emerald-100',
+                                    default => 'bg-rose-50 text-rose-700 border-rose-100',
                                 };
                             }
                         @endphp
@@ -99,6 +100,9 @@
                 </div>
 
                 @if ($type === 'penarikan')
+                    @php
+                        $sectionTitleClass = 'text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3';
+                    @endphp
                     <!-- Main Amount Section for Penarikan -->
                     <div class="text-center py-10 border-y border-slate-100 mb-8 bg-slate-50/50 rounded-2xl">
                         <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Total Penarikan
@@ -114,8 +118,7 @@
                     <!-- Entity Details -->
                     <div class="grid grid-cols-2 gap-8 mb-8">
                         <div>
-                            <h3 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Rekening
-                                Admin Tercatat</h3>
+                            <h3 class="{{ $sectionTitleClass }}">Rekening Admin Tercatat</h3>
                             <div class="space-y-2">
                                 <p class="text-sm font-bold text-slate-800">{{ $bankPengirim[0]->nama }}</p>
                                 <p class="text-xs text-slate-500">{{ $bankPengirim[0]->bank }}</p>
@@ -123,8 +126,7 @@
                             </div>
                         </div>
                         <div class="text-right">
-                            <h3 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Rekening
-                                Tujuan Penarikan</h3>
+                            <h3 class="{{ $sectionTitleClass }}">Rekening Tujuan Penarikan</h3>
                             <div class="space-y-2">
                                 <p class="text-sm font-bold text-slate-800">{{ $bankPenyewa->nama }}</p>
                                 <p class="text-xs text-slate-500">{{ $bankPenyewa->bank }}</p>
@@ -190,12 +192,20 @@
                         @if ($type === 'penarikan')
                             @php
                                 $penarikanNote = match (strtoupper((string) $penarikan->status)) {
+                                    'PENDING'
+                                        => 'Permintaan penarikan telah diterima sistem dan sedang menunggu proses administrasi.',
                                     'PROCESSING'
                                         => 'Permintaan penarikan sedang diproses. Estimasi penyelesaian maksimal 1×24 jam.',
                                     'SUCCESS'
                                         => 'Permintaan penarikan telah selesai diproses. Invoice ini merupakan dokumen administrasi dan bukan bukti transaksi perbankan. Bukti transfer, jika tersedia, dapat dilihat secara terpisah.',
+                                    'REJECTED'
+                                        => 'Permintaan penarikan ditolak. Dana tidak ditarik dari saldo Anda. Hubungi admin untuk informasi lebih lanjut.',
+                                    'CANCELLED'
+                                        => 'Permintaan penarikan dibatalkan. Dana tidak ditarik dari saldo Anda.',
+                                    'FAILED'
+                                        => 'Permintaan penarikan gagal diproses. Hubungi admin untuk informasi lebih lanjut.',
                                     default
-                                        => 'Permintaan penarikan telah diterima sistem dan sedang menunggu proses administrasi.',
+                                        => 'Status penarikan tidak dikenali. Hubungi admin untuk informasi lebih lanjut.',
                                 };
                             @endphp
                             <p class="text-[11px] text-indigo-700 leading-relaxed">
