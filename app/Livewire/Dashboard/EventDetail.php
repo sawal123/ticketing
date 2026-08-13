@@ -428,7 +428,8 @@ class EventDetail extends Component
                 ]), ';');
             });
 
-            fputcsv($file, ExportSanitizer::csvRow(['', '', '', '', '', '', '', '', 'TOTAL OMZET SNAPSHOT', (int) $exportTotals['owner_revenue'], '', '', '', '']), ';');
+            fputcsv($file, ExportSanitizer::csvRow(['', '', '', '', '', '', '', '', 'TOTAL PAJAK SELURUH DATA', (int) $exportTotals['tax_total'], '', '', '', '']), ';');
+            fputcsv($file, ExportSanitizer::csvRow(['', '', '', '', '', '', '', '', 'TOTAL OMZET SELURUH DATA', (int) $exportTotals['owner_revenue'], '', '', '', '']), ';');
 
             fclose($file);
         };

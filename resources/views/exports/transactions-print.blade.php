@@ -6,6 +6,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Laporan Transaksi - {{ $event->event }}</title>
     <style>
+        @page {
+            margin: 12mm 10mm;
+        }
+
         thead {
             display: table-header-group;
         }
@@ -13,15 +17,15 @@
         body {
             font-family: 'Inter', system-ui, -apple-system, sans-serif;
             color: #1e293b;
-            line-height: 1.5;
-            padding: 2rem;
+            line-height: 1.4;
+            padding: 0.5rem;
             background: #fff;
         }
 
         .header {
-            margin-bottom: 2rem;
+            margin-bottom: 1rem;
             border-bottom: 2px solid #f1f5f9;
-            padding-bottom: 1rem;
+            padding-bottom: 0.6rem;
         }
 
         .header h1 {
@@ -60,17 +64,17 @@
         th {
             background: #f8fafc;
             text-align: left;
-            padding: 0.75rem;
-            font-size: 0.75rem;
+            padding: 0.45rem;
+            font-size: 0.7rem;
             text-transform: uppercase;
-            letter-spacing: 0.05em;
+            letter-spacing: 0.03em;
             color: #475569;
             border-bottom: 1px solid #e2e8f0;
         }
 
         td {
-            padding: 0.75rem;
-            font-size: 0.875rem;
+            padding: 0.45rem;
+            font-size: 0.8rem;
             border-bottom: 1px solid #f1f5f9;
             word-wrap: break-word;
             overflow-wrap: break-word;
@@ -112,6 +116,10 @@
             font-weight: 800;
             font-size: 0.8rem;
             color: #334155;
+        }
+
+        .summary .total-label-gap {
+            margin-top: 0.9rem;
         }
 
         .summary .total-value {
@@ -158,7 +166,7 @@
         <p style="margin-top: 2rem; text-align: center; color: #64748b;">Tidak ada transaksi yang sesuai dengan filter.
         </p>
     @else
-        @foreach ($transactions->chunk(18) as $chunk)
+        @foreach ($transactions->chunk(20) as $chunk)
             <div class="page-block @if ($loop->last) last @endif">
                 <table>
                     <colgroup>
@@ -225,7 +233,12 @@
 
     <div class="summary">
         <h2>Ringkasan Laporan</h2>
-        <p class="total-label">TOTAL OMZET SELURUH DATA</p>
+
+        <p class="total-label">TOTAL PAJAK</p>
+        <p class="total-value">Rp {{ number_format((int) ($exportTotals['tax_total'] ?? 0), 0, ',', '.') }}</p>
+        <p class="summary-note">Pajak sudah termasuk dalam Total Omzet.</p>
+
+        <p class="total-label total-label-gap">TOTAL OMZET SELURUH DATA</p>
         <p class="total-value">Rp {{ number_format((int) ($exportTotals['owner_revenue'] ?? 0), 0, ',', '.') }}</p>
         <p class="summary-note">Seluruh transaksi SUCCESS sesuai filter laporan.<br>Omzet sudah termasuk pajak.</p>
     </div>

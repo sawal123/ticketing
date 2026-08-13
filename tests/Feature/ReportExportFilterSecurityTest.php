@@ -220,7 +220,7 @@ class ReportExportFilterSecurityTest extends TestCase
             'event' => $event,
             'transactions' => $rows,
             'filter_info' => 'Test',
-            'exportTotals' => ['owner_revenue' => 123456],
+            'exportTotals' => ['owner_revenue' => 123456, 'tax_total' => 18000],
         ])->render();
 
         $this->assertSame(3, substr_count($html, '>Invoice<'));
@@ -228,7 +228,9 @@ class ReportExportFilterSecurityTest extends TestCase
         $this->assertStringContainsString('table-layout: fixed', $html);
         $this->assertStringContainsString('page-break-after: always', $html);
         $this->assertStringNotContainsString('tr {' . "\n" . '            page-break-inside', $html);
+        $this->assertSame(1, substr_count($html, 'TOTAL PAJAK'));
         $this->assertSame(1, substr_count($html, 'TOTAL OMZET SELURUH DATA'));
+        $this->assertStringContainsString('Rp 18.000', $html);
         $this->assertStringContainsString('Rp 123.456', $html);
     }
 
@@ -290,6 +292,9 @@ class ReportExportFilterSecurityTest extends TestCase
         $this->assertStringContainsString('>Status Verifikasi<', $html);
         $this->assertStringNotContainsString('TOTAL OMZET SNAPSHOT', $html);
         $this->assertStringContainsString('Ringkasan Laporan', $html);
+        $this->assertSame(1, substr_count($html, 'TOTAL PAJAK'));
+        $this->assertStringContainsString('Rp ' . number_format((int) $totals['tax_total'], 0, ',', '.'), $html);
+        $this->assertStringContainsString('Pajak sudah termasuk dalam Total Omzet.', $html);
         $this->assertStringContainsString('TOTAL OMZET SELURUH DATA', $html);
         $this->assertSame(1, substr_count($html, 'TOTAL OMZET SELURUH DATA'));
         $this->assertStringContainsString('Rp ' . number_format((int) $totals['owner_revenue'], 0, ',', '.'), $html);
@@ -469,7 +474,8 @@ class ReportExportFilterSecurityTest extends TestCase
         $component->exportExcel()->sendContent();
         $csv = ob_get_clean();
 
-        $this->assertStringContainsString('"TOTAL OMZET SNAPSHOT";198000', $csv);
+        $this->assertStringContainsString('"TOTAL PAJAK SELURUH DATA";18000', $csv);
+        $this->assertStringContainsString('"TOTAL OMZET SELURUH DATA";198000', $csv);
         $this->assertStringNotContainsString('999999', $csv);
     }
 
@@ -540,7 +546,8 @@ class ReportExportFilterSecurityTest extends TestCase
 
         $this->assertStringContainsString('INV-LEGACY-TAX', $csv);
         $this->assertStringContainsString('10000;110000', $csv);
-        $this->assertStringContainsString('"TOTAL OMZET SNAPSHOT";110000', $csv);
+        $this->assertStringContainsString('"TOTAL PAJAK SELURUH DATA";10000', $csv);
+        $this->assertStringContainsString('"TOTAL OMZET SELURUH DATA";110000', $csv);
 
         $exportQuery = (new ReflectionClass($component))->getMethod('getExportQuery');
         $exportQuery->setAccessible(true);
