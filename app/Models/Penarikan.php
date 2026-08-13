@@ -33,16 +33,25 @@ class Penarikan extends Model
         'bank_name',
         'bank_account_name',
         'bank_account_number',
+        'transfer_proof',
+        'transfer_proof_uploaded_at',
+        'transfer_proof_uploaded_by',
     ];
 
     protected $casts = [
         'amount' => 'integer',
         'kwitansi' => 'integer',
         'approved_at' => 'datetime',
+        'transfer_proof_uploaded_at' => 'datetime',
     ];
 
     public function user()
     {
         return $this->belongsTo(User::class, 'uid_user', 'uid');
+    }
+
+    public function transferProofUploader()
+    {
+        return $this->belongsTo(User::class, 'transfer_proof_uploaded_by', 'uid');
     }
 }

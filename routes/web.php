@@ -16,6 +16,7 @@ use App\Http\Controllers\Dashboard\PaymentGatewayController;
 use App\Http\Controllers\Dashboard\TController;
 use App\Http\Controllers\Dashboard\TransaksiController;
 use App\Http\Controllers\landingController;
+use App\Http\Controllers\PenarikanTransferProofController;
 use App\Http\Controllers\Penyewa\AddController as PenyewaAddController;
 use App\Http\Controllers\Penyewa\Auth\LoginController;
 use App\Http\Controllers\Penyewa\BeliCash\CashController as BeliCashCashController;
@@ -103,6 +104,9 @@ Route::get('/term', [landingController::class, 'term']);
 Route::get('/contact', [landingController::class, 'contact']);
 
 Route::get('/invoice/{uid}', [Controller::class, 'invoice'])->middleware('auth');
+Route::get('/penarikan/{uid}/transfer-proof', PenarikanTransferProofController::class)
+    ->middleware('auth')
+    ->name('penarikan.transfer-proof.show');
 
 Route::post('/api/callback', [TransactionController::class, 'callback'])
     ->withoutMiddleware([

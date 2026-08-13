@@ -121,6 +121,20 @@
                                     <i data-lucide="file-text" class="w-4 h-4"></i>
                                     <span class="text-[10px] font-bold">INVOICE</span>
                                 </a>
+
+                                @if($this->canViewTransferProof($item))
+                                    <a href="{{ route('penarikan.transfer-proof.show', $item->uid) }}" target="_blank"
+                                        class="p-2 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-xl transition-colors flex items-center gap-1"
+                                        title="Bukti Transfer">
+                                        <i data-lucide="image" class="w-4 h-4"></i>
+                                        <span class="text-[10px] font-bold">BUKTI TRANSFER</span>
+                                    </a>
+                                @else
+                                    <span class="inline-flex items-center gap-1 rounded-xl bg-slate-100 px-2.5 py-2 text-[10px] font-bold text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                                        <i data-lucide="info" class="h-4 w-4"></i>
+                                        Bukti transfer belum tersedia
+                                    </span>
+                                @endif
                             @endif
                         </div>
                     </td>

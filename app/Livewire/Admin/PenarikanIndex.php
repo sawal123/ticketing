@@ -4,14 +4,18 @@ namespace App\Livewire\Admin;
 
 use App\Models\Bank;
 use App\Models\Penarikan;
+use App\Services\PrivateTransferProofStorage;
+use App\Services\SecureImageStorage;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 use Livewire\WithPagination;
 
 class PenarikanIndex extends Component
 {
-    use WithPagination;
+    use WithFileUploads, WithPagination;
 
     public $search = '';
 
@@ -24,6 +28,10 @@ class PenarikanIndex extends Component
         'bank_account_name' => null,
         'bank_account_number' => null,
     ];
+
+    public $editingTransferProofPenarikan = null;
+
+    public $transferProof = null;
 
     protected $queryString = [
         'search' => ['except' => ''],
@@ -108,8 +116,84 @@ class PenarikanIndex extends Component
 
         $this->selectedPenarikan = $penarikan;
         $this->selectedBank = $this->bankDetailsFor($penarikan);
+        $this->selectedPenarikan->load('transferProofUploader');
 
         $this->dispatch('open-modal', name: 'penarikan-detail-modal');
+    }
+
+    public function openTransferProofModal(string $uid): void
+    {
+        abort_unless(strtolower((string) Auth::user()?->role) === 'admin', 403);
+
+        $this->resetValidation();
+        $this->transferProof = null;
+        $this->editingTransferProofPenarikan = Penarikan::with(['user', 'transferProofUploader'])
+            ->where('uid', $uid)
+            ->firstOrFail();
+
+        $this->dispatch('open-modal', name: 'transfer-proof-modal');
+    }
+
+    public function saveTransferProof(PrivateTransferProofStorage $storage): void
+    {
+        abort_unless(strtolower((string) Auth::user()?->role) === 'admin', 403);
+
+        $this->validate([
+            'transferProof' => SecureImageStorage::rules(true),
+        ]);
+
+        $editingUid = $this->editingTransferProofPenarikan?->uid;
+        abort_unless(is_string($editingUid) && $editingUid !== '', 404);
+
+        $storedProof = $storage->storeBasename($this->transferProof);
+
+        try {
+            $oldProof = DB::transaction(function () use ($editingUid, $storedProof) {
+                $penarikan = Penarikan::query()
+                    ->where('uid', $editingUid)
+                    ->lockForUpdate()
+                    ->firstOrFail();
+
+                if (! in_array(strtoupper((string) $penarikan->status), [
+                    Penarikan::STATUS_PENDING,
+                    Penarikan::STATUS_SUCCESS,
+                ], true)) {
+                    throw ValidationException::withMessages([
+                        'transferProof' => 'Bukti transfer hanya dapat diunggah saat penarikan berstatus pending atau success.',
+                    ]);
+                }
+
+                $oldProof = $penarikan->transfer_proof;
+
+                $penarikan->update([
+                    'transfer_proof' => $storedProof,
+                    'transfer_proof_uploaded_at' => now(),
+                    'transfer_proof_uploaded_by' => Auth::user()->uid,
+                ]);
+
+                return $oldProof;
+            }, 3);
+        } catch (\Throwable $e) {
+            $storage->delete($storedProof);
+
+            throw $e;
+        }
+
+        $storage->delete($oldProof);
+
+        $this->transferProof = null;
+        $this->editingTransferProofPenarikan = Penarikan::with(['user', 'transferProofUploader'])
+            ->where('uid', $editingUid)
+            ->firstOrFail();
+
+        if (($this->selectedPenarikan?->uid ?? null) === $editingUid) {
+            $this->selectedPenarikan = Penarikan::with(['user', 'transferProofUploader'])
+                ->where('uid', $editingUid)
+                ->firstOrFail();
+        }
+
+        session()->flash('message', 'Bukti transfer berhasil disimpan.');
+        $this->dispatch('close-modal', name: 'transfer-proof-modal');
     }
 
     private function bankDetailsFor(Penarikan $penarikan): array

@@ -108,6 +108,15 @@
                                 </x-admin.button>
                             </a>
                         @endif
+
+                        <x-admin.button
+                            wire:click="openTransferProofModal('{{ $item->uid }}')"
+                            variant="ghost"
+                            size="sm"
+                            icon="edit-3"
+                            title="Edit Bukti Transfer"
+                        >
+                        </x-admin.button>
                         
                         <x-admin.button
                             wire:click="openDetail('{{ $item->uid }}')"
@@ -211,7 +220,115 @@
                         </div>
                     </dl>
                 </div>
+
+                <div class="border-t border-slate-200 pt-5 dark:border-slate-700">
+                    <h4 class="mb-3 text-xs font-bold uppercase tracking-wider text-slate-400">Bukti Transfer</h4>
+                    @if(filled($selectedPenarikan->transfer_proof))
+                        <div class="space-y-4">
+                            <div class="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900/40">
+                                <img
+                                    src="{{ route('penarikan.transfer-proof.show', $selectedPenarikan->uid) }}"
+                                    alt="Bukti transfer penarikan {{ $selectedPenarikan->uid }}"
+                                    class="max-h-96 w-full object-contain"
+                                >
+                            </div>
+                            <dl class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                <div>
+                                    <dt class="text-xs font-semibold text-slate-400">Tanggal Upload</dt>
+                                    <dd class="mt-1 font-semibold text-slate-800 dark:text-white">
+                                        {{ $selectedPenarikan->transfer_proof_uploaded_at?->format('d M Y, H:i') ?? '-' }}
+                                    </dd>
+                                </div>
+                                <div>
+                                    <dt class="text-xs font-semibold text-slate-400">Diunggah Oleh</dt>
+                                    <dd class="mt-1 font-semibold text-slate-800 dark:text-white">
+                                        {{ $display($selectedPenarikan->transferProofUploader?->name) }}
+                                    </dd>
+                                </div>
+                            </dl>
+                            <div>
+                                <a
+                                    href="{{ route('penarikan.transfer-proof.show', $selectedPenarikan->uid) }}"
+                                    target="_blank"
+                                    class="inline-flex items-center gap-2 text-sm font-semibold text-indigo-600 dark:text-indigo-400"
+                                >
+                                    <i data-lucide="external-link" class="h-4 w-4"></i>
+                                    Lihat ukuran penuh
+                                </a>
+                            </div>
+                        </div>
+                    @else
+                        <p class="text-sm font-semibold text-slate-500 dark:text-slate-400">Bukti transfer belum tersedia.</p>
+                    @endif
+                </div>
             </div>
+        @endif
+    </x-admin.modal>
+
+    <x-admin.modal name="transfer-proof-modal" title="Edit Bukti Transfer" icon="image" maxWidth="lg">
+        @if($editingTransferProofPenarikan)
+            <form wire:submit.prevent="saveTransferProof" class="space-y-5" enctype="multipart/form-data">
+                <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-900/40">
+                    <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+                        <div>
+                            <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Penyewa</p>
+                            <p class="mt-1 text-sm font-semibold text-slate-800 dark:text-white">{{ $editingTransferProofPenarikan->user->name ?? '-' }}</p>
+                        </div>
+                        <div>
+                            <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Status</p>
+                            <p class="mt-1 text-sm font-semibold text-slate-800 dark:text-white">{{ $editingTransferProofPenarikan->status ?? '-' }}</p>
+                        </div>
+                        <div>
+                            <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Nominal</p>
+                            <p class="mt-1 text-sm font-semibold text-slate-800 dark:text-white">Rp {{ number_format((int) $editingTransferProofPenarikan->amount, 0, ',', '.') }}</p>
+                        </div>
+                    </div>
+                </div>
+
+                @if(filled($editingTransferProofPenarikan->transfer_proof))
+                    <div class="space-y-3">
+                        <p class="text-xs font-semibold uppercase tracking-wider text-slate-400">Bukti Saat Ini</p>
+                        <div class="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900/40">
+                            <img
+                                src="{{ route('penarikan.transfer-proof.show', $editingTransferProofPenarikan->uid) }}"
+                                alt="Bukti transfer penarikan {{ $editingTransferProofPenarikan->uid }}"
+                                class="max-h-96 w-full object-contain"
+                            >
+                        </div>
+                    </div>
+                @endif
+
+                <div>
+                    <label class="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+                        Upload Bukti Transfer
+                    </label>
+                    <input
+                        type="file"
+                        wire:model="transferProof"
+                        accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+                        class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 file:mr-4 file:rounded-lg file:border-0 file:bg-indigo-50 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-indigo-600 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200 dark:file:bg-indigo-900/30 dark:file:text-indigo-300"
+                    >
+                    <p class="mt-2 text-xs text-slate-500 dark:text-slate-400">Format aman: JPG, JPEG, PNG, WEBP. Maksimal 2 MB.</p>
+                    @error('transferProof')
+                        <p class="mt-1 text-xs text-rose-500">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                <div class="flex justify-end gap-3 pt-2">
+                    <x-admin.button type="button" variant="secondary" x-on:click="show = false">
+                        Close
+                    </x-admin.button>
+                    <x-admin.button type="submit" variant="primary" wire:loading.attr="disabled">
+                        <span wire:loading.remove wire:target="saveTransferProof,transferProof">
+                            Simpan Bukti
+                        </span>
+                        <span wire:loading.flex wire:target="saveTransferProof,transferProof" class="items-center gap-2">
+                            <i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i>
+                            Memproses...
+                        </span>
+                    </x-admin.button>
+                </div>
+            </form>
         @endif
     </x-admin.modal>
 </div>
