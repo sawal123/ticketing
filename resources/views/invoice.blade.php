@@ -21,7 +21,7 @@
 
         .invoice-card::before {
             content: "";
-            background-image: url('{{ asset("storage/logo/" . $logo[0]->logo) }}');
+            background-image: url('{{ asset('storage/logo/' . $logo[0]->logo) }}');
             opacity: 0.03;
             background-size: 150px;
             background-repeat: repeat;
@@ -47,11 +47,12 @@
 
             .invoice-card {
                 box-shadow: none !important;
-                border: 1px solid #e2e8f0 !important; /* Keep a light border for print structure */
+                border: 1px solid #e2e8f0 !important;
+                /* Keep a light border for print structure */
                 border-radius: 0 !important;
                 margin: 0 !important;
             }
-            
+
             .max-w-xl {
                 max-width: 100% !important;
                 width: 100% !important;
@@ -73,12 +74,23 @@
                     <div>
                         <img src="{{ asset('storage/logo/' . $logo[0]->logo) }}" alt="Logo" class="h-10 mb-2">
                         <h1 class="text-xs font-bold uppercase tracking-widest text-slate-400">
-                            {{ $type === 'penarikan' ? 'Bukti Penarikan Saldo' : 'Bukti Pembayaran Tiket' }}
+                            {{ $type === 'penarikan' ? 'Invoice Penarikan Saldo' : 'Bukti Pembayaran Tiket' }}
                         </h1>
                     </div>
                     <div class="text-right">
+                        @php
+                            $statusBadgeClass = 'bg-emerald-50 text-emerald-700 border-emerald-100';
+                            if ($type === 'penarikan') {
+                                $statusBadgeClass = match (strtoupper((string) $penarikan->status)) {
+                                    'PENDING' => 'bg-amber-50 text-amber-700 border-amber-100',
+                                    'PROCESSING' => 'bg-sky-50 text-sky-700 border-sky-100',
+                                    'SUCCESS' => 'bg-emerald-50 text-emerald-700 border-emerald-100',
+                                    default => 'bg-rose-50 text-rose-700 border-rose-100',
+                                };
+                            }
+                        @endphp
                         <div
-                            class="bg-emerald-50 text-emerald-700 px-3 py-1 rounded-full text-xs font-bold border border-emerald-100 inline-block mb-2">
+                            class="{{ $statusBadgeClass }} px-3 py-1 rounded-full text-xs font-bold border inline-block mb-2">
                             {{ strtoupper($type === 'penarikan' ? $penarikan->status : $cart->status) }}
                         </div>
                         <p class="text-sm font-mono text-slate-500">
@@ -87,10 +99,14 @@
                     </div>
                 </div>
 
-                @if($type === 'penarikan')
+                @if ($type === 'penarikan')
+                    @php
+                        $sectionTitleClass = 'text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3';
+                    @endphp
                     <!-- Main Amount Section for Penarikan -->
                     <div class="text-center py-10 border-y border-slate-100 mb-8 bg-slate-50/50 rounded-2xl">
-                        <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Total Penarikan</p>
+                        <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Total Penarikan
+                        </p>
                         <h2 class="text-4xl font-extrabold text-slate-900">
                             <span class="text-indigo-600">Rp</span> {{ number_format($penarikan->amount, 0, ',', '.') }}
                         </h2>
@@ -102,7 +118,7 @@
                     <!-- Entity Details -->
                     <div class="grid grid-cols-2 gap-8 mb-8">
                         <div>
-                            <h3 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Pengirim (Admin)</h3>
+                            <h3 class="{{ $sectionTitleClass }}">Rekening Admin Tercatat</h3>
                             <div class="space-y-2">
                                 <p class="text-sm font-bold text-slate-800">{{ $bankPengirim[0]->nama }}</p>
                                 <p class="text-xs text-slate-500">{{ $bankPengirim[0]->bank }}</p>
@@ -110,7 +126,7 @@
                             </div>
                         </div>
                         <div class="text-right">
-                            <h3 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Penerima</h3>
+                            <h3 class="{{ $sectionTitleClass }}">Rekening Tujuan Penarikan</h3>
                             <div class="space-y-2">
                                 <p class="text-sm font-bold text-slate-800">{{ $bankPenyewa->nama }}</p>
                                 <p class="text-xs text-slate-500">{{ $bankPenyewa->bank }}</p>
@@ -121,9 +137,11 @@
                 @else
                     <!-- Main Amount Section for Transaction -->
                     <div class="text-center py-10 border-y border-slate-100 mb-8 bg-slate-50/50 rounded-2xl">
-                        <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Total Pembayaran</p>
+                        <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Total Pembayaran
+                        </p>
                         <h2 class="text-4xl font-extrabold text-slate-900">
-                            <span class="text-indigo-600">Rp</span> {{ number_format($cart->hargaCarts->sum(fn($i) => $i->quantity * $i->harga_ticket), 0, ',', '.') }}
+                            <span class="text-indigo-600">Rp</span>
+                            {{ number_format($cart->hargaCarts->sum(fn($i) => $i->quantity * $i->harga_ticket), 0, ',', '.') }}
                         </h2>
                         <p class="text-sm font-bold text-slate-800 mt-2">{{ $cart->event->event }}</p>
                         <p class="text-xs text-slate-400 mt-1">
@@ -140,12 +158,14 @@
                         </div>
 
                         <div>
-                            <h3 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Rincian Tiket</h3>
+                            <h3 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Rincian
+                                Tiket</h3>
                             <div class="space-y-2">
-                                @foreach($cart->hargaCarts as $item)
+                                @foreach ($cart->hargaCarts as $item)
                                     <div class="flex justify-between items-center text-sm">
                                         <div class="text-slate-600">
-                                            <span class="font-bold text-slate-800">{{ $item->masterHarga->kategori ?? 'Kategori Dihapus' }}</span>
+                                            <span
+                                                class="font-bold text-slate-800">{{ $item->masterHarga->kategori ?? 'Kategori Dihapus' }}</span>
                                             <span class="text-xs mx-1">x</span> {{ $item->quantity }}
                                         </div>
                                         <div class="font-bold text-slate-800">
@@ -157,8 +177,10 @@
                         </div>
 
                         <div class="pt-4 border-t border-slate-100 flex justify-between items-center">
-                            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Metode Bayar</span>
-                            <span class="text-sm font-bold text-indigo-600">{{ strtoupper($cart->payment_type) }}</span>
+                            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Metode
+                                Bayar</span>
+                            <span
+                                class="text-sm font-bold text-indigo-600">{{ strtoupper($cart->payment_type) }}</span>
                         </div>
                     </div>
                 @endif
@@ -167,20 +189,45 @@
                 <div class="bg-indigo-50/50 p-4 rounded-xl border border-indigo-100/50 mb-8">
                     <div class="flex gap-3">
                         <i data-lucide="info" class="w-4 h-4 text-indigo-500 flex-shrink-0"></i>
-                        <p class="text-[11px] text-indigo-700 leading-relaxed">
-                            <strong>Catatan:</strong> {{ $type === 'penarikan' ? 'Dana telah berhasil ditransfer ke rekening penerima sesuai dengan detail di atas.' : 'Transaksi ini adalah bukti pembayaran yang sah untuk tiket event yang disebutkan.' }} Simpan bukti ini sebagai referensi resmi.
-                        </p>
+                        @if ($type === 'penarikan')
+                            @php
+                                $penarikanNote = match (strtoupper((string) $penarikan->status)) {
+                                    'PENDING'
+                                        => 'Permintaan penarikan telah diterima sistem dan sedang menunggu proses administrasi.',
+                                    'PROCESSING'
+                                        => 'Permintaan penarikan sedang diproses. Estimasi penyelesaian maksimal 1×24 jam.',
+                                    'SUCCESS'
+                                        => 'Permintaan penarikan telah selesai diproses. Invoice ini merupakan dokumen administrasi dan bukan bukti transaksi perbankan. Bukti transfer, jika tersedia, dapat dilihat secara terpisah.',
+                                    'REJECTED'
+                                        => 'Permintaan penarikan ditolak. Dana tidak ditarik dari saldo Anda. Hubungi admin untuk informasi lebih lanjut.',
+                                    'CANCELLED'
+                                        => 'Permintaan penarikan dibatalkan. Dana tidak ditarik dari saldo Anda.',
+                                    'FAILED'
+                                        => 'Permintaan penarikan gagal diproses. Hubungi admin untuk informasi lebih lanjut.',
+                                    default
+                                        => 'Status penarikan tidak dikenali. Hubungi admin untuk informasi lebih lanjut.',
+                                };
+                            @endphp
+                            <p class="text-[11px] text-indigo-700 leading-relaxed">
+                                <strong>Catatan:</strong> {{ $penarikanNote }}
+                            </p>
+                        @else
+                            <p class="text-[11px] text-indigo-700 leading-relaxed">
+                                <strong>Catatan:</strong> Transaksi ini adalah bukti pembayaran yang sah untuk tiket
+                                event yang disebutkan. Simpan bukti ini sebagai referensi resmi.
+                            </p>
+                        @endif
                     </div>
                 </div>
 
-                <!-- QR & Signature Area (Visual only) -->
+                <!-- QR & Reference Area (Visual only) -->
                 <div class="flex justify-between items-end opacity-50">
                     <div
                         class="w-16 h-16 bg-slate-100 rounded-lg flex items-center justify-center border border-slate-200">
                         <i data-lucide="qr-code" class="w-8 h-8 text-slate-400"></i>
                     </div>
                     <div class="text-right text-[10px] text-slate-400">
-                        <p>Verified Digitally</p>
+                        <p>{{ $type === 'penarikan' ? 'Referensi Sistem' : 'Verified Digitally' }}</p>
                         <p class="font-mono">{{ md5($type === 'penarikan' ? $penarikan->uid : $cart->uid) }}</p>
                     </div>
                 </div>
@@ -202,8 +249,14 @@
             </button>
         </div>
 
-        <p class="text-center text-slate-400 text-xs mt-8 no-print">&copy; {{ date('Y') }} {{ config('app.name') }} -
-            Dokumen ini sah tanpa tanda tangan basah.</p>
+        <p class="text-center text-slate-400 text-xs mt-8 no-print">&copy; {{ date('Y') }}
+            {{ config('app.name') }} -
+            @if ($type === 'penarikan')
+                Dokumen ini diterbitkan otomatis oleh sistem GoTik sebagai referensi administrasi.
+            @else
+                Dokumen ini sah tanpa tanda tangan basah.
+            @endif
+        </p>
     </div>
 
     <script src="{{ asset('assets/js/html2canvas.min.js') }}"></script>
@@ -212,12 +265,12 @@
         lucide.createIcons();
 
         // Print Function
-        document.getElementById("printButton").addEventListener("click", function () {
+        document.getElementById("printButton").addEventListener("click", function() {
             window.print();
         });
 
         // Download as Image Function
-        document.getElementById("downloadButton").addEventListener("click", function () {
+        document.getElementById("downloadButton").addEventListener("click", function() {
             const element = document.querySelector(".invoice-card");
 
             // Adjust for high quality
@@ -225,10 +278,11 @@
                 scale: 2,
                 backgroundColor: "#ffffff",
                 useCORS: true
-            }).then(function (canvas) {
+            }).then(function(canvas) {
                 const link = document.createElement("a");
                 link.href = canvas.toDataURL("image/png");
-                link.download = "Invoice-{{ $type === 'penarikan' ? $penarikan->uid : $cart->invoice }}.png";
+                link.download =
+                    "Invoice-{{ $type === 'penarikan' ? $penarikan->uid : $cart->invoice }}.png";
                 link.click();
             });
         });

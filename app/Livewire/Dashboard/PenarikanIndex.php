@@ -264,6 +264,12 @@ class PenarikanIndex extends Component
         ]);
     }
 
+    public function canViewTransferProof(Penarikan $penarikan): bool
+    {
+        return strtoupper((string) $penarikan->status) === Penarikan::STATUS_SUCCESS
+            && filled($penarikan->transfer_proof);
+    }
+
     private function ownerUid(): string
     {
         $user = Auth::user();

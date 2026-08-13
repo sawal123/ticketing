@@ -52,14 +52,26 @@ class Controller extends BaseController
 
         if ($penarikan) {
             $viewer = Auth::user();
-            if ($viewer->role !== 'admin' && $viewer->uid !== $penarikan->uid_user) {
+            $isAdmin = $viewer !== null && strtolower((string) $viewer->role) === 'admin';
+
+            if (! $isAdmin && $viewer->uid !== $penarikan->uid_user) {
+                abort(403);
+            }
+
+            if (! $isAdmin && ! in_array(strtoupper((string) $penarikan->status), [
+                Penarikan::STATUS_PENDING,
+                Penarikan::STATUS_PROCESSING,
+                Penarikan::STATUS_SUCCESS,
+            ], true)) {
                 abort(403);
             }
 
             $fallbackBank = null;
-            if (! filled($penarikan->bank_name)
+            if (
+                ! filled($penarikan->bank_name)
                 || ! filled($penarikan->bank_account_name)
-                || ! filled($penarikan->bank_account_number)) {
+                || ! filled($penarikan->bank_account_number)
+            ) {
                 $fallbackBank = Bank::where(function ($q) use ($penarikan) {
                     $q->where('uid_user', $penarikan->uid_user)
                         ->orWhere('uid', $penarikan->uid_user);
@@ -105,7 +117,7 @@ class Controller extends BaseController
                 'user_uid' => auth()->check() ? auth()->user()->uid : null,
                 'activity' => 'Data Export / View',
                 'login_status' => 'Success',
-                'description' => 'Accessed invoice/ticket: '.($cart->invoice ?? $uid),
+                'description' => 'Accessed invoice/ticket: ' . ($cart->invoice ?? $uid),
                 'impact_level' => 'Sensitif',
                 'ip_address' => request()->ip(),
                 'location' => $this->getLocation(request()->ip()),
@@ -131,8 +143,10 @@ class Controller extends BaseController
             return true;
         }
 
-        if ($cart->payment_type === 'cash'
-            && Cash::where('uid', $cart->uid)->where('email', $user->email)->exists()) {
+        if (
+            $cart->payment_type === 'cash'
+            && Cash::where('uid', $cart->uid)->where('email', $user->email)->exists()
+        ) {
             return true;
         }
 
@@ -155,7 +169,7 @@ class Controller extends BaseController
             if ($response->successful()) {
                 $data = $response->json();
 
-                return ($data['city'] ?? 'Unknown').', '.($data['country'] ?? 'Unknown');
+                return ($data['city'] ?? 'Unknown') . ', ' . ($data['country'] ?? 'Unknown');
             }
         } catch (\Exception $e) {
         }

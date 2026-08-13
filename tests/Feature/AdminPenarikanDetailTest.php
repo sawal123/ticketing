@@ -229,7 +229,7 @@ class AdminPenarikanDetailTest extends TestCase
         $rows = [];
         for ($i = 1; $i <= 250; $i++) {
             $rows[] = [
-                'uid' => 'legacy-bulk-'.$i,
+                'uid' => 'legacy-bulk-' . $i,
                 'uid_user' => $tenant->uid,
                 'amount' => '10000',
                 'note' => 'Legacy bulk',
@@ -304,11 +304,13 @@ class AdminPenarikanDetailTest extends TestCase
 
         Livewire::actingAs($admin)
             ->test(AdminPenarikanIndex::class)
-            ->call('approve', $penarikan->uid);
+            ->call('process', $penarikan->uid)
+            ->call('complete', $penarikan->uid);
 
         $penarikan->refresh();
 
         $this->assertSame(Penarikan::STATUS_SUCCESS, $penarikan->status);
+        $this->assertNotNull($penarikan->processing_at);
         $this->assertNotNull($penarikan->approved_at);
         $this->assertSame('Bank Snapshot', $penarikan->bank_name);
         $this->assertSame('Owner Snapshot', $penarikan->bank_account_name);
@@ -325,6 +327,7 @@ class AdminPenarikanDetailTest extends TestCase
             $table->string('note')->nullable();
             $table->string('kwitansi');
             $table->string('status');
+            $table->timestamp('processing_at')->nullable();
             $table->timestamp('approved_at')->nullable();
             if ($withSnapshot) {
                 $table->string('bank_name')->nullable();
@@ -342,10 +345,10 @@ class AdminPenarikanDetailTest extends TestCase
         $current = $counter++;
 
         return User::create(array_merge([
-            'uid' => 'user-'.$current,
-            'name' => 'User '.$current,
-            'email' => 'user'.$current.'@example.test',
-            'nomor' => '0812345678'.$current,
+            'uid' => 'user-' . $current,
+            'name' => 'User ' . $current,
+            'email' => 'user' . $current . '@example.test',
+            'nomor' => '0812345678' . $current,
             'role' => 'user',
             'gambar' => null,
             'password' => bcrypt('password'),
@@ -359,9 +362,9 @@ class AdminPenarikanDetailTest extends TestCase
         return Bank::create(array_merge([
             'uid' => $user->uid,
             'uid_user' => $user->uid,
-            'nama' => 'Pemilik '.$counter,
-            'bank' => 'Bank '.$counter,
-            'norek' => '000'.$counter++,
+            'nama' => 'Pemilik ' . $counter,
+            'bank' => 'Bank ' . $counter,
+            'norek' => '000' . $counter++,
         ], $overrides));
     }
 
@@ -371,7 +374,7 @@ class AdminPenarikanDetailTest extends TestCase
         $current = $counter++;
 
         return Penarikan::create(array_merge([
-            'uid' => 'penarikan-'.$current,
+            'uid' => 'penarikan-' . $current,
             'uid_user' => $user->uid,
             'amount' => 50000,
             'note' => 'Penarikan test',

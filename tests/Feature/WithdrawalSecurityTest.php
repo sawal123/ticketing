@@ -169,11 +169,23 @@ class WithdrawalSecurityTest extends TestCase
         $this->assertSame(Penarikan::STATUS_PENDING, $withdrawalB->fresh()->status);
     }
 
-    public function test_admin_can_approve_pending_withdrawal_through_legacy_route(): void
+    public function test_admin_processing_workflow_through_legacy_route(): void
     {
         [$tenant] = $this->tenantWithEvent();
         $admin = $this->user(['role' => 'admin', 'email' => 'admin@example.test']);
         $withdrawal = $this->withdrawal($tenant, 50000, Penarikan::STATUS_PENDING);
+
+        $this->actingAs($admin)
+            ->from('/admin/old/penarikan')
+            ->post('/admin/old/editPenarikan', ['uid' => $withdrawal->uid])
+            ->assertRedirect('/admin/old/penarikan')
+            ->assertSessionHas('success');
+
+        $withdrawal->refresh();
+
+        $this->assertSame(Penarikan::STATUS_PROCESSING, $withdrawal->status);
+        $this->assertNotNull($withdrawal->processing_at);
+        $this->assertNull($withdrawal->approved_at);
 
         $this->actingAs($admin)
             ->from('/admin/old/penarikan')
@@ -208,12 +220,14 @@ class WithdrawalSecurityTest extends TestCase
         [$tenant] = $this->tenantWithEvent();
         $admin = $this->user(['role' => 'admin', 'email' => 'admin-terminal@example.test']);
 
-        foreach ([
-            Penarikan::STATUS_SUCCESS,
-            Penarikan::STATUS_REJECTED,
-            Penarikan::STATUS_CANCELLED,
-            Penarikan::STATUS_FAILED,
-        ] as $status) {
+        foreach (
+            [
+                Penarikan::STATUS_SUCCESS,
+                Penarikan::STATUS_REJECTED,
+                Penarikan::STATUS_CANCELLED,
+                Penarikan::STATUS_FAILED,
+            ] as $status
+        ) {
             $approvedAt = now()->subDay();
             $withdrawal = $this->withdrawal($tenant, 50000, $status, [
                 'approved_at' => $approvedAt,
@@ -237,12 +251,14 @@ class WithdrawalSecurityTest extends TestCase
         [$tenant] = $this->tenantWithEvent();
         $admin = $this->user(['role' => 'admin', 'email' => 'admin-livewire-terminal@example.test']);
 
-        foreach ([
-            Penarikan::STATUS_SUCCESS,
-            Penarikan::STATUS_REJECTED,
-            Penarikan::STATUS_CANCELLED,
-            Penarikan::STATUS_FAILED,
-        ] as $status) {
+        foreach (
+            [
+                Penarikan::STATUS_SUCCESS,
+                Penarikan::STATUS_REJECTED,
+                Penarikan::STATUS_CANCELLED,
+                Penarikan::STATUS_FAILED,
+            ] as $status
+        ) {
             $approvedAt = now()->subDay();
             $withdrawal = $this->withdrawal($tenant, 50000, $status, [
                 'approved_at' => $approvedAt,
@@ -377,7 +393,7 @@ class WithdrawalSecurityTest extends TestCase
         return Event::create([
             'uid' => $uid,
             'user_uid' => $tenant->uid,
-            'event' => 'Withdrawal Event '.$uid,
+            'event' => 'Withdrawal Event ' . $uid,
             'alamat' => 'Jakarta',
             'tanggal' => now()->addDay()->format('Y-m-d H:i'),
             'status' => 'active',
@@ -387,7 +403,7 @@ class WithdrawalSecurityTest extends TestCase
             'map' => 'https://example.test/map',
             'pajak' => 0,
             'start_sale' => now()->format('Y-m-d H:i:s'),
-            'slug' => 'withdrawal-event-'.$uid,
+            'slug' => 'withdrawal-event-' . $uid,
             'konfirmasi' => '1',
         ]);
     }
@@ -408,7 +424,7 @@ class WithdrawalSecurityTest extends TestCase
             'uid' => (string) Str::uuid(),
             'user_uid' => $buyer->uid,
             'event_uid' => $event->uid,
-            'invoice' => 'INV-'.Str::upper(Str::random(8)),
+            'invoice' => 'INV-' . Str::upper(Str::random(8)),
             'status' => Cart::STATUS_SUCCESS,
             'payment_type' => 'bank_transfer',
             'gross_amount' => $grossAmount,

@@ -88,9 +88,12 @@
                         {{ $item->note ?: '-' }}
                     </td>
                     <td class="px-5 py-4 whitespace-nowrap">
-                        @if($statusNormalized === 'pending')
+                        @if ($statusNormalized === 'pending')
                             <span
                                 class="px-2.5 py-1 text-[10px] font-bold bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400 rounded-full border border-amber-200 dark:border-amber-800 uppercase">PENDING</span>
+                        @elseif($statusNormalized === 'processing')
+                            <span
+                                class="px-2.5 py-1 text-[10px] font-bold bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-400 rounded-full border border-sky-200 dark:border-sky-800 uppercase">PROCESSING</span>
                         @elseif($statusNormalized === 'success')
                             <span
                                 class="px-2.5 py-1 text-[10px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400 rounded-full border border-emerald-200 dark:border-emerald-800 uppercase">SUCCESS</span>
@@ -101,7 +104,7 @@
                     </td>
                     <td class="px-5 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div class="flex items-center gap-2">
-                            @if($statusNormalized === 'pending')
+                            @if ($statusNormalized === 'pending')
                                 <button wire:click="openEditModal({{ $item->id }})"
                                     class="p-2 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-xl transition-colors"
                                     title="Edit">
@@ -114,13 +117,30 @@
                                 </button>
                             @endif
 
-                            @if($statusNormalized === 'success')
+                            @if (in_array($statusNormalized, ['pending', 'processing', 'success'], true))
                                 <a href="{{ url('/invoice/' . $item->uid) }}" target="_blank"
                                     class="p-2 text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-xl transition-colors flex items-center gap-1"
                                     title="Invoice">
                                     <i data-lucide="file-text" class="w-4 h-4"></i>
                                     <span class="text-[10px] font-bold">INVOICE</span>
                                 </a>
+                            @endif
+
+                            @if ($statusNormalized === 'success')
+                                @if ($this->canViewTransferProof($item))
+                                    <a href="{{ route('penarikan.transfer-proof.show', $item->uid) }}" target="_blank"
+                                        class="p-2 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-xl transition-colors flex items-center gap-1"
+                                        title="Bukti Transfer">
+                                        <i data-lucide="image" class="w-4 h-4"></i>
+                                        <span class="text-[10px] font-bold">BUKTI TRANSFER</span>
+                                    </a>
+                                @else
+                                    <span
+                                        class="inline-flex items-center gap-1 rounded-xl bg-slate-100 px-2.5 py-2 text-[10px] font-bold text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                                        <i data-lucide="info" class="h-4 w-4"></i>
+                                        Bukti transfer belum tersedia
+                                    </span>
+                                @endif
                             @endif
                         </div>
                     </td>
@@ -157,19 +177,24 @@
 
             <div class="bg-slate-50 dark:bg-slate-700/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-700">
                 <div class="text-xs text-slate-500 dark:text-slate-400 font-bold uppercase mb-3">Rekening Tujuan</div>
-                @if(filled($selectedBank['bank_name'] ?? null) || filled($selectedBank['bank_account_name'] ?? null) || filled($selectedBank['bank_account_number'] ?? null))
+                @if (filled($selectedBank['bank_name'] ?? null) ||
+                        filled($selectedBank['bank_account_name'] ?? null) ||
+                        filled($selectedBank['bank_account_number'] ?? null))
                     <div class="grid grid-cols-1 gap-3 md:grid-cols-3">
                         <div>
                             <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Nama Bank</p>
-                            <p class="mt-1 text-sm font-semibold text-slate-800 dark:text-white">{{ $selectedBank['bank_name'] ?: '-' }}</p>
+                            <p class="mt-1 text-sm font-semibold text-slate-800 dark:text-white">
+                                {{ $selectedBank['bank_name'] ?: '-' }}</p>
                         </div>
                         <div>
                             <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Nomor Rekening</p>
-                            <p class="mt-1 text-sm font-semibold text-slate-800 dark:text-white">{{ $selectedBank['bank_account_number'] ?: '-' }}</p>
+                            <p class="mt-1 text-sm font-semibold text-slate-800 dark:text-white">
+                                {{ $selectedBank['bank_account_number'] ?: '-' }}</p>
                         </div>
                         <div>
                             <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Nama Pemilik</p>
-                            <p class="mt-1 text-sm font-semibold text-slate-800 dark:text-white">{{ $selectedBank['bank_account_name'] ?: '-' }}</p>
+                            <p class="mt-1 text-sm font-semibold text-slate-800 dark:text-white">
+                                {{ $selectedBank['bank_account_name'] ?: '-' }}</p>
                         </div>
                     </div>
                 @else
@@ -179,10 +204,12 @@
 
             <div>
                 <div class="mb-1.5 flex items-center justify-between gap-3">
-                    <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
+                    <label
+                        class="block text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
                         Nominal Penarikan
                     </label>
-                    <x-admin.button type="button" wire:click="fillWithdrawAll" variant="secondary" size="sm" icon="wallet">
+                    <x-admin.button type="button" wire:click="fillWithdrawAll" variant="secondary" size="sm"
+                        icon="wallet">
                         Tarik Semua
                     </x-admin.button>
                 </div>
@@ -190,8 +217,8 @@
                     error="{{ $errors->first('amount') }}" />
             </div>
 
-            <x-admin.input label="Catatan (Opsional)" wire:model="note" placeholder="Contoh: Penarikan profit event X"
-                error="{{ $errors->first('note') }}" />
+            <x-admin.input label="Catatan (Opsional)" wire:model="note"
+                placeholder="Contoh: Penarikan profit event X" error="{{ $errors->first('note') }}" />
 
             <div class="flex justify-end gap-3 pt-4">
                 <x-admin.button type="button" variant="secondary" x-on:click="show = false">

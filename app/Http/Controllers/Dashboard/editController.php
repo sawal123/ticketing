@@ -66,7 +66,7 @@ class editController extends Controller
         $event->save();
         $this->images->delete('cover', $oldCover);
 
-        return redirect('/admin/event/eventDetail/'.$request->uid)->with('success', 'Berhasil di Update');
+        return redirect('/admin/event/eventDetail/' . $request->uid)->with('success', 'Berhasil di Update');
     }
 
     public function editTalent(Request $request)
@@ -328,7 +328,7 @@ class editController extends Controller
             ActivityLog::safeCreate([
                 'user_uid' => $lockedUser->uid,
                 'activity' => 'Profile Email Changed',
-                'description' => 'Email profile diubah dari '.$oldEmail.' ke '.$newEmail,
+                'description' => 'Email profile diubah dari ' . $oldEmail . ' ke ' . $newEmail,
                 'impact_level' => 'Medium',
                 'ip_address' => request()->ip(),
                 'user_agent' => request()->userAgent(),
@@ -349,7 +349,7 @@ class editController extends Controller
 
     private function emailOtpRateLimitKey(User $user, string $newEmail, Request $request): string
     {
-        return 'profile-email-otp:'.sha1($user->uid.'|'.$newEmail.'|'.$request->ip());
+        return 'profile-email-otp:' . sha1($user->uid . '|' . $newEmail . '|' . $request->ip());
     }
 
     public function editLogo(Request $request)
@@ -536,18 +536,27 @@ class editController extends Controller
         DB::transaction(function () use ($request) {
             $penarikan = Penarikan::where('uid', $request->uid)->lockForUpdate()->firstOrFail();
 
-            if (! in_array(strtoupper((string) $penarikan->status), [
-                Penarikan::STATUS_PENDING,
-                Penarikan::STATUS_PROCESSING,
-            ], true)) {
-                return back()
-                    ->with('error', 'Penarikan hanya dapat disetujui jika masih pending atau processing.')
-                    ->throwResponse();
+            $status = strtoupper((string) $penarikan->status);
+
+            if ($status === Penarikan::STATUS_PENDING) {
+                $penarikan->status = Penarikan::STATUS_PROCESSING;
+                $penarikan->processing_at = now();
+                $penarikan->save();
+
+                return;
             }
 
-            $penarikan->status = Penarikan::STATUS_SUCCESS;
-            $penarikan->approved_at = now();
-            $penarikan->save();
+            if ($status === Penarikan::STATUS_PROCESSING) {
+                $penarikan->status = Penarikan::STATUS_SUCCESS;
+                $penarikan->approved_at = now();
+                $penarikan->save();
+
+                return;
+            }
+
+            return back()
+                ->with('error', 'Penarikan hanya dapat disetujui jika masih pending atau processing.')
+                ->throwResponse();
         }, 3);
 
         return redirect()->back()->with('success', 'Konfirmasi Berhasil');
