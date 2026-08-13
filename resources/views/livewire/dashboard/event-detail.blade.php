@@ -436,10 +436,14 @@
                                     <span wire:loading.remove wire:target="exportExcel">Export Excel</span>
                                     <span wire:loading wire:target="exportExcel">Memproses...</span>
                                 </x-admin.button>
-                                <x-admin.button wire:click="exportPdf" wire:loading.attr="disabled"
-                                    variant="secondary" size="sm" icon="file-text">
-                                    <span wire:loading.remove wire:target="exportPdf">Export PDF</span>
-                                    <span wire:loading wire:target="exportPdf">Memproses...</span>
+                                <x-admin.button :href="route('event.transactions.pdf', [
+                                    'uid' => $eventUid,
+                                    'payment' => $filterPayment,
+                                    'range' => $filterRange,
+                                    'search' => $searchTransaction,
+                                ])" target="_blank" rel="noopener" variant="secondary"
+                                    size="sm" icon="file-text">
+                                    Export PDF
                                 </x-admin.button>
                             </div>
                         </div>

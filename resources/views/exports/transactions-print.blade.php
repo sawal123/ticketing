@@ -10,10 +10,6 @@
             display: table-header-group;
         }
 
-        tr {
-            page-break-inside: avoid;
-        }
-
         body {
             font-family: 'Inter', system-ui, -apple-system, sans-serif;
             color: #1e293b;
@@ -50,6 +46,15 @@
             width: 100%;
             border-collapse: collapse;
             margin-top: 1rem;
+            table-layout: fixed;
+        }
+
+        .page-block {
+            page-break-after: always;
+        }
+
+        .page-block.last {
+            page-break-after: auto;
         }
 
         th {
@@ -67,6 +72,8 @@
             padding: 0.75rem;
             font-size: 0.875rem;
             border-bottom: 1px solid #f1f5f9;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
         }
 
         .text-right {
@@ -146,50 +153,75 @@
         </table>
     </div>
 
-    <table>
-        <thead>
-            <tr>
-                <th>Tanggal</th>
-                <th>Invoice</th>
-                <th>Nama Pembeli</th>
-                <th>Kategori Tiket</th>
-                <th>Qty</th>
-                <th class="text-right">Harga Satuan</th>
-                <th class="text-right">Diskon</th>
-                <th class="text-right">Total</th>
-                <th>Status Verifikasi</th>
-            </tr>
-        </thead>
-        <tbody>
-            @php $seenCartTaxes = []; @endphp
-            @foreach ($transactions as $trx)
-                @php
-                    $lineTotal = (int) $trx->quantity * (int) $trx->harga_ticket - (int) ($trx->disc ?? 0);
-                    $taxSnapshot = empty($seenCartTaxes[$trx->cart_uid]) ? (int) ($trx->tax_snapshot ?? 0) : 0;
-                    $seenCartTaxes[$trx->cart_uid] = true;
-                    $scannedAt = filled($trx->scanned_at) ? \Carbon\Carbon::parse($trx->scanned_at) : null;
-                    $isVerified = $scannedAt !== null || (string) $trx->konfirmasi === '1';
-                @endphp
-                <tr>
-                    <td>{{ \Carbon\Carbon::parse($trx->created_at)->format('d/m/y H:i') }}</td>
-                    <td class="font-mono">{{ $trx->invoice }}</td>
-                    <td>{{ $trx->buyer_name }}</td>
-                    <td>{{ $trx->kategori_harga }}</td>
-                    <td>{{ $trx->quantity }}</td>
-                    <td class="text-right">Rp {{ number_format($trx->harga_ticket, 0, ',', '.') }}</td>
-                    <td class="text-right">Rp {{ number_format($trx->disc ?? 0, 0, ',', '.') }}</td>
-                    <td class="text-right">Rp {{ number_format($lineTotal + $taxSnapshot, 0, ',', '.') }}</td>
-                    <td>
-                        @if ($isVerified)
-                            <span class="badge" style="background: #ecfdf5; color: #065f46;">Terverifikasi</span>
-                        @else
-                            <span class="badge" style="background: #f1f5f9; color: #475569;">Belum Diverifikasi</span>
-                        @endif
-                    </td>
-                </tr>
-            @endforeach
-        </tbody>
-    </table>
+    @php $seenCartTaxes = []; @endphp
+    @if ($transactions->isEmpty())
+        <p style="margin-top: 2rem; text-align: center; color: #64748b;">Tidak ada transaksi yang sesuai dengan filter.
+        </p>
+    @else
+        @foreach ($transactions->chunk(18) as $chunk)
+            <div class="page-block @if ($loop->last) last @endif">
+                <table>
+                    <colgroup>
+                        <col style="width: 10%;">
+                        <col style="width: 13%;">
+                        <col style="width: 15%;">
+                        <col style="width: 11%;">
+                        <col style="width: 5%;">
+                        <col style="width: 11%;">
+                        <col style="width: 10%;">
+                        <col style="width: 11%;">
+                        <col style="width: 14%;">
+                    </colgroup>
+                    <thead>
+                        <tr>
+                            <th>Tanggal</th>
+                            <th>Invoice</th>
+                            <th>Nama Pembeli</th>
+                            <th>Kategori Tiket</th>
+                            <th>Qty</th>
+                            <th class="text-right">Harga Satuan</th>
+                            <th class="text-right">Diskon</th>
+                            <th class="text-right">Total</th>
+                            <th>Status Verifikasi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($chunk as $trx)
+                            @php
+                                $lineTotal = (int) $trx->quantity * (int) $trx->harga_ticket - (int) ($trx->disc ?? 0);
+                                $taxSnapshot = empty($seenCartTaxes[$trx->cart_uid])
+                                    ? (int) ($trx->tax_snapshot ?? 0)
+                                    : 0;
+                                $seenCartTaxes[$trx->cart_uid] = true;
+                                $scannedAt = filled($trx->scanned_at) ? \Carbon\Carbon::parse($trx->scanned_at) : null;
+                                $isVerified = $scannedAt !== null || (string) $trx->konfirmasi === '1';
+                            @endphp
+                            <tr>
+                                <td>{{ \Carbon\Carbon::parse($trx->created_at)->format('d/m/y H:i') }}</td>
+                                <td class="font-mono">{{ $trx->invoice }}</td>
+                                <td>{{ $trx->buyer_name }}</td>
+                                <td>{{ $trx->kategori_harga }}</td>
+                                <td>{{ $trx->quantity }}</td>
+                                <td class="text-right">Rp {{ number_format($trx->harga_ticket, 0, ',', '.') }}</td>
+                                <td class="text-right">Rp {{ number_format($trx->disc ?? 0, 0, ',', '.') }}</td>
+                                <td class="text-right">Rp {{ number_format($lineTotal + $taxSnapshot, 0, ',', '.') }}
+                                </td>
+                                <td>
+                                    @if ($isVerified)
+                                        <span class="badge"
+                                            style="background: #ecfdf5; color: #065f46;">Terverifikasi</span>
+                                    @else
+                                        <span class="badge" style="background: #f1f5f9; color: #475569;">Belum
+                                            Diverifikasi</span>
+                                    @endif
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        @endforeach
+    @endif
 
     <div class="summary">
         <h2>Ringkasan Laporan</h2>

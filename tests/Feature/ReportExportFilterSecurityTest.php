@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Http\Controllers\Dashboard\EventTransactionPdfController;
 use App\Http\Middleware\GlobalDataMiddleware;
 use App\Http\Middleware\LogActivityMiddleware;
 use App\Livewire\Admin\TransaksiIndex as AdminTransaksiIndex;
@@ -81,26 +82,170 @@ class ReportExportFilterSecurityTest extends TestCase
         $this->assertStringContainsString("'-SUM(1,1);2;100000;20000;18000;198000", $csv);
     }
 
-    public function test_export_pdf_streams_pdf_inline_not_html(): void
+    public function test_export_pdf_route_streams_pdf_inline_not_html(): void
     {
         [$tenant, $event] = $this->successfulCashSnapshot();
 
-        $this->actingAs($tenant);
+        $response = $this->actingAs($tenant)
+            ->get(route('event.transactions.pdf', ['uid' => $event->uid]));
 
-        $component = new DashboardEventDetail;
-        $component->eventUid = $event->uid;
-        $response = $component->exportPdf();
-
+        $response->assertOk();
         $this->assertStringContainsString('application/pdf', (string) $response->headers->get('content-type'));
         $this->assertStringContainsString('inline', (string) $response->headers->get('content-disposition'));
         $this->assertStringContainsString('transaksi-event-', (string) $response->headers->get('content-disposition'));
         $this->assertStringContainsString('.pdf', (string) $response->headers->get('content-disposition'));
+        $this->assertStringStartsWith('%PDF', $response->getContent());
+    }
 
-        ob_start();
-        $response->sendContent();
-        $pdf = ob_get_clean();
+    public function test_export_pdf_route_authorizes_admin_owner_staff_and_rejects_others(): void
+    {
+        [$tenant, $event] = $this->successfulCashSnapshot();
+        $admin = $this->user(['role' => 'admin', 'email' => 'admin-pdf@example.test']);
+        $staff = $this->user([
+            'role' => 'staff',
+            'parent_uid' => $tenant->uid,
+            'email' => 'staff-pdf@example.test',
+        ]);
+        $otherTenant = $this->user(['email' => 'other-tenant-pdf@example.test']);
 
-        $this->assertStringStartsWith('%PDF', $pdf);
+        $this->actingAs($tenant)
+            ->get(route('event.transactions.pdf', ['uid' => $event->uid]))
+            ->assertOk();
+
+        $this->actingAs($staff)
+            ->get(route('event.transactions.pdf', ['uid' => $event->uid]))
+            ->assertOk();
+
+        $this->actingAs($admin)
+            ->get(route('event.transactions.pdf', ['uid' => $event->uid]))
+            ->assertOk();
+
+        $this->actingAs($otherTenant)
+            ->get(route('event.transactions.pdf', ['uid' => $event->uid]))
+            ->assertNotFound();
+    }
+
+    public function test_export_pdf_route_requires_authentication(): void
+    {
+        [$tenant, $event] = $this->successfulCashSnapshot();
+
+        $this->get(route('event.transactions.pdf', ['uid' => $event->uid]))
+            ->assertRedirect('/signin');
+    }
+
+    public function test_export_pdf_route_applies_payment_date_and_search_filters(): void
+    {
+        [$tenant, $event, $harga] = $this->successfulCashSnapshot();
+
+        $cashCart = $this->cart($tenant, $event, [
+            'invoice' => 'INV-FILTER-CASH',
+            'payment_type' => 'cash',
+        ]);
+        $cashCart->forceFill(['created_at' => '2026-03-01 10:00:00'])->save();
+        $this->hargaCart($cashCart, $event, $harga, ['quantity' => 1, 'harga_ticket' => 100000]);
+
+        $onlineCart = $this->cart($tenant, $event, [
+            'invoice' => 'INV-FILTER-ONLINE',
+            'payment_type' => 'bank_transfer',
+        ]);
+        $onlineCart->forceFill(['created_at' => '2026-03-02 10:00:00'])->save();
+        $this->hargaCart($onlineCart, $event, $harga, ['quantity' => 1, 'harga_ticket' => 100000]);
+
+        $controller = app(EventTransactionPdfController::class);
+        $exportQuery = (new ReflectionClass($controller))->getMethod('exportQuery');
+        $exportQuery->setAccessible(true);
+
+        $cashRows = $exportQuery->invoke($controller, $event->uid, [
+            'payment' => 'cash',
+            'search' => '',
+            'range' => null,
+            'dateRange' => null,
+        ])->get();
+
+        $this->assertTrue($cashRows->isNotEmpty());
+        $this->assertTrue($cashRows->every(fn($row) => $row->payment_type === 'cash'));
+
+        $rangeRows = $exportQuery->invoke($controller, $event->uid, [
+            'payment' => 'all',
+            'search' => '',
+            'range' => '2026-03-02 to 2026-03-02',
+            'dateRange' => [Carbon::parse('2026-03-02')->startOfDay(), Carbon::parse('2026-03-02')->endOfDay()],
+        ])->get();
+
+        $this->assertCount(1, $rangeRows);
+        $this->assertSame('INV-FILTER-ONLINE', $rangeRows->first()->invoice);
+
+        $searchRows = $exportQuery->invoke($controller, $event->uid, [
+            'payment' => 'all',
+            'search' => 'INV-FILTER-CASH',
+            'range' => null,
+            'dateRange' => null,
+        ])->get();
+
+        $this->assertCount(1, $searchRows);
+        $this->assertSame('INV-FILTER-CASH', $searchRows->first()->invoice);
+
+        $this->actingAs($tenant)
+            ->get(route('event.transactions.pdf', [
+                'uid' => $event->uid,
+                'payment' => 'cash',
+                'range' => '2026-03-01 to 2026-03-02',
+                'search' => 'INV-FILTER',
+            ]))
+            ->assertOk();
+    }
+
+    public function test_export_pdf_view_chunks_rows_into_page_blocks_with_repeated_header_and_single_summary(): void
+    {
+        [$tenant, $event, $harga] = $this->successfulCashSnapshot();
+
+        foreach (range(1, 40) as $index) {
+            $cart = $this->cart($tenant, $event, ['invoice' => 'INV-CHUNK-' . $index]);
+            $this->hargaCart($cart, $event, $harga, ['quantity' => 1, 'harga_ticket' => 100000]);
+        }
+
+        $this->actingAs($tenant);
+
+        $controller = app(EventTransactionPdfController::class);
+        $exportQuery = (new ReflectionClass($controller))->getMethod('exportQuery');
+        $exportQuery->setAccessible(true);
+        $rows = $exportQuery->invoke($controller, $event->uid, [
+            'payment' => 'all',
+            'search' => '',
+            'range' => null,
+            'dateRange' => null,
+        ])->get();
+
+        $html = view('exports.transactions-print', [
+            'event' => $event,
+            'transactions' => $rows,
+            'filter_info' => 'Test',
+            'exportTotals' => ['owner_revenue' => 123456],
+        ])->render();
+
+        $this->assertSame(3, substr_count($html, '>Invoice<'));
+        $this->assertSame(3, substr_count($html, 'class="page-block'));
+        $this->assertStringContainsString('table-layout: fixed', $html);
+        $this->assertStringContainsString('page-break-after: always', $html);
+        $this->assertStringNotContainsString('tr {' . "\n" . '            page-break-inside', $html);
+        $this->assertSame(1, substr_count($html, 'TOTAL OMZET SELURUH DATA'));
+        $this->assertStringContainsString('Rp 123.456', $html);
+    }
+
+    public function test_export_pdf_route_with_hundreds_of_rows_completes_without_memory_exhaustion(): void
+    {
+        [$tenant, $event, $harga] = $this->successfulCashSnapshot();
+
+        foreach (range(1, 120) as $index) {
+            $cart = $this->cart($tenant, $event, ['invoice' => 'INV-BIG-' . $index]);
+            $this->hargaCart($cart, $event, $harga, ['quantity' => 1, 'harga_ticket' => 100000]);
+        }
+
+        $response = $this->actingAs($tenant)
+            ->get(route('event.transactions.pdf', ['uid' => $event->uid]));
+
+        $response->assertOk();
+        $this->assertStringStartsWith('%PDF', $response->getContent());
     }
 
     public function test_export_pdf_view_drops_attendance_columns_keeps_verification_and_shows_summary_once(): void

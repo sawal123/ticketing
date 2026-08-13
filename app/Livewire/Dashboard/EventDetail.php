@@ -12,7 +12,6 @@ use App\Models\Talent;
 use App\Services\Reports\FinancialSnapshotService;
 use App\Services\SecureImageStorage;
 use App\Support\ExportSanitizer;
-use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -435,43 +434,6 @@ class EventDetail extends Component
         };
 
         return response()->stream($callback, 200, $headers);
-    }
-
-    public function exportPdf()
-    {
-        $this->sanitizeFilters();
-
-        $event = $this->getEventData();
-        $transactions = $this->getExportQuery()->get();
-        $exportTotals = $this->exportSnapshotTotalsFromRows($transactions);
-
-        $filter_info = 'Semua Data';
-        if ($this->filterPayment !== 'all' || $this->filterRange || $this->searchTransaction) {
-            $parts = [];
-            if ($this->filterPayment !== 'all') {
-                $parts[] = 'Metode: ' . strtoupper($this->filterPayment);
-            }
-            if ($this->filterRange) {
-                $parts[] = 'Rentang: ' . $this->filterRange;
-            }
-            if ($this->searchTransaction) {
-                $parts[] = "Cari: '" . $this->searchTransaction . "'";
-            }
-            $filter_info = implode(', ', $parts);
-        }
-
-        $html = view('exports.transactions-print', [
-            'event' => $event,
-            'transactions' => $transactions,
-            'filter_info' => $filter_info,
-            'exportTotals' => $exportTotals,
-        ])->render();
-
-        $fileName = 'transaksi-event-' . Str::slug($event->event) . '-' . now()->format('YmdHis') . '.pdf';
-
-        return Pdf::loadHTML($html)
-            ->setPaper('a4', 'landscape')
-            ->stream($fileName);
     }
 
     public function setTab($tab)
