@@ -29,6 +29,7 @@ class Penarikan extends Model
         'note',
         'kwitansi',
         'status',
+        'processing_at',
         'approved_at',
         'bank_name',
         'bank_account_name',
@@ -41,6 +42,7 @@ class Penarikan extends Model
     protected $casts = [
         'amount' => 'integer',
         'kwitansi' => 'integer',
+        'processing_at' => 'datetime',
         'approved_at' => 'datetime',
         'transfer_proof_uploaded_at' => 'datetime',
     ];

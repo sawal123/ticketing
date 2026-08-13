@@ -17,6 +17,10 @@
                         class="px-3 py-1.5 text-xs font-medium rounded-md transition-all {{ $statusFilter === 'pending' ? 'bg-white dark:bg-slate-600 shadow-sm text-amber-600' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300' }}">
                         Pending
                     </button>
+                    <button wire:click="$set('statusFilter', 'processing')" 
+                        class="px-3 py-1.5 text-xs font-medium rounded-md transition-all {{ $statusFilter === 'processing' ? 'bg-white dark:bg-slate-600 shadow-sm text-sky-600' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300' }}">
+                        Processing
+                    </button>
                     <button wire:click="$set('statusFilter', 'success')" 
                         class="px-3 py-1.5 text-xs font-medium rounded-md transition-all {{ $statusFilter === 'success' ? 'bg-white dark:bg-slate-600 shadow-sm text-emerald-600' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300' }}">
                         Success
@@ -66,6 +70,7 @@
                         $statusNormalized = strtolower($item->status);
                         $statusClasses = [
                             'pending' => 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-700',
+                            'processing' => 'bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-900/30 dark:text-sky-400 dark:border-sky-700',
                             'success' => 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-700',
                             'failed' => 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-900/30 dark:text-rose-400 dark:border-rose-700',
                         ];
@@ -85,14 +90,27 @@
                     <div class="flex items-center justify-center gap-2">
                         @if($statusNormalized === 'pending')
                             <x-admin.button 
-                                wire:click="approve('{{ $item->uid }}')" 
-                                wire:confirm="Yakin ingin menyetujui penarikan ini?"
+                                wire:click="process('{{ $item->uid }}')" 
+                                wire:confirm="Mulai proses permintaan penarikan ini?"
+                                variant="secondary" 
+                                size="sm" 
+                                icon="play-circle"
+                                class="text-sky-600 dark:text-sky-400"
+                            >
+                                Proses
+                            </x-admin.button>
+                        @endif
+
+                        @if($statusNormalized === 'processing')
+                            <x-admin.button 
+                                wire:click="complete('{{ $item->uid }}')" 
+                                wire:confirm="Tandai permintaan penarikan ini selesai?"
                                 variant="secondary" 
                                 size="sm" 
                                 icon="check-circle"
                                 class="text-emerald-600 dark:text-emerald-400"
                             >
-                                Setujui
+                                Selesaikan
                             </x-admin.button>
                         @endif
 
@@ -195,6 +213,10 @@
                         <div>
                             <dt class="text-xs font-semibold text-slate-400">Tanggal Disetujui</dt>
                             <dd class="mt-1 font-semibold text-slate-800 dark:text-white">{{ $selectedPenarikan->approved_at?->format('d M Y, H:i') ?? '-' }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-xs font-semibold text-slate-400">Tanggal Diproses</dt>
+                            <dd class="mt-1 font-semibold text-slate-800 dark:text-white">{{ $selectedPenarikan->processing_at?->format('d M Y, H:i') ?? '-' }}</dd>
                         </div>
                         <div class="md:col-span-2">
                             <dt class="text-xs font-semibold text-slate-400">Catatan</dt>

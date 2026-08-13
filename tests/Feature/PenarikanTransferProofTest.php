@@ -247,6 +247,36 @@ class PenarikanTransferProofTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_owner_cannot_view_transfer_proof_while_processing(): void
+    {
+        $tenant = $this->user(['role' => 'penyewa', 'email' => 'tenant-proof-processing-view@example.test']);
+        $penarikan = $this->penarikanWithStoredProof($tenant, Penarikan::STATUS_PROCESSING);
+
+        $this->actingAs($tenant)
+            ->get(route('penarikan.transfer-proof.show', $penarikan->uid))
+            ->assertForbidden();
+    }
+
+    public function test_admin_can_upload_transfer_proof_while_processing(): void
+    {
+        $admin = $this->user(['role' => 'admin', 'email' => 'admin-proof-processing@example.test']);
+        $tenant = $this->user(['role' => 'penyewa', 'email' => 'tenant-proof-processing@example.test']);
+        $penarikan = $this->penarikan($tenant, ['status' => Penarikan::STATUS_PROCESSING]);
+
+        Livewire::actingAs($admin)
+            ->test(AdminPenarikanIndex::class)
+            ->call('openTransferProofModal', $penarikan->uid)
+            ->set('transferProof', UploadedFile::fake()->image('proof-processing.png')->size(300))
+            ->call('saveTransferProof')
+            ->assertHasNoErrors();
+
+        $penarikan->refresh();
+
+        $this->assertSame(Penarikan::STATUS_PROCESSING, $penarikan->status);
+        $this->assertNotNull($penarikan->transfer_proof);
+        Storage::disk('local')->assertExists('private/penarikan-transfer-proofs/'.$penarikan->transfer_proof);
+    }
+
     public function test_owner_and_staff_owner_can_view_transfer_proof_after_success(): void
     {
         $tenant = $this->user(['role' => 'penyewa', 'email' => 'tenant-proof-owner@example.test']);

@@ -304,11 +304,13 @@ class AdminPenarikanDetailTest extends TestCase
 
         Livewire::actingAs($admin)
             ->test(AdminPenarikanIndex::class)
-            ->call('approve', $penarikan->uid);
+            ->call('process', $penarikan->uid)
+            ->call('complete', $penarikan->uid);
 
         $penarikan->refresh();
 
         $this->assertSame(Penarikan::STATUS_SUCCESS, $penarikan->status);
+        $this->assertNotNull($penarikan->processing_at);
         $this->assertNotNull($penarikan->approved_at);
         $this->assertSame('Bank Snapshot', $penarikan->bank_name);
         $this->assertSame('Owner Snapshot', $penarikan->bank_account_name);
@@ -325,6 +327,7 @@ class AdminPenarikanDetailTest extends TestCase
             $table->string('note')->nullable();
             $table->string('kwitansi');
             $table->string('status');
+            $table->timestamp('processing_at')->nullable();
             $table->timestamp('approved_at')->nullable();
             if ($withSnapshot) {
                 $table->string('bank_name')->nullable();

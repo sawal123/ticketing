@@ -91,6 +91,9 @@
                         @if($statusNormalized === 'pending')
                             <span
                                 class="px-2.5 py-1 text-[10px] font-bold bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400 rounded-full border border-amber-200 dark:border-amber-800 uppercase">PENDING</span>
+                        @elseif($statusNormalized === 'processing')
+                            <span
+                                class="px-2.5 py-1 text-[10px] font-bold bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-400 rounded-full border border-sky-200 dark:border-sky-800 uppercase">PROCESSING</span>
                         @elseif($statusNormalized === 'success')
                             <span
                                 class="px-2.5 py-1 text-[10px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400 rounded-full border border-emerald-200 dark:border-emerald-800 uppercase">SUCCESS</span>
@@ -114,14 +117,16 @@
                                 </button>
                             @endif
 
-                            @if($statusNormalized === 'success')
+                            @if(in_array($statusNormalized, ['pending', 'processing', 'success'], true))
                                 <a href="{{ url('/invoice/' . $item->uid) }}" target="_blank"
                                     class="p-2 text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-xl transition-colors flex items-center gap-1"
                                     title="Invoice">
                                     <i data-lucide="file-text" class="w-4 h-4"></i>
                                     <span class="text-[10px] font-bold">INVOICE</span>
                                 </a>
+                            @endif
 
+                            @if($statusNormalized === 'success')
                                 @if($this->canViewTransferProof($item))
                                     <a href="{{ route('penarikan.transfer-proof.show', $item->uid) }}" target="_blank"
                                         class="p-2 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-xl transition-colors flex items-center gap-1"

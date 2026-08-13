@@ -73,12 +73,22 @@
                     <div>
                         <img src="{{ asset('storage/logo/' . $logo[0]->logo) }}" alt="Logo" class="h-10 mb-2">
                         <h1 class="text-xs font-bold uppercase tracking-widest text-slate-400">
-                            {{ $type === 'penarikan' ? 'Bukti Penarikan Saldo' : 'Bukti Pembayaran Tiket' }}
+                            {{ $type === 'penarikan' ? 'Invoice Penarikan Saldo' : 'Bukti Pembayaran Tiket' }}
                         </h1>
                     </div>
                     <div class="text-right">
+                        @php
+                            $statusBadgeClass = 'bg-emerald-50 text-emerald-700 border-emerald-100';
+                            if ($type === 'penarikan') {
+                                $statusBadgeClass = match (strtoupper((string) $penarikan->status)) {
+                                    'PENDING' => 'bg-amber-50 text-amber-700 border-amber-100',
+                                    'PROCESSING' => 'bg-sky-50 text-sky-700 border-sky-100',
+                                    default => 'bg-emerald-50 text-emerald-700 border-emerald-100',
+                                };
+                            }
+                        @endphp
                         <div
-                            class="bg-emerald-50 text-emerald-700 px-3 py-1 rounded-full text-xs font-bold border border-emerald-100 inline-block mb-2">
+                            class="{{ $statusBadgeClass }} px-3 py-1 rounded-full text-xs font-bold border inline-block mb-2">
                             {{ strtoupper($type === 'penarikan' ? $penarikan->status : $cart->status) }}
                         </div>
                         <p class="text-sm font-mono text-slate-500">
@@ -102,7 +112,7 @@
                     <!-- Entity Details -->
                     <div class="grid grid-cols-2 gap-8 mb-8">
                         <div>
-                            <h3 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Pengirim (Admin)</h3>
+                            <h3 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Rekening Admin Tercatat</h3>
                             <div class="space-y-2">
                                 <p class="text-sm font-bold text-slate-800">{{ $bankPengirim[0]->nama }}</p>
                                 <p class="text-xs text-slate-500">{{ $bankPengirim[0]->bank }}</p>
@@ -110,7 +120,7 @@
                             </div>
                         </div>
                         <div class="text-right">
-                            <h3 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Penerima</h3>
+                            <h3 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Rekening Tujuan Penarikan</h3>
                             <div class="space-y-2">
                                 <p class="text-sm font-bold text-slate-800">{{ $bankPenyewa->nama }}</p>
                                 <p class="text-xs text-slate-500">{{ $bankPenyewa->bank }}</p>
@@ -167,20 +177,33 @@
                 <div class="bg-indigo-50/50 p-4 rounded-xl border border-indigo-100/50 mb-8">
                     <div class="flex gap-3">
                         <i data-lucide="info" class="w-4 h-4 text-indigo-500 flex-shrink-0"></i>
-                        <p class="text-[11px] text-indigo-700 leading-relaxed">
-                            <strong>Catatan:</strong> {{ $type === 'penarikan' ? 'Dana telah berhasil ditransfer ke rekening penerima sesuai dengan detail di atas.' : 'Transaksi ini adalah bukti pembayaran yang sah untuk tiket event yang disebutkan.' }} Simpan bukti ini sebagai referensi resmi.
-                        </p>
+                        @if($type === 'penarikan')
+                            @php
+                                $penarikanNote = match (strtoupper((string) $penarikan->status)) {
+                                    'PROCESSING' => 'Permintaan penarikan sedang diproses. Estimasi penyelesaian maksimal 1×24 jam.',
+                                    'SUCCESS' => 'Permintaan penarikan telah selesai diproses. Invoice ini merupakan dokumen administrasi dan bukan bukti transaksi perbankan. Bukti transfer, jika tersedia, dapat dilihat secara terpisah.',
+                                    default => 'Permintaan penarikan telah diterima sistem dan sedang menunggu proses administrasi.',
+                                };
+                            @endphp
+                            <p class="text-[11px] text-indigo-700 leading-relaxed">
+                                <strong>Catatan:</strong> {{ $penarikanNote }}
+                            </p>
+                        @else
+                            <p class="text-[11px] text-indigo-700 leading-relaxed">
+                                <strong>Catatan:</strong> Transaksi ini adalah bukti pembayaran yang sah untuk tiket event yang disebutkan. Simpan bukti ini sebagai referensi resmi.
+                            </p>
+                        @endif
                     </div>
                 </div>
 
-                <!-- QR & Signature Area (Visual only) -->
+                <!-- QR & Reference Area (Visual only) -->
                 <div class="flex justify-between items-end opacity-50">
                     <div
                         class="w-16 h-16 bg-slate-100 rounded-lg flex items-center justify-center border border-slate-200">
                         <i data-lucide="qr-code" class="w-8 h-8 text-slate-400"></i>
                     </div>
                     <div class="text-right text-[10px] text-slate-400">
-                        <p>Verified Digitally</p>
+                        <p>{{ $type === 'penarikan' ? 'Referensi Sistem' : 'Verified Digitally' }}</p>
                         <p class="font-mono">{{ md5($type === 'penarikan' ? $penarikan->uid : $cart->uid) }}</p>
                     </div>
                 </div>
@@ -203,7 +226,12 @@
         </div>
 
         <p class="text-center text-slate-400 text-xs mt-8 no-print">&copy; {{ date('Y') }} {{ config('app.name') }} -
-            Dokumen ini sah tanpa tanda tangan basah.</p>
+            @if($type === 'penarikan')
+                Dokumen ini diterbitkan otomatis oleh sistem GoTik sebagai referensi administrasi.
+            @else
+                Dokumen ini sah tanpa tanda tangan basah.
+            @endif
+        </p>
     </div>
 
     <script src="{{ asset('assets/js/html2canvas.min.js') }}"></script>

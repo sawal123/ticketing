@@ -169,11 +169,23 @@ class WithdrawalSecurityTest extends TestCase
         $this->assertSame(Penarikan::STATUS_PENDING, $withdrawalB->fresh()->status);
     }
 
-    public function test_admin_can_approve_pending_withdrawal_through_legacy_route(): void
+    public function test_admin_processing_workflow_through_legacy_route(): void
     {
         [$tenant] = $this->tenantWithEvent();
         $admin = $this->user(['role' => 'admin', 'email' => 'admin@example.test']);
         $withdrawal = $this->withdrawal($tenant, 50000, Penarikan::STATUS_PENDING);
+
+        $this->actingAs($admin)
+            ->from('/admin/old/penarikan')
+            ->post('/admin/old/editPenarikan', ['uid' => $withdrawal->uid])
+            ->assertRedirect('/admin/old/penarikan')
+            ->assertSessionHas('success');
+
+        $withdrawal->refresh();
+
+        $this->assertSame(Penarikan::STATUS_PROCESSING, $withdrawal->status);
+        $this->assertNotNull($withdrawal->processing_at);
+        $this->assertNull($withdrawal->approved_at);
 
         $this->actingAs($admin)
             ->from('/admin/old/penarikan')

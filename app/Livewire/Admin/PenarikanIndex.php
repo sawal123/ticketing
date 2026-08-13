@@ -75,17 +75,42 @@ class PenarikanIndex extends Component
         ])->layout('admin.layout', ['title' => 'Manajemen Penarikan']);
     }
 
-    public function approve($uid)
+    public function process($uid)
     {
         abort_unless(strtolower((string) Auth::user()?->role) === 'admin', 403);
 
-        $approved = DB::transaction(function () use ($uid) {
+        $processed = DB::transaction(function () use ($uid) {
             $penarikan = Penarikan::where('uid', $uid)->lockForUpdate()->firstOrFail();
 
-            if (! in_array(strtoupper((string) $penarikan->status), [
-                Penarikan::STATUS_PENDING,
-                Penarikan::STATUS_PROCESSING,
-            ], true)) {
+            if (strtoupper((string) $penarikan->status) !== Penarikan::STATUS_PENDING) {
+                return false;
+            }
+
+            $penarikan->update([
+                'status' => Penarikan::STATUS_PROCESSING,
+                'processing_at' => now(),
+            ]);
+
+            return true;
+        }, 3);
+
+        if (! $processed) {
+            session()->flash('error', 'Penarikan hanya dapat diproses jika masih berstatus pending.');
+
+            return;
+        }
+
+        session()->flash('message', 'Penarikan mulai diproses.');
+    }
+
+    public function complete($uid)
+    {
+        abort_unless(strtolower((string) Auth::user()?->role) === 'admin', 403);
+
+        $completed = DB::transaction(function () use ($uid) {
+            $penarikan = Penarikan::where('uid', $uid)->lockForUpdate()->firstOrFail();
+
+            if (strtoupper((string) $penarikan->status) !== Penarikan::STATUS_PROCESSING) {
                 return false;
             }
 
@@ -97,13 +122,18 @@ class PenarikanIndex extends Component
             return true;
         }, 3);
 
-        if (! $approved) {
-            session()->flash('error', 'Penarikan hanya dapat disetujui jika masih pending atau processing.');
+        if (! $completed) {
+            session()->flash('error', 'Penarikan hanya dapat diselesaikan jika sedang diproses.');
 
             return;
         }
 
-        session()->flash('message', 'Penarikan berhasil disetujui!');
+        session()->flash('message', 'Penarikan berhasil diselesaikan!');
+    }
+
+    public function approve($uid)
+    {
+        return $this->complete($uid);
     }
 
     public function openDetail(string $uid): void
@@ -156,10 +186,11 @@ class PenarikanIndex extends Component
 
                 if (! in_array(strtoupper((string) $penarikan->status), [
                     Penarikan::STATUS_PENDING,
+                    Penarikan::STATUS_PROCESSING,
                     Penarikan::STATUS_SUCCESS,
                 ], true)) {
                     throw ValidationException::withMessages([
-                        'transferProof' => 'Bukti transfer hanya dapat diunggah saat penarikan berstatus pending atau success.',
+                        'transferProof' => 'Bukti transfer hanya dapat diunggah saat penarikan berstatus pending, processing, atau success.',
                     ]);
                 }
 
