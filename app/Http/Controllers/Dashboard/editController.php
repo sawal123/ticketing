@@ -66,7 +66,7 @@ class editController extends Controller
         $event->save();
         $this->images->delete('cover', $oldCover);
 
-        return redirect('/admin/event/eventDetail/'.$request->uid)->with('success', 'Berhasil di Update');
+        return redirect('/admin/event/eventDetail/' . $request->uid)->with('success', 'Berhasil di Update');
     }
 
     public function editTalent(Request $request)
@@ -328,7 +328,7 @@ class editController extends Controller
             ActivityLog::safeCreate([
                 'user_uid' => $lockedUser->uid,
                 'activity' => 'Profile Email Changed',
-                'description' => 'Email profile diubah dari '.$oldEmail.' ke '.$newEmail,
+                'description' => 'Email profile diubah dari ' . $oldEmail . ' ke ' . $newEmail,
                 'impact_level' => 'Medium',
                 'ip_address' => request()->ip(),
                 'user_agent' => request()->userAgent(),
@@ -349,7 +349,7 @@ class editController extends Controller
 
     private function emailOtpRateLimitKey(User $user, string $newEmail, Request $request): string
     {
-        return 'profile-email-otp:'.sha1($user->uid.'|'.$newEmail.'|'.$request->ip());
+        return 'profile-email-otp:' . sha1($user->uid . '|' . $newEmail . '|' . $request->ip());
     }
 
     public function editLogo(Request $request)

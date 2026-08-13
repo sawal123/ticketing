@@ -60,8 +60,8 @@ class PenarikanIndex extends Component
             ->when($this->search, function ($query) {
                 $query->where(function ($searchQuery) {
                     $searchQuery->whereHas('user', function ($q) {
-                        $q->where('name', 'like', '%'.$this->search.'%');
-                    })->orWhere('note', 'like', '%'.$this->search.'%');
+                        $q->where('name', 'like', '%' . $this->search . '%');
+                    })->orWhere('note', 'like', '%' . $this->search . '%');
                 });
             })
             ->when($this->statusFilter !== 'all', function ($query) {
@@ -231,9 +231,11 @@ class PenarikanIndex extends Component
     {
         $fallbackBank = null;
 
-        if (! filled($penarikan->bank_name)
+        if (
+            ! filled($penarikan->bank_name)
             || ! filled($penarikan->bank_account_name)
-            || ! filled($penarikan->bank_account_number)) {
+            || ! filled($penarikan->bank_account_number)
+        ) {
             $fallbackBank = Bank::where(function ($q) use ($penarikan) {
                 $q->where('uid_user', $penarikan->uid_user)
                     ->orWhere('uid', $penarikan->uid_user);

@@ -220,12 +220,14 @@ class WithdrawalSecurityTest extends TestCase
         [$tenant] = $this->tenantWithEvent();
         $admin = $this->user(['role' => 'admin', 'email' => 'admin-terminal@example.test']);
 
-        foreach ([
-            Penarikan::STATUS_SUCCESS,
-            Penarikan::STATUS_REJECTED,
-            Penarikan::STATUS_CANCELLED,
-            Penarikan::STATUS_FAILED,
-        ] as $status) {
+        foreach (
+            [
+                Penarikan::STATUS_SUCCESS,
+                Penarikan::STATUS_REJECTED,
+                Penarikan::STATUS_CANCELLED,
+                Penarikan::STATUS_FAILED,
+            ] as $status
+        ) {
             $approvedAt = now()->subDay();
             $withdrawal = $this->withdrawal($tenant, 50000, $status, [
                 'approved_at' => $approvedAt,
@@ -249,12 +251,14 @@ class WithdrawalSecurityTest extends TestCase
         [$tenant] = $this->tenantWithEvent();
         $admin = $this->user(['role' => 'admin', 'email' => 'admin-livewire-terminal@example.test']);
 
-        foreach ([
-            Penarikan::STATUS_SUCCESS,
-            Penarikan::STATUS_REJECTED,
-            Penarikan::STATUS_CANCELLED,
-            Penarikan::STATUS_FAILED,
-        ] as $status) {
+        foreach (
+            [
+                Penarikan::STATUS_SUCCESS,
+                Penarikan::STATUS_REJECTED,
+                Penarikan::STATUS_CANCELLED,
+                Penarikan::STATUS_FAILED,
+            ] as $status
+        ) {
             $approvedAt = now()->subDay();
             $withdrawal = $this->withdrawal($tenant, 50000, $status, [
                 'approved_at' => $approvedAt,
@@ -389,7 +393,7 @@ class WithdrawalSecurityTest extends TestCase
         return Event::create([
             'uid' => $uid,
             'user_uid' => $tenant->uid,
-            'event' => 'Withdrawal Event '.$uid,
+            'event' => 'Withdrawal Event ' . $uid,
             'alamat' => 'Jakarta',
             'tanggal' => now()->addDay()->format('Y-m-d H:i'),
             'status' => 'active',
@@ -399,7 +403,7 @@ class WithdrawalSecurityTest extends TestCase
             'map' => 'https://example.test/map',
             'pajak' => 0,
             'start_sale' => now()->format('Y-m-d H:i:s'),
-            'slug' => 'withdrawal-event-'.$uid,
+            'slug' => 'withdrawal-event-' . $uid,
             'konfirmasi' => '1',
         ]);
     }
@@ -420,7 +424,7 @@ class WithdrawalSecurityTest extends TestCase
             'uid' => (string) Str::uuid(),
             'user_uid' => $buyer->uid,
             'event_uid' => $event->uid,
-            'invoice' => 'INV-'.Str::upper(Str::random(8)),
+            'invoice' => 'INV-' . Str::upper(Str::random(8)),
             'status' => Cart::STATUS_SUCCESS,
             'payment_type' => 'bank_transfer',
             'gross_amount' => $grossAmount,

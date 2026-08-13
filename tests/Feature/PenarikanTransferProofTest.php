@@ -142,7 +142,7 @@ class PenarikanTransferProofTest extends TestCase
         $this->assertSame($admin->uid, $penarikan->transfer_proof_uploaded_by);
         $this->assertStringNotContainsString('/storage/', (string) $penarikan->transfer_proof);
 
-        Storage::disk('local')->assertExists('private/penarikan-transfer-proofs/'.$penarikan->transfer_proof);
+        Storage::disk('local')->assertExists('private/penarikan-transfer-proofs/' . $penarikan->transfer_proof);
         Storage::disk('public')->assertMissing($penarikan->transfer_proof);
     }
 
@@ -166,7 +166,7 @@ class PenarikanTransferProofTest extends TestCase
 
         $this->assertSame(Penarikan::STATUS_SUCCESS, $penarikan->status);
         $this->assertNotNull($penarikan->transfer_proof);
-        Storage::disk('local')->assertExists('private/penarikan-transfer-proofs/'.$penarikan->transfer_proof);
+        Storage::disk('local')->assertExists('private/penarikan-transfer-proofs/' . $penarikan->transfer_proof);
     }
 
     public function test_admin_can_replace_existing_transfer_proof_and_old_file_is_removed(): void
@@ -194,8 +194,8 @@ class PenarikanTransferProofTest extends TestCase
         $penarikan->refresh();
 
         $this->assertNotSame($firstStoredProof, $penarikan->transfer_proof);
-        Storage::disk('local')->assertMissing('private/penarikan-transfer-proofs/'.$firstStoredProof);
-        Storage::disk('local')->assertExists('private/penarikan-transfer-proofs/'.$penarikan->transfer_proof);
+        Storage::disk('local')->assertMissing('private/penarikan-transfer-proofs/' . $firstStoredProof);
+        Storage::disk('local')->assertExists('private/penarikan-transfer-proofs/' . $penarikan->transfer_proof);
     }
 
     public function test_invalid_and_oversized_transfer_proof_files_are_rejected(): void
@@ -274,7 +274,7 @@ class PenarikanTransferProofTest extends TestCase
 
         $this->assertSame(Penarikan::STATUS_PROCESSING, $penarikan->status);
         $this->assertNotNull($penarikan->transfer_proof);
-        Storage::disk('local')->assertExists('private/penarikan-transfer-proofs/'.$penarikan->transfer_proof);
+        Storage::disk('local')->assertExists('private/penarikan-transfer-proofs/' . $penarikan->transfer_proof);
     }
 
     public function test_owner_and_staff_owner_can_view_transfer_proof_after_success(): void
@@ -349,7 +349,7 @@ class PenarikanTransferProofTest extends TestCase
         return User::create(array_merge([
             'uid' => (string) Str::uuid(),
             'name' => 'Transfer Proof User',
-            'email' => 'user-'.Str::lower(Str::random(8)).'@example.test',
+            'email' => 'user-' . Str::lower(Str::random(8)) . '@example.test',
             'role' => 'penyewa',
             'gambar' => '-',
             'nomor' => '08123456789',

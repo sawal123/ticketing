@@ -137,11 +137,13 @@ class PenarikanProcessingWorkflowTest extends TestCase
         [$tenant] = $this->tenantWithEvent();
         $admin = $this->user(['role' => 'admin', 'email' => 'admin-upload-all@example.test']);
 
-        foreach ([
-            Penarikan::STATUS_PENDING,
-            Penarikan::STATUS_PROCESSING,
-            Penarikan::STATUS_SUCCESS,
-        ] as $status) {
+        foreach (
+            [
+                Penarikan::STATUS_PENDING,
+                Penarikan::STATUS_PROCESSING,
+                Penarikan::STATUS_SUCCESS,
+            ] as $status
+        ) {
             $penarikan = $this->withdrawal($tenant, 50000, $status, [
                 'approved_at' => $status === Penarikan::STATUS_SUCCESS ? now() : null,
             ]);
@@ -163,17 +165,19 @@ class PenarikanProcessingWorkflowTest extends TestCase
         $admin = $this->user(['role' => 'admin', 'email' => 'admin-invoice@example.test']);
         $this->adminBank($admin);
 
-        foreach ([
-            Penarikan::STATUS_PENDING,
-            Penarikan::STATUS_PROCESSING,
-            Penarikan::STATUS_SUCCESS,
-        ] as $status) {
+        foreach (
+            [
+                Penarikan::STATUS_PENDING,
+                Penarikan::STATUS_PROCESSING,
+                Penarikan::STATUS_SUCCESS,
+            ] as $status
+        ) {
             $penarikan = $this->withdrawal($tenant, 50000, $status, [
                 'approved_at' => $status === Penarikan::STATUS_SUCCESS ? now() : null,
             ]);
 
             $this->actingAs($tenant)
-                ->get('/invoice/'.$penarikan->uid)
+                ->get('/invoice/' . $penarikan->uid)
                 ->assertOk()
                 ->assertSee('Invoice Penarikan Saldo')
                 ->assertSee($status);
@@ -198,7 +202,7 @@ class PenarikanProcessingWorkflowTest extends TestCase
             ]);
 
             $this->actingAs($tenant)
-                ->get('/invoice/'.$penarikan->uid)
+                ->get('/invoice/' . $penarikan->uid)
                 ->assertOk()
                 ->assertSee($note);
         }
@@ -214,7 +218,7 @@ class PenarikanProcessingWorkflowTest extends TestCase
         ]);
 
         $this->actingAs($tenant)
-            ->get('/invoice/'.$penarikan->uid)
+            ->get('/invoice/' . $penarikan->uid)
             ->assertOk()
             ->assertDontSee('Dana telah berhasil ditransfer')
             ->assertDontSee('Verified Digitally')
@@ -259,7 +263,7 @@ class PenarikanProcessingWorkflowTest extends TestCase
         return Event::create([
             'uid' => $uid,
             'user_uid' => $tenant->uid,
-            'event' => 'Processing Workflow Event '.$uid,
+            'event' => 'Processing Workflow Event ' . $uid,
             'alamat' => 'Jakarta',
             'tanggal' => now()->addDay()->format('Y-m-d H:i'),
             'status' => 'active',
@@ -269,7 +273,7 @@ class PenarikanProcessingWorkflowTest extends TestCase
             'map' => 'https://example.test/map',
             'pajak' => 0,
             'start_sale' => now()->format('Y-m-d H:i:s'),
-            'slug' => 'processing-workflow-event-'.$uid,
+            'slug' => 'processing-workflow-event-' . $uid,
             'konfirmasi' => '1',
         ]);
     }
@@ -290,7 +294,7 @@ class PenarikanProcessingWorkflowTest extends TestCase
             'uid' => (string) Str::uuid(),
             'user_uid' => $buyer->uid,
             'event_uid' => $event->uid,
-            'invoice' => 'INV-'.Str::upper(Str::random(8)),
+            'invoice' => 'INV-' . Str::upper(Str::random(8)),
             'status' => Cart::STATUS_SUCCESS,
             'payment_type' => 'bank_transfer',
             'gross_amount' => $grossAmount,

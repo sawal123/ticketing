@@ -21,7 +21,7 @@
 
         .invoice-card::before {
             content: "";
-            background-image: url('{{ asset("storage/logo/" . $logo[0]->logo) }}');
+            background-image: url('{{ asset('storage/logo/' . $logo[0]->logo) }}');
             opacity: 0.03;
             background-size: 150px;
             background-repeat: repeat;
@@ -47,11 +47,12 @@
 
             .invoice-card {
                 box-shadow: none !important;
-                border: 1px solid #e2e8f0 !important; /* Keep a light border for print structure */
+                border: 1px solid #e2e8f0 !important;
+                /* Keep a light border for print structure */
                 border-radius: 0 !important;
                 margin: 0 !important;
             }
-            
+
             .max-w-xl {
                 max-width: 100% !important;
                 width: 100% !important;
@@ -97,10 +98,11 @@
                     </div>
                 </div>
 
-                @if($type === 'penarikan')
+                @if ($type === 'penarikan')
                     <!-- Main Amount Section for Penarikan -->
                     <div class="text-center py-10 border-y border-slate-100 mb-8 bg-slate-50/50 rounded-2xl">
-                        <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Total Penarikan</p>
+                        <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Total Penarikan
+                        </p>
                         <h2 class="text-4xl font-extrabold text-slate-900">
                             <span class="text-indigo-600">Rp</span> {{ number_format($penarikan->amount, 0, ',', '.') }}
                         </h2>
@@ -112,7 +114,8 @@
                     <!-- Entity Details -->
                     <div class="grid grid-cols-2 gap-8 mb-8">
                         <div>
-                            <h3 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Rekening Admin Tercatat</h3>
+                            <h3 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Rekening
+                                Admin Tercatat</h3>
                             <div class="space-y-2">
                                 <p class="text-sm font-bold text-slate-800">{{ $bankPengirim[0]->nama }}</p>
                                 <p class="text-xs text-slate-500">{{ $bankPengirim[0]->bank }}</p>
@@ -120,7 +123,8 @@
                             </div>
                         </div>
                         <div class="text-right">
-                            <h3 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Rekening Tujuan Penarikan</h3>
+                            <h3 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Rekening
+                                Tujuan Penarikan</h3>
                             <div class="space-y-2">
                                 <p class="text-sm font-bold text-slate-800">{{ $bankPenyewa->nama }}</p>
                                 <p class="text-xs text-slate-500">{{ $bankPenyewa->bank }}</p>
@@ -131,9 +135,11 @@
                 @else
                     <!-- Main Amount Section for Transaction -->
                     <div class="text-center py-10 border-y border-slate-100 mb-8 bg-slate-50/50 rounded-2xl">
-                        <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Total Pembayaran</p>
+                        <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Total Pembayaran
+                        </p>
                         <h2 class="text-4xl font-extrabold text-slate-900">
-                            <span class="text-indigo-600">Rp</span> {{ number_format($cart->hargaCarts->sum(fn($i) => $i->quantity * $i->harga_ticket), 0, ',', '.') }}
+                            <span class="text-indigo-600">Rp</span>
+                            {{ number_format($cart->hargaCarts->sum(fn($i) => $i->quantity * $i->harga_ticket), 0, ',', '.') }}
                         </h2>
                         <p class="text-sm font-bold text-slate-800 mt-2">{{ $cart->event->event }}</p>
                         <p class="text-xs text-slate-400 mt-1">
@@ -150,12 +156,14 @@
                         </div>
 
                         <div>
-                            <h3 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Rincian Tiket</h3>
+                            <h3 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Rincian
+                                Tiket</h3>
                             <div class="space-y-2">
-                                @foreach($cart->hargaCarts as $item)
+                                @foreach ($cart->hargaCarts as $item)
                                     <div class="flex justify-between items-center text-sm">
                                         <div class="text-slate-600">
-                                            <span class="font-bold text-slate-800">{{ $item->masterHarga->kategori ?? 'Kategori Dihapus' }}</span>
+                                            <span
+                                                class="font-bold text-slate-800">{{ $item->masterHarga->kategori ?? 'Kategori Dihapus' }}</span>
                                             <span class="text-xs mx-1">x</span> {{ $item->quantity }}
                                         </div>
                                         <div class="font-bold text-slate-800">
@@ -167,8 +175,10 @@
                         </div>
 
                         <div class="pt-4 border-t border-slate-100 flex justify-between items-center">
-                            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Metode Bayar</span>
-                            <span class="text-sm font-bold text-indigo-600">{{ strtoupper($cart->payment_type) }}</span>
+                            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Metode
+                                Bayar</span>
+                            <span
+                                class="text-sm font-bold text-indigo-600">{{ strtoupper($cart->payment_type) }}</span>
                         </div>
                     </div>
                 @endif
@@ -177,12 +187,15 @@
                 <div class="bg-indigo-50/50 p-4 rounded-xl border border-indigo-100/50 mb-8">
                     <div class="flex gap-3">
                         <i data-lucide="info" class="w-4 h-4 text-indigo-500 flex-shrink-0"></i>
-                        @if($type === 'penarikan')
+                        @if ($type === 'penarikan')
                             @php
                                 $penarikanNote = match (strtoupper((string) $penarikan->status)) {
-                                    'PROCESSING' => 'Permintaan penarikan sedang diproses. Estimasi penyelesaian maksimal 1×24 jam.',
-                                    'SUCCESS' => 'Permintaan penarikan telah selesai diproses. Invoice ini merupakan dokumen administrasi dan bukan bukti transaksi perbankan. Bukti transfer, jika tersedia, dapat dilihat secara terpisah.',
-                                    default => 'Permintaan penarikan telah diterima sistem dan sedang menunggu proses administrasi.',
+                                    'PROCESSING'
+                                        => 'Permintaan penarikan sedang diproses. Estimasi penyelesaian maksimal 1×24 jam.',
+                                    'SUCCESS'
+                                        => 'Permintaan penarikan telah selesai diproses. Invoice ini merupakan dokumen administrasi dan bukan bukti transaksi perbankan. Bukti transfer, jika tersedia, dapat dilihat secara terpisah.',
+                                    default
+                                        => 'Permintaan penarikan telah diterima sistem dan sedang menunggu proses administrasi.',
                                 };
                             @endphp
                             <p class="text-[11px] text-indigo-700 leading-relaxed">
@@ -190,7 +203,8 @@
                             </p>
                         @else
                             <p class="text-[11px] text-indigo-700 leading-relaxed">
-                                <strong>Catatan:</strong> Transaksi ini adalah bukti pembayaran yang sah untuk tiket event yang disebutkan. Simpan bukti ini sebagai referensi resmi.
+                                <strong>Catatan:</strong> Transaksi ini adalah bukti pembayaran yang sah untuk tiket
+                                event yang disebutkan. Simpan bukti ini sebagai referensi resmi.
                             </p>
                         @endif
                     </div>
@@ -225,8 +239,9 @@
             </button>
         </div>
 
-        <p class="text-center text-slate-400 text-xs mt-8 no-print">&copy; {{ date('Y') }} {{ config('app.name') }} -
-            @if($type === 'penarikan')
+        <p class="text-center text-slate-400 text-xs mt-8 no-print">&copy; {{ date('Y') }}
+            {{ config('app.name') }} -
+            @if ($type === 'penarikan')
                 Dokumen ini diterbitkan otomatis oleh sistem GoTik sebagai referensi administrasi.
             @else
                 Dokumen ini sah tanpa tanda tangan basah.
@@ -240,12 +255,12 @@
         lucide.createIcons();
 
         // Print Function
-        document.getElementById("printButton").addEventListener("click", function () {
+        document.getElementById("printButton").addEventListener("click", function() {
             window.print();
         });
 
         // Download as Image Function
-        document.getElementById("downloadButton").addEventListener("click", function () {
+        document.getElementById("downloadButton").addEventListener("click", function() {
             const element = document.querySelector(".invoice-card");
 
             // Adjust for high quality
@@ -253,10 +268,11 @@
                 scale: 2,
                 backgroundColor: "#ffffff",
                 useCORS: true
-            }).then(function (canvas) {
+            }).then(function(canvas) {
                 const link = document.createElement("a");
                 link.href = canvas.toDataURL("image/png");
-                link.download = "Invoice-{{ $type === 'penarikan' ? $penarikan->uid : $cart->invoice }}.png";
+                link.download =
+                    "Invoice-{{ $type === 'penarikan' ? $penarikan->uid : $cart->invoice }}.png";
                 link.click();
             });
         });
