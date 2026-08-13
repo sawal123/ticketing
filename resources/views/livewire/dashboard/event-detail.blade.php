@@ -257,6 +257,10 @@
             </x-admin.table>
 
         @elseif($activeTab === 'transaksi')
+            <p class="mb-4 flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+                <i data-lucide="info" class="w-3.5 h-3.5 shrink-0"></i>
+                Ringkasan berdasarkan transaksi SUCCESS dan mengikuti filter transaksi yang aktif.
+            </p>
             <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-{{ auth()->user()->role === 'admin' ? '6' : '5' }} gap-6 mb-8">
                 <div
                     class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 flex items-center gap-4">
@@ -267,6 +271,7 @@
                         <p class="text-xs font-bold text-slate-500 uppercase tracking-wider">Tiket Terjual</p>
                         <p class="text-2xl font-extrabold text-slate-800 dark:text-white">
                             {{ number_format($metrics['total_tickets']) }}</p>
+                        <p class="mt-1 text-[11px] font-medium text-slate-500 dark:text-slate-400">Tiket dari transaksi berhasil</p>
                     </div>
                 </div>
                 <div
@@ -275,9 +280,10 @@
                         <i data-lucide="banknote" class="w-6 h-6 text-emerald-600 dark:text-emerald-400"></i>
                     </div>
                     <div>
-                        <p class="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Tiket Rp</p>
+                        <p class="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Omzet</p>
                         <p class="text-2xl font-extrabold text-slate-800 dark:text-white">Rp
                             {{ number_format($metrics['total_revenue'], 0, ',', '.') }}</p>
+                        <p class="mt-1 text-[11px] font-medium text-slate-500 dark:text-slate-400">Omzet setelah diskon, sudah termasuk pajak</p>
                     </div>
                 </div>
                 <div
@@ -286,9 +292,10 @@
                         <i data-lucide="shopping-cart" class="w-6 h-6 text-amber-600 dark:text-amber-400"></i>
                     </div>
                     <div>
-                        <p class="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Transaksi</p>
+                        <p class="text-xs font-bold text-slate-500 uppercase tracking-wider">Transaksi Berhasil</p>
                         <p class="text-2xl font-extrabold text-slate-800 dark:text-white">
                             {{ number_format($metrics['total_transactions']) }}</p>
+                        <p class="mt-1 text-[11px] font-medium text-slate-500 dark:text-slate-400">Jumlah transaksi berstatus SUCCESS</p>
                     </div>
                 </div>
                 <div
@@ -300,6 +307,7 @@
                         <p class="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Diskon</p>
                         <p class="text-2xl font-extrabold text-slate-800 dark:text-white">Rp
                             {{ number_format($metrics['total_discount'], 0, ',', '.') }}</p>
+                        <p class="mt-1 text-[11px] font-medium text-slate-500 dark:text-slate-400">Total potongan yang diberikan</p>
                     </div>
                 </div>
                 <div
@@ -311,6 +319,7 @@
                         <p class="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Pajak</p>
                         <p class="text-2xl font-extrabold text-slate-800 dark:text-white">Rp
                             {{ number_format($metrics['total_pajak'], 0, ',', '.') }}</p>
+                        <p class="mt-1 text-[11px] font-medium text-slate-500 dark:text-slate-400">Pajak sudah termasuk dalam Total Omzet</p>
                     </div>
                 </div>
                 @if(auth()->user()->role === 'admin')
