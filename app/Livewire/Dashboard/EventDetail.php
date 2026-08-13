@@ -12,6 +12,7 @@ use App\Models\Talent;
 use App\Services\Reports\FinancialSnapshotService;
 use App\Services\SecureImageStorage;
 use App\Support\ExportSanitizer;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -436,7 +437,7 @@ class EventDetail extends Component
         return response()->stream($callback, 200, $headers);
     }
 
-    public function exportPrint()
+    public function exportPdf()
     {
         $this->sanitizeFilters();
 
@@ -466,18 +467,11 @@ class EventDetail extends Component
             'exportTotals' => $exportTotals,
         ])->render();
 
-        $fileName = 'transaksi-event-'.Str::slug($event->event).'-'.now()->format('YmdHis').'.html';
+        $fileName = 'transaksi-event-'.Str::slug($event->event).'-'.now()->format('YmdHis').'.pdf';
 
-        return response()->streamDownload(function () use ($html) {
-            echo $html;
-        }, $fileName, [
-            'Content-Type' => 'text/html; charset=UTF-8',
-        ]);
-    }
-
-    public function exportPdf()
-    {
-        return $this->exportPrint();
+        return Pdf::loadHTML($html)
+            ->setPaper('a4', 'landscape')
+            ->stream($fileName);
     }
 
     public function setTab($tab)

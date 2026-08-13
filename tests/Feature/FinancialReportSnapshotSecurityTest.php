@@ -230,7 +230,7 @@ class FinancialReportSnapshotSecurityTest extends TestCase
         $component->exportExcel()->sendContent();
         $csv = ob_get_clean();
 
-        $this->assertStringContainsString('"TOTAL OMZET SNAPSHOT",154000', $csv);
+        $this->assertStringContainsString('"TOTAL OMZET SNAPSHOT";154000', $csv);
         $this->assertStringNotContainsString('168000', $csv);
     }
 

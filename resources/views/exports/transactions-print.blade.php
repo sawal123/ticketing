@@ -1,14 +1,12 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Laporan Transaksi - {{ $event->event }}</title>
     <style>
-        @media print {
-            .no-print { display: none; }
-            body { padding: 0; }
-        }
+        thead { display: table-header-group; }
+        tr { page-break-inside: avoid; }
         body {
             font-family: 'Inter', system-ui, -apple-system, sans-serif;
             color: #1e293b;
@@ -27,12 +25,14 @@
             color: #0f172a;
         }
         .meta {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 1rem;
+            width: 100%;
             font-size: 0.875rem;
             color: #64748b;
             margin-top: 0.5rem;
+        }
+        .meta td {
+            border: none;
+            padding: 0;
         }
         table {
             width: 100%;
@@ -63,43 +63,59 @@
             font-weight: 600;
             background: #f1f5f9;
         }
+        .summary {
+            margin-top: 2rem;
+            padding-top: 1rem;
+            border-top: 2px solid #e2e8f0;
+            page-break-inside: avoid;
+        }
+        .summary h2 {
+            margin: 0;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: #0f172a;
+        }
+        .summary .total-label {
+            margin: 0.6rem 0 0;
+            font-weight: 800;
+            font-size: 0.8rem;
+            color: #334155;
+        }
+        .summary .total-value {
+            margin: 0.1rem 0 0.5rem;
+            font-size: 1.4rem;
+            font-weight: 800;
+            color: #4f46e5;
+        }
+        .summary .summary-note {
+            margin: 0;
+            font-size: 0.75rem;
+            color: #64748b;
+        }
         .footer {
-            margin-top: 3rem;
+            margin-top: 2rem;
             text-align: center;
             font-size: 0.75rem;
             color: #94a3b8;
         }
-        .btn-print {
-            background: #4f46e5;
-            color: #white;
-            padding: 0.5rem 1rem;
-            border-radius: 0.5rem;
-            text-decoration: none;
-            display: inline-block;
-            margin-bottom: 1rem;
-            font-weight: 600;
-            border: none;
-            cursor: pointer;
-        }
     </style>
 </head>
 <body>
-    <div class="no-print" style="text-align: right;">
-        <button onclick="window.print()" class="btn-print" style="color: white;">Cetak Laporan / Simpan HTML</button>
-    </div>
-
     <div class="header">
         <h1>Laporan Transaksi</h1>
-        <div class="meta">
-            <div>
-                <strong>Event:</strong> {{ $event->event }}<br>
-                <strong>Tanggal Event:</strong> {{ \Carbon\Carbon::parse($event->tanggal)->format('d F Y') }}
-            </div>
-            <div class="text-right">
-                <strong>Dicetak pada:</strong> {{ now()->format('d M Y, H:i') }}<br>
-                <strong>Filter:</strong> {{ $filter_info }}
-            </div>
-        </div>
+        <table class="meta">
+            <tr>
+                <td>
+                    <strong>Event:</strong> {{ $event->event }}<br>
+                    <strong>Tanggal Event:</strong> {{ \Carbon\Carbon::parse($event->tanggal)->format('d F Y') }}
+                </td>
+                <td class="text-right">
+                    <strong>Dicetak pada:</strong> {{ now()->format('d M Y, H:i') }}<br>
+                    <strong>Filter:</strong> {{ $filter_info }}
+                </td>
+            </tr>
+        </table>
     </div>
 
     <table>
@@ -113,10 +129,7 @@
                 <th class="text-right">Harga Satuan</th>
                 <th class="text-right">Diskon</th>
                 <th class="text-right">Total</th>
-                <th>Kehadiran</th>
                 <th>Status Verifikasi</th>
-                <th>Tanggal Verifikasi</th>
-                <th>Waktu Verifikasi</th>
             </tr>
         </thead>
         <tbody>
@@ -139,44 +152,26 @@
                     <td class="text-right">Rp {{ number_format($trx->disc ?? 0, 0, ',', '.') }}</td>
                     <td class="text-right">Rp {{ number_format($lineTotal + $taxSnapshot, 0, ',', '.') }}</td>
                     <td>
-                        @if($trx->konfirmasi == '1')
-                            <span class="badge" style="background: #ecfdf5; color: #065f46;">Hadir</span>
-                        @else
-                            <span class="badge" style="background: #f1f5f9; color: #475569;">Belum Hadir</span>
-                        @endif
-                    </td>
-                    <td>
                         @if($isVerified)
                             <span class="badge" style="background: #ecfdf5; color: #065f46;">Terverifikasi</span>
                         @else
                             <span class="badge" style="background: #f1f5f9; color: #475569;">Belum Diverifikasi</span>
                         @endif
                     </td>
-                    <td>{{ $scannedAt ? $scannedAt->format('d M Y') : 'Tidak tersedia' }}</td>
-                    <td>{{ $scannedAt ? $scannedAt->format('H:i:s') : 'Tidak tersedia' }}</td>
                 </tr>
             @endforeach
         </tbody>
-        <tfoot>
-            <tr style="background: #f8fafc; font-weight: bold;">
-                <td colspan="7" class="text-right">TOTAL OMZET SNAPSHOT</td>
-                <td class="text-right">Rp {{ number_format((int) ($exportTotals['owner_revenue'] ?? 0), 0, ',', '.') }}</td>
-                <td colspan="4"></td>
-            </tr>
-        </tfoot>
     </table>
+
+    <div class="summary">
+        <h2>Ringkasan Laporan</h2>
+        <p class="total-label">TOTAL OMZET SELURUH DATA</p>
+        <p class="total-value">Rp {{ number_format((int) ($exportTotals['owner_revenue'] ?? 0), 0, ',', '.') }}</p>
+        <p class="summary-note">Seluruh transaksi SUCCESS sesuai filter laporan.<br>Omzet sudah termasuk pajak.</p>
+    </div>
 
     <div class="footer">
         Laporan ini digenerate secara otomatis oleh sistem TiketKonser Dashboard.
     </div>
-
-    <script>
-        // Auto open print dialog if directed from export
-        window.onload = function() {
-            if (window.location.search.indexOf('autoPrint=true') > -1) {
-                // window.print();
-            }
-        }
-    </script>
 </body>
 </html>

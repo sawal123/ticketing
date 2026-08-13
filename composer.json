@@ -9,6 +9,7 @@
     "license": "MIT",
     "require": {
         "php": "^7.3|^8.1",
+        "barryvdh/laravel-dompdf": "^2.2",
         "barryvdh/laravel-ide-helper": "^2.13",
         "guzzlehttp/guzzle": "^7.8",
         "laravel/framework": "^10.10",
@@ -16,7 +17,7 @@
         "laravel/sanctum": "^3.3",
         "laravel/socialite": "^5.27",
         "laravel/tinker": "^2.8",
-        "livewire/livewire": "^3.0",
+        "livewire/livewire": "^3.0|^4.0",
         "midtrans/midtrans-php": "^2.5",
         "milon/barcode": "^10.0",
         "simplesoftwareio/simple-qrcode": "^4.2",

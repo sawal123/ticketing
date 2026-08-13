@@ -436,10 +436,10 @@
                                     <span wire:loading.remove wire:target="exportExcel">Export Excel</span>
                                     <span wire:loading wire:target="exportExcel">Memproses...</span>
                                 </x-admin.button>
-                                <x-admin.button wire:click="exportPrint" wire:loading.attr="disabled"
-                                    variant="secondary" size="sm" icon="printer">
-                                    <span wire:loading.remove wire:target="exportPrint">Export Print</span>
-                                    <span wire:loading wire:target="exportPrint">Memproses...</span>
+                                <x-admin.button wire:click="exportPdf" wire:loading.attr="disabled"
+                                    variant="secondary" size="sm" icon="file-text">
+                                    <span wire:loading.remove wire:target="exportPdf">Export PDF</span>
+                                    <span wire:loading wire:target="exportPdf">Memproses...</span>
                                 </x-admin.button>
                             </div>
                         </div>

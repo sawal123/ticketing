@@ -20,6 +20,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\Str;
 use Livewire\Livewire;
+use ReflectionClass;
 use Tests\TestCase;
 
 class ReportExportFilterSecurityTest extends TestCase
@@ -80,7 +81,29 @@ class ReportExportFilterSecurityTest extends TestCase
         $this->assertStringContainsString("'-SUM(1,1);2;100000;20000;18000;198000", $csv);
     }
 
-    public function test_export_print_returns_html_file_and_escapes_user_controlled_fields(): void
+    public function test_export_pdf_streams_pdf_inline_not_html(): void
+    {
+        [$tenant, $event] = $this->successfulCashSnapshot();
+
+        $this->actingAs($tenant);
+
+        $component = new DashboardEventDetail;
+        $component->eventUid = $event->uid;
+        $response = $component->exportPdf();
+
+        $this->assertStringContainsString('application/pdf', (string) $response->headers->get('content-type'));
+        $this->assertStringContainsString('inline', (string) $response->headers->get('content-disposition'));
+        $this->assertStringContainsString('transaksi-event-', (string) $response->headers->get('content-disposition'));
+        $this->assertStringContainsString('.pdf', (string) $response->headers->get('content-disposition'));
+
+        ob_start();
+        $response->sendContent();
+        $pdf = ob_get_clean();
+
+        $this->assertStringStartsWith('%PDF', $pdf);
+    }
+
+    public function test_export_pdf_view_drops_attendance_columns_keeps_verification_and_shows_summary_once(): void
     {
         [$tenant, $event] = $this->successfulCashSnapshot([
             'invoice' => '<b>INV</b>',
@@ -93,33 +116,51 @@ class ReportExportFilterSecurityTest extends TestCase
 
         $component = new DashboardEventDetail;
         $component->eventUid = $event->uid;
-        $response = $component->exportPrint();
 
-        $this->assertStringContainsString('text/html', $response->headers->get('content-type'));
-        $this->assertStringContainsString('.html', $response->headers->get('content-disposition'));
+        $exportQuery = (new ReflectionClass($component))->getMethod('getExportQuery');
+        $exportQuery->setAccessible(true);
+        $rows = $exportQuery->invoke($component)->get();
 
-        ob_start();
-        $response->sendContent();
-        $html = ob_get_clean();
+        $totalsMethod = (new ReflectionClass($component))->getMethod('exportSnapshotTotalsFromRows');
+        $totalsMethod->setAccessible(true);
+        $totals = $totalsMethod->invoke($component, $rows);
 
-        $this->assertStringStartsNotWith('%PDF', $html);
+        $html = view('exports.transactions-print', [
+            'event' => $event,
+            'transactions' => $rows,
+            'filter_info' => 'Test',
+            'exportTotals' => $totals,
+        ])->render();
+
         $this->assertStringContainsString('<!DOCTYPE html>', $html);
         $this->assertStringNotContainsString('<script>alert(1)</script>', $html);
+        $this->assertStringContainsString('&lt;script&gt;alert(1)&lt;/script&gt;', $html);
         $this->assertStringNotContainsString('<img src=x onerror=alert(1)>', $html);
         $this->assertStringNotContainsString('<svg onload=alert(1)>', $html);
-        $this->assertStringContainsString('&lt;script&gt;alert(1)&lt;/script&gt;', $html);
         $this->assertStringContainsString('&lt;b&gt;INV&lt;/b&gt;', $html);
+
+        $this->assertStringNotContainsString('>Kehadiran<', $html);
+        $this->assertStringNotContainsString('>Tanggal Verifikasi<', $html);
+        $this->assertStringNotContainsString('>Waktu Verifikasi<', $html);
+        $this->assertStringContainsString('>Status Verifikasi<', $html);
+        $this->assertStringNotContainsString('TOTAL OMZET SNAPSHOT', $html);
+        $this->assertStringContainsString('Ringkasan Laporan', $html);
+        $this->assertStringContainsString('TOTAL OMZET SELURUH DATA', $html);
+        $this->assertSame(1, substr_count($html, 'TOTAL OMZET SELURUH DATA'));
+        $this->assertStringContainsString('Rp '.number_format((int) $totals['owner_revenue'], 0, ',', '.'), $html);
+        $this->assertStringContainsString('Seluruh transaksi SUCCESS sesuai filter laporan.', $html);
+        $this->assertStringContainsString('Omzet sudah termasuk pajak.', $html);
     }
 
-    public function test_dashboard_event_detail_export_label_is_print_not_pdf(): void
+    public function test_dashboard_event_detail_export_label_is_pdf_not_print(): void
     {
         [$tenant, $event] = $this->successfulCashSnapshot();
 
         Livewire::actingAs($tenant)
             ->test(DashboardEventDetail::class, ['uid' => $event->uid])
             ->set('activeTab', 'transaksi')
-            ->assertSee('Export Print')
-            ->assertDontSee('Export PDF');
+            ->assertSee('Export PDF')
+            ->assertDontSee('Export Print');
     }
 
     public function test_dashboard_event_detail_filter_inputs_are_sanitized(): void
@@ -356,13 +397,24 @@ class ReportExportFilterSecurityTest extends TestCase
         $this->assertStringContainsString('10000;110000', $csv);
         $this->assertStringContainsString('"TOTAL OMZET SNAPSHOT";110000', $csv);
 
-        $response = $component->exportPrint();
-        ob_start();
-        $response->sendContent();
-        $html = ob_get_clean();
+        $exportQuery = (new ReflectionClass($component))->getMethod('getExportQuery');
+        $exportQuery->setAccessible(true);
+        $rows = $exportQuery->invoke($component)->get();
+
+        $totalsMethod = (new ReflectionClass($component))->getMethod('exportSnapshotTotalsFromRows');
+        $totalsMethod->setAccessible(true);
+        $totals = $totalsMethod->invoke($component, $rows);
+
+        $html = view('exports.transactions-print', [
+            'event' => $event,
+            'transactions' => $rows,
+            'filter_info' => 'Test',
+            'exportTotals' => $totals,
+        ])->render();
 
         $this->assertStringContainsString('Rp 110.000', $html);
-        $this->assertStringContainsString('TOTAL OMZET SNAPSHOT', $html);
+        $this->assertStringContainsString('TOTAL OMZET SELURUH DATA', $html);
+        $this->assertStringNotContainsString('TOTAL OMZET SNAPSHOT', $html);
     }
 
     private function successfulCashSnapshot(array $overrides = []): array
