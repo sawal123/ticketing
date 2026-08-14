@@ -17,9 +17,11 @@ class PenarikanIndex extends Component
 {
     use WithFileUploads, WithPagination;
 
+    private const ALLOWED_STATUS_FILTERS = ['all', 'pending', 'processing', 'success'];
+
     public $search = '';
 
-    public $statusFilter = 'all'; // all, pending, success, failed
+    public $statusFilter = 'all'; // all, pending, processing, success
 
     public $selectedPenarikan = null;
 
@@ -50,6 +52,20 @@ class PenarikanIndex extends Component
 
     public function updatingStatusFilter()
     {
+        $this->resetPage();
+    }
+
+    public function setStatusFilter(string $status): void
+    {
+        if (! in_array($status, self::ALLOWED_STATUS_FILTERS, true)) {
+            return;
+        }
+
+        if ($this->statusFilter === $status) {
+            return;
+        }
+
+        $this->statusFilter = $status;
         $this->resetPage();
     }
 

@@ -10,19 +10,19 @@
         <div class="flex flex-wrap items-center justify-between gap-4">
             <div class="flex items-center gap-2">
                 <div class="flex items-center gap-1 bg-slate-100 dark:bg-slate-700 p-1 rounded-lg">
-                    <button wire:click="$set('statusFilter', 'all')"
+                    <button wire:click="setStatusFilter('all')"
                         class="px-3 py-1.5 text-xs font-medium rounded-md transition-all {{ $statusFilter === 'all' ? 'bg-white dark:bg-slate-600 shadow-sm text-indigo-600 dark:text-indigo-400' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300' }}">
                         Semua
                     </button>
-                    <button wire:click="$set('statusFilter', 'pending')"
+                    <button wire:click="setStatusFilter('pending')"
                         class="px-3 py-1.5 text-xs font-medium rounded-md transition-all {{ $statusFilter === 'pending' ? 'bg-white dark:bg-slate-600 shadow-sm text-amber-600' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300' }}">
                         Pending
                     </button>
-                    <button wire:click="$set('statusFilter', 'processing')"
+                    <button wire:click="setStatusFilter('processing')"
                         class="px-3 py-1.5 text-xs font-medium rounded-md transition-all {{ $statusFilter === 'processing' ? 'bg-white dark:bg-slate-600 shadow-sm text-sky-600' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300' }}">
                         Processing
                     </button>
-                    <button wire:click="$set('statusFilter', 'success')"
+                    <button wire:click="setStatusFilter('success')"
                         class="px-3 py-1.5 text-xs font-medium rounded-md transition-all {{ $statusFilter === 'success' ? 'bg-white dark:bg-slate-600 shadow-sm text-emerald-600' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300' }}">
                         Success
                     </button>

@@ -130,6 +130,64 @@ class PenarikanProcessingWorkflowTest extends TestCase
         $this->assertSame($approvedAt->toDateTimeString(), $penarikan->approved_at?->toDateTimeString());
     }
 
+    public function test_admin_status_tabs_use_public_method_filter_correctly_and_reset_pagination(): void
+    {
+        [$tenant] = $this->tenantWithEvent();
+        $admin = $this->user(['role' => 'admin', 'email' => 'admin-filter-tabs@example.test']);
+
+        $this->withdrawal($tenant, 50000, Penarikan::STATUS_PROCESSING, [
+            'note' => 'Processing only',
+            'created_at' => now(),
+        ]);
+
+        $this->withdrawal($tenant, 50000, Penarikan::STATUS_SUCCESS, [
+            'note' => 'Success only',
+            'created_at' => now()->subMinute(),
+            'approved_at' => now()->subMinute(),
+        ]);
+
+        foreach (range(1, 11) as $index) {
+            $this->withdrawal($tenant, 50000, Penarikan::STATUS_PENDING, [
+                'note' => sprintf('Pending %02d', $index),
+                'created_at' => now()->subMinutes($index + 1),
+            ]);
+        }
+
+        Livewire::actingAs($admin)
+            ->test(AdminPenarikanIndex::class)
+            ->assertDontSeeHtml('wire:click="$set(')
+            ->assertSeeHtml('wire:click="setStatusFilter(\'all\')"')
+            ->assertSeeHtml('wire:click="setStatusFilter(\'pending\')"')
+            ->assertSeeHtml('wire:click="setStatusFilter(\'processing\')"')
+            ->assertSeeHtml('wire:click="setStatusFilter(\'success\')"')
+            ->call('gotoPage', 2)
+            ->assertSee('Pending 09')
+            ->assertSee('Pending 10')
+            ->assertSee('Pending 11')
+            ->call('setStatusFilter', 'pending')
+            ->assertSet('statusFilter', 'pending')
+            ->assertSee('Pending 01')
+            ->assertDontSee('Pending 11')
+            ->assertDontSee('Processing only')
+            ->assertDontSee('Success only')
+            ->call('setStatusFilter', 'processing')
+            ->assertSet('statusFilter', 'processing')
+            ->assertSee('Processing only')
+            ->assertDontSee('Pending 01')
+            ->assertDontSee('Success only')
+            ->call('setStatusFilter', 'success')
+            ->assertSet('statusFilter', 'success')
+            ->assertSee('Success only')
+            ->assertDontSee('Processing only')
+            ->call('setStatusFilter', 'invalid-status')
+            ->assertSet('statusFilter', 'success')
+            ->assertSee('Success only')
+            ->call('setStatusFilter', 'all')
+            ->assertSet('statusFilter', 'all')
+            ->assertSee('Processing only')
+            ->assertSee('Success only');
+    }
+
     public function test_admin_can_upload_transfer_proof_in_pending_processing_and_success(): void
     {
         Storage::fake('local');
