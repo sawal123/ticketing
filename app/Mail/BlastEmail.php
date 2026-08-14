@@ -3,6 +3,7 @@
 namespace App\Mail;
 
 use App\Models\EmailCampaign;
+use App\Support\EmailBlastSanitizer;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
@@ -32,7 +33,7 @@ class BlastEmail extends Mailable
         return new Content(
             view: 'emails.blast',
             with: [
-                'content' => $this->campaign->content,
+                'content' => EmailBlastSanitizer::sanitize($this->campaign->content),
             ]
         );
     }

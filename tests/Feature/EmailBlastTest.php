@@ -15,6 +15,7 @@ use App\Models\Harga;
 use App\Models\HargaCart;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Support\EmailBlastSanitizer;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
@@ -106,6 +107,7 @@ class EmailBlastTest extends TestCase
         $component = Livewire::actingAs($admin)
             ->test(EmailBlast::class)
             ->assertSeeHtml('wire:click="setTargetType(\'all\')"')
+            ->assertSeeHtml('wire:click="setTargetType(\'buyers\')"')
             ->assertSeeHtml('wire:click="setTargetType(\'event\')"')
             ->assertSeeHtml('wire:click="setTargetType(\'users\')"')
             ->assertDontSeeHtml('wire:model.live="targetType"')
@@ -188,6 +190,42 @@ class EmailBlastTest extends TestCase
             ->assertDontSee('other-user@example.test');
     }
 
+    public function test_sanitizer_preserves_safe_html_and_removes_dangerous_elements(): void
+    {
+        $dirtyHtml = '<p onclick="alert(1)">Halo <strong>aman</strong></p><script>alert(1)</script><ul><li>Item</li></ul><a href="javascript:alert(1)" onload="x()">Klik</a><img src=x onerror=alert(1)>';
+        $sanitized = EmailBlastSanitizer::sanitize($dirtyHtml);
+
+        $this->assertStringContainsString('<p>Halo <strong>aman</strong></p>', $sanitized);
+        $this->assertStringContainsString('<ul><li>Item</li></ul>', $sanitized);
+        $this->assertStringNotContainsString('<script', $sanitized);
+        $this->assertStringNotContainsString('onclick=', $sanitized);
+        $this->assertStringNotContainsString('onerror=', $sanitized);
+        $this->assertStringNotContainsString('onload=', $sanitized);
+        $this->assertStringNotContainsString('javascript:', $sanitized);
+        $this->assertStringNotContainsString('<img', $sanitized);
+    }
+
+    public function test_preview_uses_sanitized_content(): void
+    {
+        Queue::fake();
+
+        $admin = $this->user(['role' => 'admin', 'email' => 'admin-preview-sanitized@example.test']);
+
+        Livewire::actingAs($admin)
+            ->test(EmailBlast::class)
+            ->set('subject', 'Preview Aman')
+            ->set('content', '<p onload="alert(1)">Halo <strong>Preview</strong></p><script>alert(2)</script>')
+            ->call('previewBlast')
+            ->assertSet('showPreviewModal', true)
+            ->assertSee('Halo')
+            ->assertSee('Preview')
+            ->assertDontSee('alert(2)')
+            ->assertDontSee('onload=');
+
+        $this->assertDatabaseCount('email_campaigns', 0);
+        Queue::assertNothingPushed();
+    }
+
     public function test_event_target_only_uses_success_transactions_without_duplicate_recipients(): void
     {
         Queue::fake();
@@ -236,6 +274,57 @@ class EmailBlastTest extends TestCase
         $this->assertSame($expectedUids, $recipientUids);
     }
 
+    public function test_buyers_target_only_uses_users_with_success_transactions_without_duplicates_or_missing_email(): void
+    {
+        Queue::fake();
+
+        $admin = $this->user(['role' => 'admin', 'email' => 'admin-buyers@example.test']);
+        $owner = $this->user(['role' => 'penyewa', 'email' => 'owner-buyers@example.test']);
+        $eventA = $this->event($owner, 'buyers-a');
+        $eventB = $this->event($owner, 'buyers-b');
+
+        $buyerA = $this->user(['email' => 'buyer-a@example.test', 'role' => User::USER_ROLE]);
+        $buyerB = $this->user(['email' => 'buyer-b@example.test', 'role' => User::USER_ROLE]);
+        $failedOnly = $this->user(['email' => 'failed-only@example.test', 'role' => User::USER_ROLE]);
+        $pendingOnly = $this->user(['email' => 'pending-only@example.test', 'role' => User::USER_ROLE]);
+        $noEmailBuyer = $this->user(['email' => '', 'role' => User::USER_ROLE]);
+
+        $this->successfulTransaction($buyerA, $eventA, 'BUY1');
+        $this->successfulTransaction($buyerA, $eventB, 'BUY2');
+        $this->successfulTransaction($buyerB, $eventA, 'BUY3');
+        $this->transaction($failedOnly, $eventA, 'FAILED', 'BUY4');
+        $this->transaction($pendingOnly, $eventA, 'PENDING', 'BUY5');
+        $this->successfulTransaction($noEmailBuyer, $eventA, 'BUY6');
+
+        Livewire::actingAs($admin)
+            ->test(EmailBlast::class)
+            ->call('setTargetType', 'buyers')
+            ->set('subject', 'Blast Pembeli')
+            ->set('content', '<p>Halo pembeli</p>')
+            ->call('sendBlast')
+            ->assertSet('showConfirmationModal', true)
+            ->assertSet('pendingRecipientCount', 2)
+            ->assertSee('Email ini akan dikirim ke 2 pengguna.')
+            ->call('confirmSendBlast')
+            ->assertHasNoErrors();
+
+        $campaign = EmailCampaign::query()->firstOrFail();
+        $recipientUids = EmailCampaignRecipient::query()
+            ->where('email_campaign_id', $campaign->id)
+            ->pluck('user_uid')
+            ->sort()
+            ->values()
+            ->all();
+        $expectedUids = collect([$buyerA->uid, $buyerB->uid])->sort()->values()->all();
+
+        $this->assertSame('buyers', $campaign->target_type);
+        $this->assertSame(2, $campaign->total_recipients);
+        $this->assertSame($expectedUids, $recipientUids);
+        $this->assertNotContains($failedOnly->uid, $recipientUids);
+        $this->assertNotContains($pendingOnly->uid, $recipientUids);
+        $this->assertNotContains($noEmailBuyer->uid, $recipientUids);
+    }
+
     public function test_users_target_uses_selected_users_without_duplicates(): void
     {
         Queue::fake();
@@ -272,6 +361,47 @@ class EmailBlastTest extends TestCase
         $this->assertSame(2, $campaign->total_recipients);
         $this->assertSame($expectedUids, $recipientUids);
         $this->assertNotContains($userB->uid, $recipientUids);
+    }
+
+    public function test_campaign_stores_sanitized_content_and_email_uses_sanitized_html(): void
+    {
+        Mail::fake();
+
+        $admin = $this->user(['role' => 'admin', 'email' => 'admin-sanitize-campaign@example.test']);
+        $buyer = $this->user(['email' => 'sanitize-buyer@example.test', 'role' => User::USER_ROLE]);
+        $owner = $this->user(['role' => 'penyewa', 'email' => 'owner-sanitize@example.test']);
+        $event = $this->event($owner, 'sanitize');
+
+        $this->successfulTransaction($buyer, $event, 'SAN1');
+
+        $dirtyHtml = '<h2 onclick="alert(1)">Promo</h2><p>Halo <strong>Pembeli</strong></p><a href="javascript:alert(2)" onerror="alert(3)">Link</a><script>alert(4)</script>';
+
+        Livewire::actingAs($admin)
+            ->test(EmailBlast::class)
+            ->call('setTargetType', 'buyers')
+            ->set('subject', 'Sanitized Campaign')
+            ->set('content', $dirtyHtml)
+            ->call('sendBlast')
+            ->call('confirmSendBlast')
+            ->assertHasNoErrors();
+
+        $campaign = EmailCampaign::query()->firstOrFail();
+
+        $this->assertStringContainsString('<h2>Promo</h2>', $campaign->content);
+        $this->assertStringContainsString('<p>Halo <strong>Pembeli</strong></p>', $campaign->content);
+        $this->assertStringNotContainsString('<script', $campaign->content);
+        $this->assertStringNotContainsString('onclick=', $campaign->content);
+        $this->assertStringNotContainsString('onerror=', $campaign->content);
+        $this->assertStringNotContainsString('javascript:', $campaign->content);
+
+        $mailable = new BlastEmail($campaign);
+        $rendered = $mailable->render();
+
+        $this->assertStringContainsString('<h2>Promo</h2>', $rendered);
+        $this->assertStringContainsString('<strong>Pembeli</strong>', $rendered);
+        $this->assertStringNotContainsString('<script', $rendered);
+        $this->assertStringNotContainsString('onclick=', $rendered);
+        $this->assertStringNotContainsString('javascript:', $rendered);
     }
 
     public function test_process_job_marks_campaign_processing_then_completed_and_updates_counters(): void

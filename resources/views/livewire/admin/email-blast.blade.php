@@ -79,7 +79,7 @@
                 <div>
                     <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Target
                         Penerima</label>
-                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                         <button type="button" wire:click="setTargetType('all')"
                             class="relative flex items-center p-4 border rounded-xl cursor-pointer transition-all duration-200 {{ $targetType === 'all' ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20' : 'border-slate-200 dark:border-slate-700 hover:border-indigo-300' }}">
                             <div class="flex items-center gap-3">
@@ -94,6 +94,25 @@
                             <div
                                 class="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 border-2 rounded-full flex items-center justify-center {{ $targetType === 'all' ? 'border-indigo-600' : 'border-slate-300 dark:border-slate-600' }}">
                                 @if($targetType === 'all')
+                                    <div class="w-2 h-2 bg-indigo-600 rounded-full"></div>
+                                @endif
+                            </div>
+                        </button>
+
+                        <button type="button" wire:click="setTargetType('buyers')"
+                            class="relative flex items-center p-4 border rounded-xl cursor-pointer transition-all duration-200 {{ $targetType === 'buyers' ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20' : 'border-slate-200 dark:border-slate-700 hover:border-indigo-300' }}">
+                            <div class="flex items-center gap-3">
+                                <div
+                                    class="flex-shrink-0 w-10 h-10 rounded-full bg-fuchsia-100 dark:bg-fuchsia-900/50 flex items-center justify-center text-fuchsia-600 dark:text-fuchsia-400">
+                                    <i data-lucide="shopping-bag" class="w-5 h-5"></i>
+                                </div>
+                                <div>
+                                    <h5 class="text-xs font-semibold text-slate-900 dark:text-white">Semua Pembeli</h5>
+                                </div>
+                            </div>
+                            <div
+                                class="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 border-2 rounded-full flex items-center justify-center {{ $targetType === 'buyers' ? 'border-indigo-600' : 'border-slate-300 dark:border-slate-600' }}">
+                                @if($targetType === 'buyers')
                                     <div class="w-2 h-2 bg-indigo-600 rounded-full"></div>
                                 @endif
                             </div>
@@ -357,6 +376,7 @@
                         @php
                             $targetLabel = match ($campaign->target_type) {
                                 'all' => 'Semua Pengguna',
+                                'buyers' => 'Semua Pembeli',
                                 'event' => 'Event: ' . ($campaign->event?->event ?? '-'),
                                 'users' => 'Pilih User',
                                 default => ucfirst($campaign->target_type),

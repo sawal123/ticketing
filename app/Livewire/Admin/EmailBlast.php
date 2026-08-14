@@ -7,6 +7,7 @@ use App\Models\EmailCampaign;
 use App\Models\EmailCampaignRecipient;
 use App\Models\Event;
 use App\Models\User;
+use App\Support\EmailBlastSanitizer;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -15,9 +16,9 @@ use Livewire\Component;
 class EmailBlast extends Component
 {
     private const RECIPIENT_CHUNK_SIZE = 100;
-    private const ALLOWED_TARGET_TYPES = ['all', 'event', 'users'];
+    private const ALLOWED_TARGET_TYPES = ['all', 'buyers', 'event', 'users'];
 
-    public $targetType = 'all'; // 'all', 'event', 'users'
+    public $targetType = 'all'; // 'all', 'buyers', 'event', 'users'
     public $event_uid = '';
     public $users_selected = []; // Array of user UIDs
     public $search_user = '';
@@ -34,7 +35,7 @@ class EmailBlast extends Component
     protected function rules()
     {
         return [
-            'targetType' => 'required|in:all,event,users',
+            'targetType' => 'required|in:all,buyers,event,users',
             'event_uid' => 'exclude_unless:targetType,event|required',
             'users_selected' => 'exclude_unless:targetType,users|required|array|min:1',
             'users_selected.*' => 'exclude_unless:targetType,users|string|exists:users,uid',
@@ -82,10 +83,11 @@ class EmailBlast extends Component
             'subject' => 'required|string|max:255',
             'content' => 'required|string',
         ]);
+        $sanitizedContent = EmailBlastSanitizer::sanitize($validated['content']);
 
         $this->previewSubject = $validated['subject'];
         $this->previewHtml = view('emails.blast', [
-            'content' => $validated['content'],
+            'content' => $sanitizedContent,
         ])->render();
         $this->showPreviewModal = true;
     }
@@ -106,6 +108,7 @@ class EmailBlast extends Component
 
         $validated = $this->validate();
         $validated['users_selected'] = array_values(array_unique($validated['users_selected'] ?? []));
+        $validated['content'] = EmailBlastSanitizer::sanitize($validated['content']);
 
         $recipientQuery = $this->recipientQuery($validated);
         $totalRecipients = (clone $recipientQuery)->count();
@@ -258,6 +261,12 @@ class EmailBlast extends Component
             $query->whereHas('transactions', function ($transactionQuery) use ($eventUid) {
                 $transactionQuery->where('event_uid', $eventUid)
                     ->where('status_transaksi', 'SUCCESS');
+            });
+        }
+
+        if (($payload['targetType'] ?? 'all') === 'buyers') {
+            $query->whereHas('transactions', function ($transactionQuery) {
+                $transactionQuery->where('status_transaksi', 'SUCCESS');
             });
         }
 

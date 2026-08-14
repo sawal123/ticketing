@@ -29,6 +29,38 @@
             line-height: 1.6;
         }
 
+        .content h1,
+        .content h2,
+        .content h3,
+        .content h4 {
+            margin: 0 0 16px;
+            color: #111827;
+            line-height: 1.3;
+        }
+
+        .content p,
+        .content ul,
+        .content ol,
+        .content blockquote {
+            margin: 0 0 16px;
+        }
+
+        .content ul,
+        .content ol {
+            padding-left: 24px;
+        }
+
+        .content blockquote {
+            border-left: 4px solid #d1d5db;
+            padding-left: 16px;
+            color: #4b5563;
+        }
+
+        .content a {
+            color: #2563eb;
+            text-decoration: underline;
+        }
+
         .footer {
             background-color: #f9fafb;
             padding: 20px;
