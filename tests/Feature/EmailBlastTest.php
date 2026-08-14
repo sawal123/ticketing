@@ -99,19 +99,93 @@ class EmailBlastTest extends TestCase
         Queue::assertNothingPushed();
     }
 
-    public function test_target_selector_uses_standard_wire_model_binding(): void
+    public function test_target_selector_uses_explicit_click_binding_without_wire_model(): void
     {
         $admin = $this->user(['role' => 'admin', 'email' => 'admin-binding@example.test']);
 
         $component = Livewire::actingAs($admin)
             ->test(EmailBlast::class)
+            ->assertSeeHtml('wire:click="setTargetType(\'all\')"')
+            ->assertSeeHtml('wire:click="setTargetType(\'event\')"')
+            ->assertSeeHtml('wire:click="setTargetType(\'users\')"')
             ->assertDontSeeHtml('wire:model.live="targetType"')
-            ->assertSeeHtml('wire:model="targetType"');
+            ->assertDontSeeHtml('wire:model="targetType"')
+            ->assertDontSeeHtml('$set')
+            ->assertDontSeeHtml('$commit');
 
         $component
             ->set('targetType', 'users')
-            ->assertDontSeeHtml('wire:model.live="search_user"')
-            ->assertSeeHtml('wire:model.debounce.300ms="search_user"');
+            ->assertSeeHtml('wire:input.debounce.300ms="updateSearchUser($event.target.value)"')
+            ->assertDontSeeHtml('wire:model.live.debounce.300ms="search_user"');
+    }
+
+    public function test_target_type_change_to_event_and_users_updates_conditional_ui(): void
+    {
+        $admin = $this->user(['role' => 'admin', 'email' => 'admin-target-ui@example.test']);
+        $owner = $this->user(['role' => 'penyewa', 'email' => 'owner-target-ui@example.test']);
+        $event = $this->event($owner);
+        $selectedUser = $this->user(['email' => 'selected-target-ui@example.test', 'role' => User::USER_ROLE]);
+
+        Livewire::actingAs($admin)
+            ->test(EmailBlast::class)
+            ->call('setTargetType', 'event')
+            ->assertSet('targetType', 'event')
+            ->assertSee('Pilih Event')
+            ->assertSee($event->event)
+            ->call('setTargetType', 'users')
+            ->assertSet('targetType', 'users')
+            ->assertSeeHtml('wire:input.debounce.300ms="updateSearchUser($event.target.value)"')
+            ->assertSee($selectedUser->email);
+    }
+
+    public function test_set_target_type_can_return_to_all_and_resets_previous_selection(): void
+    {
+        $admin = $this->user(['role' => 'admin', 'email' => 'admin-reset-target@example.test']);
+        $owner = $this->user(['role' => 'penyewa', 'email' => 'owner-reset-target@example.test']);
+        $event = $this->event($owner);
+        $selectedUser = $this->user(['email' => 'selected-reset@example.test', 'role' => User::USER_ROLE]);
+
+        Livewire::actingAs($admin)
+            ->test(EmailBlast::class)
+            ->set('event_uid', $event->uid)
+            ->set('users_selected', [$selectedUser->uid])
+            ->set('search_user', 'selected-reset')
+            ->call('setTargetType', 'users')
+            ->assertSet('targetType', 'users')
+            ->assertSet('event_uid', '')
+            ->assertSet('users_selected', [])
+            ->assertSet('search_user', '')
+            ->call('setTargetType', 'all')
+            ->assertSet('targetType', 'all')
+            ->assertSet('event_uid', '')
+            ->assertSet('users_selected', []);
+    }
+
+    public function test_invalid_target_type_is_rejected(): void
+    {
+        $admin = $this->user(['role' => 'admin', 'email' => 'admin-invalid-target@example.test']);
+
+        Livewire::actingAs($admin)
+            ->test(EmailBlast::class)
+            ->call('setTargetType', 'all')
+            ->assertSet('targetType', 'all')
+            ->call('setTargetType', 'invalid')
+            ->assertSet('targetType', 'all');
+    }
+
+    public function test_search_user_updates_without_wire_commit_binding(): void
+    {
+        $admin = $this->user(['role' => 'admin', 'email' => 'admin-search-user@example.test']);
+        $matchedUser = $this->user(['email' => 'matched-user@example.test', 'role' => User::USER_ROLE]);
+        $this->user(['email' => 'other-user@example.test', 'role' => User::USER_ROLE]);
+
+        Livewire::actingAs($admin)
+            ->test(EmailBlast::class)
+            ->call('setTargetType', 'users')
+            ->call('updateSearchUser', 'matched-user')
+            ->assertSet('search_user', 'matched-user')
+            ->assertSee($matchedUser->email)
+            ->assertDontSee('other-user@example.test');
     }
 
     public function test_event_target_only_uses_success_transactions_without_duplicate_recipients(): void

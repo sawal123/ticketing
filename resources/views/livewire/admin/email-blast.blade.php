@@ -80,9 +80,8 @@
                     <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Target
                         Penerima</label>
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                        <label
+                        <button type="button" wire:click="setTargetType('all')"
                             class="relative flex items-center p-4 border rounded-xl cursor-pointer transition-all duration-200 {{ $targetType === 'all' ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20' : 'border-slate-200 dark:border-slate-700 hover:border-indigo-300' }}">
-                            <input type="radio" wire:model="targetType" value="all" class="peer sr-only">
                             <div class="flex items-center gap-3">
                                 <div
                                     class="flex-shrink-0 w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
@@ -98,11 +97,10 @@
                                     <div class="w-2 h-2 bg-indigo-600 rounded-full"></div>
                                 @endif
                             </div>
-                        </label>
+                        </button>
 
-                        <label
+                        <button type="button" wire:click="setTargetType('event')"
                             class="relative flex items-center p-4 border rounded-xl cursor-pointer transition-all duration-200 {{ $targetType === 'event' ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20' : 'border-slate-200 dark:border-slate-700 hover:border-indigo-300' }}">
-                            <input type="radio" wire:model="targetType" value="event" class="peer sr-only">
                             <div class="flex items-center gap-3">
                                 <div
                                     class="flex-shrink-0 w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
@@ -118,11 +116,10 @@
                                     <div class="w-2 h-2 bg-indigo-600 rounded-full"></div>
                                 @endif
                             </div>
-                        </label>
+                        </button>
 
-                        <label
+                        <button type="button" wire:click="setTargetType('users')"
                             class="relative flex items-center p-4 border rounded-xl cursor-pointer transition-all duration-200 {{ $targetType === 'users' ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20' : 'border-slate-200 dark:border-slate-700 hover:border-indigo-300' }}">
-                            <input type="radio" wire:model="targetType" value="users" class="peer sr-only">
                             <div class="flex items-center gap-3">
                                 <div
                                     class="flex-shrink-0 w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center text-amber-600 dark:text-amber-400">
@@ -138,7 +135,7 @@
                                     <div class="w-2 h-2 bg-indigo-600 rounded-full"></div>
                                 @endif
                             </div>
-                        </label>
+                        </button>
                     </div>
                 </div>
 
@@ -174,7 +171,8 @@
                                 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                     <i data-lucide="search" class="h-4 w-4 text-slate-400"></i>
                                 </div>
-                                <input type="text" wire:model.debounce.300ms="search_user" placeholder="Cari nama atau email..."
+                                <input type="text" value="{{ $search_user }}"
+                                    wire:input.debounce.300ms="updateSearchUser($event.target.value)" placeholder="Cari nama atau email..."
                                     class="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-slate-900 dark:text-white transition-all duration-200 outline-none">
                             </div>
                         </div>

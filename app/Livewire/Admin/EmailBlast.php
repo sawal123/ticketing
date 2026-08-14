@@ -15,6 +15,7 @@ use Livewire\Component;
 class EmailBlast extends Component
 {
     private const RECIPIENT_CHUNK_SIZE = 100;
+    private const ALLOWED_TARGET_TYPES = ['all', 'event', 'users'];
 
     public $targetType = 'all'; // 'all', 'event', 'users'
     public $event_uid = '';
@@ -51,10 +52,20 @@ class EmailBlast extends Component
         'content.required' => 'Isi email tidak boleh kosong.',
     ];
 
-    public function updatedTargetType()
+    public function setTargetType(string $target): void
     {
+        if (! in_array($target, self::ALLOWED_TARGET_TYPES, true)) {
+            return;
+        }
+
+        if ($this->targetType === $target) {
+            return;
+        }
+
+        $this->targetType = $target;
         $this->event_uid = '';
         $this->users_selected = [];
+        $this->search_user = '';
         $this->resetBlastDialogs();
     }
 
@@ -82,6 +93,11 @@ class EmailBlast extends Component
     public function closePreview(): void
     {
         $this->showPreviewModal = false;
+    }
+
+    public function updateSearchUser(string $value): void
+    {
+        $this->search_user = $value;
     }
 
     public function sendBlast(): void
