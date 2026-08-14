@@ -256,4 +256,67 @@
             </form>
         </div>
     </div>
+
+    <div
+        class="mt-6 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+        <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-800">
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-white">Riwayat Blast</h2>
+            <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">10 campaign terakhir beserta progres dasarnya.</p>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-slate-200 dark:divide-slate-800">
+                <thead class="bg-slate-50 dark:bg-slate-950/40">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Subjek</th>
+                        <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Target</th>
+                        <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Total</th>
+                        <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Sent</th>
+                        <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Failed</th>
+                        <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Status</th>
+                        <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Tanggal</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-200 dark:divide-slate-800">
+                    @forelse($campaigns as $campaign)
+                        @php
+                            $targetLabel = match ($campaign->target_type) {
+                                'all' => 'Semua Pengguna',
+                                'event' => 'Event: ' . ($campaign->event?->event ?? '-'),
+                                'users' => 'Pilih User',
+                                default => ucfirst($campaign->target_type),
+                            };
+
+                            $statusClasses = [
+                                'pending' => 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800',
+                                'processing' => 'bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-900/30 dark:text-sky-400 dark:border-sky-800',
+                                'completed' => 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800',
+                                'completed_with_failures' => 'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-800',
+                                'failed' => 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-900/30 dark:text-rose-400 dark:border-rose-800',
+                            ];
+                        @endphp
+                        <tr>
+                            <td class="px-6 py-4 text-sm font-medium text-slate-900 dark:text-white">{{ $campaign->subject }}</td>
+                            <td class="px-6 py-4 text-sm text-slate-600 dark:text-slate-300">{{ $targetLabel }}</td>
+                            <td class="px-6 py-4 text-sm text-slate-600 dark:text-slate-300">{{ number_format($campaign->total_recipients) }}</td>
+                            <td class="px-6 py-4 text-sm text-emerald-600 dark:text-emerald-400">{{ number_format($campaign->sent_count) }}</td>
+                            <td class="px-6 py-4 text-sm text-rose-600 dark:text-rose-400">{{ number_format($campaign->failed_count) }}</td>
+                            <td class="px-6 py-4">
+                                <span class="inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold {{ $statusClasses[$campaign->status] ?? 'bg-slate-50 text-slate-600 border-slate-200' }}">
+                                    {{ str_replace('_', ' ', ucfirst($campaign->status)) }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 text-sm text-slate-500 dark:text-slate-400">{{ $campaign->created_at->format('d M Y, H:i') }}</td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="7" class="px-6 py-8 text-center text-sm text-slate-500 dark:text-slate-400">
+                                Belum ada riwayat email blast.
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </div>
 </div>
