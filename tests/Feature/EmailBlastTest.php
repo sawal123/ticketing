@@ -55,6 +55,11 @@ class EmailBlastTest extends TestCase
             ->set('subject', 'Blast Semua')
             ->set('content', '<p>Halo semua</p>')
             ->call('sendBlast')
+            ->assertSet('showConfirmationModal', true)
+            ->assertSet('pendingRecipientCount', 205)
+            ->assertSee('Email ini akan dikirim ke 205 pengguna.')
+            ->assertSee('Lanjutkan?')
+            ->call('confirmSendBlast')
             ->assertHasNoErrors();
 
         $campaign = EmailCampaign::query()->firstOrFail();
@@ -72,6 +77,26 @@ class EmailBlastTest extends TestCase
                 && count($job->recipientIds) <= 100
                 && collect($job->recipientIds)->every(fn ($id) => is_int($id));
         });
+    }
+
+    public function test_preview_does_not_create_campaign_or_dispatch_jobs_and_shows_rendered_email(): void
+    {
+        Queue::fake();
+
+        $admin = $this->user(['role' => 'admin', 'email' => 'admin-preview@example.test']);
+
+        Livewire::actingAs($admin)
+            ->test(EmailBlast::class)
+            ->set('subject', 'Preview Subject')
+            ->set('content', '<p>Halo Preview</p>')
+            ->call('previewBlast')
+            ->assertSet('showPreviewModal', true)
+            ->assertSee('Preview Subject')
+            ->assertSee('Halo Preview');
+
+        $this->assertDatabaseCount('email_campaigns', 0);
+        $this->assertDatabaseCount('email_campaign_recipients', 0);
+        Queue::assertNothingPushed();
     }
 
     public function test_event_target_only_uses_success_transactions_without_duplicate_recipients(): void
@@ -101,6 +126,11 @@ class EmailBlastTest extends TestCase
             ->set('subject', 'Blast Event')
             ->set('content', '<p>Halo pembeli event</p>')
             ->call('sendBlast')
+            ->assertSet('showConfirmationModal', true)
+            ->assertSet('pendingRecipientCount', 2)
+            ->assertSee('Email ini akan dikirim ke 2 pengguna.')
+            ->assertSee('Lanjutkan?')
+            ->call('confirmSendBlast')
             ->assertHasNoErrors();
 
         $campaign = EmailCampaign::query()->firstOrFail();
@@ -133,6 +163,11 @@ class EmailBlastTest extends TestCase
             ->set('subject', 'Blast Pilihan')
             ->set('content', '<p>Halo user pilihan</p>')
             ->call('sendBlast')
+            ->assertSet('showConfirmationModal', true)
+            ->assertSet('pendingRecipientCount', 2)
+            ->assertSee('Email ini akan dikirim ke 2 pengguna.')
+            ->assertSee('Lanjutkan?')
+            ->call('confirmSendBlast')
             ->assertHasNoErrors();
 
         $campaign = EmailCampaign::query()->firstOrFail();
@@ -337,6 +372,79 @@ class EmailBlastTest extends TestCase
         Livewire::actingAs($user)
             ->test(EmailBlast::class)
             ->assertForbidden();
+    }
+
+    public function test_cancel_confirmation_does_not_create_campaign_or_dispatch_job(): void
+    {
+        Queue::fake();
+
+        $admin = $this->user(['role' => 'admin', 'email' => 'admin-cancel@example.test']);
+        $this->user(['email' => 'member-cancel@example.test', 'role' => User::USER_ROLE]);
+
+        Livewire::actingAs($admin)
+            ->test(EmailBlast::class)
+            ->set('targetType', 'all')
+            ->set('subject', 'Batal Blast')
+            ->set('content', '<p>Belum jadi</p>')
+            ->call('sendBlast')
+            ->assertSet('showConfirmationModal', true)
+            ->call('cancelSendBlast')
+            ->assertSet('showConfirmationModal', false);
+
+        $this->assertDatabaseCount('email_campaigns', 0);
+        $this->assertDatabaseCount('email_campaign_recipients', 0);
+        Queue::assertNothingPushed();
+    }
+
+    public function test_confirm_click_repeatedly_only_creates_one_campaign(): void
+    {
+        Queue::fake();
+
+        $admin = $this->user(['role' => 'admin', 'email' => 'admin-double-confirm@example.test']);
+
+        foreach (range(1, 3) as $index) {
+            $this->user([
+                'email' => "double-confirm-{$index}@example.test",
+                'role' => User::USER_ROLE,
+            ]);
+        }
+
+        Livewire::actingAs($admin)
+            ->test(EmailBlast::class)
+            ->set('targetType', 'all')
+            ->set('subject', 'Single Campaign')
+            ->set('content', '<p>Sekali saja</p>')
+            ->call('sendBlast')
+            ->call('confirmSendBlast')
+            ->call('confirmSendBlast');
+
+        $this->assertDatabaseCount('email_campaigns', 1);
+        $this->assertDatabaseCount('email_campaign_recipients', 3);
+        Queue::assertPushed(ProcessEmailBlast::class, 1);
+    }
+
+    public function test_zero_recipient_cannot_continue_to_send_process(): void
+    {
+        Queue::fake();
+
+        $admin = $this->user(['role' => 'admin', 'email' => 'admin-zero@example.test']);
+        $owner = $this->user(['role' => 'penyewa', 'email' => 'owner-zero@example.test']);
+        $event = $this->event($owner);
+        $this->transaction($this->user(['email' => 'failed-only@example.test', 'role' => User::USER_ROLE]), $event, 'FAILED', 'Z1');
+
+        Livewire::actingAs($admin)
+            ->test(EmailBlast::class)
+            ->set('targetType', 'event')
+            ->set('event_uid', $event->uid)
+            ->set('subject', 'Zero Recipient')
+            ->set('content', '<p>Tidak ada penerima</p>')
+            ->call('sendBlast')
+            ->assertSet('showConfirmationModal', false)
+            ->assertSet('pendingRecipientCount', 0);
+
+        $this->assertDatabaseCount('email_campaigns', 0);
+        $this->assertDatabaseCount('email_campaign_recipients', 0);
+        Queue::assertNothingPushed();
     }
 
     private function recipient(EmailCampaign $campaign, string $email, string $userUid): EmailCampaignRecipient

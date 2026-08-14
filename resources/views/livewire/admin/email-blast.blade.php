@@ -240,7 +240,20 @@
                 @error('content') <p class="mt-1 text-xs text-rose-500">{{ $message }}</p> @enderror
 
                 <!-- Submit Button -->
-                <div class="flex justify-end pt-4 border-t border-slate-100 dark:border-slate-800">
+                <div class="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+                    <button type="button" wire:click="previewBlast" wire:loading.attr="disabled"
+                        wire:target="previewBlast"
+                        class="px-6 py-2.5 bg-white hover:bg-slate-50 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 text-sm font-medium rounded-xl transition-all duration-200 border border-slate-200 dark:border-slate-700 flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed">
+                        <span wire:loading.remove wire:target="previewBlast" class="flex items-center gap-2">
+                            <i data-lucide="mail-open" class="w-4 h-4"></i>
+                            Preview
+                        </span>
+                        <span wire:loading.flex wire:target="previewBlast" class="items-center gap-2" x-cloak>
+                            <i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i>
+                            Menyiapkan...
+                        </span>
+                    </button>
+
                     <button type="submit" wire:loading.attr="disabled" wire:target="sendBlast"
                         class="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-xl transition-all duration-200 shadow-sm shadow-indigo-600/20 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed">
                         <span wire:loading.remove wire:target="sendBlast" class="flex items-center gap-2">
@@ -256,6 +269,70 @@
             </form>
         </div>
     </div>
+
+    @if ($showPreviewModal)
+        <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 px-4 py-6">
+            <div class="max-h-[90vh] w-full max-w-5xl overflow-hidden rounded-2xl bg-white shadow-2xl">
+                <div class="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+                    <div>
+                        <h2 class="text-lg font-semibold text-slate-900">Preview Email</h2>
+                        <p class="mt-1 text-sm text-slate-500">Tampilan email sebelum dikirim.</p>
+                    </div>
+                    <button type="button" wire:click="closePreview"
+                        class="rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700">
+                        <i data-lucide="x" class="h-5 w-5"></i>
+                    </button>
+                </div>
+
+                <div class="max-h-[calc(90vh-88px)] overflow-y-auto px-6 py-5">
+                    <div class="mb-5 rounded-xl border border-slate-200 bg-slate-50 p-4">
+                        <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Subject</p>
+                        <p class="mt-2 text-base font-semibold text-slate-900">{{ $previewSubject }}</p>
+                    </div>
+
+                    <div class="rounded-2xl border border-slate-200 bg-slate-100 p-4">
+                        <div class="mx-auto max-w-3xl overflow-hidden rounded-2xl bg-white shadow-sm">
+                            {!! $previewHtml !!}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
+
+    @if ($showConfirmationModal)
+        <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 px-4 py-6">
+            <div class="w-full max-w-lg overflow-hidden rounded-2xl bg-white shadow-2xl">
+                <div class="border-b border-slate-200 px-6 py-4">
+                    <h2 class="text-lg font-semibold text-slate-900">Konfirmasi Pengiriman</h2>
+                    <p class="mt-1 text-sm text-slate-500">Periksa kembali jumlah penerima sebelum blast dijalankan.</p>
+                </div>
+
+                <div class="px-6 py-5">
+                    <p class="text-sm leading-6 text-slate-700">
+                        Email ini akan dikirim ke {{ number_format($pendingRecipientCount, 0, ',', '.') }} pengguna.
+                        Lanjutkan?
+                    </p>
+                </div>
+
+                <div class="flex justify-end gap-3 border-t border-slate-200 px-6 py-4">
+                    <button type="button" wire:click="cancelSendBlast"
+                        class="px-4 py-2 text-sm font-medium text-slate-700 transition hover:text-slate-900">
+                        Batal
+                    </button>
+                    <button type="button" wire:click="confirmSendBlast" wire:loading.attr="disabled"
+                        wire:target="confirmSendBlast"
+                        class="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-indigo-700 disabled:opacity-70 disabled:cursor-not-allowed">
+                        <span wire:loading.remove wire:target="confirmSendBlast">Lanjutkan</span>
+                        <span wire:loading.flex wire:target="confirmSendBlast" class="items-center gap-2" x-cloak>
+                            <i data-lucide="loader-2" class="h-4 w-4 animate-spin"></i>
+                            Memproses...
+                        </span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    @endif
 
     <div
         class="mt-6 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
