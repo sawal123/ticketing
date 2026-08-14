@@ -79,10 +79,9 @@
                 <div>
                     <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Target
                         Penerima</label>
-                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                        <label
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <button type="button" wire:click="setTargetType('all')"
                             class="relative flex items-center p-4 border rounded-xl cursor-pointer transition-all duration-200 {{ $targetType === 'all' ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20' : 'border-slate-200 dark:border-slate-700 hover:border-indigo-300' }}">
-                            <input type="radio" wire:model.live="targetType" value="all" class="peer sr-only">
                             <div class="flex items-center gap-3">
                                 <div
                                     class="flex-shrink-0 w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
@@ -98,11 +97,29 @@
                                     <div class="w-2 h-2 bg-indigo-600 rounded-full"></div>
                                 @endif
                             </div>
-                        </label>
+                        </button>
 
-                        <label
+                        <button type="button" wire:click="setTargetType('buyers')"
+                            class="relative flex items-center p-4 border rounded-xl cursor-pointer transition-all duration-200 {{ $targetType === 'buyers' ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20' : 'border-slate-200 dark:border-slate-700 hover:border-indigo-300' }}">
+                            <div class="flex items-center gap-3">
+                                <div
+                                    class="flex-shrink-0 w-10 h-10 rounded-full bg-fuchsia-100 dark:bg-fuchsia-900/50 flex items-center justify-center text-fuchsia-600 dark:text-fuchsia-400">
+                                    <i data-lucide="shopping-bag" class="w-5 h-5"></i>
+                                </div>
+                                <div>
+                                    <h5 class="text-xs font-semibold text-slate-900 dark:text-white">Semua Pembeli</h5>
+                                </div>
+                            </div>
+                            <div
+                                class="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 border-2 rounded-full flex items-center justify-center {{ $targetType === 'buyers' ? 'border-indigo-600' : 'border-slate-300 dark:border-slate-600' }}">
+                                @if($targetType === 'buyers')
+                                    <div class="w-2 h-2 bg-indigo-600 rounded-full"></div>
+                                @endif
+                            </div>
+                        </button>
+
+                        <button type="button" wire:click="setTargetType('event')"
                             class="relative flex items-center p-4 border rounded-xl cursor-pointer transition-all duration-200 {{ $targetType === 'event' ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20' : 'border-slate-200 dark:border-slate-700 hover:border-indigo-300' }}">
-                            <input type="radio" wire:model.live="targetType" value="event" class="peer sr-only">
                             <div class="flex items-center gap-3">
                                 <div
                                     class="flex-shrink-0 w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
@@ -118,11 +135,10 @@
                                     <div class="w-2 h-2 bg-indigo-600 rounded-full"></div>
                                 @endif
                             </div>
-                        </label>
+                        </button>
 
-                        <label
+                        <button type="button" wire:click="setTargetType('users')"
                             class="relative flex items-center p-4 border rounded-xl cursor-pointer transition-all duration-200 {{ $targetType === 'users' ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20' : 'border-slate-200 dark:border-slate-700 hover:border-indigo-300' }}">
-                            <input type="radio" wire:model.live="targetType" value="users" class="peer sr-only">
                             <div class="flex items-center gap-3">
                                 <div
                                     class="flex-shrink-0 w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center text-amber-600 dark:text-amber-400">
@@ -138,7 +154,7 @@
                                     <div class="w-2 h-2 bg-indigo-600 rounded-full"></div>
                                 @endif
                             </div>
-                        </label>
+                        </button>
                     </div>
                 </div>
 
@@ -174,7 +190,8 @@
                                 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                     <i data-lucide="search" class="h-4 w-4 text-slate-400"></i>
                                 </div>
-                                <input type="text" wire:model.live="search_user" placeholder="Cari nama atau email..."
+                                <input type="text" value="{{ $search_user }}"
+                                    wire:input.debounce.300ms="updateSearchUser($event.target.value)" placeholder="Cari nama atau email..."
                                     class="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-slate-900 dark:text-white transition-all duration-200 outline-none">
                             </div>
                         </div>
@@ -240,7 +257,20 @@
                 @error('content') <p class="mt-1 text-xs text-rose-500">{{ $message }}</p> @enderror
 
                 <!-- Submit Button -->
-                <div class="flex justify-end pt-4 border-t border-slate-100 dark:border-slate-800">
+                <div class="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+                    <button type="button" wire:click="previewBlast" wire:loading.attr="disabled"
+                        wire:target="previewBlast"
+                        class="px-6 py-2.5 bg-white hover:bg-slate-50 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 text-sm font-medium rounded-xl transition-all duration-200 border border-slate-200 dark:border-slate-700 flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed">
+                        <span wire:loading.remove wire:target="previewBlast" class="flex items-center gap-2">
+                            <i data-lucide="mail-open" class="w-4 h-4"></i>
+                            Preview
+                        </span>
+                        <span wire:loading.flex wire:target="previewBlast" class="items-center gap-2" x-cloak>
+                            <i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i>
+                            Menyiapkan...
+                        </span>
+                    </button>
+
                     <button type="submit" wire:loading.attr="disabled" wire:target="sendBlast"
                         class="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-xl transition-all duration-200 shadow-sm shadow-indigo-600/20 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed">
                         <span wire:loading.remove wire:target="sendBlast" class="flex items-center gap-2">
@@ -254,6 +284,134 @@
                     </button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    @if ($showPreviewModal)
+        <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 px-4 py-6">
+            <div class="max-h-[90vh] w-full max-w-5xl overflow-hidden rounded-2xl bg-white shadow-2xl">
+                <div class="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+                    <div>
+                        <h2 class="text-lg font-semibold text-slate-900">Preview Email</h2>
+                        <p class="mt-1 text-sm text-slate-500">Tampilan email sebelum dikirim.</p>
+                    </div>
+                    <button type="button" wire:click="closePreview"
+                        class="rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700">
+                        <i data-lucide="x" class="h-5 w-5"></i>
+                    </button>
+                </div>
+
+                <div class="max-h-[calc(90vh-88px)] overflow-y-auto px-6 py-5">
+                    <div class="mb-5 rounded-xl border border-slate-200 bg-slate-50 p-4">
+                        <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Subject</p>
+                        <p class="mt-2 text-base font-semibold text-slate-900">{{ $previewSubject }}</p>
+                    </div>
+
+                    <div class="rounded-2xl border border-slate-200 bg-slate-100 p-4">
+                        <div class="mx-auto max-w-3xl overflow-hidden rounded-2xl bg-white shadow-sm">
+                            {!! $previewHtml !!}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
+
+    @if ($showConfirmationModal)
+        <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 px-4 py-6">
+            <div class="w-full max-w-lg overflow-hidden rounded-2xl bg-white shadow-2xl">
+                <div class="border-b border-slate-200 px-6 py-4">
+                    <h2 class="text-lg font-semibold text-slate-900">Konfirmasi Pengiriman</h2>
+                    <p class="mt-1 text-sm text-slate-500">Periksa kembali jumlah penerima sebelum blast dijalankan.</p>
+                </div>
+
+                <div class="px-6 py-5">
+                    <p class="text-sm leading-6 text-slate-700">
+                        Email ini akan dikirim ke {{ number_format($pendingRecipientCount, 0, ',', '.') }} pengguna.
+                        Lanjutkan?
+                    </p>
+                </div>
+
+                <div class="flex justify-end gap-3 border-t border-slate-200 px-6 py-4">
+                    <button type="button" wire:click="cancelSendBlast"
+                        class="px-4 py-2 text-sm font-medium text-slate-700 transition hover:text-slate-900">
+                        Batal
+                    </button>
+                    <button type="button" wire:click="confirmSendBlast" wire:loading.attr="disabled"
+                        wire:target="confirmSendBlast"
+                        class="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-indigo-700 disabled:opacity-70 disabled:cursor-not-allowed">
+                        <span wire:loading.remove wire:target="confirmSendBlast">Lanjutkan</span>
+                        <span wire:loading.flex wire:target="confirmSendBlast" class="items-center gap-2" x-cloak>
+                            <i data-lucide="loader-2" class="h-4 w-4 animate-spin"></i>
+                            Memproses...
+                        </span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    @endif
+
+    <div
+        class="mt-6 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+        <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-800">
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-white">Riwayat Blast</h2>
+            <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">10 campaign terakhir beserta progres dasarnya.</p>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-slate-200 dark:divide-slate-800">
+                <thead class="bg-slate-50 dark:bg-slate-950/40">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Subjek</th>
+                        <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Target</th>
+                        <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Total</th>
+                        <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Sent</th>
+                        <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Failed</th>
+                        <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Status</th>
+                        <th class="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">Tanggal</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-200 dark:divide-slate-800">
+                    @forelse($campaigns as $campaign)
+                        @php
+                            $targetLabel = match ($campaign->target_type) {
+                                'all' => 'Semua Pengguna',
+                                'buyers' => 'Semua Pembeli',
+                                'event' => 'Event: ' . ($campaign->event?->event ?? '-'),
+                                'users' => 'Pilih User',
+                                default => ucfirst($campaign->target_type),
+                            };
+
+                            $statusClasses = [
+                                'pending' => 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800',
+                                'processing' => 'bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-900/30 dark:text-sky-400 dark:border-sky-800',
+                                'completed' => 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800',
+                                'completed_with_failures' => 'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-800',
+                                'failed' => 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-900/30 dark:text-rose-400 dark:border-rose-800',
+                            ];
+                        @endphp
+                        <tr>
+                            <td class="px-6 py-4 text-sm font-medium text-slate-900 dark:text-white">{{ $campaign->subject }}</td>
+                            <td class="px-6 py-4 text-sm text-slate-600 dark:text-slate-300">{{ $targetLabel }}</td>
+                            <td class="px-6 py-4 text-sm text-slate-600 dark:text-slate-300">{{ number_format($campaign->total_recipients) }}</td>
+                            <td class="px-6 py-4 text-sm text-emerald-600 dark:text-emerald-400">{{ number_format($campaign->sent_count) }}</td>
+                            <td class="px-6 py-4 text-sm text-rose-600 dark:text-rose-400">{{ number_format($campaign->failed_count) }}</td>
+                            <td class="px-6 py-4">
+                                <span class="inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold {{ $statusClasses[$campaign->status] ?? 'bg-slate-50 text-slate-600 border-slate-200' }}">
+                                    {{ str_replace('_', ' ', ucfirst($campaign->status)) }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 text-sm text-slate-500 dark:text-slate-400">{{ $campaign->created_at->format('d M Y, H:i') }}</td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="7" class="px-6 py-8 text-center text-sm text-slate-500 dark:text-slate-400">
+                                Belum ada riwayat email blast.
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
         </div>
     </div>
 </div>
