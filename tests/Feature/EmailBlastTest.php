@@ -109,11 +109,12 @@ class EmailBlastTest extends TestCase
             ->orderBy('user_uid')
             ->pluck('user_uid')
             ->all();
+        $expectedUids = collect([$successA->uid, $successB->uid])->sort()->values()->all();
 
         $this->assertSame('event', $campaign->target_type);
         $this->assertSame($event->uid, $campaign->event_uid);
         $this->assertSame(2, $campaign->total_recipients);
-        $this->assertSame([$successA->uid, $successB->uid], $recipientUids);
+        $this->assertSame($expectedUids, $recipientUids);
     }
 
     public function test_users_target_uses_selected_users_without_duplicates(): void
@@ -266,6 +267,67 @@ class EmailBlastTest extends TestCase
         $this->assertSame(0, $campaign->sent_count);
         $this->assertSame(1, $campaign->failed_count);
         $this->assertSame(EmailCampaignRecipient::STATUS_FAILED, $recipient->fresh()->status);
+    }
+
+    public function test_reconciliation_uses_latest_recipient_state_to_finish_processing_campaign(): void
+    {
+        $campaign = EmailCampaign::create([
+            'subject' => 'Reconcile Final',
+            'content' => '<p>Final</p>',
+            'target_type' => 'users',
+            'event_uid' => null,
+            'total_recipients' => 3,
+            'sent_count' => 0,
+            'failed_count' => 0,
+            'status' => EmailCampaign::STATUS_PROCESSING,
+            'created_by' => 'admin-uid',
+        ]);
+
+        $sentA = $this->recipient($campaign, 'sent-a@example.test', 'uid-sent-a');
+        $sentB = $this->recipient($campaign, 'sent-b@example.test', 'uid-sent-b');
+        $failed = $this->recipient($campaign, 'failed@example.test', 'uid-failed');
+
+        $sentA->update(['status' => EmailCampaignRecipient::STATUS_SENT, 'sent_at' => now()]);
+        $sentB->update(['status' => EmailCampaignRecipient::STATUS_SENT, 'sent_at' => now()]);
+        $failed->update(['status' => EmailCampaignRecipient::STATUS_FAILED, 'error_message' => 'SMTP timeout']);
+
+        (new ProcessEmailBlast($campaign->id, []))->handle();
+
+        $campaign->refresh();
+
+        $this->assertSame(EmailCampaign::STATUS_COMPLETED_WITH_FAILURES, $campaign->status);
+        $this->assertSame(2, $campaign->sent_count);
+        $this->assertSame(1, $campaign->failed_count);
+    }
+
+    public function test_completed_campaign_does_not_return_to_processing_when_no_recipient_is_pending(): void
+    {
+        $campaign = EmailCampaign::create([
+            'subject' => 'Stable Final',
+            'content' => '<p>Stable</p>',
+            'target_type' => 'users',
+            'event_uid' => null,
+            'total_recipients' => 2,
+            'sent_count' => 0,
+            'failed_count' => 99,
+            'status' => EmailCampaign::STATUS_COMPLETED,
+            'created_by' => 'admin-uid',
+        ]);
+
+        $sent = $this->recipient($campaign, 'sent@example.test', 'uid-sent');
+        $done = $this->recipient($campaign, 'done@example.test', 'uid-done');
+
+        $sent->update(['status' => EmailCampaignRecipient::STATUS_SENT, 'sent_at' => now()]);
+        $done->update(['status' => EmailCampaignRecipient::STATUS_SENT, 'sent_at' => now()]);
+
+        (new ProcessEmailBlast($campaign->id, [$sent->id, $done->id]))->handle();
+
+        $campaign->refresh();
+
+        $this->assertSame(EmailCampaign::STATUS_COMPLETED, $campaign->status);
+        $this->assertNotSame(EmailCampaign::STATUS_PROCESSING, $campaign->status);
+        $this->assertSame(2, $campaign->sent_count);
+        $this->assertSame(0, $campaign->failed_count);
     }
 
     public function test_non_admin_cannot_run_email_blast(): void

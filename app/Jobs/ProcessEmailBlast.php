@@ -7,6 +7,7 @@ use App\Models\EmailCampaign;
 use App\Models\EmailCampaignRecipient;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
@@ -46,9 +47,6 @@ class ProcessEmailBlast implements ShouldQueue
             ->orderBy('id')
             ->get();
 
-        $sentCount = 0;
-        $failedCount = 0;
-
         foreach ($recipients as $recipient) {
             try {
                 Mail::to($recipient->email)->send(new BlastEmail($campaign));
@@ -58,25 +56,13 @@ class ProcessEmailBlast implements ShouldQueue
                     'error_message' => null,
                     'sent_at' => now(),
                 ]);
-
-                $sentCount++;
             } catch (\Throwable $e) {
                 $recipient->update([
                     'status' => EmailCampaignRecipient::STATUS_FAILED,
                     'error_message' => $this->safeErrorMessage($e),
                     'sent_at' => null,
                 ]);
-
-                $failedCount++;
             }
-        }
-
-        if ($sentCount > 0) {
-            EmailCampaign::query()->whereKey($campaign->id)->increment('sent_count', $sentCount);
-        }
-
-        if ($failedCount > 0) {
-            EmailCampaign::query()->whereKey($campaign->id)->increment('failed_count', $failedCount);
         }
 
         $this->syncCampaignStatus($campaign->id);
@@ -84,31 +70,42 @@ class ProcessEmailBlast implements ShouldQueue
 
     private function syncCampaignStatus(int $campaignId): void
     {
-        $counts = EmailCampaignRecipient::query()
-            ->where('email_campaign_id', $campaignId)
-            ->selectRaw("
-                SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending_count,
-                SUM(CASE WHEN status = 'sent' THEN 1 ELSE 0 END) as sent_count,
-                SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed_count
-            ")
-            ->first();
+        DB::transaction(function () use ($campaignId) {
+            $campaign = EmailCampaign::query()
+                ->whereKey($campaignId)
+                ->lockForUpdate()
+                ->first();
 
-        $pendingCount = (int) ($counts?->pending_count ?? 0);
-        $sentCount = (int) ($counts?->sent_count ?? 0);
-        $failedCount = (int) ($counts?->failed_count ?? 0);
+            if (! $campaign) {
+                return;
+            }
 
-        $status = match (true) {
-            $pendingCount > 0 => EmailCampaign::STATUS_PROCESSING,
-            $sentCount === 0 && $failedCount > 0 => EmailCampaign::STATUS_FAILED,
-            $failedCount > 0 => EmailCampaign::STATUS_COMPLETED_WITH_FAILURES,
-            default => EmailCampaign::STATUS_COMPLETED,
-        };
+            $counts = EmailCampaignRecipient::query()
+                ->where('email_campaign_id', $campaignId)
+                ->selectRaw("
+                    SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending_count,
+                    SUM(CASE WHEN status = 'sent' THEN 1 ELSE 0 END) as sent_count,
+                    SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed_count
+                ")
+                ->first();
 
-        EmailCampaign::query()->whereKey($campaignId)->update([
-            'sent_count' => $sentCount,
-            'failed_count' => $failedCount,
-            'status' => $status,
-        ]);
+            $pendingCount = (int) ($counts?->pending_count ?? 0);
+            $sentCount = (int) ($counts?->sent_count ?? 0);
+            $failedCount = (int) ($counts?->failed_count ?? 0);
+
+            $status = match (true) {
+                $pendingCount > 0 => EmailCampaign::STATUS_PROCESSING,
+                $sentCount === 0 && $failedCount > 0 => EmailCampaign::STATUS_FAILED,
+                $failedCount > 0 => EmailCampaign::STATUS_COMPLETED_WITH_FAILURES,
+                default => EmailCampaign::STATUS_COMPLETED,
+            };
+
+            $campaign->update([
+                'sent_count' => $sentCount,
+                'failed_count' => $failedCount,
+                'status' => $status,
+            ]);
+        });
     }
 
     private function safeErrorMessage(\Throwable $exception): string
