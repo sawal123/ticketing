@@ -84,6 +84,8 @@ class EmailBlastSanitizer
                     continue;
                 }
 
+                self::sanitizeNode($child);
+
                 if (! in_array($tagName, self::ALLOWED_TAGS, true)) {
                     self::unwrapNode($child);
 
@@ -91,9 +93,9 @@ class EmailBlastSanitizer
                 }
 
                 self::sanitizeAttributes($child);
+            } else {
+                self::sanitizeNode($child);
             }
-
-            self::sanitizeNode($child);
         }
     }
 

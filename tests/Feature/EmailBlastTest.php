@@ -205,6 +205,33 @@ class EmailBlastTest extends TestCase
         $this->assertStringNotContainsString('<img', $sanitized);
     }
 
+    public function test_sanitizer_removes_nested_dangerous_tag_inside_non_allowed_wrapper(): void
+    {
+        $sanitized = EmailBlastSanitizer::sanitize('<div><script>alert(1)</script><p>Aman</p></div>');
+
+        $this->assertStringNotContainsString('<script', $sanitized);
+        $this->assertStringNotContainsString('alert(1)', $sanitized);
+        $this->assertStringContainsString('<p>Aman</p>', $sanitized);
+    }
+
+    public function test_sanitizer_removes_nested_event_handler_inside_non_allowed_wrapper(): void
+    {
+        $sanitized = EmailBlastSanitizer::sanitize('<section><p onclick="alert(1)">Halo</p></section>');
+
+        $this->assertStringContainsString('<p>Halo</p>', $sanitized);
+        $this->assertStringNotContainsString('onclick=', $sanitized);
+        $this->assertStringNotContainsString('alert(1)', $sanitized);
+    }
+
+    public function test_sanitizer_removes_dangerous_tags_inside_multiple_wrapper_layers(): void
+    {
+        $sanitized = EmailBlastSanitizer::sanitize('<div><section><article><iframe src="https://evil.test"></iframe><p>Layer Aman</p></article></section></div>');
+
+        $this->assertStringNotContainsString('<iframe', $sanitized);
+        $this->assertStringNotContainsString('evil.test', $sanitized);
+        $this->assertStringContainsString('<p>Layer Aman</p>', $sanitized);
+    }
+
     public function test_preview_uses_sanitized_content(): void
     {
         Queue::fake();
