@@ -99,6 +99,21 @@ class EmailBlastTest extends TestCase
         Queue::assertNothingPushed();
     }
 
+    public function test_target_selector_uses_standard_wire_model_binding(): void
+    {
+        $admin = $this->user(['role' => 'admin', 'email' => 'admin-binding@example.test']);
+
+        $component = Livewire::actingAs($admin)
+            ->test(EmailBlast::class)
+            ->assertDontSeeHtml('wire:model.live="targetType"')
+            ->assertSeeHtml('wire:model="targetType"');
+
+        $component
+            ->set('targetType', 'users')
+            ->assertDontSeeHtml('wire:model.live="search_user"')
+            ->assertSeeHtml('wire:model.debounce.300ms="search_user"');
+    }
+
     public function test_event_target_only_uses_success_transactions_without_duplicate_recipients(): void
     {
         Queue::fake();
