@@ -25,12 +25,24 @@ class TicketPricingService
 
         $discount = $this->calculateVoucherDiscount($cart, $ticketTotal);
         $subtotal = max(0, $ticketTotal - $discount);
-        [$taxPercent, $taxAmount] = $this->tax($cart->event, $subtotal);
-        $paymentFee = $paymentGateway
-            ? $this->resolvePaymentFeeSnapshot($cart, $paymentGateway, $subtotal)
-            : $this->storedPaymentFeeSnapshot($cart);
-        $internetFee = $paymentGateway ? $paymentFee['internet_fee'] : (int) ($cart->internet_fee ?? 0);
-        $grossAmount = max(0, $subtotal + $taxAmount + $internetFee);
+        $storedFinancialSnapshot = ! $paymentGateway && $this->shouldUseStoredFinancialSnapshot($cart)
+            ? $this->storedFinancialSnapshot($cart, $subtotal)
+            : null;
+
+        if ($storedFinancialSnapshot) {
+            $taxPercent = $storedFinancialSnapshot['tax_percent'];
+            $taxAmount = $storedFinancialSnapshot['tax_amount'];
+            $paymentFee = $storedFinancialSnapshot;
+            $internetFee = $storedFinancialSnapshot['internet_fee'];
+            $grossAmount = $storedFinancialSnapshot['gross_amount'];
+        } else {
+            [$taxPercent, $taxAmount] = $this->tax($cart->event, $subtotal);
+            $paymentFee = $paymentGateway
+                ? $this->resolvePaymentFeeSnapshot($cart, $paymentGateway, $subtotal)
+                : $this->storedPaymentFeeSnapshot($cart);
+            $internetFee = $paymentGateway ? $paymentFee['internet_fee'] : (int) ($cart->internet_fee ?? 0);
+            $grossAmount = max(0, $subtotal + $taxAmount + $internetFee);
+        }
 
         return [
             'ticket_total' => $ticketTotal,
@@ -165,6 +177,22 @@ class TicketPricingService
         ];
     }
 
+    private function storedFinancialSnapshot(Cart $cart, int $subtotal): array
+    {
+        $paymentFeeSnapshot = $this->storedPaymentFeeSnapshot($cart);
+        $taxPercent = (int) ($cart->pajak_persen ?? 0);
+        $taxAmount = (int) ($cart->pajak ?? 0);
+        $internetFee = $paymentFeeSnapshot['internet_fee'];
+
+        return array_merge($paymentFeeSnapshot, [
+            'tax_percent' => $taxPercent,
+            'tax_amount' => $taxAmount,
+            'gross_amount' => $cart->gross_amount !== null
+                ? (int) $cart->gross_amount
+                : max(0, $subtotal + $taxAmount + $internetFee),
+        ]);
+    }
+
     private function defaultGatewayFeeParts(PaymentGateway $paymentGateway): array
     {
         $defaultFixed = $paymentGateway->getAttribute('default_fee_fixed');
@@ -208,6 +236,16 @@ class TicketPricingService
     private function normalizeFeeValue($value): float
     {
         return max(0, (float) $value);
+    }
+
+    private function shouldUseStoredFinancialSnapshot(Cart $cart): bool
+    {
+        return filled($cart->payment_type)
+            || $cart->payment_gateway_id !== null
+            || $cart->gross_amount !== null
+            || $cart->payment_fee_mode !== null
+            || $cart->payment_fee_fixed !== null
+            || $cart->payment_fee_percent !== null;
     }
 
     private function storedDecimal($value, int $scale): ?string
