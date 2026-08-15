@@ -86,9 +86,16 @@ class TransactionController extends Controller
 
                 $pricing = $pricingService->calculateCart($cart, $gateway);
 
+                if (! $pricing['payment_gateway_available']) {
+                    throw ValidationException::withMessages(['payment_gateway_id' => 'Metode pembayaran tidak tersedia.']);
+                }
+
                 $cart->status = Cart::STATUS_PENDING;
                 $cart->payment_type = $gateway->slug;
                 $cart->payment_gateway_id = $gateway->id;
+                $cart->payment_fee_mode = $pricing['payment_fee_mode'];
+                $cart->payment_fee_fixed = $pricing['payment_fee_fixed'];
+                $cart->payment_fee_percent = $pricing['payment_fee_percent'];
                 $cart->internet_fee = $pricing['internet_fee'];
                 $cart->pajak = $pricing['tax_amount'];
                 $cart->pajak_persen = $pricing['tax_percent'];
