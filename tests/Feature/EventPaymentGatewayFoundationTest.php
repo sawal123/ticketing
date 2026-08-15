@@ -89,6 +89,20 @@ class EventPaymentGatewayFoundationTest extends TestCase
         $this->assertSame(EventPaymentGateway::FEE_MODE_GLOBAL, $globalConfig->fresh()->fee_mode);
     }
 
+    public function test_new_event_payment_gateway_defaults_to_inactive_when_not_provided(): void
+    {
+        $event = $this->createEvent();
+        $gateway = $this->createPaymentGateway();
+
+        $config = EventPaymentGateway::create([
+            'event_id' => $event->id,
+            'payment_gateway_id' => $gateway->id,
+            'fee_mode' => EventPaymentGateway::FEE_MODE_GLOBAL,
+        ]);
+
+        $this->assertFalse($config->fresh()->is_active);
+    }
+
     public function test_event_and_payment_gateway_combination_must_be_unique(): void
     {
         $event = $this->createEvent();

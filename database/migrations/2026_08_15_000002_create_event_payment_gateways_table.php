@@ -1,6 +1,5 @@
 <?php
 
-use App\Models\EventPaymentGateway;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -8,6 +7,9 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
+    private const FEE_MODE_GLOBAL = 'global';
+    private const FEE_MODE_MANUAL = 'manual';
+
     public function up(): void
     {
         if (! Schema::hasTable('event_payment_gateways')) {
@@ -15,11 +17,11 @@ return new class extends Migration
                 $table->id();
                 $table->foreignId('event_id')->constrained()->cascadeOnDelete();
                 $table->foreignId('payment_gateway_id')->constrained()->cascadeOnDelete();
-                $table->boolean('is_active')->default(true);
+                $table->boolean('is_active')->default(false);
                 $table->enum('fee_mode', [
-                    EventPaymentGateway::FEE_MODE_GLOBAL,
-                    EventPaymentGateway::FEE_MODE_MANUAL,
-                ])->default(EventPaymentGateway::FEE_MODE_GLOBAL);
+                    self::FEE_MODE_GLOBAL,
+                    self::FEE_MODE_MANUAL,
+                ])->default(self::FEE_MODE_GLOBAL);
                 $table->decimal('fee_fixed', 15, 2)->nullable();
                 $table->decimal('fee_percent', 8, 4)->nullable();
                 $table->timestamps();
@@ -76,7 +78,7 @@ return new class extends Migration
                             'event_id' => $event->id,
                             'payment_gateway_id' => $gateway->id,
                             'is_active' => (bool) $gateway->is_active,
-                            'fee_mode' => EventPaymentGateway::FEE_MODE_GLOBAL,
+                            'fee_mode' => self::FEE_MODE_GLOBAL,
                             'fee_fixed' => null,
                             'fee_percent' => null,
                             'created_at' => $now,
