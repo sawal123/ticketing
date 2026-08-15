@@ -66,5 +66,17 @@ class Event extends Model
     {
         return $this->hasMany(Harga::class, 'uid', 'uid');
     }
+
+    public function eventPaymentGateways()
+    {
+        return $this->hasMany(EventPaymentGateway::class);
+    }
+
+    public function paymentGateways()
+    {
+        return $this->belongsToMany(PaymentGateway::class, 'event_payment_gateways')
+            ->withPivot(['id', 'is_active', 'fee_mode', 'fee_fixed', 'fee_percent'])
+            ->withTimestamps();
+    }
     // Hapus method harga_carts() dari sini. Relasinya agak aneh kalau Event langsung ke HargaCart tanpa lewat Cart.
 }
