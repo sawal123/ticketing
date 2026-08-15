@@ -363,6 +363,33 @@ class EventPaymentGatewayPricingTest extends TestCase
         $this->assertSame(0, $pricing['internet_fee']);
     }
 
+    public function test_negative_fee_is_saved_as_zero_in_snapshot_during_paynow(): void
+    {
+        $this->fakeMidtransRedirect();
+
+        $user = $this->user();
+        $event = $this->event();
+        $cart = $this->cart($user, $event);
+        $harga = $this->harga($event, ['harga' => 100000]);
+        $this->hargaCart($cart, $harga, 1);
+        $gateway = $this->gateway([
+            'default_fee_fixed' => -4000,
+            'default_fee_percent' => -3,
+        ]);
+        $this->eventGateway($event, $gateway);
+
+        $this->actingAs($user)->post('/paynow', [
+            'cart_uid' => $cart->uid,
+            'payment_gateway_id' => $gateway->id,
+        ])->assertRedirect('https://pay.example.test/snap');
+
+        $cart->refresh();
+
+        $this->assertSame('0.00', $cart->payment_fee_fixed);
+        $this->assertSame('0.0000', $cart->payment_fee_percent);
+        $this->assertSame(0, (int) $cart->internet_fee);
+    }
+
     public function test_positive_fee_values_still_produce_the_same_nominal(): void
     {
         $event = $this->event();
@@ -380,6 +407,50 @@ class EventPaymentGatewayPricingTest extends TestCase
         $this->assertSame('2000.00', $pricing['payment_fee_fixed']);
         $this->assertSame('3.0000', $pricing['payment_fee_percent']);
         $this->assertSame(5000, $pricing['internet_fee']);
+    }
+
+    public function test_calculate_cart_without_gateway_uses_stored_snapshot_instead_of_latest_configuration(): void
+    {
+        $event = $this->event();
+        $gateway = $this->gateway([
+            'slug' => 'bca',
+            'default_fee_fixed' => 9000,
+            'default_fee_percent' => 9,
+        ]);
+        $eventGateway = $this->eventGateway($event, $gateway, [
+            'fee_mode' => EventPaymentGateway::FEE_MODE_MANUAL,
+            'fee_fixed' => 8000,
+            'fee_percent' => 8,
+        ]);
+        $cart = $this->cart($this->user(), $event, [
+            'status' => Cart::STATUS_PENDING,
+            'payment_type' => 'bca',
+            'payment_gateway_id' => $gateway->id,
+            'payment_fee_mode' => 'manual',
+            'payment_fee_fixed' => 2000,
+            'payment_fee_percent' => 3,
+            'internet_fee' => 5000,
+            'gross_amount' => 105000,
+        ]);
+        $harga = $this->harga($event, ['harga' => 100000]);
+        $this->hargaCart($cart, $harga, 1);
+
+        $gateway->update([
+            'default_fee_fixed' => 12000,
+            'default_fee_percent' => 12,
+        ]);
+        $eventGateway->update([
+            'fee_fixed' => 11000,
+            'fee_percent' => 11,
+        ]);
+
+        $pricing = app(TicketPricingService::class)->calculateCart($cart->fresh());
+
+        $this->assertSame('manual', $pricing['payment_fee_mode']);
+        $this->assertSame('2000.00', $pricing['payment_fee_fixed']);
+        $this->assertSame('3.0000', $pricing['payment_fee_percent']);
+        $this->assertSame(5000, $pricing['internet_fee']);
+        $this->assertSame(105000, $pricing['gross_amount']);
     }
 
     public function test_legacy_cart_without_new_fee_snapshot_values_still_uses_stored_internet_fee(): void
@@ -404,6 +475,30 @@ class EventPaymentGatewayPricingTest extends TestCase
         $this->assertNull($pricing['payment_fee_mode']);
         $this->assertNull($pricing['payment_fee_fixed']);
         $this->assertNull($pricing['payment_fee_percent']);
+    }
+
+    public function test_existing_snapshot_values_are_returned_as_stored_without_re_normalization(): void
+    {
+        $event = $this->event();
+        $cart = $this->cart($this->user(), $event, [
+            'status' => Cart::STATUS_PENDING,
+            'payment_type' => 'bank_transfer',
+            'payment_fee_mode' => 'manual',
+            'payment_fee_fixed' => -1500,
+            'payment_fee_percent' => -2.5,
+            'internet_fee' => -3500,
+            'gross_amount' => 96500,
+        ]);
+        $harga = $this->harga($event, ['harga' => 100000]);
+        $this->hargaCart($cart, $harga, 1);
+
+        $pricing = app(TicketPricingService::class)->calculateCart($cart->fresh());
+
+        $this->assertSame('manual', $pricing['payment_fee_mode']);
+        $this->assertSame('-1500.00', $pricing['payment_fee_fixed']);
+        $this->assertSame('-2.5000', $pricing['payment_fee_percent']);
+        $this->assertSame(-3500, $pricing['internet_fee']);
+        $this->assertSame(96500, $pricing['gross_amount']);
     }
 
     protected function createSchema(): void

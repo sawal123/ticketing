@@ -159,9 +159,9 @@ class TicketPricingService
         return [
             'is_available' => true,
             'payment_fee_mode' => $cart->payment_fee_mode,
-            'payment_fee_fixed' => $this->normalizedStoredDecimal($cart->payment_fee_fixed, 2),
-            'payment_fee_percent' => $this->normalizedStoredDecimal($cart->payment_fee_percent, 4),
-            'internet_fee' => max(0, (int) ($cart->internet_fee ?? 0)),
+            'payment_fee_fixed' => $this->storedDecimal($cart->payment_fee_fixed, 2),
+            'payment_fee_percent' => $this->storedDecimal($cart->payment_fee_percent, 4),
+            'internet_fee' => (int) ($cart->internet_fee ?? 0),
         ];
     }
 
@@ -217,14 +217,5 @@ class TicketPricingService
         }
 
         return $this->formatDecimal((float) $value, $scale);
-    }
-
-    private function normalizedStoredDecimal($value, int $scale): ?string
-    {
-        if ($value === null || $value === '') {
-            return null;
-        }
-
-        return $this->storedDecimal($this->normalizeFeeValue($value), $scale);
     }
 }
