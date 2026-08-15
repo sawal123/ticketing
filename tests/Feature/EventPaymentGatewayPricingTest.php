@@ -301,6 +301,87 @@ class EventPaymentGatewayPricingTest extends TestCase
         $this->assertSame(2700, $pricing['internet_fee']);
     }
 
+    public function test_negative_global_fixed_fee_is_normalized_to_zero(): void
+    {
+        $event = $this->event();
+        $cart = $this->cart($this->user(), $event);
+        $harga = $this->harga($event, ['harga' => 100000]);
+        $this->hargaCart($cart, $harga, 1);
+        $gateway = $this->gateway([
+            'default_fee_fixed' => -4000,
+            'default_fee_percent' => 0,
+        ]);
+        $this->eventGateway($event, $gateway);
+
+        $pricing = app(TicketPricingService::class)->calculateCart($cart, $gateway);
+
+        $this->assertSame('0.00', $pricing['payment_fee_fixed']);
+        $this->assertSame('0.0000', $pricing['payment_fee_percent']);
+        $this->assertSame(0, $pricing['internet_fee']);
+    }
+
+    public function test_negative_global_percent_fee_is_normalized_to_zero(): void
+    {
+        $event = $this->event();
+        $cart = $this->cart($this->user(), $event);
+        $harga = $this->harga($event, ['harga' => 100000]);
+        $this->hargaCart($cart, $harga, 1);
+        $gateway = $this->gateway([
+            'default_fee_fixed' => 2000,
+            'default_fee_percent' => -3,
+        ]);
+        $this->eventGateway($event, $gateway);
+
+        $pricing = app(TicketPricingService::class)->calculateCart($cart, $gateway);
+
+        $this->assertSame('2000.00', $pricing['payment_fee_fixed']);
+        $this->assertSame('0.0000', $pricing['payment_fee_percent']);
+        $this->assertSame(2000, $pricing['internet_fee']);
+    }
+
+    public function test_negative_manual_fee_values_are_normalized_to_zero(): void
+    {
+        $event = $this->event();
+        $cart = $this->cart($this->user(), $event);
+        $harga = $this->harga($event, ['harga' => 100000]);
+        $this->hargaCart($cart, $harga, 1);
+        $gateway = $this->gateway([
+            'default_fee_fixed' => 1000,
+            'default_fee_percent' => 2,
+        ]);
+        $this->eventGateway($event, $gateway, [
+            'fee_mode' => EventPaymentGateway::FEE_MODE_MANUAL,
+            'fee_fixed' => -2000,
+            'fee_percent' => -3,
+        ]);
+
+        $pricing = app(TicketPricingService::class)->calculateCart($cart, $gateway);
+
+        $this->assertSame('manual', $pricing['payment_fee_mode']);
+        $this->assertSame('0.00', $pricing['payment_fee_fixed']);
+        $this->assertSame('0.0000', $pricing['payment_fee_percent']);
+        $this->assertSame(0, $pricing['internet_fee']);
+    }
+
+    public function test_positive_fee_values_still_produce_the_same_nominal(): void
+    {
+        $event = $this->event();
+        $cart = $this->cart($this->user(), $event);
+        $harga = $this->harga($event, ['harga' => 100000]);
+        $this->hargaCart($cart, $harga, 1);
+        $gateway = $this->gateway([
+            'default_fee_fixed' => 2000,
+            'default_fee_percent' => 3,
+        ]);
+        $this->eventGateway($event, $gateway);
+
+        $pricing = app(TicketPricingService::class)->calculateCart($cart, $gateway);
+
+        $this->assertSame('2000.00', $pricing['payment_fee_fixed']);
+        $this->assertSame('3.0000', $pricing['payment_fee_percent']);
+        $this->assertSame(5000, $pricing['internet_fee']);
+    }
+
     public function test_legacy_cart_without_new_fee_snapshot_values_still_uses_stored_internet_fee(): void
     {
         $event = $this->event();

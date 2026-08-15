@@ -140,8 +140,8 @@ class TicketPricingService
         [$mode, $fixed, $percent] = $eventGateway && $eventGateway->fee_mode === EventPaymentGateway::FEE_MODE_MANUAL
             ? [
                 EventPaymentGateway::FEE_MODE_MANUAL,
-                (float) ($eventGateway->fee_fixed ?? 0),
-                (float) ($eventGateway->fee_percent ?? 0),
+                $this->normalizeFeeValue($eventGateway->fee_fixed ?? 0),
+                $this->normalizeFeeValue($eventGateway->fee_percent ?? 0),
             ]
             : array_merge([EventPaymentGateway::FEE_MODE_GLOBAL], $this->defaultGatewayFeeParts($paymentGateway));
 
@@ -159,9 +159,9 @@ class TicketPricingService
         return [
             'is_available' => true,
             'payment_fee_mode' => $cart->payment_fee_mode,
-            'payment_fee_fixed' => $this->storedDecimal($cart->payment_fee_fixed, 2),
-            'payment_fee_percent' => $this->storedDecimal($cart->payment_fee_percent, 4),
-            'internet_fee' => (int) ($cart->internet_fee ?? 0),
+            'payment_fee_fixed' => $this->normalizedStoredDecimal($cart->payment_fee_fixed, 2),
+            'payment_fee_percent' => $this->normalizedStoredDecimal($cart->payment_fee_percent, 4),
+            'internet_fee' => max(0, (int) ($cart->internet_fee ?? 0)),
         ];
     }
 
@@ -175,18 +175,18 @@ class TicketPricingService
         }
 
         return [
-            (float) ($defaultFixed ?? 0),
-            (float) ($defaultPercent ?? 0),
+            $this->normalizeFeeValue($defaultFixed ?? 0),
+            $this->normalizeFeeValue($defaultPercent ?? 0),
         ];
     }
 
     private function legacyGatewayFeeParts(PaymentGateway $paymentGateway): array
     {
         if ($paymentGateway->biaya_type === 'persen') {
-            return [0.0, (float) $paymentGateway->biaya];
+            return [0.0, $this->normalizeFeeValue($paymentGateway->biaya)];
         }
 
-        return [(float) $paymentGateway->biaya, 0.0];
+        return [$this->normalizeFeeValue($paymentGateway->biaya), 0.0];
     }
 
     private function emptyResolvedPaymentFee(): array
@@ -205,6 +205,11 @@ class TicketPricingService
         return number_format($value, $scale, '.', '');
     }
 
+    private function normalizeFeeValue($value): float
+    {
+        return max(0, (float) $value);
+    }
+
     private function storedDecimal($value, int $scale): ?string
     {
         if ($value === null || $value === '') {
@@ -212,5 +217,14 @@ class TicketPricingService
         }
 
         return $this->formatDecimal((float) $value, $scale);
+    }
+
+    private function normalizedStoredDecimal($value, int $scale): ?string
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        return $this->storedDecimal($this->normalizeFeeValue($value), $scale);
     }
 }
