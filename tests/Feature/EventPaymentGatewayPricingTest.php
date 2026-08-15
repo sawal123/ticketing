@@ -143,6 +143,43 @@ class EventPaymentGatewayPricingTest extends TestCase
         $this->assertSame(0, $pricing['internet_fee']);
     }
 
+    public function test_zero_default_fee_does_not_fallback_to_legacy_biaya(): void
+    {
+        $event = $this->event();
+        $cart = $this->cart($this->user(), $event);
+        $harga = $this->harga($event, ['harga' => 100000]);
+        $this->hargaCart($cart, $harga, 1);
+        $gateway = $this->gateway([
+            'default_fee_fixed' => 0,
+            'default_fee_percent' => 0,
+            'biaya' => 4000,
+            'biaya_type' => 'rupiah',
+        ]);
+        $this->eventGateway($event, $gateway);
+
+        $pricing = app(TicketPricingService::class)->calculateCart($cart, $gateway);
+
+        $this->assertSame('0.00', $pricing['payment_fee_fixed']);
+        $this->assertSame('0.0000', $pricing['payment_fee_percent']);
+        $this->assertSame(0, $pricing['internet_fee']);
+    }
+
+    public function test_legacy_fee_fallback_still_works_when_new_default_fee_values_are_missing(): void
+    {
+        $gateway = new PaymentGateway([
+            'payment' => 'Legacy Gateway',
+            'category' => 'bank',
+            'biaya' => 4000,
+            'biaya_type' => 'rupiah',
+            'default_fee_fixed' => null,
+            'default_fee_percent' => null,
+            'is_active' => true,
+            'slug' => 'legacy-gateway',
+        ]);
+
+        $this->assertSame(4000, app(TicketPricingService::class)->internetFee($gateway, 100000));
+    }
+
     public function test_inactive_event_gateway_is_rejected_in_paynow(): void
     {
         $user = $this->user();
@@ -164,6 +201,22 @@ class EventPaymentGatewayPricingTest extends TestCase
         $this->assertSame(Cart::STATUS_RESERVED, $cart->fresh()->status);
         $this->assertNull($cart->fresh()->payment_gateway_id);
         $this->assertDatabaseCount('transactions', 0);
+    }
+
+    public function test_inactive_global_gateway_is_rejected_even_if_event_configuration_is_active(): void
+    {
+        $event = $this->event();
+        $cart = $this->cart($this->user(), $event);
+        $harga = $this->harga($event);
+        $this->hargaCart($cart, $harga, 1);
+        $gateway = $this->gateway(['is_active' => false]);
+        $this->eventGateway($event, $gateway, ['is_active' => true]);
+
+        $pricing = app(TicketPricingService::class)->calculateCart($cart, $gateway);
+
+        $this->assertFalse($pricing['payment_gateway_available']);
+        $this->assertSame(0, $pricing['internet_fee']);
+        $this->assertNull($pricing['payment_fee_mode']);
     }
 
     public function test_paynow_stores_fee_snapshot_and_keeps_it_immutable_after_configuration_changes(): void
@@ -217,6 +270,35 @@ class EventPaymentGatewayPricingTest extends TestCase
         $this->assertSame('manual', $cart->fresh()->payment_fee_mode);
         $this->assertSame('2000.00', $cart->fresh()->payment_fee_fixed);
         $this->assertSame('3.0000', $cart->fresh()->payment_fee_percent);
+    }
+
+    public function test_percent_fee_uses_subtotal_after_voucher_discount(): void
+    {
+        $event = $this->event();
+        $cart = $this->cart($this->user(), $event);
+        $harga = $this->harga($event, ['harga' => 100000]);
+        $this->hargaCart($cart, $harga, 1);
+        $voucher = $this->voucher($event);
+        DB::table('cart_vouchers')->insert([
+            'uid' => $cart->uid,
+            'uid_vouchers' => $voucher->uid,
+            'user_uid' => $cart->user_uid,
+            'event_uid' => $event->uid,
+            'code' => $voucher->code,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $gateway = $this->gateway([
+            'default_fee_fixed' => 0,
+            'default_fee_percent' => 3,
+        ]);
+        $this->eventGateway($event, $gateway);
+
+        $pricing = app(TicketPricingService::class)->calculateCart($cart, $gateway);
+
+        $this->assertSame(10000, $pricing['discount']);
+        $this->assertSame(90000, $pricing['subtotal']);
+        $this->assertSame(2700, $pricing['internet_fee']);
     }
 
     public function test_legacy_cart_without_new_fee_snapshot_values_still_uses_stored_internet_fee(): void
@@ -499,6 +581,25 @@ class EventPaymentGatewayPricingTest extends TestCase
             'fee_fixed' => null,
             'fee_percent' => null,
         ], $attributes));
+    }
+
+    protected function voucher(Event $event)
+    {
+        return DB::table('vouchers')->insertGetId([
+            'uid' => 'voucher-'.Str::random(6),
+            'user_uid' => 'owner',
+            'event_uid' => $event->uid,
+            'code' => 'PROMO',
+            'unit' => 'rupiah',
+            'nominal' => 10000,
+            'min_beli' => 0,
+            'max_disc' => 0,
+            'digunakan' => 0,
+            'limit' => 10,
+            'status' => 'active',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]) ? \App\Models\Voucher::where('code', 'PROMO')->first() : null;
     }
 
     protected function fakeMidtransRedirect(string $url = 'https://pay.example.test/snap'): void

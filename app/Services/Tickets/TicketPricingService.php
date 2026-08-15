@@ -170,11 +170,7 @@ class TicketPricingService
         $defaultFixed = $paymentGateway->getAttribute('default_fee_fixed');
         $defaultPercent = $paymentGateway->getAttribute('default_fee_percent');
 
-        if ($defaultFixed === null && $defaultPercent === null) {
-            return $this->legacyGatewayFeeParts($paymentGateway);
-        }
-
-        if ((float) $defaultFixed === 0.0 && (float) $defaultPercent === 0.0 && $paymentGateway->getAttribute('biaya') !== null) {
+        if ($defaultFixed === null || $defaultPercent === null) {
             return $this->legacyGatewayFeeParts($paymentGateway);
         }
 
