@@ -330,6 +330,104 @@ class AdminEventPaymentUiTest extends TestCase
         ]);
     }
 
+    public function test_toggle_existing_config_does_not_save_unsaved_fee_changes(): void
+    {
+        $admin = $this->makeUser('admin');
+        $event = $this->makeEvent();
+        $gateway = $this->makeGateway();
+
+        EventPaymentGateway::create([
+            'event_id' => $event->id,
+            'payment_gateway_id' => $gateway->id,
+            'is_active' => false,
+            'fee_mode' => EventPaymentGateway::FEE_MODE_GLOBAL,
+            'fee_fixed' => null,
+            'fee_percent' => null,
+        ]);
+
+        Livewire::actingAs($admin)
+            ->test(EventDetail::class, ['uid' => $event->uid])
+            ->set('activeTab', 'pembayaran')
+            ->call('setPaymentFeeMode', $gateway->id, EventPaymentGateway::FEE_MODE_MANUAL)
+            ->set('paymentGatewayConfigs.'.$gateway->id.'.fee_fixed', 4000)
+            ->set('paymentGatewayConfigs.'.$gateway->id.'.fee_percent', 3)
+            ->call('toggleEventPaymentGateway', $gateway->id)
+            ->assertSet('paymentGatewayConfigs.'.$gateway->id.'.is_active', true)
+            ->assertSet('paymentGatewayConfigs.'.$gateway->id.'.fee_mode', EventPaymentGateway::FEE_MODE_MANUAL)
+            ->assertSet('paymentGatewayConfigs.'.$gateway->id.'.fee_fixed', 4000)
+            ->assertSet('paymentGatewayConfigs.'.$gateway->id.'.fee_percent', 3);
+
+        $saved = EventPaymentGateway::where('event_id', $event->id)
+            ->where('payment_gateway_id', $gateway->id)
+            ->firstOrFail();
+
+        $this->assertTrue($saved->is_active);
+        $this->assertSame(EventPaymentGateway::FEE_MODE_GLOBAL, $saved->fee_mode);
+        $this->assertNull($saved->fee_fixed);
+        $this->assertNull($saved->fee_percent);
+    }
+
+    public function test_toggle_with_invalid_unsaved_manual_fee_still_updates_status_only(): void
+    {
+        $admin = $this->makeUser('admin');
+        $event = $this->makeEvent();
+        $gateway = $this->makeGateway();
+
+        EventPaymentGateway::create([
+            'event_id' => $event->id,
+            'payment_gateway_id' => $gateway->id,
+            'is_active' => false,
+            'fee_mode' => EventPaymentGateway::FEE_MODE_GLOBAL,
+            'fee_fixed' => null,
+            'fee_percent' => null,
+        ]);
+
+        Livewire::actingAs($admin)
+            ->test(EventDetail::class, ['uid' => $event->uid])
+            ->set('activeTab', 'pembayaran')
+            ->call('setPaymentFeeMode', $gateway->id, EventPaymentGateway::FEE_MODE_MANUAL)
+            ->set('paymentGatewayConfigs.'.$gateway->id.'.fee_fixed', '-1')
+            ->set('paymentGatewayConfigs.'.$gateway->id.'.fee_percent', '99999.0000')
+            ->call('toggleEventPaymentGateway', $gateway->id)
+            ->assertHasNoErrors()
+            ->assertSet('paymentGatewayConfigs.'.$gateway->id.'.is_active', true);
+
+        $saved = EventPaymentGateway::where('event_id', $event->id)
+            ->where('payment_gateway_id', $gateway->id)
+            ->firstOrFail();
+
+        $this->assertTrue($saved->is_active);
+        $this->assertSame(EventPaymentGateway::FEE_MODE_GLOBAL, $saved->fee_mode);
+        $this->assertNull($saved->fee_fixed);
+        $this->assertNull($saved->fee_percent);
+    }
+
+    public function test_first_toggle_creates_global_default_config_without_using_unsaved_manual_state(): void
+    {
+        $admin = $this->makeUser('admin');
+        $event = $this->makeEvent();
+        $gateway = $this->makeGateway();
+
+        Livewire::actingAs($admin)
+            ->test(EventDetail::class, ['uid' => $event->uid])
+            ->set('activeTab', 'pembayaran')
+            ->call('setPaymentFeeMode', $gateway->id, EventPaymentGateway::FEE_MODE_MANUAL)
+            ->set('paymentGatewayConfigs.'.$gateway->id.'.fee_fixed', 4000)
+            ->set('paymentGatewayConfigs.'.$gateway->id.'.fee_percent', 3)
+            ->call('toggleEventPaymentGateway', $gateway->id)
+            ->assertSet('paymentGatewayConfigs.'.$gateway->id.'.is_active', true)
+            ->assertSet('paymentGatewayConfigs.'.$gateway->id.'.fee_mode', EventPaymentGateway::FEE_MODE_MANUAL);
+
+        $saved = EventPaymentGateway::where('event_id', $event->id)
+            ->where('payment_gateway_id', $gateway->id)
+            ->firstOrFail();
+
+        $this->assertTrue($saved->is_active);
+        $this->assertSame(EventPaymentGateway::FEE_MODE_GLOBAL, $saved->fee_mode);
+        $this->assertNull($saved->fee_fixed);
+        $this->assertNull($saved->fee_percent);
+    }
+
     public function test_admin_can_choose_global_fee_mode(): void
     {
         $admin = $this->makeUser('admin');
@@ -359,6 +457,39 @@ class AdminEventPaymentUiTest extends TestCase
 
         $this->assertNull(EventPaymentGateway::where('event_id', $event->id)->where('payment_gateway_id', $gateway->id)->first()->fee_fixed);
         $this->assertNull(EventPaymentGateway::where('event_id', $event->id)->where('payment_gateway_id', $gateway->id)->first()->fee_percent);
+    }
+
+    public function test_global_save_ignores_invalid_hidden_manual_values(): void
+    {
+        $admin = $this->makeUser('admin');
+        $event = $this->makeEvent();
+        $gateway = $this->makeGateway();
+
+        EventPaymentGateway::create([
+            'event_id' => $event->id,
+            'payment_gateway_id' => $gateway->id,
+            'is_active' => true,
+            'fee_mode' => EventPaymentGateway::FEE_MODE_MANUAL,
+            'fee_fixed' => 4000,
+            'fee_percent' => 3,
+        ]);
+
+        Livewire::actingAs($admin)
+            ->test(EventDetail::class, ['uid' => $event->uid])
+            ->set('activeTab', 'pembayaran')
+            ->set('paymentGatewayConfigs.'.$gateway->id.'.fee_fixed', '-1')
+            ->set('paymentGatewayConfigs.'.$gateway->id.'.fee_percent', 'invalid')
+            ->call('setPaymentFeeMode', $gateway->id, EventPaymentGateway::FEE_MODE_GLOBAL)
+            ->call('saveEventPaymentGateway', $gateway->id)
+            ->assertHasNoErrors();
+
+        $saved = EventPaymentGateway::where('event_id', $event->id)
+            ->where('payment_gateway_id', $gateway->id)
+            ->firstOrFail();
+
+        $this->assertSame(EventPaymentGateway::FEE_MODE_GLOBAL, $saved->fee_mode);
+        $this->assertNull($saved->fee_fixed);
+        $this->assertNull($saved->fee_percent);
     }
 
     public function test_admin_can_save_manual_fixed_and_percent_fee(): void
@@ -655,15 +786,22 @@ class AdminEventPaymentUiTest extends TestCase
             ->test(PaymentGatewayIndex::class)
             ->call('edit', $gateway->id)
             ->set('default_fee_fixed', '4000')
-            ->set('default_fee_percent', '1')
+            ->set('default_fee_percent', '2')
             ->call('save')
             ->assertHasNoErrors();
+
+        $gateway->refresh();
+
+        $this->assertSame('4000.00', $gateway->default_fee_fixed);
+        $this->assertSame('2.0000', $gateway->default_fee_percent);
+        $this->assertSame('0.00', $gateway->biaya);
+        $this->assertSame('rupiah', $gateway->biaya_type);
 
         $newCart = $this->makeCart($buyer, $event);
         $this->makeHargaCart($newCart, $harga);
 
         $updatedPricing = app(TicketPricingService::class)->calculateCart($newCart->fresh(), $gateway->fresh());
-        $this->assertSame(5000, $updatedPricing['internet_fee']);
+        $this->assertSame(6000, $updatedPricing['internet_fee']);
     }
 
     private function makeUser(string $role): User

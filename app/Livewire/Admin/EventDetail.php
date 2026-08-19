@@ -290,18 +290,24 @@ class EventDetail extends Component
     {
         PaymentGateway::findOrFail($gatewayId);
 
-        return Validator::make(['paymentGatewayConfigs' => $this->paymentGatewayConfigs], [
+        $mode = data_get($this->paymentGatewayConfigs, $gatewayId.'.fee_mode', EventPaymentGateway::FEE_MODE_GLOBAL);
+        $rules = [
             'paymentGatewayConfigs.'.$gatewayId.'.fee_mode' => 'required|in:global,manual',
             'paymentGatewayConfigs.'.$gatewayId.'.is_active' => 'required|boolean',
-            'paymentGatewayConfigs.'.$gatewayId.'.fee_fixed' => [
-                'nullable',
+        ];
+
+        if ($mode === EventPaymentGateway::FEE_MODE_MANUAL) {
+            $rules['paymentGatewayConfigs.'.$gatewayId.'.fee_fixed'] = [
+                'required',
                 'regex:/^\d{1,13}(\.\d{1,2})?$/',
-            ],
-            'paymentGatewayConfigs.'.$gatewayId.'.fee_percent' => [
-                'nullable',
+            ];
+            $rules['paymentGatewayConfigs.'.$gatewayId.'.fee_percent'] = [
+                'required',
                 'regex:/^\d{1,4}(\.\d{1,4})?$/',
-            ],
-        ])->validate();
+            ];
+        }
+
+        return Validator::make(['paymentGatewayConfigs' => $this->paymentGatewayConfigs], $rules)->validate();
     }
 
     public function setPaymentFeeMode(int $gatewayId, string $mode): void
@@ -325,6 +331,9 @@ class EventDetail extends Component
     {
         $this->authorizePaymentManagement();
 
+        $event = $this->getCurrentEventModel();
+        PaymentGateway::findOrFail($gatewayId);
+
         if (! array_key_exists($gatewayId, $this->paymentGatewayConfigs)) {
             $this->loadPaymentGatewayConfigs();
         }
@@ -333,9 +342,25 @@ class EventDetail extends Component
             abort(404);
         }
 
-        $this->paymentGatewayConfigs[$gatewayId]['is_active'] = ! (bool) $this->paymentGatewayConfigs[$gatewayId]['is_active'];
+        $newStatus = ! (bool) $this->paymentGatewayConfigs[$gatewayId]['is_active'];
 
-        $this->saveEventPaymentGateway($gatewayId);
+        $eventPaymentGateway = EventPaymentGateway::firstOrNew([
+            'event_id' => $event->id,
+            'payment_gateway_id' => $gatewayId,
+        ]);
+
+        if (! $eventPaymentGateway->exists) {
+            $eventPaymentGateway->fee_mode = EventPaymentGateway::FEE_MODE_GLOBAL;
+            $eventPaymentGateway->fee_fixed = null;
+            $eventPaymentGateway->fee_percent = null;
+        }
+
+        $eventPaymentGateway->is_active = $newStatus;
+        $eventPaymentGateway->save();
+
+        $this->paymentGatewayConfigs[$gatewayId]['is_active'] = $newStatus;
+
+        session()->flash('message', 'Status payment gateway event berhasil diperbarui.');
     }
 
     public function saveEventPaymentGateway(int $gatewayId): void
