@@ -925,6 +925,281 @@ class EventPaymentGatewayPricingTest extends TestCase
         $this->assertDatabaseCount('transactions', 0);
     }
 
+    public function test_qris_gateway_uses_explicit_other_qris_midtrans_code_in_snap_payload(): void
+    {
+        $capturedPayload = null;
+        $this->fakeMidtransRedirectWithPayloadCapture($capturedPayload);
+
+        $user = $this->user();
+        $event = $this->event();
+        $cart = $this->cart($user, $event);
+        $harga = $this->harga($event);
+        $this->hargaCart($cart, $harga, 1);
+        $gateway = $this->gateway([
+            'payment' => 'QRIS',
+            'slug' => 'qris',
+            'category' => 'ewallet',
+            'midtrans_code' => 'other_qris',
+        ]);
+        $this->eventGateway($event, $gateway);
+
+        $this->actingAs($user)->post('/paynow', [
+            'cart_uid' => $cart->uid,
+            'payment_gateway_id' => $gateway->id,
+        ])->assertRedirect('https://pay.example.test/snap');
+
+        $this->assertSame(['other_qris'], $capturedPayload['enabled_payments']);
+    }
+
+    public function test_gopay_gateway_uses_explicit_gopay_midtrans_code_in_snap_payload(): void
+    {
+        $capturedPayload = null;
+        $this->fakeMidtransRedirectWithPayloadCapture($capturedPayload);
+
+        $user = $this->user();
+        $event = $this->event();
+        $cart = $this->cart($user, $event);
+        $harga = $this->harga($event);
+        $this->hargaCart($cart, $harga, 1);
+        $gateway = $this->gateway([
+            'payment' => 'GoPay',
+            'slug' => 'gopay',
+            'category' => 'ewallet',
+            'midtrans_code' => 'gopay',
+        ]);
+        $this->eventGateway($event, $gateway);
+
+        $this->actingAs($user)->post('/paynow', [
+            'cart_uid' => $cart->uid,
+            'payment_gateway_id' => $gateway->id,
+        ])->assertRedirect('https://pay.example.test/snap');
+
+        $this->assertSame(['gopay'], $capturedPayload['enabled_payments']);
+    }
+
+    public function test_bca_gateway_uses_explicit_bca_va_midtrans_code_in_snap_payload(): void
+    {
+        $capturedPayload = null;
+        $this->fakeMidtransRedirectWithPayloadCapture($capturedPayload);
+
+        $user = $this->user();
+        $event = $this->event();
+        $cart = $this->cart($user, $event);
+        $harga = $this->harga($event);
+        $this->hargaCart($cart, $harga, 1);
+        $gateway = $this->gateway([
+            'slug' => 'bca',
+            'category' => 'bank_transfer',
+            'midtrans_code' => 'bca_va',
+        ]);
+        $this->eventGateway($event, $gateway);
+
+        $this->actingAs($user)->post('/paynow', [
+            'cart_uid' => $cart->uid,
+            'payment_gateway_id' => $gateway->id,
+        ])->assertRedirect('https://pay.example.test/snap');
+
+        $this->assertSame(['bca_va'], $capturedPayload['enabled_payments']);
+    }
+
+    public function test_mandiri_gateway_uses_explicit_echannel_midtrans_code_in_snap_payload(): void
+    {
+        $capturedPayload = null;
+        $this->fakeMidtransRedirectWithPayloadCapture($capturedPayload);
+
+        $user = $this->user();
+        $event = $this->event();
+        $cart = $this->cart($user, $event);
+        $harga = $this->harga($event);
+        $this->hargaCart($cart, $harga, 1);
+        $gateway = $this->gateway([
+            'payment' => 'Mandiri',
+            'slug' => 'mandiri',
+            'category' => 'bank_transfer',
+            'midtrans_code' => 'echannel',
+        ]);
+        $this->eventGateway($event, $gateway);
+
+        $this->actingAs($user)->post('/paynow', [
+            'cart_uid' => $cart->uid,
+            'payment_gateway_id' => $gateway->id,
+        ])->assertRedirect('https://pay.example.test/snap');
+
+        $this->assertSame(['echannel'], $capturedPayload['enabled_payments']);
+    }
+
+    public function test_midtrans_code_overrides_slug_and_category_for_qris_selection(): void
+    {
+        $capturedPayload = null;
+        $this->fakeMidtransRedirectWithPayloadCapture($capturedPayload);
+
+        $user = $this->user();
+        $event = $this->event();
+        $cart = $this->cart($user, $event);
+        $harga = $this->harga($event);
+        $this->hargaCart($cart, $harga, 1);
+        $gateway = $this->gateway([
+            'payment' => 'QRIS Override',
+            'slug' => 'gopay',
+            'category' => 'ewallet',
+            'midtrans_code' => 'other_qris',
+        ]);
+        $this->eventGateway($event, $gateway);
+
+        $this->actingAs($user)->post('/paynow', [
+            'cart_uid' => $cart->uid,
+            'payment_gateway_id' => $gateway->id,
+        ])->assertRedirect('https://pay.example.test/snap');
+
+        $this->assertSame(['other_qris'], $capturedPayload['enabled_payments']);
+    }
+
+    public function test_midtrans_code_overrides_slug_and_category_for_gopay_selection(): void
+    {
+        $capturedPayload = null;
+        $this->fakeMidtransRedirectWithPayloadCapture($capturedPayload);
+
+        $user = $this->user();
+        $event = $this->event();
+        $cart = $this->cart($user, $event);
+        $harga = $this->harga($event);
+        $this->hargaCart($cart, $harga, 1);
+        $gateway = $this->gateway([
+            'payment' => 'GoPay Override',
+            'slug' => 'qris',
+            'category' => 'ewallet',
+            'midtrans_code' => 'gopay',
+        ]);
+        $this->eventGateway($event, $gateway);
+
+        $this->actingAs($user)->post('/paynow', [
+            'cart_uid' => $cart->uid,
+            'payment_gateway_id' => $gateway->id,
+        ])->assertRedirect('https://pay.example.test/snap');
+
+        $this->assertSame(['gopay'], $capturedPayload['enabled_payments']);
+    }
+
+    public function test_invalid_explicit_midtrans_code_rejects_paynow_without_snapshot_or_transaction(): void
+    {
+        Mockery::mock('alias:Midtrans\Snap')
+            ->shouldNotReceive('createTransaction');
+
+        $user = $this->user();
+        $event = $this->event();
+        $cart = $this->cart($user, $event);
+        $harga = $this->harga($event);
+        $this->hargaCart($cart, $harga, 1);
+        $gateway = $this->gateway([
+            'midtrans_code' => 'invalid_code',
+            'slug' => 'qris',
+            'category' => 'ewallet',
+        ]);
+        $this->eventGateway($event, $gateway);
+
+        $this->actingAs($user)
+            ->from('/detail-ticket/'.$cart->uid.'/'.$user->uid)
+            ->post('/paynow', [
+                'cart_uid' => $cart->uid,
+                'payment_gateway_id' => $gateway->id,
+            ])
+            ->assertRedirect('/detail-ticket/'.$cart->uid.'/'.$user->uid);
+
+        $cart->refresh();
+
+        $this->assertSame(Cart::STATUS_RESERVED, $cart->status);
+        $this->assertNull($cart->payment_gateway_id);
+        $this->assertNull($cart->gross_amount);
+        $this->assertNull($cart->link);
+        $this->assertDatabaseCount('transactions', 0);
+    }
+
+    public function test_legacy_midtrans_mapping_supports_bca_when_midtrans_code_is_null(): void
+    {
+        $capturedPayload = null;
+        $this->fakeMidtransRedirectWithPayloadCapture($capturedPayload);
+
+        $user = $this->user();
+        $event = $this->event();
+        $cart = $this->cart($user, $event);
+        $harga = $this->harga($event);
+        $this->hargaCart($cart, $harga, 1);
+        $gateway = $this->gateway([
+            'slug' => 'bca',
+            'category' => 'ewallet',
+            'midtrans_code' => null,
+        ]);
+        $this->eventGateway($event, $gateway);
+
+        $this->actingAs($user)->post('/paynow', [
+            'cart_uid' => $cart->uid,
+            'payment_gateway_id' => $gateway->id,
+        ])->assertRedirect('https://pay.example.test/snap');
+
+        $this->assertSame(['bca_va'], $capturedPayload['enabled_payments']);
+    }
+
+    public function test_legacy_midtrans_mapping_supports_mandiri_when_midtrans_code_is_null(): void
+    {
+        $capturedPayload = null;
+        $this->fakeMidtransRedirectWithPayloadCapture($capturedPayload);
+
+        $user = $this->user();
+        $event = $this->event();
+        $cart = $this->cart($user, $event);
+        $harga = $this->harga($event);
+        $this->hargaCart($cart, $harga, 1);
+        $gateway = $this->gateway([
+            'payment' => 'Mandiri',
+            'slug' => 'mandiri',
+            'category' => 'ewallet',
+            'midtrans_code' => null,
+        ]);
+        $this->eventGateway($event, $gateway);
+
+        $this->actingAs($user)->post('/paynow', [
+            'cart_uid' => $cart->uid,
+            'payment_gateway_id' => $gateway->id,
+        ])->assertRedirect('https://pay.example.test/snap');
+
+        $this->assertSame(['echannel'], $capturedPayload['enabled_payments']);
+    }
+
+    public function test_unknown_legacy_midtrans_mapping_is_rejected_without_using_category_fallback(): void
+    {
+        Mockery::mock('alias:Midtrans\Snap')
+            ->shouldNotReceive('createTransaction');
+
+        $user = $this->user();
+        $event = $this->event();
+        $cart = $this->cart($user, $event);
+        $harga = $this->harga($event);
+        $this->hargaCart($cart, $harga, 1);
+        $gateway = $this->gateway([
+            'payment' => 'Unknown Legacy',
+            'slug' => 'unknown-payment',
+            'category' => 'bank_transfer',
+            'midtrans_code' => null,
+        ]);
+        $this->eventGateway($event, $gateway);
+
+        $this->actingAs($user)
+            ->from('/detail-ticket/'.$cart->uid.'/'.$user->uid)
+            ->post('/paynow', [
+                'cart_uid' => $cart->uid,
+                'payment_gateway_id' => $gateway->id,
+            ])
+            ->assertRedirect('/detail-ticket/'.$cart->uid.'/'.$user->uid);
+
+        $cart->refresh();
+
+        $this->assertSame(Cart::STATUS_RESERVED, $cart->status);
+        $this->assertNull($cart->payment_gateway_id);
+        $this->assertNull($cart->gross_amount);
+        $this->assertNull($cart->link);
+        $this->assertDatabaseCount('transactions', 0);
+    }
+
     public function test_soft_deleted_event_fails_closed_for_checkout_and_paynow(): void
     {
         Mockery::mock('alias:Midtrans\Snap')
@@ -1242,6 +1517,19 @@ class EventPaymentGatewayPricingTest extends TestCase
         Mockery::mock('alias:Midtrans\Snap')
             ->shouldReceive('createTransaction')
             ->once()
+            ->andReturn((object) ['redirect_url' => $url]);
+    }
+
+    protected function fakeMidtransRedirectWithPayloadCapture(?array &$capturedPayload, string $url = 'https://pay.example.test/snap'): void
+    {
+        Mockery::mock('alias:Midtrans\Snap')
+            ->shouldReceive('createTransaction')
+            ->once()
+            ->with(Mockery::on(function ($payload) use (&$capturedPayload) {
+                $capturedPayload = $payload;
+
+                return true;
+            }))
             ->andReturn((object) ['redirect_url' => $url]);
     }
 }

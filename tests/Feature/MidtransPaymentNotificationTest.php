@@ -28,6 +28,7 @@ class MidtransPaymentNotificationTest extends TestCase
         Config::set('cache.default', 'array');
         Config::set('queue.default', 'sync');
         Config::set('gate-tokens.key', 'base64:'.base64_encode(str_repeat('g', 32)));
+        Config::set('services.midtrans.serverKey', 'test-server-key');
 
         DB::purge('sqlite');
         DB::reconnect('sqlite');
@@ -154,6 +155,55 @@ class MidtransPaymentNotificationTest extends TestCase
         });
     }
 
+    public function test_midtrans_callback_accepts_qris_payment_type_without_changing_selected_gateway_id(): void
+    {
+        $buyer = $this->user();
+        $event = $this->event();
+        $cart = Cart::create([
+            'uid' => (string) Str::uuid(),
+            'user_uid' => $buyer->uid,
+            'event_uid' => $event->uid,
+            'invoice' => 'INV-QRIS-CALLBACK',
+            'status' => Cart::STATUS_PENDING,
+            'payment_type' => 'qris',
+            'payment_gateway_id' => 99,
+            'gross_amount' => 92000,
+            'expires_at' => now()->addMinutes(10),
+        ]);
+
+        DB::table('transactions')->insert([
+            'uid' => $cart->uid,
+            'user_uid' => $cart->user_uid,
+            'event_uid' => $cart->event_uid,
+            'amount' => '92000',
+            'gross_amount' => 92000,
+            'invoice' => $cart->invoice,
+            'payment_type' => 'qris',
+            'status_transaksi' => Cart::STATUS_PENDING,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $grossAmount = '92000.00';
+
+        $this->postJson('/api/callback', [
+            'transaction_status' => 'pending',
+            'payment_type' => 'qris',
+            'fraud_status' => 'accept',
+            'order_id' => $cart->invoice,
+            'status_code' => '200',
+            'gross_amount' => $grossAmount,
+            'transaction_id' => 'midtrans-qris-callback',
+            'signature_key' => hash('sha512', $cart->invoice.'200'.$grossAmount.'test-server-key'),
+        ])->assertOk();
+
+        $cart->refresh();
+
+        $this->assertSame(99, $cart->payment_gateway_id);
+        $this->assertSame('qris', $cart->payment_type);
+        $this->assertSame(Cart::STATUS_PENDING, $cart->status);
+    }
+
     private function createSchema(): void
     {
         Schema::create('users', function ($table) {
@@ -224,6 +274,21 @@ class MidtransPaymentNotificationTest extends TestCase
             $table->text('review_reason')->nullable();
             $table->string('midtrans_transaction_id')->nullable();
             $table->string('midtrans_status')->nullable();
+            $table->timestamps();
+            $table->softDeletes();
+        });
+
+        Schema::create('transactions', function ($table) {
+            $table->id();
+            $table->string('uid');
+            $table->string('user_uid');
+            $table->string('event_uid');
+            $table->string('amount');
+            $table->unsignedBigInteger('gross_amount')->nullable();
+            $table->string('invoice');
+            $table->string('payment_type')->nullable();
+            $table->string('status_transaksi');
+            $table->timestamp('paid_at')->nullable();
             $table->timestamps();
             $table->softDeletes();
         });

@@ -16,12 +16,43 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Midtrans\Config as konfig;
 use Midtrans\Snap;
 
 class TransactionController extends Controller
 {
+    private const SUPPORTED_MIDTRANS_PAYMENT_CODES = [
+        'bca_va',
+        'bni_va',
+        'bri_va',
+        'cimb_va',
+        'danamon_va',
+        'bsi_va',
+        'permata_va',
+        'echannel',
+        'gopay',
+        'shopeepay',
+        'other_qris',
+        'credit_card',
+        'alfamart',
+        'indomaret',
+    ];
+
+    private const LEGACY_MIDTRANS_PAYMENT_CODE_MAP = [
+        'bca' => 'bca_va',
+        'bni' => 'bni_va',
+        'bri' => 'bri_va',
+        'cimb' => 'cimb_va',
+        'danamon' => 'danamon_va',
+        'bsi' => 'bsi_va',
+        'permata' => 'permata_va',
+        'mandiri' => 'echannel',
+        'gopay' => 'gopay',
+        'shopeepay' => 'shopeepay',
+    ];
+
     public function paynow(
         Request $request,
         TicketPricingService $pricingService,
@@ -93,6 +124,13 @@ class TransactionController extends Controller
                 }
 
                 $gateway = $eventGateway->paymentGateway;
+                $midtransPaymentCode = $this->resolveMidtransPaymentCode($gateway);
+
+                if (! $midtransPaymentCode) {
+                    throw ValidationException::withMessages([
+                        'payment_gateway_id' => 'Metode pembayaran belum dikonfigurasi dengan benar.',
+                    ]);
+                }
 
                 if (HargaCart::where('uid', $cart->uid)->count() === 0) {
                     throw ValidationException::withMessages(['cart_uid' => 'Cart kosong atau tidak valid.']);
@@ -136,8 +174,7 @@ class TransactionController extends Controller
                     'cart_uid' => $cart->uid,
                     'invoice' => $cart->invoice,
                     'gross_amount' => $pricing['gross_amount'],
-                    'payment_slug' => $gateway->slug,
-                    'payment_category' => $gateway->category,
+                    'midtrans_payment_code' => $midtransPaymentCode,
                     'expires_at' => $cart->expires_at,
                     'customer_name' => Auth::user()->name,
                     'customer_email' => Auth::user()->email,
@@ -296,11 +333,6 @@ class TransactionController extends Controller
         konfig::$isSanitized = config('services.midtrans.isSanitized');
         konfig::$is3ds = config('services.midtrans.is3ds');
 
-        $paymentMethod = $context['payment_slug'].($context['payment_category'] === 'ewallet' ? '' : '_va');
-        if ($context['payment_slug'] === 'mandiri') {
-            $paymentMethod = 'echannel';
-        }
-
         $duration = max(1, now()->diffInMinutes($context['expires_at'], false));
 
         $snapPayload = [
@@ -313,7 +345,7 @@ class TransactionController extends Controller
                 'email' => $context['customer_email'],
             ],
             'enabled_payments' => [
-                $paymentMethod,
+                $context['midtrans_payment_code'],
             ],
             'expiry' => [
                 'start_time' => now()->format('Y-m-d H:i:s O'),
@@ -353,5 +385,20 @@ class TransactionController extends Controller
     {
         return $status === 'settlement'
             || ($status === 'capture' && in_array($fraudStatus, ['', 'accept'], true));
+    }
+
+    protected function resolveMidtransPaymentCode($gateway): ?string
+    {
+        if ($gateway->midtrans_code !== null) {
+            $explicitCode = trim((string) $gateway->midtrans_code);
+
+            return in_array($explicitCode, self::SUPPORTED_MIDTRANS_PAYMENT_CODES, true)
+                ? $explicitCode
+                : null;
+        }
+
+        $slug = Str::lower((string) $gateway->slug);
+
+        return self::LEGACY_MIDTRANS_PAYMENT_CODE_MAP[$slug] ?? null;
     }
 }
