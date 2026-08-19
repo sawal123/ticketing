@@ -647,6 +647,284 @@ class EventPaymentGatewayPricingTest extends TestCase
         $this->assertSame(96500, $pricing['gross_amount']);
     }
 
+    public function test_global_active_and_event_active_gateway_is_available_in_checkout_and_paynow(): void
+    {
+        $this->fakeMidtransRedirect();
+
+        $user = $this->user();
+        $event = $this->event();
+        $cart = $this->cart($user, $event);
+        $harga = $this->harga($event, ['harga' => 100000]);
+        $this->hargaCart($cart, $harga, 1);
+        $gateway = $this->gateway([
+            'default_fee_fixed' => 2000,
+            'default_fee_percent' => 3,
+        ]);
+        $this->eventGateway($event, $gateway, ['is_active' => true]);
+
+        $this->actingAs($user)
+            ->get('/detail-ticket/'.$cart->uid.'/'.$user->uid)
+            ->assertOk()
+            ->assertSee($gateway->payment)
+            ->assertViewHas('hasAvailablePaymentGateways', true);
+
+        $this->actingAs($user)->post('/paynow', [
+            'cart_uid' => $cart->uid,
+            'payment_gateway_id' => $gateway->id,
+        ])->assertRedirect('https://pay.example.test/snap');
+
+        $this->assertSame(Cart::STATUS_PENDING, $cart->fresh()->status);
+        $this->assertSame($gateway->id, $cart->fresh()->payment_gateway_id);
+    }
+
+    public function test_inactive_global_gateway_is_rejected_in_paynow_even_if_event_configuration_is_active(): void
+    {
+        Mockery::mock('alias:Midtrans\Snap')
+            ->shouldNotReceive('createTransaction');
+
+        $user = $this->user();
+        $event = $this->event();
+        $cart = $this->cart($user, $event);
+        $harga = $this->harga($event);
+        $this->hargaCart($cart, $harga, 1);
+        $gateway = $this->gateway(['is_active' => false]);
+        $this->eventGateway($event, $gateway, ['is_active' => true]);
+
+        $this->actingAs($user)
+            ->from('/detail-ticket/'.$cart->uid.'/'.$user->uid)
+            ->post('/paynow', [
+                'cart_uid' => $cart->uid,
+                'payment_gateway_id' => $gateway->id,
+            ])
+            ->assertRedirect('/detail-ticket/'.$cart->uid.'/'.$user->uid);
+
+        $cart->refresh();
+
+        $this->assertSame(Cart::STATUS_RESERVED, $cart->status);
+        $this->assertNull($cart->payment_gateway_id);
+        $this->assertNull($cart->gross_amount);
+        $this->assertNull($cart->link);
+        $this->assertDatabaseCount('transactions', 0);
+    }
+
+    public function test_missing_event_payment_gateway_is_rejected_in_paynow(): void
+    {
+        Mockery::mock('alias:Midtrans\Snap')
+            ->shouldNotReceive('createTransaction');
+
+        $user = $this->user();
+        $event = $this->event();
+        $cart = $this->cart($user, $event);
+        $harga = $this->harga($event);
+        $this->hargaCart($cart, $harga, 1);
+        $gateway = $this->gateway();
+
+        $this->actingAs($user)
+            ->from('/detail-ticket/'.$cart->uid.'/'.$user->uid)
+            ->post('/paynow', [
+                'cart_uid' => $cart->uid,
+                'payment_gateway_id' => $gateway->id,
+            ])
+            ->assertRedirect('/detail-ticket/'.$cart->uid.'/'.$user->uid);
+
+        $this->assertSame(Cart::STATUS_RESERVED, $cart->fresh()->status);
+        $this->assertNull($cart->fresh()->payment_gateway_id);
+        $this->assertDatabaseCount('transactions', 0);
+    }
+
+    public function test_cross_event_payment_gateway_tampering_is_rejected(): void
+    {
+        Mockery::mock('alias:Midtrans\Snap')
+            ->shouldNotReceive('createTransaction');
+
+        $user = $this->user();
+        $eventA = $this->event(['uid' => 'event-a']);
+        $eventB = $this->event(['uid' => 'event-b']);
+        $cart = $this->cart($user, $eventA);
+        $harga = $this->harga($eventA);
+        $this->hargaCart($cart, $harga, 1);
+        $gateway = $this->gateway(['slug' => 'bni']);
+        $this->eventGateway($eventB, $gateway, ['is_active' => true]);
+
+        $this->actingAs($user)
+            ->from('/detail-ticket/'.$cart->uid.'/'.$user->uid)
+            ->post('/paynow', [
+                'cart_uid' => $cart->uid,
+                'payment_gateway_id' => $gateway->id,
+            ])
+            ->assertRedirect('/detail-ticket/'.$cart->uid.'/'.$user->uid);
+
+        $cart->refresh();
+
+        $this->assertSame(Cart::STATUS_RESERVED, $cart->status);
+        $this->assertNull($cart->payment_gateway_id);
+        $this->assertNull($cart->gross_amount);
+        $this->assertDatabaseCount('transactions', 0);
+    }
+
+    public function test_unknown_payment_gateway_id_is_rejected_in_paynow(): void
+    {
+        Mockery::mock('alias:Midtrans\Snap')
+            ->shouldNotReceive('createTransaction');
+
+        $user = $this->user();
+        $event = $this->event();
+        $cart = $this->cart($user, $event);
+        $harga = $this->harga($event);
+        $this->hargaCart($cart, $harga, 1);
+
+        $this->actingAs($user)
+            ->from('/detail-ticket/'.$cart->uid.'/'.$user->uid)
+            ->post('/paynow', [
+                'cart_uid' => $cart->uid,
+                'payment_gateway_id' => 999999,
+            ])
+            ->assertRedirect('/detail-ticket/'.$cart->uid.'/'.$user->uid);
+
+        $this->assertSame(Cart::STATUS_RESERVED, $cart->fresh()->status);
+        $this->assertDatabaseCount('transactions', 0);
+    }
+
+    public function test_paynow_rejects_cart_that_belongs_to_other_user(): void
+    {
+        Mockery::mock('alias:Midtrans\Snap')
+            ->shouldNotReceive('createTransaction');
+
+        $owner = $this->user();
+        $attacker = $this->user();
+        $event = $this->event();
+        $cart = $this->cart($owner, $event);
+        $harga = $this->harga($event);
+        $this->hargaCart($cart, $harga, 1);
+        $gateway = $this->gateway();
+        $this->eventGateway($event, $gateway);
+
+        $this->actingAs($attacker)
+            ->from('/detail-ticket/'.$cart->uid.'/'.$attacker->uid)
+            ->post('/paynow', [
+                'cart_uid' => $cart->uid,
+                'payment_gateway_id' => $gateway->id,
+            ])
+            ->assertRedirect('/detail-ticket/'.$cart->uid.'/'.$attacker->uid);
+
+        $this->assertSame(Cart::STATUS_RESERVED, $cart->fresh()->status);
+        $this->assertDatabaseCount('transactions', 0);
+    }
+
+    public function test_event_without_active_gateway_shows_message_and_cannot_continue_payment(): void
+    {
+        Mockery::mock('alias:Midtrans\Snap')
+            ->shouldNotReceive('createTransaction');
+
+        $user = $this->user();
+        $event = $this->event();
+        $cart = $this->cart($user, $event);
+        $harga = $this->harga($event);
+        $this->hargaCart($cart, $harga, 1);
+
+        $this->actingAs($user)
+            ->get('/detail-ticket/'.$cart->uid.'/'.$user->uid)
+            ->assertOk()
+            ->assertSee('Tidak ada metode pembayaran yang tersedia untuk event ini.')
+            ->assertViewHas('hasAvailablePaymentGateways', false);
+
+        $this->actingAs($user)
+            ->from('/detail-ticket/'.$cart->uid.'/'.$user->uid)
+            ->post('/paynow', [
+                'cart_uid' => $cart->uid,
+                'payment_gateway_id' => 1,
+            ])
+            ->assertRedirect('/detail-ticket/'.$cart->uid.'/'.$user->uid);
+
+        $this->assertSame(Cart::STATUS_RESERVED, $cart->fresh()->status);
+        $this->assertDatabaseCount('transactions', 0);
+    }
+
+    public function test_checkout_preview_fee_matches_paynow_snapshot_for_fixed_plus_percent_after_voucher_discount(): void
+    {
+        $this->fakeMidtransRedirect();
+
+        $user = $this->user();
+        $event = $this->event();
+        $cart = $this->cart($user, $event);
+        $harga = $this->harga($event, ['harga' => 100000]);
+        $this->hargaCart($cart, $harga, 1);
+        $voucher = $this->voucher($event);
+        DB::table('cart_vouchers')->insert([
+            'uid' => $cart->uid,
+            'uid_vouchers' => $voucher->uid,
+            'user_uid' => $cart->user_uid,
+            'event_uid' => $event->uid,
+            'code' => $voucher->code,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $gateway = $this->gateway([
+            'default_fee_fixed' => 2000,
+            'default_fee_percent' => 3,
+        ]);
+        $this->eventGateway($event, $gateway);
+        $cart->update([
+            'payment_gateway_id' => $gateway->id,
+            'payment_type' => $gateway->slug,
+        ]);
+
+        $this->actingAs($user)
+            ->get('/detail-ticket/'.$cart->uid.'/'.$user->uid)
+            ->assertOk()
+            ->assertViewHas('payment', function ($payment) use ($gateway) {
+                $previewGateway = collect($payment)->firstWhere('id', $gateway->id);
+
+                return $previewGateway
+                    && (int) $previewGateway->resolved_internet_fee === 4700;
+            })
+            ->assertViewHas('selectInternetFee', 4700)
+            ->assertViewHas('grandTotal', 94700);
+
+        $this->actingAs($user)->post('/paynow', [
+            'cart_uid' => $cart->uid,
+            'payment_gateway_id' => $gateway->id,
+        ])->assertRedirect('https://pay.example.test/snap');
+
+        $cart->refresh();
+
+        $this->assertSame(10000, $this->app->make(TicketPricingService::class)->calculateCart($cart)['discount']);
+        $this->assertSame(4700, (int) $cart->internet_fee);
+        $this->assertSame(94700, (int) $cart->gross_amount);
+    }
+
+    public function test_gateway_that_becomes_inactive_after_checkout_page_load_is_rejected_by_paynow(): void
+    {
+        Mockery::mock('alias:Midtrans\Snap')
+            ->shouldNotReceive('createTransaction');
+
+        $user = $this->user();
+        $event = $this->event();
+        $cart = $this->cart($user, $event);
+        $harga = $this->harga($event);
+        $this->hargaCart($cart, $harga, 1);
+        $gateway = $this->gateway();
+        $eventGateway = $this->eventGateway($event, $gateway, ['is_active' => true]);
+
+        $this->actingAs($user)
+            ->get('/detail-ticket/'.$cart->uid.'/'.$user->uid)
+            ->assertOk()
+            ->assertSee($gateway->payment);
+
+        $eventGateway->update(['is_active' => false]);
+
+        $this->actingAs($user)
+            ->from('/detail-ticket/'.$cart->uid.'/'.$user->uid)
+            ->post('/paynow', [
+                'cart_uid' => $cart->uid,
+                'payment_gateway_id' => $gateway->id,
+            ])
+            ->assertRedirect('/detail-ticket/'.$cart->uid.'/'.$user->uid);
+
+        $this->assertSame(Cart::STATUS_RESERVED, $cart->fresh()->status);
+        $this->assertDatabaseCount('transactions', 0);
+    }
+
     protected function createSchema(): void
     {
         Schema::create('users', function ($table) {

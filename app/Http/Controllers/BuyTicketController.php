@@ -69,7 +69,14 @@ class BuyTicketController extends Controller
             $iFee = PaymentGateway::where('slug', $cart->payment_type)->first();
         }
 
-        $selectedPaymentGatewayId = $iFee?->id;
+        $selectedPaymentGatewayId = $iFee && $this->data_pay->contains('id', $iFee->id)
+            ? $iFee->id
+            : null;
+
+        if ($selectedPaymentGatewayId === null && $cart->status === Cart::STATUS_RESERVED && $cart->gross_amount === null) {
+            $iFee = null;
+        }
+
         $selectedGatewayPricing = $cart->status === Cart::STATUS_RESERVED && $iFee
             ? $pricingService->calculateCart($cart, $iFee)
             : null;
@@ -87,6 +94,7 @@ class BuyTicketController extends Controller
             'uid' => $uid,
             'voucher' => $voucher,
             'payment' => $this->data_pay,
+            'hasAvailablePaymentGateways' => $this->data_pay->isNotEmpty(),
             'selectInternetFee' => $selectInternetFee,
             'selectedPaymentGatewayId' => $selectedPaymentGatewayId,
             'iFee' => $iFee,
