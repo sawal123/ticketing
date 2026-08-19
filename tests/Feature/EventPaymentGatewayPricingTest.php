@@ -925,6 +925,41 @@ class EventPaymentGatewayPricingTest extends TestCase
         $this->assertDatabaseCount('transactions', 0);
     }
 
+    public function test_soft_deleted_event_fails_closed_for_checkout_and_paynow(): void
+    {
+        Mockery::mock('alias:Midtrans\Snap')
+            ->shouldNotReceive('createTransaction');
+
+        $user = $this->user();
+        $event = $this->event();
+        $cart = $this->cart($user, $event);
+        $harga = $this->harga($event);
+        $this->hargaCart($cart, $harga, 1);
+        $gateway = $this->gateway();
+        $this->eventGateway($event, $gateway, ['is_active' => true]);
+
+        $event->delete();
+
+        $this->actingAs($user)
+            ->get('/detail-ticket/'.$cart->uid.'/'.$user->uid)
+            ->assertRedirect('/');
+
+        $this->actingAs($user)
+            ->from('/detail-ticket/'.$cart->uid.'/'.$user->uid)
+            ->post('/paynow', [
+                'cart_uid' => $cart->uid,
+                'payment_gateway_id' => $gateway->id,
+            ])
+            ->assertRedirect('/detail-ticket/'.$cart->uid.'/'.$user->uid);
+
+        $cart->refresh();
+
+        $this->assertSame(Cart::STATUS_RESERVED, $cart->status);
+        $this->assertNull($cart->payment_gateway_id);
+        $this->assertNull($cart->gross_amount);
+        $this->assertDatabaseCount('transactions', 0);
+    }
+
     protected function createSchema(): void
     {
         Schema::create('users', function ($table) {

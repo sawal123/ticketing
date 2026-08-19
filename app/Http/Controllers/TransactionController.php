@@ -72,8 +72,14 @@ class TransactionController extends Controller
                     return ['redirect_url' => $cart->link, 'expired' => false];
                 }
 
+                $event = $cart->event;
+
+                if (! $event) {
+                    throw ValidationException::withMessages(['cart_uid' => 'Event tidak tersedia.']);
+                }
+
                 $eventGateway = EventPaymentGateway::query()
-                    ->where('event_id', $cart->event->id)
+                    ->where('event_id', $event->id)
                     ->where('payment_gateway_id', $request->input('payment_gateway_id'))
                     ->where('is_active', true)
                     ->whereHas('paymentGateway', function ($query) {
