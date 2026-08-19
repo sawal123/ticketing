@@ -63,6 +63,9 @@ class Cart extends Model
         'payment_link_expires_at',
         'gross_amount',
         'payment_gateway_id',
+        'payment_fee_mode',
+        'payment_fee_fixed',
+        'payment_fee_percent',
         'review_reason',
         'midtrans_transaction_id',
         'midtrans_status',
@@ -77,6 +80,9 @@ class Cart extends Model
         'internet_fee' => 'integer',
         'pajak' => 'integer',
         'pajak_persen' => 'integer',
+        'payment_gateway_id' => 'integer',
+        'payment_fee_fixed' => 'decimal:2',
+        'payment_fee_percent' => 'decimal:4',
         'gate_token_issued_at' => 'datetime',
         'scanned_at' => 'datetime',
         'gate_token_version' => 'integer',
@@ -117,6 +123,11 @@ class Cart extends Model
     public function cartVoucher()
     {
         return $this->hasOne(CartVoucher::class, 'uid', 'uid');
+    }
+
+    public function paymentGateway()
+    {
+        return $this->belongsTo(PaymentGateway::class);
     }
 
     public function isReservationExpired(): bool
