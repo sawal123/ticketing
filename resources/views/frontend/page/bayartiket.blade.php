@@ -444,7 +444,6 @@
                 } else {
                     updateCheckoutTotals({{ (int) ($selectInternetFee ?? 0) }});
                 }
-            }
             @endif
 
             const reservationCard = document.getElementById('reservationCard');
