@@ -4,8 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Jobs\sendEmailETransaksi;
 use App\Models\Cart;
+use App\Models\EventPaymentGateway;
 use App\Models\HargaCart;
-use App\Models\PaymentGateway;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Services\Tickets\TicketPricingService;
@@ -34,7 +34,7 @@ class TransactionController extends Controller
 
         $request->validate([
             'cart_uid' => 'required|string',
-            'payment_gateway_id' => 'required|integer|exists:payment_gateways,id',
+            'payment_gateway_id' => 'required|integer',
         ]);
 
         $cartUid = $request->input('cart_uid');
@@ -72,13 +72,27 @@ class TransactionController extends Controller
                     return ['redirect_url' => $cart->link, 'expired' => false];
                 }
 
-                $gateway = PaymentGateway::where('id', $request->input('payment_gateway_id'))
-                    ->where('is_active', '1')
+                $event = $cart->event;
+
+                if (! $event) {
+                    throw ValidationException::withMessages(['cart_uid' => 'Event tidak tersedia.']);
+                }
+
+                $eventGateway = EventPaymentGateway::query()
+                    ->where('event_id', $event->id)
+                    ->where('payment_gateway_id', $request->input('payment_gateway_id'))
+                    ->where('is_active', true)
+                    ->whereHas('paymentGateway', function ($query) {
+                        $query->where('is_active', true);
+                    })
+                    ->with('paymentGateway')
                     ->first();
 
-                if (! $gateway) {
+                if (! $eventGateway || ! $eventGateway->paymentGateway) {
                     throw ValidationException::withMessages(['payment_gateway_id' => 'Metode pembayaran tidak tersedia.']);
                 }
+
+                $gateway = $eventGateway->paymentGateway;
 
                 if (HargaCart::where('uid', $cart->uid)->count() === 0) {
                     throw ValidationException::withMessages(['cart_uid' => 'Cart kosong atau tidak valid.']);

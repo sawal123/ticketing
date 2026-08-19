@@ -19,16 +19,14 @@ class BuyTicketController extends Controller
 {
     protected $data_pay = 1;
 
-    protected function payment(?Event $event = null)
+    protected function payment(Event $event)
     {
         $query = PaymentGateway::where('payment_gateways.is_active', true);
 
-        if ($event) {
-            $query->whereHas('eventPaymentGateways', function ($builder) use ($event) {
-                $builder->where('event_id', $event->id)
-                    ->where('is_active', true);
-            });
-        }
+        $query->whereHas('eventPaymentGateways', function ($builder) use ($event) {
+            $builder->where('event_id', $event->id)
+                ->where('is_active', true);
+        });
 
         $this->data_pay = $query->get();
     }
@@ -43,6 +41,9 @@ class BuyTicketController extends Controller
             return redirect('/');
         }
         $event = Event::where('uid', $cart->event_uid)->first();
+        if (! $event) {
+            return redirect('/')->with('error', 'Event tidak tersedia.');
+        }
         $pricingService = app(TicketPricingService::class);
         $this->payment($event);
         $harga = HargaCart::where('uid', $cart->uid)->get();
@@ -69,7 +70,14 @@ class BuyTicketController extends Controller
             $iFee = PaymentGateway::where('slug', $cart->payment_type)->first();
         }
 
-        $selectedPaymentGatewayId = $iFee?->id;
+        $selectedPaymentGatewayId = $iFee && $this->data_pay->contains('id', $iFee->id)
+            ? $iFee->id
+            : null;
+
+        if ($selectedPaymentGatewayId === null && $cart->status === Cart::STATUS_RESERVED && $cart->gross_amount === null) {
+            $iFee = null;
+        }
+
         $selectedGatewayPricing = $cart->status === Cart::STATUS_RESERVED && $iFee
             ? $pricingService->calculateCart($cart, $iFee)
             : null;
@@ -87,6 +95,7 @@ class BuyTicketController extends Controller
             'uid' => $uid,
             'voucher' => $voucher,
             'payment' => $this->data_pay,
+            'hasAvailablePaymentGateways' => $this->data_pay->isNotEmpty(),
             'selectInternetFee' => $selectInternetFee,
             'selectedPaymentGatewayId' => $selectedPaymentGatewayId,
             'iFee' => $iFee,

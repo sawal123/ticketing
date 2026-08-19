@@ -174,30 +174,36 @@
                                 <span class="pay-chevron open">▲</span>
                             </div>
 
-                            <div class="pay-options-grid" id="payOptions">
-                                @foreach ($payment as $gateway)
-                                    <div class="pay-option {{ $selectedPaymentGatewayId === $gateway->id ? 'selected' : '' }}"
-                                        id="card{{ $gateway->id }}" style="cursor:pointer;"
-                                        data-payment-id="{{ $gateway->id }}"
-                                        data-resolved-fee="{{ (int) ($gateway->resolved_internet_fee ?? 0) }}"
-                                        onclick="selectPayment({{ $gateway->id }}, {{ (int) ($gateway->resolved_internet_fee ?? 0) }}, this)">
+                            @if ($hasAvailablePaymentGateways)
+                                <div class="pay-options-grid" id="payOptions">
+                                    @foreach ($payment as $gateway)
+                                        <div class="pay-option {{ $selectedPaymentGatewayId === $gateway->id ? 'selected' : '' }}"
+                                            id="card{{ $gateway->id }}" style="cursor:pointer;"
+                                            data-payment-id="{{ $gateway->id }}"
+                                            data-resolved-fee="{{ (int) ($gateway->resolved_internet_fee ?? 0) }}"
+                                            onclick="selectPayment({{ $gateway->id }}, {{ (int) ($gateway->resolved_internet_fee ?? 0) }}, this)">
 
-                                        <div class="pay-logo" style="padding:8px;">
-                                            <img src="{{ asset('storage/' . $gateway->icon) }}"
-                                                style="width:40px; height:22px; object-fit:contain;"
-                                                alt="{{ $gateway->payment }}">
-                                        </div>
-
-                                        <div>
-                                            <div class="pay-name">{{ $gateway->payment }}</div>
-                                            <div class="pay-fee">
-                                                Biaya: Rp{{ number_format($gateway->resolved_internet_fee ?? 0, 0, ',', '.') }}
+                                            <div class="pay-logo" style="padding:8px;">
+                                                <img src="{{ asset('storage/' . $gateway->icon) }}"
+                                                    style="width:40px; height:22px; object-fit:contain;"
+                                                    alt="{{ $gateway->payment }}">
                                             </div>
-                                        </div>
 
-                                    </div>
-                                @endforeach
-                            </div>
+                                            <div>
+                                                <div class="pay-name">{{ $gateway->payment }}</div>
+                                                <div class="pay-fee">
+                                                    Biaya: Rp{{ number_format($gateway->resolved_internet_fee ?? 0, 0, ',', '.') }}
+                                                </div>
+                                            </div>
+
+                                        </div>
+                                    @endforeach
+                                </div>
+                            @else
+                                <div style="padding:16px 0;color:var(--muted);font-size:13px;">
+                                    Tidak ada metode pembayaran yang tersedia untuk event ini.
+                                </div>
+                            @endif
 
                         </div>
                     </div>
@@ -370,7 +376,8 @@
                             <input type="hidden" name="cart_uid" value="{{ $cart->uid }}">
 
                             @if ($cart->status === \App\Models\Cart::STATUS_RESERVED)
-                                <button type="button" class="btn-pay" onclick="showConfirmModal(event)">
+                                <button type="button" class="btn-pay" onclick="showConfirmModal(event)"
+                                    {{ $hasAvailablePaymentGateways ? '' : 'disabled' }}>
                                     <span>🔐</span>
                                     <span>Bayar Sekarang</span>
                                 </button>
@@ -488,6 +495,21 @@
 
         function showConfirmModal(e) {
             e.preventDefault();
+
+            if (document.querySelectorAll('.pay-option').length === 0) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Metode Pembayaran Tidak Tersedia',
+                    text: 'Tidak ada metode pembayaran yang tersedia untuk event ini.',
+                    background: '#1a1a1a',
+                    color: '#fff',
+                    confirmButtonColor: '#6c5ce7',
+                    customClass: {
+                        popup: 'swal-dark-popup'
+                    }
+                });
+                return;
+            }
 
             // Check if payment selected
             const paymentId = document.getElementById('selectedPayment').value;
