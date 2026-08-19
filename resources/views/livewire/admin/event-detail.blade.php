@@ -56,11 +56,13 @@
             <i data-lucide="ticket" class="w-4 h-4"></i>
             Manajemen Tiket
         </button>
-        <button wire:click="setTab('pembayaran')" wire:loading.attr="disabled" wire:target="setTab"
-            class="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all disabled:pointer-events-none disabled:opacity-60 {{ $activeTab === 'pembayaran' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700' }}">
-            <i data-lucide="credit-card" class="w-4 h-4"></i>
-            Pembayaran
-        </button>
+        @if ($canSeePaymentTab)
+            <button wire:click="setTab('pembayaran')" wire:loading.attr="disabled" wire:target="setTab"
+                class="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all disabled:pointer-events-none disabled:opacity-60 {{ $activeTab === 'pembayaran' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700' }}">
+                <i data-lucide="credit-card" class="w-4 h-4"></i>
+                Pembayaran
+            </button>
+        @endif
         <button wire:click="setTab('transaksi')" wire:loading.attr="disabled" wire:target="setTab"
             class="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all disabled:pointer-events-none disabled:opacity-60 {{ $activeTab === 'transaksi' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700' }}">
             <i data-lucide="shopping-cart" class="w-4 h-4"></i>
@@ -247,7 +249,7 @@
                 @endforelse
             </x-admin.table>
 
-        @elseif($activeTab === 'pembayaran')
+        @elseif($activeTab === 'pembayaran' && $canSeePaymentTab)
             <x-admin.card title="Konfigurasi Payment Gateway Event">
                 <div class="space-y-4">
                     @forelse($paymentGateways as $gateway)

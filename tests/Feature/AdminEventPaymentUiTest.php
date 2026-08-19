@@ -189,6 +189,20 @@ class AdminEventPaymentUiTest extends TestCase
             ->assertSee('Konfigurasi Payment Gateway Event');
     }
 
+    public function test_non_admin_does_not_see_payment_tab(): void
+    {
+        $user = $this->makeUser('user');
+        $event = $this->makeEvent();
+        $this->makeGateway();
+
+        Livewire::actingAs($user)
+            ->test(EventDetail::class, ['uid' => $event->uid])
+            ->assertDontSee('Pembayaran')
+            ->assertDontSee('Konfigurasi Payment Gateway Event')
+            ->set('activeTab', 'pembayaran')
+            ->assertSet('activeTab', 'umum');
+    }
+
     public function test_non_admin_cannot_update_event_payment_configuration(): void
     {
         $user = $this->makeUser('user');
@@ -198,6 +212,20 @@ class AdminEventPaymentUiTest extends TestCase
         Livewire::actingAs($user)
             ->test(EventDetail::class, ['uid' => $event->uid])
             ->call('saveEventPaymentGateway', $gateway->id)
+            ->assertForbidden();
+
+        $this->assertDatabaseCount('event_payment_gateways', 0);
+    }
+
+    public function test_non_admin_cannot_toggle_event_payment_configuration(): void
+    {
+        $user = $this->makeUser('user');
+        $event = $this->makeEvent();
+        $gateway = $this->makeGateway();
+
+        Livewire::actingAs($user)
+            ->test(EventDetail::class, ['uid' => $event->uid])
+            ->call('toggleEventPaymentGateway', $gateway->id)
             ->assertForbidden();
 
         $this->assertDatabaseCount('event_payment_gateways', 0);
@@ -288,6 +316,30 @@ class AdminEventPaymentUiTest extends TestCase
         ]);
     }
 
+    public function test_zero_manual_fee_values_are_valid(): void
+    {
+        $admin = $this->makeUser('admin');
+        $event = $this->makeEvent();
+        $gateway = $this->makeGateway();
+
+        Livewire::actingAs($admin)
+            ->test(EventDetail::class, ['uid' => $event->uid])
+            ->set('activeTab', 'pembayaran')
+            ->set('paymentGatewayConfigs.'.$gateway->id.'.fee_mode', EventPaymentGateway::FEE_MODE_MANUAL)
+            ->set('paymentGatewayConfigs.'.$gateway->id.'.fee_fixed', 0)
+            ->set('paymentGatewayConfigs.'.$gateway->id.'.fee_percent', 0)
+            ->call('saveEventPaymentGateway', $gateway->id)
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('event_payment_gateways', [
+            'event_id' => $event->id,
+            'payment_gateway_id' => $gateway->id,
+            'fee_mode' => EventPaymentGateway::FEE_MODE_MANUAL,
+            'fee_fixed' => 0,
+            'fee_percent' => 0,
+        ]);
+    }
+
     public function test_negative_fee_values_are_rejected(): void
     {
         $admin = $this->makeUser('admin');
@@ -307,6 +359,44 @@ class AdminEventPaymentUiTest extends TestCase
             ]);
 
         $this->assertDatabaseCount('event_payment_gateways', 0);
+    }
+
+    public function test_fee_values_with_too_many_decimals_are_rejected(): void
+    {
+        $admin = $this->makeUser('admin');
+        $event = $this->makeEvent();
+        $gateway = $this->makeGateway();
+
+        Livewire::actingAs($admin)
+            ->test(EventDetail::class, ['uid' => $event->uid])
+            ->set('activeTab', 'pembayaran')
+            ->set('paymentGatewayConfigs.'.$gateway->id.'.fee_mode', EventPaymentGateway::FEE_MODE_MANUAL)
+            ->set('paymentGatewayConfigs.'.$gateway->id.'.fee_fixed', '4000.123')
+            ->set('paymentGatewayConfigs.'.$gateway->id.'.fee_percent', '3.12345')
+            ->call('saveEventPaymentGateway', $gateway->id)
+            ->assertHasErrors([
+                'paymentGatewayConfigs.'.$gateway->id.'.fee_fixed',
+                'paymentGatewayConfigs.'.$gateway->id.'.fee_percent',
+            ]);
+    }
+
+    public function test_fee_values_exceeding_database_capacity_are_rejected(): void
+    {
+        $admin = $this->makeUser('admin');
+        $event = $this->makeEvent();
+        $gateway = $this->makeGateway();
+
+        Livewire::actingAs($admin)
+            ->test(EventDetail::class, ['uid' => $event->uid])
+            ->set('activeTab', 'pembayaran')
+            ->set('paymentGatewayConfigs.'.$gateway->id.'.fee_mode', EventPaymentGateway::FEE_MODE_MANUAL)
+            ->set('paymentGatewayConfigs.'.$gateway->id.'.fee_fixed', '10000000000000.00')
+            ->set('paymentGatewayConfigs.'.$gateway->id.'.fee_percent', '10000.0000')
+            ->call('saveEventPaymentGateway', $gateway->id)
+            ->assertHasErrors([
+                'paymentGatewayConfigs.'.$gateway->id.'.fee_fixed',
+                'paymentGatewayConfigs.'.$gateway->id.'.fee_percent',
+            ]);
     }
 
     public function test_payment_configuration_changes_only_affect_the_open_event(): void

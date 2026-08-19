@@ -145,6 +145,11 @@ class EventDetail extends Component
         return optional(Auth::user())->role === 'admin';
     }
 
+    public function canSeePaymentTab(): bool
+    {
+        return $this->canManagePaymentTab();
+    }
+
     private function authorizePaymentManagement(): void
     {
         abort_unless($this->canManagePaymentTab(), 403);
@@ -288,8 +293,14 @@ class EventDetail extends Component
         return Validator::make(['paymentGatewayConfigs' => $this->paymentGatewayConfigs], [
             'paymentGatewayConfigs.'.$gatewayId.'.fee_mode' => 'required|in:global,manual',
             'paymentGatewayConfigs.'.$gatewayId.'.is_active' => 'required|boolean',
-            'paymentGatewayConfigs.'.$gatewayId.'.fee_fixed' => 'nullable|numeric|min:0',
-            'paymentGatewayConfigs.'.$gatewayId.'.fee_percent' => 'nullable|numeric|min:0',
+            'paymentGatewayConfigs.'.$gatewayId.'.fee_fixed' => [
+                'nullable',
+                'regex:/^\d{1,13}(\.\d{1,2})?$/',
+            ],
+            'paymentGatewayConfigs.'.$gatewayId.'.fee_percent' => [
+                'nullable',
+                'regex:/^\d{1,4}(\.\d{1,4})?$/',
+            ],
         ])->validate();
     }
 
@@ -522,6 +533,7 @@ class EventDetail extends Component
         return view('livewire.admin.event-detail', [
             'event' => $event,
             'metrics' => $metrics,
+            'canSeePaymentTab' => $this->canSeePaymentTab(),
             'paymentGateways' => $paymentGateways,
             'transactions' => $transactions,
             'selectedTransaction' => $selectedTransaction,
