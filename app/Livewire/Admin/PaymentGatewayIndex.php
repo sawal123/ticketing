@@ -29,6 +29,10 @@ class PaymentGatewayIndex extends Component
 
     public $biaya_type = 'rupiah';
 
+    public $default_fee_fixed = 0;
+
+    public $default_fee_percent = 0;
+
     public $icon;
 
     public $currentIcon;
@@ -43,8 +47,8 @@ class PaymentGatewayIndex extends Component
         return [
             'payment' => 'required|string|max:100',
             'category' => 'required|string',
-            'biaya' => 'required|numeric',
-            'biaya_type' => 'required|in:rupiah,persen',
+            'default_fee_fixed' => ['required', 'regex:/^\d{1,13}(\.\d{1,2})?$/'],
+            'default_fee_percent' => ['required', 'regex:/^\d{1,4}(\.\d{1,4})?$/'],
             'icon' => SecureImageStorage::rules(),
             'is_active' => 'boolean',
         ];
@@ -68,6 +72,8 @@ class PaymentGatewayIndex extends Component
         $this->category = '';
         $this->biaya = '';
         $this->biaya_type = 'rupiah';
+        $this->default_fee_fixed = 0;
+        $this->default_fee_percent = 0;
         $this->icon = null;
         $this->currentIcon = null;
         $this->is_active = true;
@@ -84,6 +90,8 @@ class PaymentGatewayIndex extends Component
         $this->category = $gateway->category;
         $this->biaya = $gateway->biaya;
         $this->biaya_type = $gateway->biaya_type;
+        $this->default_fee_fixed = $gateway->default_fee_fixed;
+        $this->default_fee_percent = $gateway->default_fee_percent;
         $this->currentIcon = $gateway->icon;
         $this->is_active = $gateway->is_active;
 
@@ -98,8 +106,8 @@ class PaymentGatewayIndex extends Component
         $data = [
             'payment' => $this->payment,
             'category' => $this->category,
-            'biaya' => $this->biaya,
-            'biaya_type' => $this->biaya_type,
+            'default_fee_fixed' => $this->default_fee_fixed,
+            'default_fee_percent' => $this->default_fee_percent,
             'is_active' => $this->is_active,
             'slug' => Str::slug($this->payment),
         ];
@@ -114,6 +122,8 @@ class PaymentGatewayIndex extends Component
             PaymentGateway::find($this->editingId)->update($data);
             session()->flash('message', 'Payment Gateway berhasil diperbarui.');
         } else {
+            $data['biaya'] = 0;
+            $data['biaya_type'] = 'rupiah';
             PaymentGateway::create($data);
             session()->flash('message', 'Payment Gateway berhasil ditambahkan.');
         }

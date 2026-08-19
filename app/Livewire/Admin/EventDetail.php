@@ -304,6 +304,23 @@ class EventDetail extends Component
         ])->validate();
     }
 
+    public function setPaymentFeeMode(int $gatewayId, string $mode): void
+    {
+        $this->authorizePaymentManagement();
+
+        PaymentGateway::findOrFail($gatewayId);
+
+        if (! in_array($mode, [EventPaymentGateway::FEE_MODE_GLOBAL, EventPaymentGateway::FEE_MODE_MANUAL], true)) {
+            abort(422);
+        }
+
+        if (! array_key_exists($gatewayId, $this->paymentGatewayConfigs)) {
+            $this->loadPaymentGatewayConfigs();
+        }
+
+        $this->paymentGatewayConfigs[$gatewayId]['fee_mode'] = $mode;
+    }
+
     public function toggleEventPaymentGateway(int $gatewayId): void
     {
         $this->authorizePaymentManagement();

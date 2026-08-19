@@ -307,15 +307,15 @@
                                         <div class="flex flex-wrap gap-3">
                                             <label class="inline-flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
                                                 <input type="radio"
-                                                    wire:model.live="paymentGatewayConfigs.{{ $gateway->id }}.fee_mode"
-                                                    value="global"
+                                                    wire:click="setPaymentFeeMode({{ $gateway->id }}, 'global')"
+                                                    @checked(($config['fee_mode'] ?? 'global') === 'global')
                                                     class="text-indigo-600 focus:ring-indigo-500">
                                                 <span>Global</span>
                                             </label>
                                             <label class="inline-flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
                                                 <input type="radio"
-                                                    wire:model.live="paymentGatewayConfigs.{{ $gateway->id }}.fee_mode"
-                                                    value="manual"
+                                                    wire:click="setPaymentFeeMode({{ $gateway->id }}, 'manual')"
+                                                    @checked(($config['fee_mode'] ?? 'global') === 'manual')
                                                     class="text-indigo-600 focus:ring-indigo-500">
                                                 <span>Manual</span>
                                             </label>

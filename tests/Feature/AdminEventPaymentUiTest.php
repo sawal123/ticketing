@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Livewire\Admin\EventDetail;
+use App\Livewire\Admin\PaymentGatewayIndex;
 use App\Models\Cart;
 use App\Models\Event;
 use App\Models\EventPaymentGateway;
@@ -229,6 +230,75 @@ class AdminEventPaymentUiTest extends TestCase
             ->assertForbidden();
 
         $this->assertDatabaseCount('event_payment_gateways', 0);
+    }
+
+    public function test_admin_can_switch_fee_mode_from_global_to_manual_without_touching_database_until_save(): void
+    {
+        $admin = $this->makeUser('admin');
+        $event = $this->makeEvent();
+        $gateway = $this->makeGateway();
+
+        EventPaymentGateway::create([
+            'event_id' => $event->id,
+            'payment_gateway_id' => $gateway->id,
+            'is_active' => true,
+            'fee_mode' => EventPaymentGateway::FEE_MODE_GLOBAL,
+            'fee_fixed' => null,
+            'fee_percent' => null,
+        ]);
+
+        Livewire::actingAs($admin)
+            ->test(EventDetail::class, ['uid' => $event->uid])
+            ->set('activeTab', 'pembayaran')
+            ->call('setPaymentFeeMode', $gateway->id, EventPaymentGateway::FEE_MODE_MANUAL)
+            ->assertSet('paymentGatewayConfigs.'.$gateway->id.'.fee_mode', EventPaymentGateway::FEE_MODE_MANUAL);
+
+        $this->assertSame(
+            EventPaymentGateway::FEE_MODE_GLOBAL,
+            EventPaymentGateway::where('event_id', $event->id)->where('payment_gateway_id', $gateway->id)->first()->fee_mode
+        );
+    }
+
+    public function test_admin_can_switch_fee_mode_from_manual_to_global_without_error_and_save_later(): void
+    {
+        $admin = $this->makeUser('admin');
+        $event = $this->makeEvent();
+        $gateway = $this->makeGateway();
+
+        EventPaymentGateway::create([
+            'event_id' => $event->id,
+            'payment_gateway_id' => $gateway->id,
+            'is_active' => true,
+            'fee_mode' => EventPaymentGateway::FEE_MODE_MANUAL,
+            'fee_fixed' => 4000,
+            'fee_percent' => 3,
+        ]);
+
+        Livewire::actingAs($admin)
+            ->test(EventDetail::class, ['uid' => $event->uid])
+            ->set('activeTab', 'pembayaran')
+            ->call('setPaymentFeeMode', $gateway->id, EventPaymentGateway::FEE_MODE_GLOBAL)
+            ->assertSet('paymentGatewayConfigs.'.$gateway->id.'.fee_mode', EventPaymentGateway::FEE_MODE_GLOBAL)
+            ->call('saveEventPaymentGateway', $gateway->id)
+            ->assertHasNoErrors();
+
+        $saved = EventPaymentGateway::where('event_id', $event->id)->where('payment_gateway_id', $gateway->id)->first();
+
+        $this->assertSame(EventPaymentGateway::FEE_MODE_GLOBAL, $saved->fee_mode);
+        $this->assertNull($saved->fee_fixed);
+        $this->assertNull($saved->fee_percent);
+    }
+
+    public function test_non_admin_cannot_switch_fee_mode_directly(): void
+    {
+        $user = $this->makeUser('user');
+        $event = $this->makeEvent();
+        $gateway = $this->makeGateway();
+
+        Livewire::actingAs($user)
+            ->test(EventDetail::class, ['uid' => $event->uid])
+            ->call('setPaymentFeeMode', $gateway->id, EventPaymentGateway::FEE_MODE_MANUAL)
+            ->assertForbidden();
     }
 
     public function test_admin_can_toggle_event_gateway_active_status(): void
@@ -490,6 +560,112 @@ class AdminEventPaymentUiTest extends TestCase
         $this->assertSame('3.0000', $gateway->default_fee_percent);
     }
 
+    public function test_payment_gateway_index_can_create_gateway_with_zero_default_fees_and_legacy_defaults(): void
+    {
+        $admin = $this->makeUser('admin');
+
+        Livewire::actingAs($admin)
+            ->test(PaymentGatewayIndex::class)
+            ->set('payment', 'Gateway Baru')
+            ->set('category', 'bank_transfer')
+            ->set('is_active', true)
+            ->set('default_fee_fixed', '0')
+            ->set('default_fee_percent', '0')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $gateway = PaymentGateway::where('payment', 'Gateway Baru')->firstOrFail();
+
+        $this->assertSame('0.00', $gateway->default_fee_fixed);
+        $this->assertSame('0.0000', $gateway->default_fee_percent);
+        $this->assertSame('0.00', $gateway->biaya);
+        $this->assertSame('rupiah', $gateway->biaya_type);
+    }
+
+    public function test_payment_gateway_index_rejects_invalid_default_fee_precision_and_capacity(): void
+    {
+        $admin = $this->makeUser('admin');
+
+        Livewire::actingAs($admin)
+            ->test(PaymentGatewayIndex::class)
+            ->set('payment', 'Gateway Invalid')
+            ->set('category', 'bank_transfer')
+            ->set('default_fee_fixed', '10000000000000.001')
+            ->set('default_fee_percent', '10000.00001')
+            ->call('save')
+            ->assertHasErrors([
+                'default_fee_fixed',
+                'default_fee_percent',
+            ]);
+    }
+
+    public function test_payment_gateway_index_updates_default_fees_without_overwriting_legacy_fields(): void
+    {
+        $admin = $this->makeUser('admin');
+        $gateway = $this->makeGateway([
+            'payment' => 'Legacy Edit',
+            'biaya' => 7200,
+            'biaya_type' => 'persen',
+            'default_fee_fixed' => 2000,
+            'default_fee_percent' => 3,
+        ]);
+
+        Livewire::actingAs($admin)
+            ->test(PaymentGatewayIndex::class)
+            ->call('edit', $gateway->id)
+            ->set('default_fee_fixed', '4000')
+            ->set('default_fee_percent', '1')
+            ->call('save')
+            ->assertHasNoErrors()
+            ->assertSee('Rp 4.000 + 1%');
+
+        $gateway->refresh();
+
+        $this->assertSame('4000.00', $gateway->default_fee_fixed);
+        $this->assertSame('1.0000', $gateway->default_fee_percent);
+        $this->assertSame('7200.00', $gateway->biaya);
+        $this->assertSame('persen', $gateway->biaya_type);
+    }
+
+    public function test_payment_gateway_index_updates_global_fee_used_by_new_global_event_pricing(): void
+    {
+        $admin = $this->makeUser('admin');
+        $buyer = $this->makeUser('user');
+        $event = $this->makeEvent();
+        $gateway = $this->makeGateway([
+            'default_fee_fixed' => 2000,
+            'default_fee_percent' => 3,
+        ]);
+        EventPaymentGateway::create([
+            'event_id' => $event->id,
+            'payment_gateway_id' => $gateway->id,
+            'is_active' => true,
+            'fee_mode' => EventPaymentGateway::FEE_MODE_GLOBAL,
+            'fee_fixed' => null,
+            'fee_percent' => null,
+        ]);
+        $cart = $this->makeCart($buyer, $event);
+        $harga = $this->makeHarga($event, 100000);
+        $this->makeHargaCart($cart, $harga);
+
+        $initialPricing = app(TicketPricingService::class)->calculateCart($cart->fresh(), $gateway->fresh());
+        $this->assertSame(5000, $initialPricing['internet_fee']);
+
+        Livewire::actingAs($admin)
+            ->test(PaymentGatewayIndex::class)
+            ->call('edit', $gateway->id)
+            ->set('default_fee_fixed', '4000')
+            ->set('default_fee_percent', '1')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $newCart = $this->makeCart($buyer, $event);
+        $this->makeHargaCart($newCart, $harga);
+
+        $updatedPricing = app(TicketPricingService::class)->calculateCart($newCart->fresh(), $gateway->fresh());
+        $this->assertSame(5000, $updatedPricing['internet_fee']);
+    }
+
     private function makeUser(string $role): User
     {
         static $counter = 1;
@@ -554,11 +730,14 @@ class AdminEventPaymentUiTest extends TestCase
 
     private function makeCart(User $buyer, Event $event): Cart
     {
+        static $counter = 1;
+        $current = $counter++;
+
         return Cart::create([
-            'uid' => 'cart-'.$buyer->uid.'-'.$event->uid,
+            'uid' => 'cart-'.$buyer->uid.'-'.$event->uid.'-'.$current,
             'user_uid' => $buyer->uid,
             'event_uid' => $event->uid,
-            'invoice' => 'INV-'.$buyer->uid.'-'.$event->uid,
+            'invoice' => 'INV-'.$buyer->uid.'-'.$event->uid.'-'.$current,
             'status' => Cart::STATUS_RESERVED,
             'payment_type' => null,
             'internet_fee' => 0,

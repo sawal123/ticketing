@@ -2,7 +2,7 @@
     <div class="mb-6 flex items-center justify-between">
         <div>
             <h2 class="text-2xl font-bold text-slate-800 dark:text-white">Payment Gateway</h2>
-            <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Kelola metode pembayaran dan biaya layanan.</p>
+            <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Kelola metode pembayaran dan fee default payment gateway.</p>
         </div>
         <x-admin.button variant="primary" icon="plus" wire:click="openCreateModal">
             Tambah Payment
@@ -61,11 +61,7 @@
                     </td>
                     <td class="px-5 py-4">
                         <span class="font-semibold text-indigo-600 dark:text-indigo-400">
-                            @if($gateway->biaya_type === 'rupiah')
-                                Rp {{ number_format($gateway->biaya, 0, ',', '.') }}
-                            @else
-                                {{ $gateway->biaya }}%
-                            @endif
+                            Rp {{ number_format((float) $gateway->default_fee_fixed, 0, ',', '.') }} + {{ rtrim(rtrim(number_format((float) $gateway->default_fee_percent, 4, '.', ''), '0'), '.') ?: '0' }}%
                         </span>
                     </td>
                     <td class="px-5 py-4">
@@ -162,17 +158,14 @@
                     </select>
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Biaya Layanan</label>
-                    <x-admin.input type="number" step="any" wire:model="biaya" required />
-                    @error('biaya') <span class="text-xs text-rose-500">{{ $message }}</span> @enderror
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Fee Default Rupiah</label>
+                    <x-admin.input type="number" min="0" step="0.01" wire:model="default_fee_fixed" required />
+                    @error('default_fee_fixed') <span class="text-xs text-rose-500">{{ $message }}</span> @enderror
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Tipe Biaya</label>
-                    <select wire:model="biaya_type" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-800 dark:text-slate-200 text-sm focus:ring-2 focus:ring-indigo-500 transition-all">
-                        <option value="rupiah">Rupiah (Rp)</option>
-                        <option value="persen">Persentase (%)</option>
-                    </select>
-                    @error('biaya_type') <span class="text-xs text-rose-500">{{ $message }}</span> @enderror
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Fee Default Persen</label>
+                    <x-admin.input type="number" min="0" step="0.0001" wire:model="default_fee_percent" required />
+                    @error('default_fee_percent') <span class="text-xs text-rose-500">{{ $message }}</span> @enderror
                 </div>
                 <div class="col-span-full">
                     <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Icon Payment</label>
