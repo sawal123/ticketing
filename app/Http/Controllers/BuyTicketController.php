@@ -43,6 +43,7 @@ class BuyTicketController extends Controller
             return redirect('/');
         }
         $event = Event::where('uid', $cart->event_uid)->first();
+        $pricingService = app(TicketPricingService::class);
         $this->payment($event);
         $harga = HargaCart::where('uid', $cart->uid)->get();
         $cartV = CartVoucher::where('uid', $cart->uid)
@@ -51,74 +52,49 @@ class BuyTicketController extends Controller
         $voucher = $cartV && $cartV->code ? Voucher::where('code', $cartV->code)
             ->where('event_uid', $cart->event_uid)
             ->first() : null;
-        // dd($voucher);
+        $pricing = $pricingService->calculateCart($cart);
 
-        $iFee = PaymentGateway::where('slug', $cart->payment_type)->first();
+        $this->data_pay = $this->data_pay->map(function (PaymentGateway $gateway) use ($pricingService, $cart) {
+            $resolvedPricing = $pricingService->calculateCart($cart, $gateway);
+            $gateway->setAttribute('resolved_internet_fee', $resolvedPricing['internet_fee']);
 
-        $counts = [];
-        foreach ($harga as $count) {
-            $counts[] = $count->harga_ticket * $count->quantity;
-        }
-        $jumlah = array_sum($counts);
-        $pricingService = app(TicketPricingService::class);
-        $diskon = $pricingService->calculateVoucherDiscount($cart, $jumlah);
+            return $gateway;
+        });
 
-        // 1. Hitung Subtotal (Jumlah Tiket - Diskon)
-        $subtotal = $jumlah - $diskon;
+        $iFee = $cart->payment_gateway_id
+            ? PaymentGateway::where('id', $cart->payment_gateway_id)->first()
+            : null;
 
-        if (in_array($cart->status, [Cart::STATUS_PENDING, Cart::STATUS_SUCCESS], true) && $cart->payment_gateway_id !== null) {
-            $selectInternetFee = (int) ($cart->internet_fee ?? 0);
-        } elseif ($iFee) {
-            $selectInternetFee = $pricingService->calculateCart($cart, $iFee)['internet_fee'];
-        } else {
-            // LOGIC FALLBACK UNTUK TRANSAKSI LAMA (PRODUCTION)
-            if ($cart->status !== Cart::STATUS_UNPAID) {
-                if (str_contains($cart->payment_type, 'qris') || str_contains($cart->payment_type, 'gopay')) {
-                    $selectInternetFee = round(0.05 * $jumlah);
-                } elseif (str_contains($cart->payment_type, 'transfer') || str_contains($cart->payment_type, 'va') || str_contains($cart->payment_type, 'echannel')) {
-                    $selectInternetFee = 7200;
-                } elseif ($cart->payment_type === 'cash') {
-                    $selectInternetFee = 0;
-                } else {
-                    $selectInternetFee = 0;
-                }
-            } else {
-                $selectInternetFee = 0;
-            }
+        if (! $iFee && $cart->payment_type) {
+            $iFee = PaymentGateway::where('slug', $cart->payment_type)->first();
         }
 
-        // Ambil Pajak (Fee) dari tabel Event (Gunakan yang sudah disimpan di DB jika transaksi sudah diproses)
-        if (in_array($cart->status, [Cart::STATUS_PENDING, Cart::STATUS_SUCCESS], true) && isset($cart->pajak)) {
-            $nilaiPajak = $cart->pajak;
-            $pajakPersen = $cart->pajak_persen;
-        } else {
-            $eventFee = $event->fee ?? 0;
-            if ($eventFee > 100) {
-                // Legacy nominal fee (Pajak/Fee Rupiah)
-                $pajakPersen = 0;
-                $nilaiPajak = $eventFee;
-            } else {
-                // New percentage tax
-                $pajakPersen = $eventFee;
-                $nilaiPajak = ($pajakPersen / 100) * $subtotal;
-            }
-        }
+        $selectedPaymentGatewayId = $iFee?->id;
+        $selectedGatewayPricing = $cart->status === Cart::STATUS_RESERVED && $iFee
+            ? $pricingService->calculateCart($cart, $iFee)
+            : null;
+        $selectInternetFee = $selectedGatewayPricing['internet_fee'] ?? $pricing['internet_fee'];
+        $grandTotal = $cart->gross_amount !== null
+            ? $pricing['gross_amount']
+            : max(0, $pricing['subtotal'] + $pricing['tax_amount'] + $selectInternetFee);
 
         return view('frontend.page.bayartiket', [
             'title' => 'Detail Ticket',
             'event' => $event,
             'harga' => $harga,
             'cart' => $cart,
-            'total' => $jumlah,
+            'total' => $pricing['ticket_total'],
             'uid' => $uid,
             'voucher' => $voucher,
             'payment' => $this->data_pay,
             'selectInternetFee' => $selectInternetFee,
+            'selectedPaymentGatewayId' => $selectedPaymentGatewayId,
             'iFee' => $iFee,
-            'diskon' => $diskon,
-            'pajakPersen' => $pajakPersen, // Kirim persen pajak
-            'nilaiPajak' => $nilaiPajak,   // Kirim nominal pajak
-            'subtotal' => $subtotal,
+            'diskon' => $pricing['discount'],
+            'pajakPersen' => $pricing['tax_percent'],
+            'nilaiPajak' => $pricing['tax_amount'],
+            'subtotal' => $pricing['subtotal'],
+            'grandTotal' => $grandTotal,
         ]);
     }
 

@@ -476,6 +476,44 @@ class EventPaymentGatewayPricingTest extends TestCase
         $this->assertSame(105000, $pricing['gross_amount']);
     }
 
+    public function test_partial_legacy_snapshot_with_payment_gateway_id_is_not_treated_as_complete_snapshot(): void
+    {
+        $event = $this->event(['fee' => 10]);
+        $gateway = $this->gateway([
+            'default_fee_fixed' => 9000,
+            'default_fee_percent' => 9,
+        ]);
+        $this->eventGateway($event, $gateway, [
+            'fee_mode' => EventPaymentGateway::FEE_MODE_MANUAL,
+            'fee_fixed' => 8000,
+            'fee_percent' => 8,
+        ]);
+        $cart = $this->cart($this->user(), $event, [
+            'status' => Cart::STATUS_PENDING,
+            'payment_type' => 'bank_transfer',
+            'payment_gateway_id' => $gateway->id,
+            'internet_fee' => 7200,
+            'payment_fee_mode' => null,
+            'payment_fee_fixed' => null,
+            'payment_fee_percent' => null,
+            'gross_amount' => null,
+            'pajak' => 0,
+            'pajak_persen' => 0,
+        ]);
+        $harga = $this->harga($event, ['harga' => 100000]);
+        $this->hargaCart($cart, $harga, 1);
+
+        $pricing = app(TicketPricingService::class)->calculateCart($cart->fresh());
+
+        $this->assertSame(10, $pricing['tax_percent']);
+        $this->assertSame(10000, $pricing['tax_amount']);
+        $this->assertSame(7200, $pricing['internet_fee']);
+        $this->assertSame(117200, $pricing['gross_amount']);
+        $this->assertNull($pricing['payment_fee_mode']);
+        $this->assertNull($pricing['payment_fee_fixed']);
+        $this->assertNull($pricing['payment_fee_percent']);
+    }
+
     public function test_legacy_cart_with_partial_snapshot_keeps_internet_fee_and_falls_back_for_tax_and_gross_amount(): void
     {
         $event = $this->event(['fee' => 10]);
@@ -502,6 +540,87 @@ class EventPaymentGatewayPricingTest extends TestCase
         $this->assertNull($pricing['payment_fee_mode']);
         $this->assertNull($pricing['payment_fee_fixed']);
         $this->assertNull($pricing['payment_fee_percent']);
+    }
+
+    public function test_checkout_preview_fee_matches_paynow_snapshot_and_ignores_legacy_biaya_fields(): void
+    {
+        $this->fakeMidtransRedirect();
+
+        $user = $this->user();
+        $event = $this->event();
+        $cart = $this->cart($user, $event);
+        $harga = $this->harga($event, ['harga' => 100000]);
+        $this->hargaCart($cart, $harga, 1);
+        $voucher = $this->voucher($event);
+        DB::table('cart_vouchers')->insert([
+            'uid' => $cart->uid,
+            'uid_vouchers' => $voucher->uid,
+            'user_uid' => $cart->user_uid,
+            'event_uid' => $event->uid,
+            'code' => $voucher->code,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $gateway = $this->gateway([
+            'default_fee_fixed' => 0,
+            'default_fee_percent' => 3,
+            'biaya' => 9900,
+            'biaya_type' => 'rupiah',
+        ]);
+        $this->eventGateway($event, $gateway);
+        $cart->update([
+            'payment_gateway_id' => $gateway->id,
+            'payment_type' => $gateway->slug,
+        ]);
+
+        $this->actingAs($user)
+            ->get('/detail-ticket/'.$cart->uid.'/'.$user->uid)
+            ->assertOk()
+            ->assertViewHas('payment', function ($payment) use ($gateway) {
+                $previewGateway = collect($payment)->firstWhere('id', $gateway->id);
+
+                return $previewGateway
+                    && (int) $previewGateway->resolved_internet_fee === 2700;
+            })
+            ->assertViewHas('grandTotal', 92700);
+
+        $this->actingAs($user)->post('/paynow', [
+            'cart_uid' => $cart->uid,
+            'payment_gateway_id' => $gateway->id,
+        ])->assertRedirect('https://pay.example.test/snap');
+
+        $cart->refresh();
+
+        $this->assertSame(2700, (int) $cart->internet_fee);
+        $this->assertSame(92700, (int) $cart->gross_amount);
+    }
+
+    public function test_detail_ticket_pending_cart_uses_gross_amount_snapshot_and_stored_fee(): void
+    {
+        $user = $this->user();
+        $event = $this->event(['fee' => 25]);
+        $cart = $this->cart($user, $event, [
+            'status' => Cart::STATUS_PENDING,
+            'payment_type' => 'bank_transfer',
+            'payment_gateway_id' => null,
+            'payment_fee_mode' => 'manual',
+            'payment_fee_fixed' => 2000,
+            'payment_fee_percent' => 3,
+            'internet_fee' => 5000,
+            'pajak' => 10000,
+            'pajak_persen' => 10,
+            'gross_amount' => 115000,
+        ]);
+        $harga = $this->harga($event, ['harga' => 100000]);
+        $this->hargaCart($cart, $harga, 1);
+
+        $this->actingAs($user)
+            ->get('/detail-ticket/'.$cart->uid.'/'.$user->uid)
+            ->assertOk()
+            ->assertViewHas('selectInternetFee', 5000)
+            ->assertViewHas('nilaiPajak', 10000)
+            ->assertViewHas('pajakPersen', 10)
+            ->assertViewHas('grandTotal', 115000);
     }
 
     public function test_existing_snapshot_values_are_returned_as_stored_without_re_normalization(): void

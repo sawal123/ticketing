@@ -176,8 +176,11 @@
 
                             <div class="pay-options-grid" id="payOptions">
                                 @foreach ($payment as $gateway)
-                                    <div class="pay-option" id="card{{ $gateway->id }}" style="cursor:pointer;"
-                                        onclick="selectPayment({{ $gateway->id }},{{ $gateway->biaya }}, '{{ $gateway->biaya_type }}', this)">
+                                    <div class="pay-option {{ $selectedPaymentGatewayId === $gateway->id ? 'selected' : '' }}"
+                                        id="card{{ $gateway->id }}" style="cursor:pointer;"
+                                        data-payment-id="{{ $gateway->id }}"
+                                        data-resolved-fee="{{ (int) ($gateway->resolved_internet_fee ?? 0) }}"
+                                        onclick="selectPayment({{ $gateway->id }}, {{ (int) ($gateway->resolved_internet_fee ?? 0) }}, this)">
 
                                         <div class="pay-logo" style="padding:8px;">
                                             <img src="{{ asset('storage/' . $gateway->icon) }}"
@@ -188,12 +191,7 @@
                                         <div>
                                             <div class="pay-name">{{ $gateway->payment }}</div>
                                             <div class="pay-fee">
-                                                Biaya:
-                                                @if ($gateway->biaya_type == 'rupiah')
-                                                    Rp{{ number_format($gateway->biaya, 0, ',', '.') }}
-                                                @else
-                                                    {{ $gateway->biaya }}%
-                                                @endif
+                                                Biaya: Rp{{ number_format($gateway->resolved_internet_fee ?? 0, 0, ',', '.') }}
                                             </div>
                                         </div>
 
@@ -286,7 +284,7 @@
                         <div class="detail-row">
                             <span class="label">Metode Pembayaran</span>
                             <span class="value" style="text-transform: uppercase;">
-                                {{ $iFee->payment ?? str_replace('_', ' ', $cart->payment_type) }}
+                                {{ $iFee->payment ?? ($cart->payment_type ? str_replace('_', ' ', $cart->payment_type) : 'Belum dipilih') }}
                             </span>
                         </div>
 
@@ -343,7 +341,7 @@
                     <div class="total-row">
                         <div class="total-label">Grand Total</div>
                         <div class="total-value" id="grand-total">
-                            Rp {{ number_format($total - $diskon + $nilaiPajak + ($selectInternetFee ?? 0), 0, ',', '.') }}
+                            Rp {{ number_format($grandTotal ?? 0, 0, ',', '.') }}
                         </div>
 
                     </div>
@@ -367,7 +365,8 @@
                         <form action="{{ url('/paynow') }}" method="post" enctype="multipart/form-data" id="paynowForm">
                             @csrf
 
-                            <input type="hidden" id="selectedPayment" name="payment_gateway_id" value="">
+                            <input type="hidden" id="selectedPayment" name="payment_gateway_id"
+                                value="{{ $selectedPaymentGatewayId ?? '' }}">
                             <input type="hidden" name="cart_uid" value="{{ $cart->uid }}">
 
                             @if ($cart->status === \App\Models\Cart::STATUS_RESERVED)
@@ -411,57 +410,41 @@
             return 'Rp ' + angka.toLocaleString('id-ID');
         }
 
-        function selectPayment(paymentId, biaya, biayaType, card) {
-            // set payment id ke form
-            document.getElementById('selectedPayment').value = paymentId;
-
+        function updateCheckoutTotals(resolvedInternetFee) {
             let diskon = {{ $diskon ?? 0 }};
             let nilaiPajak = {{ $nilaiPajak ?? 0 }};
-
-            // UI SELECTED
-            document.querySelectorAll('.pay-option').forEach(c => c.classList.remove('selected'));
-            card.classList.add('selected');
-
-            // ambil subtotal dari UI
             let total = parseRupiah(document.getElementById('subtotal-display').textContent);
+            let totalAkhir = (total - diskon) + nilaiPajak + resolvedInternetFee;
 
-            let fee = 0;
-            if (biayaType === 'rupiah') {
-                fee = biaya;
-            } else if (biayaType === 'persen') {
-                fee = (biaya / 100) * total;
-            }
-
-            // TOTAL AKHIR
-            let totalAkhir = (total - diskon) + nilaiPajak + fee;
-
-            // update UI
-            document.getElementById('fee-display').textContent = formatRupiah(fee);
+            document.getElementById('fee-display').textContent = formatRupiah(resolvedInternetFee);
             document.getElementById('grand-total').textContent = formatRupiah(totalAkhir);
         }
 
+        function selectPayment(paymentId, resolvedInternetFee, card) {
+            document.getElementById('selectedPayment').value = paymentId;
+
+            document.querySelectorAll('.pay-option').forEach(c => c.classList.remove('selected'));
+            card.classList.add('selected');
+
+            @if ($cart->status === \App\Models\Cart::STATUS_RESERVED && $cart->gross_amount === null)
+                updateCheckoutTotals(resolvedInternetFee);
+            @endif
+        }
+
         document.addEventListener('DOMContentLoaded', function() {
-            @if ($cart->status === \App\Models\Cart::STATUS_RESERVED)
-                // Hanya inisialisasi jika status UNPAID
-                // Jika iFee sudah ada (kembali dari pilihan sebelumnya), hitung ulang
-                @if ($iFee)
-                    let total = parseRupiah(document.getElementById('subtotal-display').textContent);
-                    let diskon = {{ $diskon ?? 0 }};
-                    let nilaiPajak = {{ $nilaiPajak ?? 0 }};
-                    let biaya = {{ $iFee->biaya ?? 0 }};
-                    let biayaType = '{{ $iFee->biaya_type ?? 'rupiah' }}';
+            @if ($cart->status === \App\Models\Cart::STATUS_RESERVED && $cart->gross_amount === null)
+                const selectedPaymentId = {{ (int) ($selectedPaymentGatewayId ?? 0) }};
 
-                    let fee = 0;
-                    if (biayaType === 'rupiah') {
-                        fee = biaya;
-                    } else if (biayaType === 'persen') {
-                        fee = (biaya / 100) * total;
+                if (selectedPaymentId) {
+                    const selectedCard = document.querySelector(`.pay-option[data-payment-id="${selectedPaymentId}"]`);
+
+                    if (selectedCard) {
+                        updateCheckoutTotals(parseInt(selectedCard.dataset.resolvedFee, 10) || 0);
                     }
-
-                    let totalAkhir = (total - diskon) + nilaiPajak + fee;
-                    document.getElementById('fee-display').textContent = formatRupiah(fee);
-                    document.getElementById('grand-total').textContent = formatRupiah(totalAkhir);
-                @endif
+                } else {
+                    updateCheckoutTotals({{ (int) ($selectInternetFee ?? 0) }});
+                }
+            }
             @endif
 
             const reservationCard = document.getElementById('reservationCard');

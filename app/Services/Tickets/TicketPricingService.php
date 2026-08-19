@@ -26,11 +26,14 @@ class TicketPricingService
         $discount = $this->calculateVoucherDiscount($cart, $ticketTotal);
         $subtotal = max(0, $ticketTotal - $discount);
         $currentTax = $this->tax($cart->event, $subtotal);
-        $storedFinancialSnapshot = ! $paymentGateway
+        $hasCompleteFinancialSnapshot = $this->hasCompleteFinancialSnapshot($cart);
+        $storedFinancialSnapshot = ($hasCompleteFinancialSnapshot || ! $paymentGateway)
             ? $this->storedFinancialSnapshot($cart, $subtotal, $currentTax)
             : null;
+        $usesHistoricalStoredInternetFee = ! $paymentGateway
+            && in_array($cart->status, [Cart::STATUS_PENDING, Cart::STATUS_SUCCESS], true);
 
-        if ($storedFinancialSnapshot && $this->hasCompleteFinancialSnapshot($cart)) {
+        if ($storedFinancialSnapshot && $hasCompleteFinancialSnapshot) {
             $taxPercent = $storedFinancialSnapshot['tax_percent'];
             $taxAmount = $storedFinancialSnapshot['tax_amount'];
             $paymentFee = $storedFinancialSnapshot;
@@ -45,7 +48,9 @@ class TicketPricingService
                 : ($storedFinancialSnapshot ?? $this->storedPaymentFeeSnapshot($cart));
             $internetFee = $paymentGateway
                 ? $paymentFee['internet_fee']
-                : ($storedFinancialSnapshot['internet_fee'] ?? (int) ($cart->internet_fee ?? 0));
+                : ($usesHistoricalStoredInternetFee
+                    ? (int) ($cart->internet_fee ?? 0)
+                    : ($storedFinancialSnapshot['internet_fee'] ?? (int) ($cart->internet_fee ?? 0)));
             $grossAmount = $storedFinancialSnapshot && $cart->gross_amount !== null
                 ? $storedFinancialSnapshot['gross_amount']
                 : max(0, $subtotal + $taxAmount + $internetFee);
@@ -250,11 +255,7 @@ class TicketPricingService
 
     private function hasCompleteFinancialSnapshot(Cart $cart): bool
     {
-        return $cart->payment_gateway_id !== null
-            || $cart->gross_amount !== null
-            || $cart->payment_fee_mode !== null
-            || $cart->payment_fee_fixed !== null
-            || $cart->payment_fee_percent !== null;
+        return $cart->gross_amount !== null;
     }
 
     private function storedDecimal($value, int $scale): ?string
