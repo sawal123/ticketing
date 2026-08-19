@@ -56,6 +56,13 @@
             <i data-lucide="ticket" class="w-4 h-4"></i>
             Manajemen Tiket
         </button>
+        @if ($canSeePaymentTab)
+            <button wire:click="setTab('pembayaran')" wire:loading.attr="disabled" wire:target="setTab"
+                class="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all disabled:pointer-events-none disabled:opacity-60 {{ $activeTab === 'pembayaran' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700' }}">
+                <i data-lucide="credit-card" class="w-4 h-4"></i>
+                Pembayaran
+            </button>
+        @endif
         <button wire:click="setTab('transaksi')" wire:loading.attr="disabled" wire:target="setTab"
             class="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all disabled:pointer-events-none disabled:opacity-60 {{ $activeTab === 'transaksi' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700' }}">
             <i data-lucide="shopping-cart" class="w-4 h-4"></i>
@@ -241,6 +248,137 @@
                     </tr>
                 @endforelse
             </x-admin.table>
+
+        @elseif($activeTab === 'pembayaran' && $canSeePaymentTab)
+            <x-admin.card title="Konfigurasi Payment Gateway Event">
+                <div class="space-y-4">
+                    @forelse($paymentGateways as $gateway)
+                        @php
+                            $config = $paymentGatewayConfigs[$gateway->id] ?? [
+                                'is_active' => false,
+                                'fee_mode' => 'global',
+                                'fee_fixed' => '0',
+                                'fee_percent' => '0',
+                            ];
+                            $globalFixed = number_format((float) ($gateway->default_fee_fixed ?? 0), 0, ',', '.');
+                            $globalPercent = rtrim(rtrim(number_format((float) ($gateway->default_fee_percent ?? 0), 4, '.', ''), '0'), '.');
+                            $globalPercent = $globalPercent === '' ? '0' : $globalPercent;
+                        @endphp
+                        <div class="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50 p-5 space-y-4">
+                            <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                                <div class="space-y-2">
+                                    <div class="flex items-center gap-3">
+                                        <h3 class="text-base font-bold text-slate-800 dark:text-white">{{ $gateway->payment }}</h3>
+                                        <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold {{ $gateway->is_active ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200' }}">
+                                            Global {{ $gateway->is_active ? 'Aktif' : 'Nonaktif' }}
+                                        </span>
+                                        <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold {{ $config['is_active'] ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' : 'bg-slate-100 text-slate-600 border border-slate-200' }}">
+                                            Event {{ $config['is_active'] ? 'Aktif' : 'Nonaktif' }}
+                                        </span>
+                                    </div>
+                                    <p class="text-sm text-slate-500 dark:text-slate-400">
+                                        Default global: <span class="font-semibold text-slate-700 dark:text-slate-200">Rp{{ $globalFixed }} + {{ $globalPercent }}%</span>
+                                    </p>
+                                    @if (! $gateway->is_active)
+                                        <p class="text-xs text-amber-600 dark:text-amber-400">
+                                            Gateway global nonaktif. Tetap ditampilkan sebagai informasi dan tidak tersedia untuk checkout.
+                                        </p>
+                                    @endif
+                                </div>
+
+                                <div class="flex items-center gap-3">
+                                    <button type="button"
+                                        wire:click="toggleEventPaymentGateway({{ $gateway->id }})"
+                                        wire:loading.attr="disabled"
+                                        wire:target="toggleEventPaymentGateway({{ $gateway->id }})"
+                                        class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors {{ $config['is_active'] ? 'bg-emerald-500' : 'bg-slate-300' }}">
+                                        <span class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform {{ $config['is_active'] ? 'translate-x-6' : 'translate-x-1' }}"></span>
+                                    </button>
+                                    <span class="text-sm font-medium text-slate-600 dark:text-slate-300">
+                                        {{ $config['is_active'] ? 'Aktif untuk event' : 'Nonaktif untuk event' }}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+                                <div class="space-y-4">
+                                    <div>
+                                        <span class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Fee Mode</span>
+                                        <div class="flex flex-wrap gap-3">
+                                            <label class="inline-flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
+                                                <input type="radio"
+                                                    wire:click="setPaymentFeeMode({{ $gateway->id }}, 'global')"
+                                                    @checked(($config['fee_mode'] ?? 'global') === 'global')
+                                                    class="text-indigo-600 focus:ring-indigo-500">
+                                                <span>Global</span>
+                                            </label>
+                                            <label class="inline-flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
+                                                <input type="radio"
+                                                    wire:click="setPaymentFeeMode({{ $gateway->id }}, 'manual')"
+                                                    @checked(($config['fee_mode'] ?? 'global') === 'manual')
+                                                    class="text-indigo-600 focus:ring-indigo-500">
+                                                <span>Manual</span>
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    @if (($config['fee_mode'] ?? 'global') === 'global')
+                                        <div class="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/40 p-4">
+                                            <p class="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                                                Rp{{ $globalFixed }} + {{ $globalPercent }}%
+                                            </p>
+                                            <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                                Mengikuti biaya default payment gateway.
+                                            </p>
+                                        </div>
+                                    @else
+                                        <div class="grid gap-4 md:grid-cols-2">
+                                            <div>
+                                                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Fee Fixed</label>
+                                                <x-admin.input type="number" min="0" step="0.01"
+                                                    wire:model.defer="paymentGatewayConfigs.{{ $gateway->id }}.fee_fixed" />
+                                            </div>
+                                            <div>
+                                                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Fee Percent</label>
+                                                <x-admin.input type="number" min="0" step="0.0001"
+                                                    wire:model.defer="paymentGatewayConfigs.{{ $gateway->id }}.fee_percent" />
+                                            </div>
+                                        </div>
+                                        <p class="text-xs text-slate-500 dark:text-slate-400">
+                                            Biaya khusus untuk event ini.
+                                        </p>
+                                    @endif
+                                </div>
+
+                                <div class="flex justify-end">
+                                    <x-admin.button type="button"
+                                        wire:click="saveEventPaymentGateway({{ $gateway->id }})"
+                                        wire:loading.attr="disabled"
+                                        wire:target="saveEventPaymentGateway({{ $gateway->id }})"
+                                        variant="primary"
+                                        class="disabled:pointer-events-none disabled:opacity-60">
+                                        <span wire:loading.remove wire:target="saveEventPaymentGateway({{ $gateway->id }})" class="flex items-center gap-2">
+                                            <i data-lucide="save" class="w-4 h-4"></i>
+                                            Simpan
+                                        </span>
+                                        <span wire:loading.flex wire:target="saveEventPaymentGateway({{ $gateway->id }})" class="items-center gap-2">
+                                            <svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                                <path class="opacity-90" fill="currentColor" d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z"></path>
+                                            </svg>
+                                            Menyimpan...
+                                        </span>
+                                    </x-admin.button>
+                                </div>
+                            </div>
+                        </div>
+                    @empty
+                        <div class="rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 p-8 text-center text-slate-500 dark:text-slate-400">
+                            Belum ada payment gateway yang tersedia.
+                        </div>
+                    @endforelse
+                </div>
+            </x-admin.card>
 
         @elseif($activeTab === 'transaksi')
             <!-- Metrics Cards -->

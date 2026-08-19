@@ -6,10 +6,14 @@ use App\Jobs\sendEmailETransaksi;
 use App\Jobs\sendEmailTrnsaksi;
 use App\Models\Cart;
 use App\Models\Event;
+use App\Models\EventPaymentGateway;
 use App\Models\Harga;
+use App\Models\PaymentGateway;
 use App\Services\Reports\FinancialSnapshotService;
 use App\Services\Tickets\GateTokenService;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Validator;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -48,6 +52,8 @@ class EventDetail extends Component
     // For Resend Email Confirmation
     public $resendEmailUid;
 
+    public $paymentGatewayConfigs = [];
+
     protected $queryString = [
         'activeTab' => ['except' => 'umum'],
         'searchTransaction' => ['except' => ''],
@@ -62,7 +68,13 @@ class EventDetail extends Component
 
     private function allowedTabs(): array
     {
-        return ['umum', 'tiket', 'transaksi'];
+        $tabs = ['umum', 'tiket', 'transaksi'];
+
+        if ($this->canManagePaymentTab()) {
+            array_splice($tabs, 2, 0, ['pembayaran']);
+        }
+
+        return $tabs;
     }
 
     private function sanitizeFilters(): void
@@ -128,6 +140,21 @@ class EventDetail extends Component
         $this->eventUid = $uid;
     }
 
+    private function canManagePaymentTab(): bool
+    {
+        return optional(Auth::user())->role === 'admin';
+    }
+
+    public function canSeePaymentTab(): bool
+    {
+        return $this->canManagePaymentTab();
+    }
+
+    private function authorizePaymentManagement(): void
+    {
+        abort_unless($this->canManagePaymentTab(), 403);
+    }
+
     protected function getEventData()
     {
         return Event::with([
@@ -140,6 +167,11 @@ class EventDetail extends Component
                 }], 'quantity');
             },
         ])->where('uid', $this->eventUid)->firstOrFail();
+    }
+
+    protected function getCurrentEventModel(): Event
+    {
+        return Event::where('uid', $this->eventUid)->firstOrFail();
     }
 
     protected function getMetricsData()
@@ -213,7 +245,155 @@ class EventDetail extends Component
     {
         $this->activeTab = $tab;
         $this->sanitizeFilters();
+
+        if ($this->activeTab === 'pembayaran' && $this->canManagePaymentTab()) {
+            $this->loadPaymentGatewayConfigs();
+        }
+
         $this->resetPage();
+    }
+
+    protected function loadPaymentGatewayConfigs(): void
+    {
+        $this->authorizePaymentManagement();
+
+        $event = $this->getCurrentEventModel();
+        $event->load(['eventPaymentGateways' => function ($query) {
+            $query->select([
+                'id',
+                'event_id',
+                'payment_gateway_id',
+                'is_active',
+                'fee_mode',
+                'fee_fixed',
+                'fee_percent',
+            ]);
+        }]);
+
+        $configs = [];
+
+        foreach (PaymentGateway::orderBy('payment')->get() as $gateway) {
+            $eventGateway = $event->eventPaymentGateways->firstWhere('payment_gateway_id', $gateway->id);
+
+            $configs[$gateway->id] = [
+                'is_active' => (bool) ($eventGateway?->is_active ?? false),
+                'fee_mode' => $eventGateway?->fee_mode ?? EventPaymentGateway::FEE_MODE_GLOBAL,
+                'fee_fixed' => $eventGateway?->fee_fixed !== null ? (string) $eventGateway->fee_fixed : '0',
+                'fee_percent' => $eventGateway?->fee_percent !== null ? (string) $eventGateway->fee_percent : '0',
+            ];
+        }
+
+        $this->paymentGatewayConfigs = $configs;
+    }
+
+    protected function validatePaymentGatewayConfig(int $gatewayId): array
+    {
+        PaymentGateway::findOrFail($gatewayId);
+
+        $mode = data_get($this->paymentGatewayConfigs, $gatewayId.'.fee_mode', EventPaymentGateway::FEE_MODE_GLOBAL);
+        $rules = [
+            'paymentGatewayConfigs.'.$gatewayId.'.fee_mode' => 'required|in:global,manual',
+            'paymentGatewayConfigs.'.$gatewayId.'.is_active' => 'required|boolean',
+        ];
+
+        if ($mode === EventPaymentGateway::FEE_MODE_MANUAL) {
+            $rules['paymentGatewayConfigs.'.$gatewayId.'.fee_fixed'] = [
+                'required',
+                'regex:/^\d{1,13}(\.\d{1,2})?$/',
+            ];
+            $rules['paymentGatewayConfigs.'.$gatewayId.'.fee_percent'] = [
+                'required',
+                'regex:/^\d{1,4}(\.\d{1,4})?$/',
+            ];
+        }
+
+        return Validator::make(['paymentGatewayConfigs' => $this->paymentGatewayConfigs], $rules)->validate();
+    }
+
+    public function setPaymentFeeMode(int $gatewayId, string $mode): void
+    {
+        $this->authorizePaymentManagement();
+
+        PaymentGateway::findOrFail($gatewayId);
+
+        if (! in_array($mode, [EventPaymentGateway::FEE_MODE_GLOBAL, EventPaymentGateway::FEE_MODE_MANUAL], true)) {
+            abort(422);
+        }
+
+        if (! array_key_exists($gatewayId, $this->paymentGatewayConfigs)) {
+            $this->loadPaymentGatewayConfigs();
+        }
+
+        $this->paymentGatewayConfigs[$gatewayId]['fee_mode'] = $mode;
+    }
+
+    public function toggleEventPaymentGateway(int $gatewayId): void
+    {
+        $this->authorizePaymentManagement();
+
+        $event = $this->getCurrentEventModel();
+        PaymentGateway::findOrFail($gatewayId);
+
+        if (! array_key_exists($gatewayId, $this->paymentGatewayConfigs)) {
+            $this->loadPaymentGatewayConfigs();
+        }
+
+        if (! array_key_exists($gatewayId, $this->paymentGatewayConfigs)) {
+            abort(404);
+        }
+
+        $newStatus = ! (bool) $this->paymentGatewayConfigs[$gatewayId]['is_active'];
+
+        $eventPaymentGateway = EventPaymentGateway::firstOrNew([
+            'event_id' => $event->id,
+            'payment_gateway_id' => $gatewayId,
+        ]);
+
+        if (! $eventPaymentGateway->exists) {
+            $eventPaymentGateway->fee_mode = EventPaymentGateway::FEE_MODE_GLOBAL;
+            $eventPaymentGateway->fee_fixed = null;
+            $eventPaymentGateway->fee_percent = null;
+        }
+
+        $eventPaymentGateway->is_active = $newStatus;
+        $eventPaymentGateway->save();
+
+        $this->paymentGatewayConfigs[$gatewayId]['is_active'] = $newStatus;
+
+        session()->flash('message', 'Status payment gateway event berhasil diperbarui.');
+    }
+
+    public function saveEventPaymentGateway(int $gatewayId): void
+    {
+        $this->authorizePaymentManagement();
+
+        $validated = $this->validatePaymentGatewayConfig($gatewayId);
+        $event = $this->getCurrentEventModel();
+        $config = $validated['paymentGatewayConfigs'][$gatewayId];
+
+        $eventPaymentGateway = EventPaymentGateway::firstOrNew([
+            'event_id' => $event->id,
+            'payment_gateway_id' => $gatewayId,
+        ]);
+
+        $eventPaymentGateway->is_active = (bool) $config['is_active'];
+        $eventPaymentGateway->fee_mode = $config['fee_mode'];
+        $eventPaymentGateway->fee_fixed = $config['fee_mode'] === EventPaymentGateway::FEE_MODE_MANUAL
+            ? (float) ($config['fee_fixed'] ?? 0)
+            : null;
+        $eventPaymentGateway->fee_percent = $config['fee_mode'] === EventPaymentGateway::FEE_MODE_MANUAL
+            ? (float) ($config['fee_percent'] ?? 0)
+            : null;
+        $eventPaymentGateway->save();
+
+        $this->paymentGatewayConfigs[$gatewayId] = [
+            'is_active' => (bool) $eventPaymentGateway->is_active,
+            'fee_mode' => $eventPaymentGateway->fee_mode,
+            'fee_fixed' => $eventPaymentGateway->fee_fixed !== null ? (string) $eventPaymentGateway->fee_fixed : '0',
+            'fee_percent' => $eventPaymentGateway->fee_percent !== null ? (string) $eventPaymentGateway->fee_percent : '0',
+        ];
+
+        session()->flash('message', 'Konfigurasi pembayaran event berhasil disimpan.');
     }
 
     public function resetFilters()
@@ -349,6 +529,17 @@ class EventDetail extends Component
 
         $event = $this->getEventData();
         $metrics = $this->getMetricsData();
+        $paymentGateways = collect();
+
+        if ($this->activeTab === 'pembayaran' && $this->canManagePaymentTab()) {
+            if ($this->paymentGatewayConfigs === []) {
+                $this->loadPaymentGatewayConfigs();
+            }
+
+            $paymentGateways = PaymentGateway::with(['eventPaymentGateways' => function ($query) use ($event) {
+                $query->where('event_id', $event->id);
+            }])->orderBy('payment')->get();
+        }
 
         $transactions = [];
         if ($this->activeTab === 'transaksi') {
@@ -384,6 +575,8 @@ class EventDetail extends Component
         return view('livewire.admin.event-detail', [
             'event' => $event,
             'metrics' => $metrics,
+            'canSeePaymentTab' => $this->canSeePaymentTab(),
+            'paymentGateways' => $paymentGateways,
             'transactions' => $transactions,
             'selectedTransaction' => $selectedTransaction,
             'discount' => $discount,
