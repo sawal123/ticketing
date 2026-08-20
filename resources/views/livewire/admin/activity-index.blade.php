@@ -43,26 +43,26 @@
                 </div>
                 <div>
                     <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1 block">Tingkat Dampak</label>
-                    <select wire:model.live="filterImpact" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-300 text-sm focus:ring-2 focus:ring-indigo-500 transition-all outline-none">
-                        <option value="all">Semua Dampak</option>
-                        <option value="Normal">Normal</option>
-                        <option value="Sensitif">Sensitif</option>
-                        <option value="Berisiko Tinggi">Berisiko Tinggi</option>
+                    <select wire:change="setFilterImpact($event.target.value)" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-300 text-sm focus:ring-2 focus:ring-indigo-500 transition-all outline-none">
+                        <option value="all" @selected($filterImpact === 'all')>Semua Dampak</option>
+                        <option value="Normal" @selected($filterImpact === 'Normal')>Normal</option>
+                        <option value="Sensitif" @selected($filterImpact === 'Sensitif')>Sensitif</option>
+                        <option value="Berisiko Tinggi" @selected($filterImpact === 'Berisiko Tinggi')>Berisiko Tinggi</option>
                     </select>
                 </div>
                 <div>
                     <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1 block">Kategori</label>
-                    <select wire:model.live="filterCategory" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-300 text-sm focus:ring-2 focus:ring-indigo-500 transition-all outline-none">
-                        <option value="all">Semua</option>
-                        <option value="payment">Payment Configuration</option>
+                    <select wire:change="setFilterCategory($event.target.value)" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-300 text-sm focus:ring-2 focus:ring-indigo-500 transition-all outline-none">
+                        <option value="all" @selected($filterCategory === 'all')>Semua</option>
+                        <option value="payment" @selected($filterCategory === 'payment')>Payment Configuration</option>
                     </select>
                 </div>
                 <div>
                     <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1 block">Status Login</label>
-                    <select wire:model.live="filterStatus" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-300 text-sm focus:ring-2 focus:ring-indigo-500 transition-all outline-none">
-                        <option value="all">Semua Status</option>
-                        <option value="Success">Success</option>
-                        <option value="Failed">Failed</option>
+                    <select wire:change="setFilterStatus($event.target.value)" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-300 text-sm focus:ring-2 focus:ring-indigo-500 transition-all outline-none">
+                        <option value="all" @selected($filterStatus === 'all')>Semua Status</option>
+                        <option value="Success" @selected($filterStatus === 'Success')>Success</option>
+                        <option value="Failed" @selected($filterStatus === 'Failed')>Failed</option>
                     </select>
                 </div>
             </div>
