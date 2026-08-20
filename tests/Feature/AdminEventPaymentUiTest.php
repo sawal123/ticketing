@@ -700,6 +700,7 @@ class AdminEventPaymentUiTest extends TestCase
             ->set('payment', 'Gateway Baru')
             ->set('category', 'bank_transfer')
             ->set('is_active', true)
+            ->set('midtrans_code', 'other_qris')
             ->set('default_fee_fixed', '0')
             ->set('default_fee_percent', '0')
             ->call('save')
@@ -711,6 +712,7 @@ class AdminEventPaymentUiTest extends TestCase
         $this->assertSame('0.0000', $gateway->default_fee_percent);
         $this->assertSame('0.00', $gateway->biaya);
         $this->assertSame('rupiah', $gateway->biaya_type);
+        $this->assertSame('other_qris', $gateway->midtrans_code);
     }
 
     public function test_payment_gateway_index_rejects_invalid_default_fee_precision_and_capacity(): void
@@ -721,6 +723,7 @@ class AdminEventPaymentUiTest extends TestCase
             ->test(PaymentGatewayIndex::class)
             ->set('payment', 'Gateway Invalid')
             ->set('category', 'bank_transfer')
+            ->set('midtrans_code', 'bca_va')
             ->set('default_fee_fixed', '10000000000000.001')
             ->set('default_fee_percent', '10000.00001')
             ->call('save')
@@ -728,6 +731,21 @@ class AdminEventPaymentUiTest extends TestCase
                 'default_fee_fixed',
                 'default_fee_percent',
             ]);
+    }
+
+    public function test_payment_gateway_index_requires_supported_midtrans_code(): void
+    {
+        $admin = $this->makeUser('admin');
+
+        Livewire::actingAs($admin)
+            ->test(PaymentGatewayIndex::class)
+            ->set('payment', 'Gateway Invalid Midtrans')
+            ->set('category', 'ewallet')
+            ->set('midtrans_code', 'invalid_code')
+            ->set('default_fee_fixed', '0')
+            ->set('default_fee_percent', '0')
+            ->call('save')
+            ->assertHasErrors(['midtrans_code']);
     }
 
     public function test_payment_gateway_index_updates_default_fees_without_overwriting_legacy_fields(): void
@@ -739,6 +757,7 @@ class AdminEventPaymentUiTest extends TestCase
             'biaya_type' => 'persen',
             'default_fee_fixed' => 2000,
             'default_fee_percent' => 3,
+            'midtrans_code' => 'bca_va',
         ]);
 
         Livewire::actingAs($admin)
@@ -746,6 +765,7 @@ class AdminEventPaymentUiTest extends TestCase
             ->call('edit', $gateway->id)
             ->set('default_fee_fixed', '4000')
             ->set('default_fee_percent', '1')
+            ->set('midtrans_code', 'gopay')
             ->call('save')
             ->assertHasNoErrors()
             ->assertSee('Rp 4.000 + 1%');
@@ -756,6 +776,7 @@ class AdminEventPaymentUiTest extends TestCase
         $this->assertSame('1.0000', $gateway->default_fee_percent);
         $this->assertSame('7200.00', $gateway->biaya);
         $this->assertSame('persen', $gateway->biaya_type);
+        $this->assertSame('gopay', $gateway->midtrans_code);
     }
 
     public function test_payment_gateway_index_updates_global_fee_used_by_new_global_event_pricing(): void
@@ -787,6 +808,7 @@ class AdminEventPaymentUiTest extends TestCase
             ->call('edit', $gateway->id)
             ->set('default_fee_fixed', '4000')
             ->set('default_fee_percent', '2')
+            ->set('midtrans_code', 'bca_va')
             ->call('save')
             ->assertHasNoErrors();
 

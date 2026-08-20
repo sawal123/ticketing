@@ -14,6 +14,25 @@ class PaymentGatewayIndex extends Component
 {
     use WithFileUploads, WithPagination;
 
+    private const SUPPORTED_MIDTRANS_CODES = [
+        'bca_va' => 'BCA Virtual Account',
+        'bni_va' => 'BNI Virtual Account',
+        'bri_va' => 'BRI Virtual Account',
+        'cimb_va' => 'CIMB Virtual Account',
+        'danamon_va' => 'Danamon Virtual Account',
+        'bsi_va' => 'BSI Virtual Account',
+        'permata_va' => 'Permata Virtual Account',
+        'echannel' => 'Mandiri Bill Payment',
+        'dana' => 'DANA',
+        'ovo' => 'OVO',
+        'gopay' => 'GoPay',
+        'shopeepay' => 'ShopeePay',
+        'other_qris' => 'QRIS',
+        'credit_card' => 'Credit Card',
+        'alfamart' => 'Alfamart',
+        'indomaret' => 'Indomaret',
+    ];
+
     public $search = '';
 
     public $editingId = null;
@@ -33,6 +52,8 @@ class PaymentGatewayIndex extends Component
 
     public $default_fee_percent = 0;
 
+    public $midtrans_code;
+
     public $icon;
 
     public $currentIcon;
@@ -49,9 +70,15 @@ class PaymentGatewayIndex extends Component
             'category' => 'required|string',
             'default_fee_fixed' => ['required', 'regex:/^\d{1,13}(\.\d{1,2})?$/'],
             'default_fee_percent' => ['required', 'regex:/^\d{1,4}(\.\d{1,4})?$/'],
+            'midtrans_code' => 'required|in:'.implode(',', array_keys(self::SUPPORTED_MIDTRANS_CODES)),
             'icon' => SecureImageStorage::rules(),
             'is_active' => 'boolean',
         ];
+    }
+
+    public function getMidtransCodeOptionsProperty(): array
+    {
+        return self::SUPPORTED_MIDTRANS_CODES;
     }
 
     public function updatedSearch()
@@ -74,6 +101,7 @@ class PaymentGatewayIndex extends Component
         $this->biaya_type = 'rupiah';
         $this->default_fee_fixed = 0;
         $this->default_fee_percent = 0;
+        $this->midtrans_code = '';
         $this->icon = null;
         $this->currentIcon = null;
         $this->is_active = true;
@@ -92,6 +120,7 @@ class PaymentGatewayIndex extends Component
         $this->biaya_type = $gateway->biaya_type;
         $this->default_fee_fixed = $gateway->default_fee_fixed;
         $this->default_fee_percent = $gateway->default_fee_percent;
+        $this->midtrans_code = $gateway->midtrans_code;
         $this->currentIcon = $gateway->icon;
         $this->is_active = $gateway->is_active;
 
@@ -108,6 +137,7 @@ class PaymentGatewayIndex extends Component
             'category' => $this->category,
             'default_fee_fixed' => $this->default_fee_fixed,
             'default_fee_percent' => $this->default_fee_percent,
+            'midtrans_code' => $this->midtrans_code,
             'is_active' => $this->is_active,
             'slug' => Str::slug($this->payment),
         ];
