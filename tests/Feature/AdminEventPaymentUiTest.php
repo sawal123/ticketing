@@ -63,6 +63,7 @@ class AdminEventPaymentUiTest extends TestCase
             $table->string('start_sale')->nullable();
             $table->string('slug')->nullable();
             $table->string('konfirmasi')->nullable();
+            $table->boolean('payment_otp_enabled')->default(false);
             $table->timestamps();
             $table->softDeletes();
         });
@@ -230,6 +231,48 @@ class AdminEventPaymentUiTest extends TestCase
             ->assertForbidden();
 
         $this->assertDatabaseCount('event_payment_gateways', 0);
+    }
+
+    public function test_admin_can_enable_and_disable_event_payment_otp_setting(): void
+    {
+        $admin = $this->makeUser('admin');
+        $event = $this->makeEvent(['payment_otp_enabled' => false]);
+        $this->makeGateway();
+
+        Livewire::actingAs($admin)
+            ->test(EventDetail::class, ['uid' => $event->uid])
+            ->set('activeTab', 'pembayaran')
+            ->set('paymentOtpEnabled', true)
+            ->call('updatePaymentOtpSetting')
+            ->assertHasNoErrors()
+            ->assertSet('paymentOtpEnabled', true);
+
+        $this->assertTrue((bool) $event->fresh()->payment_otp_enabled);
+
+        Livewire::actingAs($admin)
+            ->test(EventDetail::class, ['uid' => $event->uid])
+            ->set('activeTab', 'pembayaran')
+            ->set('paymentOtpEnabled', false)
+            ->call('updatePaymentOtpSetting')
+            ->assertHasNoErrors()
+            ->assertSet('paymentOtpEnabled', false);
+
+        $this->assertFalse((bool) $event->fresh()->payment_otp_enabled);
+    }
+
+    public function test_non_admin_cannot_update_event_payment_otp_setting(): void
+    {
+        $user = $this->makeUser('user');
+        $event = $this->makeEvent(['payment_otp_enabled' => false]);
+        $this->makeGateway();
+
+        Livewire::actingAs($user)
+            ->test(EventDetail::class, ['uid' => $event->uid])
+            ->set('paymentOtpEnabled', true)
+            ->call('updatePaymentOtpSetting')
+            ->assertForbidden();
+
+        $this->assertFalse((bool) $event->fresh()->payment_otp_enabled);
     }
 
     public function test_admin_can_switch_fee_mode_from_global_to_manual_without_touching_database_until_save(): void
