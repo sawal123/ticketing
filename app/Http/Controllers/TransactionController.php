@@ -7,6 +7,7 @@ use App\Models\Cart;
 use App\Models\EventPaymentGateway;
 use App\Models\HargaCart;
 use App\Models\Transaction;
+use App\Services\Payments\CheckoutPaymentOtpService;
 use App\Models\User;
 use App\Services\Tickets\TicketPricingService;
 use App\Services\Tickets\TicketReservationService;
@@ -60,7 +61,8 @@ class TransactionController extends Controller
     public function paynow(
         Request $request,
         TicketPricingService $pricingService,
-        TicketReservationService $reservationService
+        TicketReservationService $reservationService,
+        CheckoutPaymentOtpService $checkoutPaymentOtpService
     ) {
         $request->merge([
             'cart_uid' => $request->input('cart_uid', $request->input('cartUid')),
@@ -80,7 +82,7 @@ class TransactionController extends Controller
         }
 
         try {
-            $paymentContext = DB::transaction(function () use ($cartUid, $request, $pricingService, $reservationService) {
+            $paymentContext = DB::transaction(function () use ($cartUid, $request, $pricingService, $reservationService, $checkoutPaymentOtpService) {
                 $cart = Cart::where('uid', $cartUid)
                     ->where('user_uid', Auth::user()->uid)
                     ->lockForUpdate()
@@ -111,6 +113,11 @@ class TransactionController extends Controller
 
                 if (! $event) {
                     throw ValidationException::withMessages(['cart_uid' => 'Event tidak tersedia.']);
+                }
+
+                if ($event->payment_otp_enabled) {
+                    $checkoutPaymentOtpService->assertOtpEligible($cart, Auth::user(), $event);
+                    $checkoutPaymentOtpService->assertVerifiedOtp($cart, Auth::user(), $event);
                 }
 
                 $eventGateway = EventPaymentGateway::query()
@@ -179,9 +186,11 @@ class TransactionController extends Controller
                     'invoice' => $cart->invoice,
                     'gross_amount' => $pricing['gross_amount'],
                     'midtrans_payment_code' => $midtransPaymentCode,
+                    'event_uid' => $event->uid,
                     'expires_at' => $cart->expires_at,
                     'customer_name' => Auth::user()->name,
                     'customer_email' => Auth::user()->email,
+                    'otp_required' => (bool) $event->payment_otp_enabled,
                 ];
             }, 3);
 
@@ -195,7 +204,7 @@ class TransactionController extends Controller
 
             $paymentUrl = $this->createMidtransPaymentUrl($paymentContext);
 
-            $paymentUrl = DB::transaction(function () use ($paymentContext, $paymentUrl) {
+            $paymentUrl = DB::transaction(function () use ($paymentContext, $paymentUrl, $checkoutPaymentOtpService) {
                 $cart = Cart::where('uid', $paymentContext['cart_uid'])
                     ->where('user_uid', Auth::user()->uid)
                     ->lockForUpdate()
@@ -207,6 +216,14 @@ class TransactionController extends Controller
 
                 $cart->link = $paymentUrl;
                 $cart->save();
+
+                if ($paymentContext['otp_required'] ?? false) {
+                    $event = $cart->event;
+
+                    if ($event) {
+                        $checkoutPaymentOtpService->consumeVerifiedOtp($cart, Auth::user(), $event);
+                    }
+                }
 
                 return $paymentUrl;
             }, 3);

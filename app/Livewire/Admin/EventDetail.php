@@ -54,6 +54,8 @@ class EventDetail extends Component
 
     public $paymentGatewayConfigs = [];
 
+    public $paymentOtpEnabled = false;
+
     protected $queryString = [
         'activeTab' => ['except' => 'umum'],
         'searchTransaction' => ['except' => ''],
@@ -258,6 +260,7 @@ class EventDetail extends Component
         $this->authorizePaymentManagement();
 
         $event = $this->getCurrentEventModel();
+        $this->paymentOtpEnabled = (bool) $event->payment_otp_enabled;
         $event->load(['eventPaymentGateways' => function ($query) {
             $query->select([
                 'id',
@@ -394,6 +397,20 @@ class EventDetail extends Component
         ];
 
         session()->flash('message', 'Konfigurasi pembayaran event berhasil disimpan.');
+    }
+
+    public function updatePaymentOtpSetting(): void
+    {
+        $this->authorizePaymentManagement();
+
+        $event = $this->getCurrentEventModel();
+        $event->update([
+            'payment_otp_enabled' => (bool) $this->paymentOtpEnabled,
+        ]);
+
+        $this->paymentOtpEnabled = (bool) $event->fresh()->payment_otp_enabled;
+
+        session()->flash('message', 'Pengaturan OTP pembayaran event berhasil diperbarui.');
     }
 
     public function resetFilters()
@@ -539,6 +556,8 @@ class EventDetail extends Component
             $paymentGateways = PaymentGateway::with(['eventPaymentGateways' => function ($query) use ($event) {
                 $query->where('event_id', $event->id);
             }])->orderBy('payment')->get();
+        } else {
+            $this->paymentOtpEnabled = (bool) $event->payment_otp_enabled;
         }
 
         $transactions = [];

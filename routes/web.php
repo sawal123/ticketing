@@ -7,6 +7,7 @@ use App\Http\Controllers\Auth\UserRegisterController;
 use App\Http\Controllers\BarcodeController;
 use App\Http\Controllers\BuyTicketController;
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\CheckoutPaymentOtpController;
 use App\Http\Controllers\Dashboard\addController;
 use App\Http\Controllers\Dashboard\CashController;
 use App\Http\Controllers\Dashboard\DashboardController;
@@ -140,6 +141,9 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/checkout', [BuyTicketController::class, 'checkout'])->middleware('throttle:checkout');
     Route::get('/transaksi', [landingController::class, 'listTransaksi']);
 
+    Route::post('/checkout-payment-otp/send', [CheckoutPaymentOtpController::class, 'send'])->name('checkout-payment-otp.send');
+    Route::post('/checkout-payment-otp/resend', [CheckoutPaymentOtpController::class, 'resend'])->name('checkout-payment-otp.resend');
+    Route::post('/checkout-payment-otp/verify', [CheckoutPaymentOtpController::class, 'verify'])->name('checkout-payment-otp.verify');
     Route::post('/paynow', [TransactionController::class, 'paynow'])->middleware('throttle:paynow');
     Route::get('/detail-ticket/delete/{uid}/{user_uid}', [DeleteController::class, 'deteleListTransaksi']);
     Route::post('/profile/update-password', [editController::class, 'updateProfilePassword'])->name('profile.password.update');
