@@ -1165,6 +1165,84 @@ class EventPaymentGatewayPricingTest extends TestCase
         $this->assertSame(['echannel'], $capturedPayload['enabled_payments']);
     }
 
+    public function test_legacy_midtrans_mapping_supports_dana_when_midtrans_code_is_null(): void
+    {
+        $capturedPayload = null;
+        $this->fakeMidtransRedirectWithPayloadCapture($capturedPayload);
+
+        $user = $this->user();
+        $event = $this->event();
+        $cart = $this->cart($user, $event);
+        $harga = $this->harga($event);
+        $this->hargaCart($cart, $harga, 1);
+        $gateway = $this->gateway([
+            'payment' => 'DANA',
+            'slug' => 'dana',
+            'category' => 'ewallet',
+            'midtrans_code' => null,
+        ]);
+        $this->eventGateway($event, $gateway);
+
+        $this->actingAs($user)->post('/paynow', [
+            'cart_uid' => $cart->uid,
+            'payment_gateway_id' => $gateway->id,
+        ])->assertRedirect('https://pay.example.test/snap');
+
+        $this->assertSame(['dana'], $capturedPayload['enabled_payments']);
+    }
+
+    public function test_legacy_midtrans_mapping_supports_ovo_when_midtrans_code_is_null(): void
+    {
+        $capturedPayload = null;
+        $this->fakeMidtransRedirectWithPayloadCapture($capturedPayload);
+
+        $user = $this->user();
+        $event = $this->event();
+        $cart = $this->cart($user, $event);
+        $harga = $this->harga($event);
+        $this->hargaCart($cart, $harga, 1);
+        $gateway = $this->gateway([
+            'payment' => 'OVO',
+            'slug' => 'ovo',
+            'category' => 'ewallet',
+            'midtrans_code' => null,
+        ]);
+        $this->eventGateway($event, $gateway);
+
+        $this->actingAs($user)->post('/paynow', [
+            'cart_uid' => $cart->uid,
+            'payment_gateway_id' => $gateway->id,
+        ])->assertRedirect('https://pay.example.test/snap');
+
+        $this->assertSame(['ovo'], $capturedPayload['enabled_payments']);
+    }
+
+    public function test_explicit_midtrans_code_still_wins_for_legacy_dana_slug(): void
+    {
+        $capturedPayload = null;
+        $this->fakeMidtransRedirectWithPayloadCapture($capturedPayload);
+
+        $user = $this->user();
+        $event = $this->event();
+        $cart = $this->cart($user, $event);
+        $harga = $this->harga($event);
+        $this->hargaCart($cart, $harga, 1);
+        $gateway = $this->gateway([
+            'payment' => 'DANA Override',
+            'slug' => 'dana',
+            'category' => 'ewallet',
+            'midtrans_code' => 'other_qris',
+        ]);
+        $this->eventGateway($event, $gateway);
+
+        $this->actingAs($user)->post('/paynow', [
+            'cart_uid' => $cart->uid,
+            'payment_gateway_id' => $gateway->id,
+        ])->assertRedirect('https://pay.example.test/snap');
+
+        $this->assertSame(['other_qris'], $capturedPayload['enabled_payments']);
+    }
+
     public function test_unknown_legacy_midtrans_mapping_is_rejected_without_using_category_fallback(): void
     {
         Mockery::mock('alias:Midtrans\Snap')

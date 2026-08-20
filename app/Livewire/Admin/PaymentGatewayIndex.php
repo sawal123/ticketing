@@ -23,6 +23,8 @@ class PaymentGatewayIndex extends Component
         'bsi_va' => 'BSI Virtual Account',
         'permata_va' => 'Permata Virtual Account',
         'echannel' => 'Mandiri Bill Payment',
+        'dana' => 'DANA',
+        'ovo' => 'OVO',
         'gopay' => 'GoPay',
         'shopeepay' => 'ShopeePay',
         'other_qris' => 'QRIS',

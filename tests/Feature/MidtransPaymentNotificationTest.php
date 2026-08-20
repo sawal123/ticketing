@@ -191,10 +191,10 @@ class MidtransPaymentNotificationTest extends TestCase
             'payment_type' => 'qris',
             'fraud_status' => 'accept',
             'order_id' => $cart->invoice,
-            'status_code' => '200',
+            'status_code' => '201',
             'gross_amount' => $grossAmount,
             'transaction_id' => 'midtrans-qris-callback',
-            'signature_key' => hash('sha512', $cart->invoice.'200'.$grossAmount.'test-server-key'),
+            'signature_key' => hash('sha512', $cart->invoice.'201'.$grossAmount.'test-server-key'),
         ])->assertOk();
 
         $cart->refresh();

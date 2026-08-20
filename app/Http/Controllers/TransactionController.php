@@ -32,6 +32,8 @@ class TransactionController extends Controller
         'bsi_va',
         'permata_va',
         'echannel',
+        'dana',
+        'ovo',
         'gopay',
         'shopeepay',
         'other_qris',
@@ -49,6 +51,8 @@ class TransactionController extends Controller
         'bsi' => 'bsi_va',
         'permata' => 'permata_va',
         'mandiri' => 'echannel',
+        'dana' => 'dana',
+        'ovo' => 'ovo',
         'gopay' => 'gopay',
         'shopeepay' => 'shopeepay',
     ];
