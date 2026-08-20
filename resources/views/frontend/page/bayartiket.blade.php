@@ -409,6 +409,17 @@
 
 
     <script>
+        const checkoutPaymentOtp = {
+            enabled: {{ $event->payment_otp_enabled ? 'true' : 'false' }},
+            cartUid: @json($cart->uid),
+            sendUrl: @json(route('checkout-payment-otp.send')),
+            resendUrl: @json(route('checkout-payment-otp.resend')),
+            verifyUrl: @json(route('checkout-payment-otp.verify')),
+            csrfToken: @json(csrf_token()),
+            resendAvailableIn: 0,
+            countdownTimer: null,
+        };
+
         function parseRupiah(text) {
             return parseInt(text.replace(/[^\d]/g, '')) || 0;
         }
@@ -491,6 +502,217 @@
             form.submit();
 
             return true;
+        }
+
+        async function paymentOtpRequest(url, payload) {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': checkoutPaymentOtp.csrfToken,
+                },
+                body: JSON.stringify(payload),
+            });
+
+            const data = await response.json().catch(() => ({}));
+
+            if (!response.ok) {
+                throw new Error(
+                    data.message ||
+                    data.errors?.otp?.[0] ||
+                    data.errors?.cart_uid?.[0] ||
+                    'Permintaan OTP gagal diproses.'
+                );
+            }
+
+            return data;
+        }
+
+        function updateOtpResendButton() {
+            const resendButton = document.getElementById('paymentOtpResendButton');
+
+            if (!resendButton) {
+                return;
+            }
+
+            if (checkoutPaymentOtp.resendAvailableIn > 0) {
+                resendButton.disabled = true;
+                resendButton.textContent = `Kirim Ulang (${checkoutPaymentOtp.resendAvailableIn}s)`;
+            } else {
+                resendButton.disabled = false;
+                resendButton.textContent = 'Kirim Ulang';
+            }
+        }
+
+        function startOtpCountdown(seconds) {
+            checkoutPaymentOtp.resendAvailableIn = seconds;
+            updateOtpResendButton();
+
+            if (checkoutPaymentOtp.countdownTimer) {
+                clearInterval(checkoutPaymentOtp.countdownTimer);
+            }
+
+            if (seconds <= 0) {
+                return;
+            }
+
+            checkoutPaymentOtp.countdownTimer = setInterval(() => {
+                checkoutPaymentOtp.resendAvailableIn = Math.max(0, checkoutPaymentOtp.resendAvailableIn - 1);
+                updateOtpResendButton();
+
+                if (checkoutPaymentOtp.resendAvailableIn === 0) {
+                    clearInterval(checkoutPaymentOtp.countdownTimer);
+                    checkoutPaymentOtp.countdownTimer = null;
+                }
+            }, 1000);
+        }
+
+        function setOtpStatus(message, isError = false) {
+            const status = document.getElementById('paymentOtpStatus');
+
+            if (!status) {
+                return;
+            }
+
+            status.textContent = message || '';
+            status.style.color = isError ? '#f87171' : '#3dd9c4';
+        }
+
+        async function handleOtpResend() {
+            try {
+                const data = await paymentOtpRequest(checkoutPaymentOtp.resendUrl, {
+                    cart_uid: checkoutPaymentOtp.cartUid,
+                });
+
+                startOtpCountdown(data.resend_available_in || 0);
+                setOtpStatus(data.message || 'Kode OTP baru telah dikirim.');
+            } catch (error) {
+                setOtpStatus(error.message, true);
+            }
+        }
+
+        function submitPaymentAfterOtpVerification() {
+            Swal.fire({
+                title: 'Memproses...',
+                text: 'Harap tunggu sebentar',
+                allowOutsideClick: false,
+                showConfirmButton: false,
+                background: '#1a1a1a',
+                color: '#fff',
+                willOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+
+            const form = document.querySelector('form[action="{{ url('/paynow') }}"]');
+            submitPaynowOnce(form);
+        }
+
+        function openOtpModal(initialMessage = '') {
+            Swal.fire({
+                title: 'Verifikasi OTP Email',
+                html: `
+                    <div style="text-align:left;">
+                        <p style="font-size:13px;color:#aaa;margin-bottom:12px;">Masukkan 6 digit kode OTP yang dikirim ke email Anda.</p>
+                        <input id="paymentOtpInput" type="text" inputmode="numeric" maxlength="6"
+                            style="width:100%;padding:12px;border-radius:10px;border:1px solid #444;background:#252525;color:#fff;text-align:center;letter-spacing:8px;font-size:20px;"
+                            placeholder="000000">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;gap:12px;">
+                            <button type="button" id="paymentOtpResendButton"
+                                style="background:#252525;color:#fff;border:1px solid #444;padding:10px 14px;border-radius:10px;cursor:pointer;">
+                                Kirim Ulang
+                            </button>
+                            <span style="font-size:11px;color:#aaa;">Kode berlaku 5 menit</span>
+                        </div>
+                        <div id="paymentOtpStatus" style="margin-top:12px;min-height:18px;font-size:12px;color:#3dd9c4;">${initialMessage}</div>
+                    </div>
+                `,
+                showCancelButton: true,
+                confirmButtonText: 'Verifikasi',
+                cancelButtonText: 'Tutup',
+                reverseButtons: true,
+                background: '#1a1a1a',
+                color: '#fff',
+                confirmButtonColor: '#6c5ce7',
+                cancelButtonColor: '#252525',
+                allowOutsideClick: () => !Swal.isLoading(),
+                didOpen: () => {
+                    const resendButton = document.getElementById('paymentOtpResendButton');
+                    const otpInput = document.getElementById('paymentOtpInput');
+
+                    startOtpCountdown(checkoutPaymentOtp.resendAvailableIn);
+
+                    if (resendButton) {
+                        resendButton.addEventListener('click', handleOtpResend);
+                    }
+
+                    if (otpInput) {
+                        otpInput.focus();
+                    }
+                },
+                preConfirm: async () => {
+                    const otpInput = document.getElementById('paymentOtpInput');
+                    const otp = otpInput ? otpInput.value.trim() : '';
+
+                    if (!/^\d{6}$/.test(otp)) {
+                        Swal.showValidationMessage('Masukkan 6 digit kode OTP yang valid.');
+                        return false;
+                    }
+
+                    try {
+                        return await paymentOtpRequest(checkoutPaymentOtp.verifyUrl, {
+                            cart_uid: checkoutPaymentOtp.cartUid,
+                            otp: otp,
+                        });
+                    } catch (error) {
+                        Swal.showValidationMessage(error.message);
+                        return false;
+                    }
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'OTP Berhasil Diverifikasi',
+                        text: 'Pembayaran akan dilanjutkan.',
+                        timer: 1200,
+                        showConfirmButton: false,
+                        background: '#1a1a1a',
+                        color: '#fff',
+                    }).then(() => {
+                        submitPaymentAfterOtpVerification();
+                    });
+                }
+            });
+        }
+
+        async function handlePaymentOtpFlow() {
+            try {
+                const data = await paymentOtpRequest(checkoutPaymentOtp.sendUrl, {
+                    cart_uid: checkoutPaymentOtp.cartUid,
+                });
+
+                if (data.verified) {
+                    submitPaymentAfterOtpVerification();
+                    return;
+                }
+
+                checkoutPaymentOtp.resendAvailableIn = data.resend_available_in || 0;
+                openOtpModal(data.message || 'Kode OTP telah dikirim ke email Anda.');
+            } catch (error) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'OTP Tidak Dapat Diproses',
+                    text: error.message,
+                    background: '#1a1a1a',
+                    color: '#fff',
+                    confirmButtonColor: '#6c5ce7',
+                    customClass: {
+                        popup: 'swal-dark-popup'
+                    }
+                });
+            }
         }
 
         function showConfirmModal(e) {
@@ -593,19 +815,11 @@
                 }
             }).then((result) => {
                 if (result.isConfirmed) {
-                    Swal.fire({
-                        title: 'Memproses...',
-                        text: 'Harap tunggu sebentar',
-                        allowOutsideClick: false,
-                        showConfirmButton: false,
-                        background: '#1a1a1a',
-                        color: '#fff',
-                        willOpen: () => {
-                            Swal.showLoading();
-                        }
-                    });
-                    const form = document.querySelector('form[action="{{ url('/paynow') }}"]');
-                    submitPaynowOnce(form);
+                    if (checkoutPaymentOtp.enabled) {
+                        handlePaymentOtpFlow();
+                    } else {
+                        submitPaymentAfterOtpVerification();
+                    }
                 }
             });
         }

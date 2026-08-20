@@ -25,7 +25,12 @@ class Event extends Model
         'pajak',
         'start_sale',
         'slug',
-        'konfirmasi'
+        'konfirmasi',
+        'payment_otp_enabled',
+    ];
+
+    protected $casts = [
+        'payment_otp_enabled' => 'boolean',
     ];
 
     public function category()
