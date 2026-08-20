@@ -14,9 +14,15 @@ class ActivityLog extends Model
     protected $fillable = [
         'user_uid',
         'activity',
+        'audit_category',
+        'action_key',
+        'event_uid',
+        'payment_gateway_id',
         'login_status',
         'description',
         'impact_level',
+        'old_values',
+        'new_values',
         'ip_address',
         'location',
         'user_agent',
@@ -24,9 +30,24 @@ class ActivityLog extends Model
         'session_id',
     ];
 
+    protected $casts = [
+        'old_values' => 'array',
+        'new_values' => 'array',
+    ];
+
     public function user()
     {
         return $this->belongsTo(User::class, 'user_uid', 'uid');
+    }
+
+    public function event()
+    {
+        return $this->belongsTo(Event::class, 'event_uid', 'uid')->withTrashed();
+    }
+
+    public function paymentGateway()
+    {
+        return $this->belongsTo(PaymentGateway::class);
     }
 
     public static function safeCreate(array $attributes): ?self

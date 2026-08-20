@@ -15,22 +15,27 @@ class ActivityIndex extends Component
     public $filterRole = 'all';
     public $filterImpact = 'all';
     public $filterStatus = 'all';
+    public $filterCategory = 'all';
 
     public function updated($propertyName)
     {
-        if (in_array($propertyName, ['search', 'filterUser', 'filterRole', 'filterImpact', 'filterStatus'])) {
+        if (in_array($propertyName, ['search', 'filterUser', 'filterRole', 'filterImpact', 'filterStatus', 'filterCategory'])) {
             $this->resetPage();
         }
     }
 
     public function render()
     {
-        $activities = ActivityLog::with('user')
+        $activities = ActivityLog::with(['user', 'event', 'paymentGateway'])
             ->when($this->search, function ($query) {
-                $query->where('activity', 'like', '%' . $this->search . '%')
-                    ->orWhere('description', 'like', '%' . $this->search . '%')
-                    ->orWhere('ip_address', 'like', '%' . $this->search . '%')
-                    ->orWhere('location', 'like', '%' . $this->search . '%');
+                $query->where(function ($searchQuery) {
+                    $searchQuery->where('activity', 'like', '%' . $this->search . '%')
+                        ->orWhere('description', 'like', '%' . $this->search . '%')
+                        ->orWhere('ip_address', 'like', '%' . $this->search . '%')
+                        ->orWhere('location', 'like', '%' . $this->search . '%')
+                        ->orWhere('event_uid', 'like', '%' . $this->search . '%')
+                        ->orWhere('action_key', 'like', '%' . $this->search . '%');
+                });
             })
             ->when($this->filterUser, function ($query) {
                 $query->whereHas('user', function ($q) {
@@ -47,6 +52,9 @@ class ActivityIndex extends Component
             })
             ->when($this->filterStatus !== 'all', function ($query) {
                 $query->where('login_status', $this->filterStatus);
+            })
+            ->when($this->filterCategory !== 'all', function ($query) {
+                $query->where('audit_category', $this->filterCategory);
             })
             ->latest()
             ->paginate(15);

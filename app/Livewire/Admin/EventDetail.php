@@ -9,10 +9,12 @@ use App\Models\Event;
 use App\Models\EventPaymentGateway;
 use App\Models\Harga;
 use App\Models\PaymentGateway;
+use App\Services\Payments\PaymentConfigurationAuditService;
 use App\Services\Reports\FinancialSnapshotService;
 use App\Services\Tickets\GateTokenService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -335,7 +337,9 @@ class EventDetail extends Component
         $this->authorizePaymentManagement();
 
         $event = $this->getCurrentEventModel();
-        PaymentGateway::findOrFail($gatewayId);
+        $gateway = PaymentGateway::findOrFail($gatewayId);
+        $actor = Auth::user();
+        abort_unless($actor, 403);
 
         if (! array_key_exists($gatewayId, $this->paymentGatewayConfigs)) {
             $this->loadPaymentGatewayConfigs();
@@ -347,19 +351,40 @@ class EventDetail extends Component
 
         $newStatus = ! (bool) $this->paymentGatewayConfigs[$gatewayId]['is_active'];
 
-        $eventPaymentGateway = EventPaymentGateway::firstOrNew([
-            'event_id' => $event->id,
-            'payment_gateway_id' => $gatewayId,
-        ]);
+        DB::transaction(function () use ($actor, $event, $gateway, $gatewayId, $newStatus) {
+            $eventPaymentGateway = EventPaymentGateway::query()
+                ->where('event_id', $event->id)
+                ->where('payment_gateway_id', $gatewayId)
+                ->lockForUpdate()
+                ->first();
 
-        if (! $eventPaymentGateway->exists) {
-            $eventPaymentGateway->fee_mode = EventPaymentGateway::FEE_MODE_GLOBAL;
-            $eventPaymentGateway->fee_fixed = null;
-            $eventPaymentGateway->fee_percent = null;
-        }
+            $oldValues = [
+                'is_active' => (bool) ($eventPaymentGateway?->is_active ?? false),
+            ];
 
-        $eventPaymentGateway->is_active = $newStatus;
-        $eventPaymentGateway->save();
+            if (! $eventPaymentGateway) {
+                $eventPaymentGateway = new EventPaymentGateway([
+                    'event_id' => $event->id,
+                    'payment_gateway_id' => $gatewayId,
+                    'fee_mode' => EventPaymentGateway::FEE_MODE_GLOBAL,
+                    'fee_fixed' => null,
+                    'fee_percent' => null,
+                ]);
+            }
+
+            $eventPaymentGateway->is_active = $newStatus;
+            $eventPaymentGateway->save();
+            $eventPaymentGateway->refresh();
+
+            app(PaymentConfigurationAuditService::class)->record(
+                $actor,
+                'event_payment_gateway_status_updated',
+                $oldValues,
+                ['is_active' => (bool) $eventPaymentGateway->is_active],
+                $event,
+                $gateway
+            );
+        });
 
         $this->paymentGatewayConfigs[$gatewayId]['is_active'] = $newStatus;
 
@@ -372,22 +397,49 @@ class EventDetail extends Component
 
         $validated = $this->validatePaymentGatewayConfig($gatewayId);
         $event = $this->getCurrentEventModel();
+        $gateway = PaymentGateway::findOrFail($gatewayId);
+        $actor = Auth::user();
+        abort_unless($actor, 403);
         $config = $validated['paymentGatewayConfigs'][$gatewayId];
 
-        $eventPaymentGateway = EventPaymentGateway::firstOrNew([
-            'event_id' => $event->id,
-            'payment_gateway_id' => $gatewayId,
-        ]);
+        $eventPaymentGateway = DB::transaction(function () use ($actor, $config, $event, $gateway, $gatewayId) {
+            $eventPaymentGateway = EventPaymentGateway::query()
+                ->where('event_id', $event->id)
+                ->where('payment_gateway_id', $gatewayId)
+                ->lockForUpdate()
+                ->first();
 
-        $eventPaymentGateway->is_active = (bool) $config['is_active'];
-        $eventPaymentGateway->fee_mode = $config['fee_mode'];
-        $eventPaymentGateway->fee_fixed = $config['fee_mode'] === EventPaymentGateway::FEE_MODE_MANUAL
-            ? (float) ($config['fee_fixed'] ?? 0)
-            : null;
-        $eventPaymentGateway->fee_percent = $config['fee_mode'] === EventPaymentGateway::FEE_MODE_MANUAL
-            ? (float) ($config['fee_percent'] ?? 0)
-            : null;
-        $eventPaymentGateway->save();
+            $oldValues = $this->eventPaymentGatewayAuditValues($eventPaymentGateway);
+
+            if (! $eventPaymentGateway) {
+                $eventPaymentGateway = new EventPaymentGateway([
+                    'event_id' => $event->id,
+                    'payment_gateway_id' => $gatewayId,
+                ]);
+            }
+
+            $eventPaymentGateway->is_active = (bool) $config['is_active'];
+            $eventPaymentGateway->fee_mode = $config['fee_mode'];
+            $eventPaymentGateway->fee_fixed = $config['fee_mode'] === EventPaymentGateway::FEE_MODE_MANUAL
+                ? (float) ($config['fee_fixed'] ?? 0)
+                : null;
+            $eventPaymentGateway->fee_percent = $config['fee_mode'] === EventPaymentGateway::FEE_MODE_MANUAL
+                ? (float) ($config['fee_percent'] ?? 0)
+                : null;
+            $eventPaymentGateway->save();
+            $eventPaymentGateway->refresh();
+
+            app(PaymentConfigurationAuditService::class)->record(
+                $actor,
+                'event_payment_gateway_updated',
+                $oldValues,
+                $this->eventPaymentGatewayAuditValues($eventPaymentGateway),
+                $event,
+                $gateway
+            );
+
+            return $eventPaymentGateway;
+        });
 
         $this->paymentGatewayConfigs[$gatewayId] = [
             'is_active' => (bool) $eventPaymentGateway->is_active,
@@ -404,13 +456,44 @@ class EventDetail extends Component
         $this->authorizePaymentManagement();
 
         $event = $this->getCurrentEventModel();
-        $event->update([
-            'payment_otp_enabled' => (bool) $this->paymentOtpEnabled,
-        ]);
+        $actor = Auth::user();
+        abort_unless($actor, 403);
 
-        $this->paymentOtpEnabled = (bool) $event->fresh()->payment_otp_enabled;
+        $event = DB::transaction(function () use ($actor, $event) {
+            $event = Event::query()->lockForUpdate()->findOrFail($event->id);
+            $oldValues = [
+                'payment_otp_enabled' => (bool) $event->payment_otp_enabled,
+            ];
+
+            $event->update([
+                'payment_otp_enabled' => (bool) $this->paymentOtpEnabled,
+            ]);
+            $event->refresh();
+
+            app(PaymentConfigurationAuditService::class)->record(
+                $actor,
+                'event_payment_otp_updated',
+                $oldValues,
+                ['payment_otp_enabled' => (bool) $event->payment_otp_enabled],
+                $event
+            );
+
+            return $event;
+        });
+
+        $this->paymentOtpEnabled = (bool) $event->payment_otp_enabled;
 
         session()->flash('message', 'Pengaturan OTP pembayaran event berhasil diperbarui.');
+    }
+
+    private function eventPaymentGatewayAuditValues(?EventPaymentGateway $eventPaymentGateway): array
+    {
+        return [
+            'is_active' => (bool) ($eventPaymentGateway?->is_active ?? false),
+            'fee_mode' => $eventPaymentGateway?->fee_mode ?? EventPaymentGateway::FEE_MODE_GLOBAL,
+            'fee_fixed' => $eventPaymentGateway?->fee_fixed,
+            'fee_percent' => $eventPaymentGateway?->fee_percent,
+        ];
     }
 
     public function resetFilters()

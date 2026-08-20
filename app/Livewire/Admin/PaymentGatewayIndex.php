@@ -4,7 +4,10 @@ namespace App\Livewire\Admin;
 
 use App\Models\Cart;
 use App\Models\PaymentGateway;
+use App\Services\Payments\PaymentConfigurationAuditService;
 use App\Services\SecureImageStorage;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Livewire\Component;
 use Livewire\WithFileUploads;
@@ -149,7 +152,37 @@ class PaymentGatewayIndex extends Component
         }
 
         if ($this->editingId) {
-            PaymentGateway::find($this->editingId)->update($data);
+            $actor = Auth::user();
+            abort_unless($actor, 403);
+
+            DB::transaction(function () use ($actor, $data) {
+                $gateway = PaymentGateway::query()->lockForUpdate()->findOrFail($this->editingId);
+                $oldValues = $this->paymentAuditValues($gateway);
+
+                $gateway->update($data);
+                $gateway->refresh();
+
+                $newValues = $this->paymentAuditValues($gateway);
+                $actionKey = $this->resolvePaymentGatewayAuditActionKey($oldValues, $newValues);
+
+                if ($actionKey !== null) {
+                    [$auditOldValues, $auditNewValues] = $this->paymentGatewayAuditPayload(
+                        $actionKey,
+                        $oldValues,
+                        $newValues
+                    );
+
+                    app(PaymentConfigurationAuditService::class)->record(
+                        $actor,
+                        $actionKey,
+                        $auditOldValues,
+                        $auditNewValues,
+                        null,
+                        $gateway
+                    );
+                }
+            });
+
             session()->flash('message', 'Payment Gateway berhasil diperbarui.');
         } else {
             $data['biaya'] = 0;
@@ -167,10 +200,86 @@ class PaymentGatewayIndex extends Component
 
     public function toggleStatus($id)
     {
-        $gateway = PaymentGateway::findOrFail($id);
-        $gateway->is_active = ! $gateway->is_active;
-        $gateway->save();
+        $actor = Auth::user();
+        abort_unless($actor, 403);
+
+        DB::transaction(function () use ($actor, $id) {
+            $gateway = PaymentGateway::query()->lockForUpdate()->findOrFail($id);
+            $oldValues = ['is_active' => (bool) $gateway->is_active];
+
+            $gateway->is_active = ! $gateway->is_active;
+            $gateway->save();
+            $gateway->refresh();
+
+            app(PaymentConfigurationAuditService::class)->record(
+                $actor,
+                'payment_gateway_status_updated',
+                $oldValues,
+                ['is_active' => (bool) $gateway->is_active],
+                null,
+                $gateway
+            );
+        });
+
         session()->flash('message', 'Status berhasil diperbarui.');
+    }
+
+    private function paymentAuditValues(PaymentGateway $gateway): array
+    {
+        return [
+            'is_active' => (bool) $gateway->is_active,
+            'default_fee_fixed' => $gateway->default_fee_fixed,
+            'default_fee_percent' => $gateway->default_fee_percent,
+            'midtrans_code' => $gateway->midtrans_code,
+        ];
+    }
+
+    private function resolvePaymentGatewayAuditActionKey(array $oldValues, array $newValues): ?string
+    {
+        $changedKeys = app(PaymentConfigurationAuditService::class)->changedKeys($oldValues, $newValues);
+
+        if ($changedKeys === []) {
+            return null;
+        }
+
+        if ($changedKeys === ['is_active']) {
+            return 'payment_gateway_status_updated';
+        }
+
+        if (count(array_diff($changedKeys, ['default_fee_fixed', 'default_fee_percent'])) === 0) {
+            return 'payment_gateway_fee_updated';
+        }
+
+        if ($changedKeys === ['midtrans_code']) {
+            return 'payment_gateway_midtrans_code_updated';
+        }
+
+        return 'payment_gateway_updated';
+    }
+
+    private function paymentGatewayAuditPayload(string $actionKey, array $oldValues, array $newValues): array
+    {
+        $keys = match ($actionKey) {
+            'payment_gateway_status_updated' => ['is_active'],
+            'payment_gateway_fee_updated' => ['default_fee_fixed', 'default_fee_percent'],
+            'payment_gateway_midtrans_code_updated' => ['midtrans_code'],
+            default => app(PaymentConfigurationAuditService::class)->changedKeys($oldValues, $newValues),
+        };
+
+        $oldPayload = [];
+        $newPayload = [];
+
+        foreach ($keys as $key) {
+            if (array_key_exists($key, $oldValues)) {
+                $oldPayload[$key] = $oldValues[$key];
+            }
+
+            if (array_key_exists($key, $newValues)) {
+                $newPayload[$key] = $newValues[$key];
+            }
+        }
+
+        return [$oldPayload, $newPayload];
     }
 
     public function confirmDelete($id)
