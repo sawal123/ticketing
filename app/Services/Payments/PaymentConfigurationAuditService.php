@@ -125,7 +125,7 @@ class PaymentConfigurationAuditService
                 return null;
             }
 
-            return number_format(max(0, (float) $value), self::FIELD_SCALES[$field], '.', '');
+            return number_format((float) $value, self::FIELD_SCALES[$field], '.', '');
         }
 
         if (in_array($field, self::STRING_FIELDS, true)) {

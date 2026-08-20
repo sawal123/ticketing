@@ -259,6 +259,32 @@ class PaymentConfigurationAuditLogTest extends TestCase
         $this->assertSame('persen', $gateway->fresh()->biaya_type);
     }
 
+    public function test_global_fee_audit_preserves_legacy_negative_persisted_value(): void
+    {
+        $admin = $this->makeUser('admin');
+        $gateway = $this->makeGateway([
+            'default_fee_fixed' => -2000,
+            'default_fee_percent' => 0,
+            'midtrans_code' => 'bca_va',
+        ]);
+
+        Livewire::actingAs($admin)
+            ->test(PaymentGatewayIndex::class)
+            ->call('edit', $gateway->id)
+            ->set('default_fee_fixed', '3000')
+            ->set('default_fee_percent', '0')
+            ->set('midtrans_code', 'bca_va')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $log = ActivityLog::query()->latest()->first();
+
+        $this->assertSame('payment_gateway_fee_updated', $log->action_key);
+        $this->assertSame('-2000.00', $log->old_values['default_fee_fixed']);
+        $this->assertSame('3000.00', $log->new_values['default_fee_fixed']);
+        $this->assertSame('3000.00', $gateway->fresh()->default_fee_fixed);
+    }
+
     public function test_midtrans_code_update_stores_structured_old_and_new_values(): void
     {
         $admin = $this->makeUser('admin');
