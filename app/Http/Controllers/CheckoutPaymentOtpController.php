@@ -21,10 +21,8 @@ class CheckoutPaymentOtpController extends Controller
         $result = $this->otpService->issueOtp($cart, $user, $event);
 
         return response()->json([
-            'message' => $result['verified']
-                ? 'OTP sudah terverifikasi untuk cart ini.'
-                : ($result['sent'] ? 'Kode OTP pembayaran telah dikirim ke email Anda.' : 'Kode OTP masih aktif.'),
-            'status' => $result['verified'] ? 'verified' : ($result['sent'] ? 'sent' : 'active'),
+            'message' => $result['message'],
+            'status' => $result['status'],
             'verified' => $result['verified'],
             'resend_available_in' => $result['resend_available_in'],
         ]);

@@ -7,6 +7,8 @@ use App\Models\Cart;
 use App\Models\CheckoutPaymentOtp;
 use App\Models\Event;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
 
@@ -58,23 +60,49 @@ class CheckoutPaymentOtpService
     {
         $latestOtp = $this->getLatestOtp($cart, $user, $event);
 
-        if ($latestOtp && ! $latestOtp->isConsumed() && ! $latestOtp->isExpired() && $latestOtp->canAttempt()) {
+        if (! $latestOtp) {
+            [$otp, $plainCode] = $this->createOtp($cart, $user, $event, false);
+            Mail::to($user->email)->send(new CheckoutPaymentOtpMail($user, $event, $plainCode));
+
+            return [
+                'otp' => $otp,
+                'sent' => true,
+                'verified' => false,
+                'status' => 'sent',
+                'message' => 'Kode OTP pembayaran telah dikirim ke email Anda.',
+                'resend_available_in' => self::RESEND_COOLDOWN_SECONDS,
+            ];
+        }
+
+        if ($latestOtp->isVerified() && ! $latestOtp->isConsumed() && ! $latestOtp->isExpired() && $latestOtp->canAttempt()) {
             return [
                 'otp' => $latestOtp,
                 'sent' => false,
-                'verified' => $latestOtp->isVerified(),
+                'verified' => true,
+                'status' => 'verified',
+                'message' => 'OTP sudah terverifikasi untuk cart ini.',
                 'resend_available_in' => $this->cooldownRemaining($latestOtp),
             ];
         }
 
-        [$otp, $plainCode] = $this->createOtp($cart, $user, $event, true);
-        Mail::to($user->email)->send(new CheckoutPaymentOtpMail($user, $event, $plainCode));
+        if (! $latestOtp->isConsumed() && ! $latestOtp->isExpired() && $latestOtp->canAttempt()) {
+            return [
+                'otp' => $latestOtp,
+                'sent' => false,
+                'verified' => false,
+                'status' => 'active',
+                'message' => 'Kode OTP masih aktif.',
+                'resend_available_in' => $this->cooldownRemaining($latestOtp),
+            ];
+        }
 
         return [
-            'otp' => $otp,
-            'sent' => true,
+            'otp' => $latestOtp,
+            'sent' => false,
             'verified' => false,
-            'resend_available_in' => self::RESEND_COOLDOWN_SECONDS,
+            'status' => 'requires_resend',
+            'message' => 'Kode OTP sudah tidak dapat digunakan. Silakan kirim ulang OTP baru.',
+            'resend_available_in' => $this->cooldownRemaining($latestOtp),
         ];
     }
 
@@ -101,35 +129,62 @@ class CheckoutPaymentOtpService
 
     public function verifyOtp(Cart $cart, User $user, Event $event, string $plainCode): CheckoutPaymentOtp
     {
-        $otp = $this->getLatestOtp($cart, $user, $event);
+        $result = DB::transaction(function () use ($cart, $user, $event, $plainCode) {
+            $otp = CheckoutPaymentOtp::query()
+                ->where('cart_uid', $cart->uid)
+                ->where('user_uid', $user->uid)
+                ->where('event_uid', $event->uid)
+                ->latest('id')
+                ->lockForUpdate()
+                ->first();
 
-        if (! $otp || $otp->isConsumed() || $otp->isExpired()) {
-            throw ValidationException::withMessages(['otp' => 'Kode OTP sudah tidak valid. Silakan kirim ulang OTP baru.']);
-        }
+            if (! $otp || $otp->isConsumed() || $otp->isExpired()) {
+                return [
+                    'otp' => null,
+                    'error' => 'Kode OTP sudah tidak valid. Silakan kirim ulang OTP baru.',
+                ];
+            }
 
-        if (! $otp->canAttempt()) {
-            throw ValidationException::withMessages(['otp' => 'Batas percobaan OTP telah habis. Silakan kirim ulang OTP baru.']);
-        }
+            if ($otp->isVerified()) {
+                return [
+                    'otp' => $otp,
+                    'error' => null,
+                ];
+            }
 
-        if ($otp->isVerified()) {
-            return $otp;
-        }
+            if (! $otp->canAttempt()) {
+                return [
+                    'otp' => null,
+                    'error' => 'Batas percobaan OTP telah habis. Silakan kirim ulang OTP baru.',
+                ];
+            }
 
-        if (! $otp->matchesCode($plainCode)) {
-            $otp->attempts = min(self::MAX_ATTEMPTS, (int) $otp->attempts + 1);
+            if (! $otp->matchesCode($plainCode)) {
+                $otp->attempts = min(self::MAX_ATTEMPTS, (int) $otp->attempts + 1);
+                $otp->save();
+
+                return [
+                    'otp' => null,
+                    'error' => $otp->attempts >= self::MAX_ATTEMPTS
+                        ? 'Batas percobaan OTP telah habis. Silakan kirim ulang OTP baru.'
+                        : 'Kode OTP yang Anda masukkan tidak valid.',
+                ];
+            }
+
+            $otp->verified_at = now();
             $otp->save();
 
-            throw ValidationException::withMessages([
-                'otp' => $otp->attempts >= self::MAX_ATTEMPTS
-                    ? 'Batas percobaan OTP telah habis. Silakan kirim ulang OTP baru.'
-                    : 'Kode OTP yang Anda masukkan tidak valid.',
-            ]);
+            return [
+                'otp' => $otp,
+                'error' => null,
+            ];
+        }, 3);
+
+        if ($result['error'] !== null) {
+            throw ValidationException::withMessages(['otp' => $result['error']]);
         }
 
-        $otp->verified_at = now();
-        $otp->save();
-
-        return $otp;
+        return $result['otp'];
     }
 
     public function assertVerifiedOtp(Cart $cart, User $user, Event $event): CheckoutPaymentOtp
@@ -192,7 +247,7 @@ class CheckoutPaymentOtpService
             'cart_uid' => $cart->uid,
             'user_uid' => $user->uid,
             'event_uid' => $event->uid,
-            'code_hash' => hash('sha256', $plainCode),
+            'code_hash' => Hash::make($plainCode),
             'expires_at' => now()->addMinutes(self::OTP_TTL_MINUTES),
             'attempts' => 0,
             'sent_at' => now(),

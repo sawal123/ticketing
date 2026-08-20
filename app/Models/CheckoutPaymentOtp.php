@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Hash;
 
 class CheckoutPaymentOtp extends Model
 {
@@ -50,6 +51,6 @@ class CheckoutPaymentOtp extends Model
 
     public function matchesCode(string $plainCode): bool
     {
-        return hash_equals($this->code_hash, hash('sha256', $plainCode));
+        return Hash::check($plainCode, $this->code_hash);
     }
 }

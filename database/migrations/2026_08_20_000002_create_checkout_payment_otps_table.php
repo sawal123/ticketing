@@ -13,7 +13,7 @@ return new class extends Migration
             $table->string('cart_uid')->index();
             $table->string('user_uid')->index();
             $table->string('event_uid')->index();
-            $table->string('code_hash', 64);
+            $table->string('code_hash', 255);
             $table->timestamp('expires_at')->index();
             $table->unsignedTinyInteger('attempts')->default(0);
             $table->timestamp('sent_at')->nullable();

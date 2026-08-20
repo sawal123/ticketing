@@ -17,6 +17,7 @@ use App\Services\Payments\CheckoutPaymentOtpService;
 use App\Services\Tickets\TicketPricingService;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
@@ -146,7 +147,7 @@ class CheckoutPaymentOtpTest extends TestCase
 
         $this->assertMatchesRegularExpression('/^\d{6}$/', (string) $sentCode);
         $this->assertNotSame($sentCode, $otp->code_hash);
-        $this->assertSame(hash('sha256', $sentCode), $otp->code_hash);
+        $this->assertTrue(Hash::check($sentCode, $otp->code_hash));
     }
 
     public function test_wrong_otp_increments_attempts(): void
@@ -191,6 +192,31 @@ class CheckoutPaymentOtpTest extends TestCase
         $this->assertNull(CheckoutPaymentOtp::first()->verified_at);
     }
 
+    public function test_send_does_not_create_new_otp_when_attempts_already_reach_five(): void
+    {
+        Mail::fake();
+
+        $user = $this->user();
+        $event = $this->event(['payment_otp_enabled' => true]);
+        $cart = $this->cart($user, $event);
+        $otp = $this->otp($cart, $user, $event, '123456', [
+            'attempts' => 5,
+            'sent_at' => now()->subSeconds(30),
+        ]);
+
+        $this->actingAs($user)
+            ->postJson(route('checkout-payment-otp.send'), ['cart_uid' => $cart->uid])
+            ->assertOk()
+            ->assertJson([
+                'status' => 'requires_resend',
+                'verified' => false,
+            ]);
+
+        Mail::assertNothingSent();
+        $this->assertDatabaseCount('checkout_payment_otps', 1);
+        $this->assertSame($otp->id, CheckoutPaymentOtp::first()->id);
+    }
+
     public function test_correct_otp_sets_verified_at(): void
     {
         $user = $this->user();
@@ -206,6 +232,31 @@ class CheckoutPaymentOtpTest extends TestCase
             ->assertOk();
 
         $this->assertNotNull(CheckoutPaymentOtp::first()->verified_at);
+    }
+
+    public function test_expired_otp_send_does_not_create_new_otp_automatically(): void
+    {
+        Mail::fake();
+
+        $user = $this->user();
+        $event = $this->event(['payment_otp_enabled' => true]);
+        $cart = $this->cart($user, $event);
+        $otp = $this->otp($cart, $user, $event, '123456', [
+            'expires_at' => now()->subMinute(),
+            'sent_at' => now()->subSeconds(30),
+        ]);
+
+        $this->actingAs($user)
+            ->postJson(route('checkout-payment-otp.send'), ['cart_uid' => $cart->uid])
+            ->assertOk()
+            ->assertJson([
+                'status' => 'requires_resend',
+                'verified' => false,
+            ]);
+
+        Mail::assertNothingSent();
+        $this->assertDatabaseCount('checkout_payment_otps', 1);
+        $this->assertSame($otp->id, CheckoutPaymentOtp::first()->id);
     }
 
     public function test_expired_otp_is_rejected(): void
@@ -309,6 +360,26 @@ class CheckoutPaymentOtpTest extends TestCase
         Mail::assertNothingSent();
     }
 
+    public function test_resend_is_rejected_by_cooldown_when_attempts_have_already_reached_five(): void
+    {
+        Mail::fake();
+
+        $user = $this->user();
+        $event = $this->event(['payment_otp_enabled' => true]);
+        $cart = $this->cart($user, $event);
+        $this->otp($cart, $user, $event, '123456', [
+            'attempts' => 5,
+            'sent_at' => now()->subSeconds(30),
+        ]);
+
+        $this->actingAs($user)
+            ->postJson(route('checkout-payment-otp.resend'), ['cart_uid' => $cart->uid])
+            ->assertStatus(422);
+
+        Mail::assertNothingSent();
+        $this->assertDatabaseCount('checkout_payment_otps', 1);
+    }
+
     public function test_resend_after_cooldown_is_successful(): void
     {
         Mail::fake();
@@ -317,6 +388,45 @@ class CheckoutPaymentOtpTest extends TestCase
         $event = $this->event(['payment_otp_enabled' => true]);
         $cart = $this->cart($user, $event);
         $this->otp($cart, $user, $event, '123456', ['sent_at' => now()->subSeconds(61)]);
+
+        $this->actingAs($user)
+            ->postJson(route('checkout-payment-otp.resend'), ['cart_uid' => $cart->uid])
+            ->assertOk();
+
+        Mail::assertSent(CheckoutPaymentOtpMail::class);
+        $this->assertDatabaseCount('checkout_payment_otps', 2);
+    }
+
+    public function test_resend_after_cooldown_resets_attempts_to_zero(): void
+    {
+        Mail::fake();
+
+        $user = $this->user();
+        $event = $this->event(['payment_otp_enabled' => true]);
+        $cart = $this->cart($user, $event);
+        $this->otp($cart, $user, $event, '123456', [
+            'attempts' => 5,
+            'sent_at' => now()->subSeconds(61),
+        ]);
+
+        $this->actingAs($user)
+            ->postJson(route('checkout-payment-otp.resend'), ['cart_uid' => $cart->uid])
+            ->assertOk();
+
+        $this->assertSame(0, (int) CheckoutPaymentOtp::latest('id')->first()->attempts);
+    }
+
+    public function test_expired_otp_can_be_resent_after_cooldown(): void
+    {
+        Mail::fake();
+
+        $user = $this->user();
+        $event = $this->event(['payment_otp_enabled' => true]);
+        $cart = $this->cart($user, $event);
+        $this->otp($cart, $user, $event, '123456', [
+            'expires_at' => now()->subMinute(),
+            'sent_at' => now()->subSeconds(61),
+        ]);
 
         $this->actingAs($user)
             ->postJson(route('checkout-payment-otp.resend'), ['cart_uid' => $cart->uid])
@@ -340,7 +450,7 @@ class CheckoutPaymentOtpTest extends TestCase
             ->assertOk();
 
         $latest = CheckoutPaymentOtp::latest('id')->first();
-        $latest->update(['code_hash' => hash('sha256', '654321')]);
+        $latest->update(['code_hash' => Hash::make('654321')]);
 
         $this->actingAs($user)
             ->postJson(route('checkout-payment-otp.verify'), [
@@ -392,6 +502,23 @@ class CheckoutPaymentOtpTest extends TestCase
             ]);
 
         $this->assertSame($otp->id, CheckoutPaymentOtp::first()->id);
+    }
+
+    public function test_wrong_otp_attempts_never_exceed_five(): void
+    {
+        $user = $this->user();
+        $event = $this->event(['payment_otp_enabled' => true]);
+        $cart = $this->cart($user, $event);
+        $this->otp($cart, $user, $event, '123456', ['attempts' => 5]);
+
+        $this->actingAs($user)
+            ->postJson(route('checkout-payment-otp.verify'), [
+                'cart_uid' => $cart->uid,
+                'otp' => '999999',
+            ])
+            ->assertStatus(422);
+
+        $this->assertSame(5, (int) CheckoutPaymentOtp::first()->attempts);
     }
 
     public function test_payment_gateway_change_after_otp_verify_still_allows_paynow(): void
@@ -483,7 +610,7 @@ class CheckoutPaymentOtpTest extends TestCase
 
         $this->actingAs($user)->postJson(route('checkout-payment-otp.send'), ['cart_uid' => $cart->uid])->assertOk();
         $latest = CheckoutPaymentOtp::latest('id')->first();
-        $latest->update(['code_hash' => hash('sha256', '123456')]);
+        $latest->update(['code_hash' => Hash::make('123456')]);
 
         $this->actingAs($user)->postJson(route('checkout-payment-otp.verify'), [
             'cart_uid' => $cart->uid,
@@ -572,7 +699,7 @@ class CheckoutPaymentOtpTest extends TestCase
             'cart_uid' => $cartA->uid,
             'user_uid' => $userA->uid,
             'event_uid' => $eventA->uid,
-            'code_hash' => hash('sha256', '123456'),
+            'code_hash' => Hash::make('123456'),
             'expires_at' => now()->addMinutes(5),
             'attempts' => 0,
             'sent_at' => now(),
@@ -742,7 +869,7 @@ class CheckoutPaymentOtpTest extends TestCase
             $table->string('cart_uid')->index();
             $table->string('user_uid')->index();
             $table->string('event_uid')->index();
-            $table->string('code_hash', 64);
+            $table->string('code_hash', 255);
             $table->timestamp('expires_at')->index();
             $table->unsignedTinyInteger('attempts')->default(0);
             $table->timestamp('sent_at')->nullable();
@@ -855,7 +982,7 @@ class CheckoutPaymentOtpTest extends TestCase
             'cart_uid' => $cart->uid,
             'user_uid' => $user->uid,
             'event_uid' => $event->uid,
-            'code_hash' => hash('sha256', $plainOtp),
+            'code_hash' => Hash::make($plainOtp),
             'expires_at' => now()->addMinutes(CheckoutPaymentOtpService::OTP_TTL_MINUTES),
             'attempts' => 0,
             'sent_at' => now(),
