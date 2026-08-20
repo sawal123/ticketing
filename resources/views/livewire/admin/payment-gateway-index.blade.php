@@ -39,7 +39,7 @@
         </x-admin.card>
 
         <!-- Table -->
-        <x-admin.table title="Daftar Payment Gateway" :headers="['Icon', 'Payment', 'Kategori', 'Biaya', 'Status', 'Aksi']" :count="$gateways->total()">
+        <x-admin.table title="Daftar Payment Gateway" :headers="['Icon', 'Payment', 'Kategori', 'Midtrans Code', 'Biaya', 'Status', 'Aksi']" :count="$gateways->total()">
             @forelse($gateways as $gateway)
                 <tr class="table-row-hover transition-colors">
                     <td class="px-5 py-4">
@@ -57,6 +57,11 @@
                     <td class="px-5 py-4">
                         <span class="px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-600">
                             {{ strtoupper($gateway->category) }}
+                        </span>
+                    </td>
+                    <td class="px-5 py-4">
+                        <span class="font-mono text-xs text-slate-600 dark:text-slate-300">
+                            {{ $gateway->midtrans_code ?: '-' }}
                         </span>
                     </td>
                     <td class="px-5 py-4">
@@ -103,7 +108,7 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="6" class="px-5 py-12 text-center text-slate-400">
+                    <td colspan="7" class="px-5 py-12 text-center text-slate-400">
                         <div class="flex flex-col items-center justify-center">
                             <i data-lucide="info" class="w-12 h-12 mb-2 opacity-20"></i>
                             <p>Belum ada payment gateway yang ditambahkan.</p>
@@ -156,6 +161,16 @@
                         <option value="1">Aktif</option>
                         <option value="0">Nonaktif</option>
                     </select>
+                </div>
+                <div class="md:col-span-2">
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Midtrans Payment Code</label>
+                    <select wire:model="midtrans_code" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-800 dark:text-slate-200 text-sm focus:ring-2 focus:ring-indigo-500 transition-all">
+                        <option value="">Pilih Midtrans Payment Code</option>
+                        @foreach($this->midtransCodeOptions as $code => $label)
+                            <option value="{{ $code }}">{{ $label }} -> {{ $code }}</option>
+                        @endforeach
+                    </select>
+                    @error('midtrans_code') <span class="text-xs text-rose-500">{{ $message }}</span> @enderror
                 </div>
                 <div>
                     <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Fee Default Rupiah</label>
