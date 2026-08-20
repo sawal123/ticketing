@@ -175,6 +175,27 @@ class AdminEventPaymentUiTest extends TestCase
             $table->string('status');
             $table->timestamps();
         });
+
+        Schema::create('activity_logs', function ($table) {
+            $table->id();
+            $table->string('user_uid')->nullable();
+            $table->string('activity');
+            $table->string('audit_category')->nullable();
+            $table->string('action_key')->nullable();
+            $table->string('login_status')->nullable();
+            $table->text('description')->nullable();
+            $table->string('impact_level')->default('Normal');
+            $table->string('event_uid')->nullable();
+            $table->unsignedBigInteger('payment_gateway_id')->nullable();
+            $table->json('old_values')->nullable();
+            $table->json('new_values')->nullable();
+            $table->string('ip_address')->nullable();
+            $table->string('location')->nullable();
+            $table->text('user_agent')->nullable();
+            $table->string('device_id')->nullable();
+            $table->string('session_id')->nullable();
+            $table->timestamps();
+        });
     }
 
     public function test_admin_can_see_payment_tab(): void

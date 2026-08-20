@@ -32,7 +32,7 @@
     <!-- Filter & Table Section -->
     <x-admin.card>
         <div class="flex flex-col gap-6 mb-8">
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
                 <div class="lg:col-span-2">
                     <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1 block">Cari Aktivitas</label>
                     <x-admin.input wire:model.live.debounce.300ms="search" placeholder="Cari aktivitas, IP, atau lokasi..." icon="search" />
@@ -48,6 +48,13 @@
                         <option value="Normal">Normal</option>
                         <option value="Sensitif">Sensitif</option>
                         <option value="Berisiko Tinggi">Berisiko Tinggi</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1 block">Kategori</label>
+                    <select wire:model.live="filterCategory" class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-300 text-sm focus:ring-2 focus:ring-indigo-500 transition-all outline-none">
+                        <option value="all">Semua</option>
+                        <option value="payment">Payment Configuration</option>
                     </select>
                 </div>
                 <div>
@@ -90,27 +97,114 @@
                         </div>
                     </td>
                     <td class="px-5 py-4">
+                        @php
+                            $impactColors = [
+                                'Normal' => 'bg-slate-100 text-slate-600 border-slate-200',
+                                'Sensitif' => 'bg-amber-50 text-amber-700 border-amber-200',
+                                'Berisiko Tinggi' => 'bg-rose-50 text-rose-700 border-rose-200 animate-pulse',
+                            ];
+                            $impactClass = $impactColors[$item->impact_level] ?? $impactColors['Normal'];
+                            $fieldLabels = [
+                                'is_active' => 'Status',
+                                'fee_mode' => 'Fee Mode',
+                                'fee_fixed' => 'Fee Tetap',
+                                'fee_percent' => 'Fee Persen',
+                                'default_fee_fixed' => 'Default Fee Tetap',
+                                'default_fee_percent' => 'Default Fee Persen',
+                                'midtrans_code' => 'Midtrans Code',
+                                'payment_otp_enabled' => 'Payment OTP',
+                            ];
+                            $formatAuditValue = function (string $field, $value): string {
+                                if ($value === null || $value === '') {
+                                    return '-';
+                                }
+
+                                if (in_array($field, ['is_active', 'payment_otp_enabled'], true)) {
+                                    return (bool) $value ? 'Aktif' : 'Nonaktif';
+                                }
+
+                                if ($field === 'fee_mode') {
+                                    return $value === 'manual' ? 'Manual' : 'Global';
+                                }
+
+                                if (in_array($field, ['fee_fixed', 'default_fee_fixed'], true)) {
+                                    return 'Rp'.number_format((float) $value, 0, ',', '.');
+                                }
+
+                                if (in_array($field, ['fee_percent', 'default_fee_percent'], true)) {
+                                    $formattedPercent = rtrim(rtrim(number_format((float) $value, 4, '.', ''), '0'), '.');
+
+                                    return ($formattedPercent === '' ? '0' : $formattedPercent).'%';
+                                }
+
+                                return (string) $value;
+                            };
+                            $changedFields = collect(array_unique(array_merge(
+                                array_keys($item->old_values ?? []),
+                                array_keys($item->new_values ?? [])
+                            )))->filter(function ($field) use ($item) {
+                                return data_get($item->old_values, $field) !== data_get($item->new_values, $field);
+                            })->values();
+                        @endphp
                         <div class="flex flex-col gap-1.5">
                             <div class="flex items-center gap-2">
                                 <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-800">
                                     {{ $item->activity }}
                                 </span>
-                                
-                                @php
-                                    $impactColors = [
-                                        'Normal' => 'bg-slate-100 text-slate-600 border-slate-200',
-                                        'Sensitif' => 'bg-amber-50 text-amber-700 border-amber-200',
-                                        'Berisiko Tinggi' => 'bg-rose-50 text-rose-700 border-rose-200 animate-pulse',
-                                    ];
-                                    $impactClass = $impactColors[$item->impact_level] ?? $impactColors['Normal'];
-                                @endphp
                                 <span class="inline-flex items-center px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border {{ $impactClass }}">
                                     {{ $item->impact_level }}
                                 </span>
+                                @if($item->audit_category === 'payment')
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border bg-emerald-50 text-emerald-700 border-emerald-200">
+                                        Payment Configuration
+                                    </span>
+                                @endif
                             </div>
                             <p class="text-xs text-slate-600 dark:text-slate-400 max-w-xs line-clamp-1" title="{{ $item->description }}">
                                 {{ $item->description }}
                             </p>
+                            @if($item->audit_category === 'payment')
+                                <details class="mt-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/40 px-3 py-2">
+                                    <summary class="cursor-pointer text-[11px] font-bold text-indigo-600 dark:text-indigo-400">
+                                        Detail
+                                    </summary>
+                                    <div class="mt-3 space-y-3 text-xs text-slate-600 dark:text-slate-300">
+                                        <div class="grid gap-1">
+                                            <div><span class="font-semibold text-slate-700 dark:text-slate-200">Waktu:</span> {{ $item->created_at->translatedFormat('d M Y H:i:s') }}</div>
+                                            <div><span class="font-semibold text-slate-700 dark:text-slate-200">Admin:</span> {{ $item->user->name ?? 'Guest' }}</div>
+                                            @if($item->event_uid)
+                                                <div>
+                                                    <span class="font-semibold text-slate-700 dark:text-slate-200">Event:</span>
+                                                    {{ $item->event->event ?? 'Event tidak ditemukan' }} / {{ $item->event_uid }}
+                                                </div>
+                                            @endif
+                                            <div>
+                                                <span class="font-semibold text-slate-700 dark:text-slate-200">Gateway:</span>
+                                                {{ $item->paymentGateway->payment ?? ($item->payment_gateway_id ? 'Gateway #'.$item->payment_gateway_id : '-') }}
+                                            </div>
+                                            <div><span class="font-semibold text-slate-700 dark:text-slate-200">Action:</span> {{ $item->action_key ?? '-' }}</div>
+                                        </div>
+
+                                        <div class="space-y-2">
+                                            <div class="font-semibold text-slate-700 dark:text-slate-200">Perubahan</div>
+                                            @forelse($changedFields as $field)
+                                                <div class="flex flex-col gap-1 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-2">
+                                                    <span class="font-semibold text-slate-700 dark:text-slate-200">
+                                                        {{ $fieldLabels[$field] ?? \Illuminate\Support\Str::headline($field) }}
+                                                    </span>
+                                                    <span>
+                                                        {{ $formatAuditValue($field, data_get($item->old_values, $field)) }}
+                                                        →
+                                                        {{ $formatAuditValue($field, data_get($item->new_values, $field)) }}
+                                                    </span>
+                                                </div>
+                                            @empty
+                                                <div class="text-slate-400">Tidak ada perubahan tersimpan.</div>
+                                            @endforelse
+                                        </div>
+                                    </div>
+                                </details>
+                            @endif
                         </div>
                     </td>
                     <td class="px-5 py-4 whitespace-nowrap">
