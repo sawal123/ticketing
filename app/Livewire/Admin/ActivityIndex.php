@@ -19,9 +19,36 @@ class ActivityIndex extends Component
 
     public function updated($propertyName)
     {
-        if (in_array($propertyName, ['search', 'filterUser', 'filterRole', 'filterImpact', 'filterStatus', 'filterCategory'])) {
+        if (in_array($propertyName, ['search', 'filterUser', 'filterRole'])) {
             $this->resetPage();
         }
+    }
+
+    public function setFilterImpact(string $value): void
+    {
+        $this->filterImpact = in_array($value, ['all', 'Normal', 'Sensitif', 'Berisiko Tinggi'], true)
+            ? $value
+            : 'all';
+
+        $this->resetPage();
+    }
+
+    public function setFilterStatus(string $value): void
+    {
+        $this->filterStatus = in_array($value, ['all', 'Success', 'Failed'], true)
+            ? $value
+            : 'all';
+
+        $this->resetPage();
+    }
+
+    public function setFilterCategory(string $category): void
+    {
+        $this->filterCategory = in_array($category, ['all', 'payment'], true)
+            ? $category
+            : 'all';
+
+        $this->resetPage();
     }
 
     public function render()

@@ -483,15 +483,11 @@ class PaymentConfigurationAuditLogTest extends TestCase
         $event = $this->makeEvent();
         $gateway = $this->makeGateway();
 
-        ActivityLog::create([
-            'user_uid' => $admin->uid,
+        $this->createActivityLog($admin, [
             'activity' => 'Legacy Activity',
-            'login_status' => 'Success',
             'description' => 'Existing non-payment activity',
+            'login_status' => 'Success',
             'impact_level' => 'Normal',
-            'ip_address' => '127.0.0.1',
-            'location' => 'Unknown',
-            'user_agent' => 'Feature Test',
         ]);
 
         Livewire::actingAs($admin)
@@ -505,11 +501,114 @@ class PaymentConfigurationAuditLogTest extends TestCase
             ->test(ActivityIndex::class)
             ->assertSee('Existing non-payment activity')
             ->assertSee('Payment Configuration')
-            ->set('filterCategory', 'payment')
+            ->call('setFilterCategory', 'payment')
+            ->assertSet('filterCategory', 'payment')
             ->assertDontSee('Existing non-payment activity')
             ->assertSee('event_payment_gateway_updated')
             ->assertSee($event->uid)
-            ->assertSee($gateway->payment);
+            ->assertSee($gateway->payment)
+            ->call('setFilterCategory', 'all')
+            ->assertSet('filterCategory', 'all')
+            ->assertSee('Existing non-payment activity');
+    }
+
+    public function test_activity_filter_impact_can_show_single_impact_and_restore_all(): void
+    {
+        $admin = $this->makeUser('admin');
+
+        $this->createActivityLog($admin, [
+            'activity' => 'Sensitive Activity',
+            'description' => 'Impact sensitive entry',
+            'login_status' => 'Success',
+            'impact_level' => 'Sensitif',
+        ]);
+        $this->createActivityLog($admin, [
+            'activity' => 'Normal Activity',
+            'description' => 'Impact normal entry',
+            'login_status' => 'Success',
+            'impact_level' => 'Normal',
+        ]);
+
+        Livewire::actingAs($admin)
+            ->test(ActivityIndex::class)
+            ->call('setFilterImpact', 'Sensitif')
+            ->assertSet('filterImpact', 'Sensitif')
+            ->assertSee('Impact sensitive entry')
+            ->assertDontSee('Impact normal entry')
+            ->call('setFilterImpact', 'all')
+            ->assertSet('filterImpact', 'all')
+            ->assertSee('Impact sensitive entry')
+            ->assertSee('Impact normal entry');
+    }
+
+    public function test_activity_filter_status_can_show_success_and_failed_entries(): void
+    {
+        $admin = $this->makeUser('admin');
+
+        $this->createActivityLog($admin, [
+            'activity' => 'Success Activity',
+            'description' => 'Status success entry',
+            'login_status' => 'Success',
+            'impact_level' => 'Normal',
+        ]);
+        $this->createActivityLog($admin, [
+            'activity' => 'Failed Activity',
+            'description' => 'Status failed entry',
+            'login_status' => 'Failed',
+            'impact_level' => 'Normal',
+        ]);
+
+        Livewire::actingAs($admin)
+            ->test(ActivityIndex::class)
+            ->call('setFilterStatus', 'Success')
+            ->assertSet('filterStatus', 'Success')
+            ->assertSee('Status success entry')
+            ->assertDontSee('Status failed entry')
+            ->call('setFilterStatus', 'Failed')
+            ->assertSet('filterStatus', 'Failed')
+            ->assertDontSee('Status success entry')
+            ->assertSee('Status failed entry');
+    }
+
+    public function test_invalid_filter_impact_and_status_fall_back_to_all_without_arbitrary_filtering(): void
+    {
+        $admin = $this->makeUser('admin');
+
+        $this->createActivityLog($admin, [
+            'activity' => 'Legacy Activity',
+            'description' => 'Existing non-payment activity',
+            'login_status' => 'Success',
+            'impact_level' => 'Normal',
+        ]);
+
+        Livewire::actingAs($admin)
+            ->test(ActivityIndex::class)
+            ->call('setFilterImpact', 'invalid-impact')
+            ->assertSet('filterImpact', 'all')
+            ->assertSee('Existing non-payment activity')
+            ->call('setFilterStatus', 'invalid-status')
+            ->assertSet('filterStatus', 'all')
+            ->assertSee('Existing non-payment activity');
+    }
+
+    public function test_invalid_filter_category_falls_back_to_all_without_arbitrary_filtering(): void
+    {
+        $admin = $this->makeUser('admin');
+
+        $this->createActivityLog($admin, [
+            'activity' => 'Legacy Activity',
+            'description' => 'Existing non-payment activity',
+            'login_status' => 'Success',
+            'impact_level' => 'Normal',
+        ]);
+
+        Livewire::actingAs($admin)
+            ->test(ActivityIndex::class)
+            ->call('setFilterCategory', 'payment')
+            ->assertSet('filterCategory', 'payment')
+            ->call('setFilterCategory', 'invalid-value')
+            ->assertSet('filterCategory', 'all')
+            ->assertSee('Existing non-payment activity');
     }
 
     public function test_audit_failure_rolls_back_payment_configuration_mutation(): void
@@ -546,6 +645,20 @@ class PaymentConfigurationAuditLogTest extends TestCase
 
         $this->assertDatabaseCount('activity_logs', 0);
         $this->assertDatabaseCount('event_payment_gateways', 0);
+    }
+
+    private function createActivityLog(User $user, array $overrides = []): ActivityLog
+    {
+        return ActivityLog::create(array_merge([
+            'user_uid' => $user->uid,
+            'activity' => 'Legacy Activity',
+            'login_status' => 'Success',
+            'description' => 'Existing non-payment activity',
+            'impact_level' => 'Normal',
+            'ip_address' => '127.0.0.1',
+            'location' => 'Unknown',
+            'user_agent' => 'Feature Test',
+        ], $overrides));
     }
 
     private function makeUser(string $role): User
