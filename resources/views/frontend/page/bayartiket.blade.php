@@ -529,6 +529,307 @@
             return data;
         }
 
+        if (!document.getElementById('checkoutSwalSkin')) {
+            const checkoutSwalSkin = document.createElement('style');
+            checkoutSwalSkin.id = 'checkoutSwalSkin';
+            checkoutSwalSkin.textContent = `
+                @keyframes otp-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+                .checkout-swal-popup {
+                    width: min(92vw, 430px) !important;
+                    border-radius: 24px !important;
+                    background:
+                        radial-gradient(circle at top, rgba(168, 85, 247, 0.16), transparent 42%),
+                        linear-gradient(180deg, rgba(25, 24, 36, 0.98) 0%, rgba(15, 14, 23, 0.98) 100%) !important;
+                    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+                    box-shadow: 0 26px 70px rgba(4, 7, 20, 0.58) !important;
+                    padding: 1.45rem !important;
+                }
+                .checkout-swal-title {
+                    color: #f8f7ff !important;
+                    font-size: 1.2rem !important;
+                    line-height: 1.35 !important;
+                    font-weight: 700 !important;
+                    letter-spacing: -0.02em !important;
+                    padding: 0 !important;
+                    margin: 0 0 0.45rem !important;
+                }
+                .checkout-swal-html {
+                    color: #c9cad6 !important;
+                    font-size: 0.92rem !important;
+                    line-height: 1.6 !important;
+                    margin: 0 !important;
+                    padding: 0 !important;
+                }
+                .checkout-swal-actions {
+                    width: 100% !important;
+                    gap: 0.7rem !important;
+                    margin: 1.2rem 0 0 !important;
+                    padding: 0 !important;
+                }
+                .checkout-swal-confirm,
+                .checkout-swal-cancel {
+                    margin: 0 !important;
+                    border-radius: 14px !important;
+                    padding: 0.82rem 1.15rem !important;
+                    min-width: 0 !important;
+                    font-size: 0.88rem !important;
+                    font-weight: 700 !important;
+                    box-shadow: none !important;
+                    transition: transform 0.18s ease, opacity 0.18s ease, border-color 0.18s ease !important;
+                }
+                .checkout-swal-confirm {
+                    background: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%) !important;
+                    color: #ffffff !important;
+                }
+                .checkout-swal-confirm:hover {
+                    transform: translateY(-1px) !important;
+                }
+                .checkout-swal-cancel {
+                    background: rgba(255, 255, 255, 0.04) !important;
+                    color: #d8d9e6 !important;
+                    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+                }
+                .checkout-swal-confirm:disabled,
+                .checkout-swal-cancel:disabled {
+                    opacity: 0.48 !important;
+                    cursor: not-allowed !important;
+                    transform: none !important;
+                }
+                .checkout-swal-validation {
+                    margin-top: 0.8rem !important;
+                    padding: 0.75rem 0.9rem !important;
+                    border-radius: 12px !important;
+                    background: rgba(248, 113, 113, 0.12) !important;
+                    border: 1px solid rgba(248, 113, 113, 0.2) !important;
+                    color: #fecaca !important;
+                    font-size: 0.8rem !important;
+                    text-align: left !important;
+                }
+                .checkout-swal-icon {
+                    border-color: rgba(255, 255, 255, 0.08) !important;
+                    margin: 0.2rem auto 0.85rem !important;
+                    transform: scale(0.9);
+                }
+                .checkout-swal-loader {
+                    border-color: rgba(255,255,255,0.14) !important;
+                    border-top-color: #ec4899 !important;
+                }
+                .checkout-otp-shell { text-align: left; }
+                .checkout-otp-copy {
+                    font-size: 0.82rem;
+                    color: #9699ad;
+                    margin-bottom: 0.95rem;
+                    line-height: 1.55;
+                }
+                .checkout-otp-loading {
+                    display: none;
+                    align-items: center;
+                    gap: 0.75rem;
+                    margin-bottom: 0.9rem;
+                    padding: 0.78rem 0.9rem;
+                    border-radius: 14px;
+                    background: rgba(124, 58, 237, 0.11);
+                    border: 1px solid rgba(168, 85, 247, 0.18);
+                    color: #f3e8ff;
+                    font-size: 0.78rem;
+                    font-weight: 600;
+                }
+                .checkout-otp-spinner {
+                    width: 18px;
+                    height: 18px;
+                    border: 2px solid rgba(244, 114, 182, 0.18);
+                    border-top-color: #f472b6;
+                    border-radius: 999px;
+                    display: inline-block;
+                    animation: otp-spin 0.8s linear infinite;
+                    flex-shrink: 0;
+                }
+                .checkout-otp-input {
+                    width: 100%;
+                    height: 58px;
+                    border-radius: 18px;
+                    border: 1px solid rgba(255, 255, 255, 0.08);
+                    background: linear-gradient(180deg, rgba(39, 38, 56, 0.92) 0%, rgba(23, 22, 33, 0.92) 100%);
+                    color: #ffffff;
+                    text-align: center;
+                    letter-spacing: 0.62rem;
+                    font-size: 1.55rem;
+                    font-weight: 700;
+                    outline: none;
+                    transition: border-color 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease;
+                }
+                .checkout-otp-input::placeholder {
+                    color: rgba(255, 255, 255, 0.22);
+                    letter-spacing: 0.5rem;
+                }
+                .checkout-otp-input:focus {
+                    border-color: rgba(236, 72, 153, 0.55);
+                    box-shadow: 0 0 0 4px rgba(168, 85, 247, 0.14);
+                }
+                .checkout-otp-input:disabled {
+                    opacity: 0.58;
+                    cursor: not-allowed;
+                }
+                .checkout-otp-meta {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    gap: 0.75rem;
+                    margin-top: 0.9rem;
+                }
+                .checkout-otp-resend {
+                    background: rgba(255, 255, 255, 0.04);
+                    color: #ececff;
+                    border: 1px solid rgba(255, 255, 255, 0.08);
+                    padding: 0.68rem 0.92rem;
+                    border-radius: 13px;
+                    cursor: pointer;
+                    font-size: 0.76rem;
+                    font-weight: 700;
+                    letter-spacing: 0.01em;
+                    transition: opacity 0.18s ease, transform 0.18s ease, border-color 0.18s ease;
+                }
+                .checkout-otp-resend:hover:not(:disabled) {
+                    transform: translateY(-1px);
+                    border-color: rgba(236, 72, 153, 0.3);
+                }
+                .checkout-otp-resend:disabled {
+                    opacity: 0.52;
+                    cursor: not-allowed;
+                }
+                .checkout-otp-expiry {
+                    font-size: 0.72rem;
+                    color: #8d90a5;
+                    white-space: nowrap;
+                }
+                .checkout-otp-status {
+                    margin-top: 0.95rem;
+                    min-height: 44px;
+                    padding: 0.78rem 0.9rem;
+                    border-radius: 14px;
+                    background: rgba(34, 197, 94, 0.08);
+                    border: 1px solid rgba(61, 217, 196, 0.16);
+                    color: #8ff3df;
+                    font-size: 0.78rem;
+                    line-height: 1.5;
+                }
+                .checkout-otp-status.is-error {
+                    background: rgba(248, 113, 113, 0.11);
+                    border-color: rgba(248, 113, 113, 0.24);
+                    color: #fecaca;
+                }
+                .checkout-summary { text-align: left; }
+                .checkout-summary-copy {
+                    font-size: 0.82rem;
+                    color: #9ea1b5;
+                    line-height: 1.55;
+                    margin-bottom: 1rem;
+                }
+                .checkout-summary-meta {
+                    display: grid;
+                    gap: 0.8rem;
+                    margin-bottom: 0.95rem;
+                }
+                .checkout-summary-card {
+                    padding: 0.9rem 1rem;
+                    border-radius: 16px;
+                    background: rgba(255,255,255,0.04);
+                    border: 1px solid rgba(255,255,255,0.07);
+                }
+                .checkout-summary-label {
+                    display: block;
+                    margin-bottom: 0.35rem;
+                    font-size: 0.62rem;
+                    text-transform: uppercase;
+                    letter-spacing: 0.16em;
+                    font-weight: 800;
+                    color: #7f8295;
+                }
+                .checkout-summary-value {
+                    color: #f3f4fb;
+                    font-size: 0.88rem;
+                    font-weight: 700;
+                    line-height: 1.45;
+                }
+                .checkout-summary-note {
+                    display: block;
+                    margin-top: 0.35rem;
+                    font-size: 0.7rem;
+                    color: #f5d07a;
+                }
+                .checkout-ticket-box {
+                    border-radius: 18px;
+                    background: linear-gradient(180deg, rgba(32,31,46,0.95) 0%, rgba(20,19,31,0.95) 100%);
+                    border: 1px solid rgba(255,255,255,0.07);
+                    padding: 1rem;
+                }
+                .checkout-ticket-row {
+                    display: flex;
+                    justify-content: space-between;
+                    gap: 0.9rem;
+                    padding: 0.72rem 0;
+                    border-bottom: 1px solid rgba(255,255,255,0.06);
+                }
+                .checkout-ticket-row:first-child { padding-top: 0.1rem; }
+                .checkout-ticket-row:last-child {
+                    border-bottom: 0;
+                    padding-bottom: 0.1rem;
+                }
+                .checkout-ticket-name {
+                    color: #b9bdd1;
+                    font-size: 0.8rem;
+                }
+                .checkout-ticket-price {
+                    color: #ffffff;
+                    font-size: 0.82rem;
+                    font-weight: 700;
+                    white-space: nowrap;
+                }
+                .checkout-ticket-total {
+                    margin-top: 0.95rem;
+                    padding-top: 0.95rem;
+                    border-top: 1px dashed rgba(255,255,255,0.14);
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    gap: 0.8rem;
+                    color: #f5f3ff;
+                    font-weight: 800;
+                    font-size: 1rem;
+                }
+                .checkout-ticket-total strong {
+                    color: #f472b6;
+                    font-size: 1.12rem;
+                }
+            `;
+            document.head.appendChild(checkoutSwalSkin);
+        }
+
+        function checkoutSwalConfig(options = {}) {
+            return {
+                background: '#120f1d',
+                color: '#f8f7ff',
+                width: '420px',
+                buttonsStyling: false,
+                customClass: {
+                    popup: 'checkout-swal-popup',
+                    title: 'checkout-swal-title',
+                    htmlContainer: 'checkout-swal-html',
+                    actions: 'checkout-swal-actions',
+                    confirmButton: 'checkout-swal-confirm',
+                    cancelButton: 'checkout-swal-cancel',
+                    validationMessage: 'checkout-swal-validation',
+                    loader: 'checkout-swal-loader',
+                    icon: 'checkout-swal-icon',
+                },
+                ...options,
+            };
+        }
+
+        function openCheckoutSwal(options = {}) {
+            return Swal.fire(checkoutSwalConfig(options));
+        }
+
         function updateOtpResendButton() {
             const resendButton = document.getElementById('paymentOtpResendButton');
 
@@ -536,12 +837,15 @@
                 return;
             }
 
+            const buttonLabel = checkoutPaymentOtp.resendButtonLabel || 'Kirim Ulang';
+            const forceDisabled = checkoutPaymentOtp.resendButtonDisabled === true;
+
             if (checkoutPaymentOtp.resendAvailableIn > 0) {
                 resendButton.disabled = true;
                 resendButton.textContent = `Kirim Ulang (${checkoutPaymentOtp.resendAvailableIn}s)`;
             } else {
-                resendButton.disabled = false;
-                resendButton.textContent = 'Kirim Ulang';
+                resendButton.disabled = forceDisabled;
+                resendButton.textContent = buttonLabel;
             }
         }
 
@@ -576,11 +880,116 @@
             }
 
             status.textContent = message || '';
-            status.style.color = isError ? '#f87171' : '#3dd9c4';
+            status.classList.toggle('is-error', isError);
+        }
+
+        function setOtpModalState({
+            message = '',
+            isError = false,
+            isLoading = false,
+            inputDisabled = false,
+            verifyDisabled = false,
+            resendDisabled = false,
+            resendLabel = 'Kirim Ulang',
+            focusInput = false,
+        } = {}) {
+            const loadingIndicator = document.getElementById('paymentOtpLoading');
+            const otpInput = document.getElementById('paymentOtpInput');
+            const confirmButton = Swal.getConfirmButton();
+
+            checkoutPaymentOtp.resendButtonDisabled = resendDisabled;
+            checkoutPaymentOtp.resendButtonLabel = resendLabel;
+
+            if (loadingIndicator) {
+                loadingIndicator.style.display = isLoading ? 'flex' : 'none';
+            }
+
+            if (otpInput) {
+                otpInput.disabled = inputDisabled;
+
+                if (focusInput && !inputDisabled) {
+                    otpInput.focus();
+                }
+            }
+
+            if (confirmButton) {
+                confirmButton.disabled = verifyDisabled;
+            }
+
+            setOtpStatus(message, isError);
+            updateOtpResendButton();
+        }
+
+        function handleOtpSendResponse(data) {
+            if (data.verified === true) {
+                if (Swal.isVisible()) {
+                    Swal.close();
+                }
+
+                submitPaymentAfterOtpVerification();
+                return;
+            }
+
+            checkoutPaymentOtp.resendAvailableIn = data.resend_available_in || 0;
+            checkoutPaymentOtp.secondaryAction = 'resend';
+            startOtpCountdown(checkoutPaymentOtp.resendAvailableIn);
+
+            if (data.status === 'requires_resend') {
+                setOtpModalState({
+                    message: data.message || 'Kode OTP perlu dikirim ulang.',
+                    inputDisabled: true,
+                    verifyDisabled: true,
+                    resendDisabled: false,
+                    resendLabel: 'Kirim Ulang',
+                });
+
+                return;
+            }
+
+            setOtpModalState({
+                message: data.message || 'Kode OTP pembayaran telah dikirim ke email Anda.',
+                inputDisabled: false,
+                verifyDisabled: false,
+                resendDisabled: false,
+                resendLabel: 'Kirim Ulang',
+                focusInput: true,
+            });
+        }
+
+        function updateOtpModalToError(error) {
+            checkoutPaymentOtp.resendAvailableIn = 0;
+            checkoutPaymentOtp.secondaryAction = 'send';
+
+            if (checkoutPaymentOtp.countdownTimer) {
+                clearInterval(checkoutPaymentOtp.countdownTimer);
+                checkoutPaymentOtp.countdownTimer = null;
+            }
+
+            setOtpModalState({
+                message: error.message || 'Permintaan OTP gagal diproses.',
+                isError: true,
+                inputDisabled: true,
+                verifyDisabled: true,
+                resendDisabled: false,
+                resendLabel: 'Coba Lagi',
+            });
+        }
+
+        async function sendPaymentOtpIntoModal() {
+            try {
+                const data = await paymentOtpRequest(checkoutPaymentOtp.sendUrl, {
+                    cart_uid: checkoutPaymentOtp.cartUid,
+                });
+
+                handleOtpSendResponse(data);
+            } catch (error) {
+                updateOtpModalToError(error);
+            }
         }
 
         async function handleOtpResend() {
             try {
+                checkoutPaymentOtp.secondaryAction = 'resend';
                 const data = await paymentOtpRequest(checkoutPaymentOtp.resendUrl, {
                     cart_uid: checkoutPaymentOtp.cartUid,
                 });
@@ -592,14 +1001,30 @@
             }
         }
 
+        async function handleOtpSecondaryAction() {
+            if (checkoutPaymentOtp.secondaryAction === 'send') {
+                setOtpModalState({
+                    message: 'Mengirim kode OTP...',
+                    isLoading: true,
+                    inputDisabled: true,
+                    verifyDisabled: true,
+                    resendDisabled: true,
+                    resendLabel: 'Kirim Ulang',
+                });
+
+                await sendPaymentOtpIntoModal();
+                return;
+            }
+
+            await handleOtpResend();
+        }
+
         function submitPaymentAfterOtpVerification() {
-            Swal.fire({
+            openCheckoutSwal({
                 title: 'Memproses...',
                 text: 'Harap tunggu sebentar',
                 allowOutsideClick: false,
                 showConfirmButton: false,
-                background: '#1a1a1a',
-                color: '#fff',
                 willOpen: () => {
                     Swal.showLoading();
                 }
@@ -609,47 +1034,54 @@
             submitPaynowOnce(form);
         }
 
-        function openOtpModal(initialMessage = '') {
-            Swal.fire({
+        function openOtpModal({
+            message = '',
+            isLoading = false,
+            inputDisabled = false,
+            verifyDisabled = false,
+            resendDisabled = false,
+            resendLabel = 'Kirim Ulang',
+        } = {}) {
+            openCheckoutSwal({
                 title: 'Verifikasi OTP Email',
                 html: `
-                    <div style="text-align:left;">
-                        <p style="font-size:13px;color:#aaa;margin-bottom:12px;">Masukkan 6 digit kode OTP yang dikirim ke email Anda.</p>
-                        <input id="paymentOtpInput" type="text" inputmode="numeric" maxlength="6"
-                            style="width:100%;padding:12px;border-radius:10px;border:1px solid #444;background:#252525;color:#fff;text-align:center;letter-spacing:8px;font-size:20px;"
-                            placeholder="000000">
-                        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;gap:12px;">
-                            <button type="button" id="paymentOtpResendButton"
-                                style="background:#252525;color:#fff;border:1px solid #444;padding:10px 14px;border-radius:10px;cursor:pointer;">
+                    <div class="checkout-otp-shell">
+                        <p class="checkout-otp-copy">Masukkan 6 digit kode OTP yang dikirim ke email Anda untuk melanjutkan pembayaran.</p>
+                        <div id="paymentOtpLoading" class="checkout-otp-loading">
+                            <span class="checkout-otp-spinner"></span>
+                            <span>Mengirim kode OTP...</span>
+                        </div>
+                        <input id="paymentOtpInput" class="checkout-otp-input" type="text" inputmode="numeric" maxlength="6" placeholder="000000">
+                        <div class="checkout-otp-meta">
+                            <button type="button" id="paymentOtpResendButton" class="checkout-otp-resend">
                                 Kirim Ulang
                             </button>
-                            <span style="font-size:11px;color:#aaa;">Kode berlaku 5 menit</span>
+                            <span class="checkout-otp-expiry">Kode berlaku 5 menit</span>
                         </div>
-                        <div id="paymentOtpStatus" style="margin-top:12px;min-height:18px;font-size:12px;color:#3dd9c4;">${initialMessage}</div>
+                        <div id="paymentOtpStatus" class="checkout-otp-status">${message}</div>
                     </div>
                 `,
                 showCancelButton: true,
                 confirmButtonText: 'Verifikasi',
                 cancelButtonText: 'Tutup',
                 reverseButtons: true,
-                background: '#1a1a1a',
-                color: '#fff',
-                confirmButtonColor: '#6c5ce7',
-                cancelButtonColor: '#252525',
                 allowOutsideClick: () => !Swal.isLoading(),
                 didOpen: () => {
                     const resendButton = document.getElementById('paymentOtpResendButton');
-                    const otpInput = document.getElementById('paymentOtpInput');
-
-                    startOtpCountdown(checkoutPaymentOtp.resendAvailableIn);
 
                     if (resendButton) {
-                        resendButton.addEventListener('click', handleOtpResend);
+                        resendButton.addEventListener('click', handleOtpSecondaryAction);
                     }
 
-                    if (otpInput) {
-                        otpInput.focus();
-                    }
+                    setOtpModalState({
+                        message: message,
+                        isLoading: isLoading,
+                        inputDisabled: inputDisabled,
+                        verifyDisabled: verifyDisabled,
+                        resendDisabled: resendDisabled,
+                        resendLabel: resendLabel,
+                        focusInput: !inputDisabled,
+                    });
                 },
                 preConfirm: async () => {
                     const otpInput = document.getElementById('paymentOtpInput');
@@ -672,14 +1104,12 @@
                 }
             }).then((result) => {
                 if (result.isConfirmed) {
-                    Swal.fire({
+                    openCheckoutSwal({
                         icon: 'success',
                         title: 'OTP Berhasil Diverifikasi',
                         text: 'Pembayaran akan dilanjutkan.',
                         timer: 1200,
                         showConfirmButton: false,
-                        background: '#1a1a1a',
-                        color: '#fff',
                     }).then(() => {
                         submitPaymentAfterOtpVerification();
                     });
@@ -688,47 +1118,31 @@
         }
 
         async function handlePaymentOtpFlow() {
-            try {
-                const data = await paymentOtpRequest(checkoutPaymentOtp.sendUrl, {
-                    cart_uid: checkoutPaymentOtp.cartUid,
-                });
+            checkoutPaymentOtp.secondaryAction = 'send';
+            checkoutPaymentOtp.resendAvailableIn = 0;
+            checkoutPaymentOtp.resendButtonLabel = 'Kirim Ulang';
+            checkoutPaymentOtp.resendButtonDisabled = true;
 
-                if (data.verified) {
-                    submitPaymentAfterOtpVerification();
-                    return;
-                }
+            openOtpModal({
+                message: 'Mengirim kode OTP...',
+                isLoading: true,
+                inputDisabled: true,
+                verifyDisabled: true,
+                resendDisabled: true,
+                resendLabel: 'Kirim Ulang',
+            });
 
-                checkoutPaymentOtp.resendAvailableIn = data.resend_available_in || 0;
-                openOtpModal(data.message || 'Kode OTP telah dikirim ke email Anda.');
-            } catch (error) {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'OTP Tidak Dapat Diproses',
-                    text: error.message,
-                    background: '#1a1a1a',
-                    color: '#fff',
-                    confirmButtonColor: '#6c5ce7',
-                    customClass: {
-                        popup: 'swal-dark-popup'
-                    }
-                });
-            }
+            await sendPaymentOtpIntoModal();
         }
 
         function showConfirmModal(e) {
             e.preventDefault();
 
             if (document.querySelectorAll('.pay-option').length === 0) {
-                Swal.fire({
+                openCheckoutSwal({
                     icon: 'warning',
                     title: 'Metode Pembayaran Tidak Tersedia',
                     text: 'Tidak ada metode pembayaran yang tersedia untuk event ini.',
-                    background: '#1a1a1a',
-                    color: '#fff',
-                    confirmButtonColor: '#6c5ce7',
-                    customClass: {
-                        popup: 'swal-dark-popup'
-                    }
                 });
                 return;
             }
@@ -736,24 +1150,17 @@
             // Check if payment selected
             const paymentId = document.getElementById('selectedPayment').value;
             if (!paymentId) {
-                Swal.fire({
+                openCheckoutSwal({
                     icon: 'warning',
                     title: 'Metode Pembayaran Belum Dipilih',
                     text: 'Silakan pilih salah satu metode pembayaran yang tersedia terlebih dahulu.',
-                    background: '#1a1a1a',
-                    color: '#fff',
-                    confirmButtonColor: '#6c5ce7',
-                    customClass: {
-                        popup: 'swal-dark-popup'
-                    }
                 });
                 return;
             }
 
             // Prepare Data for SweetAlert
             const ticketRows = document.querySelectorAll('.ticket-row');
-            let ticketHtml =
-                '<div style="text-align: left; background: #252525; padding: 15px; border-radius: 12px; margin-top: 15px; font-size: 14px; border: 1px solid #333;">';
+            let ticketHtml = '<div class="checkout-ticket-box">';
 
             ticketRows.forEach(row => {
                 const category = row.querySelector('.ticket-tier-badge').textContent;
@@ -762,9 +1169,9 @@
                 const qty = qtyInfo.split(' × ')[1];
 
                 ticketHtml += `
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px; border-bottom: 1px solid #333; padding-bottom: 8px;">
-                        <span style="color: #aaa;">${category} (${qty}x)</span>
-                        <span style="font-weight: 600; color: #fff;">${total}</span>
+                    <div class="checkout-ticket-row">
+                        <span class="checkout-ticket-name">${category} (${qty}x)</span>
+                        <span class="checkout-ticket-price">${total}</span>
                     </div>`;
             });
 
@@ -773,29 +1180,29 @@
             const grandTotal = document.getElementById('grand-total').textContent;
 
             ticketHtml += `
-                <div style="margin-top: 15px; padding-top: 10px; border-top: 2px dashed #444;">
-                    <div style="display: flex; justify-content: space-between; font-weight: 800; font-size: 18px; color: #6c5ce7;">
-                        <span>Total Bayar</span>
-                        <span>${grandTotal}</span>
-                    </div>
+                <div class="checkout-ticket-total">
+                    <span>Total Bayar</span>
+                    <strong>${grandTotal}</strong>
                 </div>
             </div>`;
 
-            Swal.fire({
+            openCheckoutSwal({
                 title: 'Konfirmasi Pesanan',
                 html: `
-                    <div style="text-align: left;">
-                        <p style="font-size: 13px; color: #aaa; margin-bottom: 15px;">Mohon periksa kembali detail pesanan Anda sebelum melanjutkan pembayaran.</p>
-                        <div style="margin-bottom: 15px;">
-                            <label style="font-size: 10px; text-transform: uppercase; font-weight: 800; color: #666; letter-spacing: 1px; display: block; margin-bottom: 5px;">Email Pembeli</label>
-                            <div style="background: #252525; padding: 10px; border-radius: 10px; color: #eee; font-weight: 600;">{{ Auth::user()->email }}</div>
-                            <small style="color: #f5c842; font-size: 11px; margin-top: 4px; display: block;">*E-Ticket akan dikirim ke email ini</small>
+                    <div class="checkout-summary">
+                        <p class="checkout-summary-copy">Periksa kembali detail pesanan Anda sebelum melanjutkan pembayaran.</p>
+                        <div class="checkout-summary-meta">
+                            <div class="checkout-summary-card">
+                                <label class="checkout-summary-label">Email Pembeli</label>
+                                <div class="checkout-summary-value">{{ Auth::user()->email }}</div>
+                                <small class="checkout-summary-note">E-ticket akan dikirim ke email ini</small>
+                            </div>
+                            <div class="checkout-summary-card">
+                                <label class="checkout-summary-label">Metode Pembayaran</label>
+                                <div class="checkout-summary-value">${paymentName}</div>
+                            </div>
                         </div>
-                        <div style="margin-bottom: 15px;">
-                            <label style="font-size: 10px; text-transform: uppercase; font-weight: 800; color: #666; letter-spacing: 1px; display: block; margin-bottom: 5px;">Metode Pembayaran</label>
-                            <div style="background: #252525; padding: 10px; border-radius: 10px; color: #eee; font-weight: 600;">${paymentName}</div>
-                        </div>
-                        <label style="font-size: 10px; text-transform: uppercase; font-weight: 800; color: #666; letter-spacing: 1px; display: block;">Item Tiket</label>
+                        <label class="checkout-summary-label">Item Tiket</label>
                         ${ticketHtml}
                     </div>
                 `,
@@ -803,16 +1210,7 @@
                 confirmButtonText: 'Lanjutkan Pembayaran',
                 cancelButtonText: 'Batal',
                 reverseButtons: true,
-                background: '#1a1a1a',
-                color: '#fff',
-                confirmButtonColor: '#6c5ce7',
-                cancelButtonColor: '#252525',
-                width: '450px',
-                customClass: {
-                    popup: 'swal-dark-popup',
-                    confirmButton: 'swal-confirm-btn',
-                    cancelButton: 'swal-cancel-btn'
-                }
+                width: '460px',
             }).then((result) => {
                 if (result.isConfirmed) {
                     if (checkoutPaymentOtp.enabled) {
