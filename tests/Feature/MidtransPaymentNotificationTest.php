@@ -68,7 +68,10 @@ class MidtransPaymentNotificationTest extends TestCase
             $this->assertStringNotContainsString('/generate-barcode/', $mail->ticketUrl);
             $this->assertStringNotContainsString($cart->invoice, $mail->ticketUrl);
             $this->assertStringContainsString('INV-CART-123', $html);
+            $this->assertStringContainsString('Hi, Online Ticket Buyer', $html);
             $this->assertStringContainsString('Midtrans Render Event', $html);
+            $this->assertStringContainsString('Ticketing &amp; Event Access', $html);
+            $this->assertStringContainsString('Lihat Barcode Tiket', $html);
             $this->assertStringNotContainsString('Barcode lama tidak berlaku lagi', $html);
 
             return true;
@@ -123,14 +126,14 @@ class MidtransPaymentNotificationTest extends TestCase
         );
         $this->assertStringContainsString('Barcode Tiket Terbaru', $onlineHtml);
         $this->assertStringContainsString('Barcode lama tidak berlaku lagi', $onlineHtml);
-        $this->assertStringContainsString('Tunjukan Barcode', $onlineHtml);
+        $this->assertStringContainsString('Lihat Barcode Tiket', $onlineHtml);
         $this->assertStringContainsString($onlineCart->invoice, $onlineHtml);
         $this->assertStringContainsString(
             app(GateTokenService::class)->manualCodeForDisplay($onlineCart->fresh()),
             $onlineHtml,
         );
         $this->assertStringContainsString(
-            'Kode manual ini hanya digunakan apabila barcode tidak dapat dipindai oleh panitia',
+            'Kode manual digunakan jika barcode tidak dapat dipindai saat proses verifikasi',
             $onlineHtml,
         );
 
@@ -153,6 +156,30 @@ class MidtransPaymentNotificationTest extends TestCase
 
             return true;
         });
+    }
+
+    public function test_midtrans_payment_notification_hides_manual_code_card_when_manual_code_is_unavailable(): void
+    {
+        $buyer = $this->user([
+            'name' => 'Manual Code Hidden Buyer',
+            'email' => 'manual-code-hidden@example.test',
+        ]);
+        $event = $this->event(['event' => 'Manual Code Hidden Event']);
+        $cart = $this->onlineCart($buyer, $event, [
+            'invoice' => 'INV-NO-MANUAL-CODE',
+        ]);
+
+        $cart->forceFill([
+            'gate_manual_code_hash' => null,
+            'gate_manual_code_encrypted' => null,
+        ])->save();
+
+        $mail = new MidtransPaymentNotification($buyer, $cart->fresh());
+        $html = $mail->render();
+
+        $this->assertStringContainsString('INV-NO-MANUAL-CODE', $html);
+        $this->assertStringContainsString('Lihat Barcode Tiket', $html);
+        $this->assertStringNotContainsString('Kode Manual', $html);
     }
 
     public function test_midtrans_callback_accepts_qris_payment_type_without_changing_selected_gateway_id(): void
