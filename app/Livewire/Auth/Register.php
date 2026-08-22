@@ -76,6 +76,7 @@ class Register extends Component
             $pendingRegistration = $registrationOtpService->verify($this->otp);
         } catch (ValidationException $exception) {
             if (array_key_exists('email', $exception->errors())) {
+                $registrationOtpService->clear();
                 $this->showOtpStep = false;
             }
 
@@ -110,11 +111,16 @@ class Register extends Component
                 return $user->fresh();
             });
         } catch (ValidationException $exception) {
+            if (array_key_exists('email', $exception->errors())) {
+                $registrationOtpService->clear();
+            }
+
             $this->showOtpStep = false;
 
             throw $exception;
         } catch (QueryException $exception) {
             if ($this->isDuplicateEmailException($exception)) {
+                $registrationOtpService->clear();
                 $this->showOtpStep = false;
 
                 throw ValidationException::withMessages([

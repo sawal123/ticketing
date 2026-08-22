@@ -353,6 +353,36 @@ class RegistrationOtpTest extends TestCase
 
         $this->assertGuest();
         $this->assertSame(1, User::where('email', 'duplicate@example.test')->count());
+        $this->assertNull(session(RegistrationOtpService::SESSION_KEY));
+    }
+
+    public function test_remount_after_duplicate_email_verification_failure_returns_to_registration_step(): void
+    {
+        Mail::fake();
+
+        $component = Livewire::test(Register::class)
+            ->set('name', 'Duplicate Remount User')
+            ->set('email', 'duplicate-remount@example.test')
+            ->set('password', 'Password123')
+            ->set('password_confirmation', 'Password123')
+            ->call('register');
+
+        User::factory()->create([
+            'uid' => (string) Str::uuid(),
+            'email' => 'duplicate-remount@example.test',
+            'password' => Hash::make('Different123'),
+            'role' => User::USER_ROLE,
+            'gambar' => 'default.png',
+        ]);
+
+        $component->set('otp', $this->extractSentOtp())
+            ->call('verifyOtp')
+            ->assertHasErrors(['email']);
+
+        $this->assertNull(session(RegistrationOtpService::SESSION_KEY));
+
+        Livewire::test(Register::class)
+            ->assertSet('showOtpStep', false);
     }
 
     public function test_duplicate_race_during_user_creation_returns_validation_error_instead_of_http_500(): void
@@ -376,6 +406,7 @@ class RegistrationOtpTest extends TestCase
             ->assertHasErrors(['email']);
 
         $this->assertGuest();
+        $this->assertNull(session(RegistrationOtpService::SESSION_KEY));
         $this->assertSame(0, User::withTrashed()->where('email', 'race@example.test')->count());
     }
 
