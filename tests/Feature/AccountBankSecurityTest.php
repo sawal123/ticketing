@@ -316,7 +316,10 @@ class AccountBankSecurityTest extends TestCase
             ->assertHasNoErrors()
             ->assertSet('deleteBankPassword', null);
 
-        $this->assertDatabaseCount('banks', 0);
+        $this->assertSoftDeleted('banks', [
+            'id' => $bank->id,
+        ]);
+        $this->assertNull(Bank::query()->find($bank->id));
     }
 
     public function test_user_cannot_delete_bank_with_empty_password(): void
