@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use Illuminate\Database\QueryException;
 use Illuminate\Validation\ValidationException;
 use Livewire\Component;
 
@@ -83,13 +84,13 @@ class Register extends Component
 
         try {
             $user = DB::transaction(function () use ($pendingRegistration) {
-                if (User::where('email', $pendingRegistration['email'])->exists()) {
+                if (User::withTrashed()->where('email', $pendingRegistration['email'])->exists()) {
                     throw ValidationException::withMessages([
                         'email' => 'Email sudah terdaftar.',
                     ]);
                 }
 
-                return User::create([
+                $user = User::create([
                     'uid' => (string) Str::uuid(),
                     'name' => $pendingRegistration['name'],
                     'email' => $pendingRegistration['email'],
@@ -101,9 +102,25 @@ class Register extends Component
                     'kota' => '-',
                     'alamat' => '-',
                 ]);
+
+                $user->forceFill([
+                    'email_verified_at' => now(),
+                ])->save();
+
+                return $user->fresh();
             });
         } catch (ValidationException $exception) {
             $this->showOtpStep = false;
+
+            throw $exception;
+        } catch (QueryException $exception) {
+            if ($this->isDuplicateEmailException($exception)) {
+                $this->showOtpStep = false;
+
+                throw ValidationException::withMessages([
+                    'email' => 'Email sudah terdaftar.',
+                ]);
+            }
 
             throw $exception;
         }
@@ -188,5 +205,18 @@ class Register extends Component
         $this->resetValidation();
 
         session()->flash('status', 'Perubahan data registrasi membatalkan OTP sebelumnya. Silakan kirim OTP baru.');
+    }
+
+    private function isDuplicateEmailException(QueryException $exception): bool
+    {
+        $duplicateKeyCode = (int) ($exception->errorInfo[1] ?? 0);
+        $message = Str::lower($exception->getMessage());
+
+        if ($duplicateKeyCode === 1062) {
+            return str_contains($message, 'email');
+        }
+
+        return str_contains($message, 'duplicate entry')
+            && (str_contains($message, 'users_email_unique') || str_contains($message, 'email'));
     }
 }

@@ -7,10 +7,13 @@ use App\Mail\RegistrationOtpMail;
 use App\Models\User;
 use App\Services\Auth\RegistrationOtpService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Laravel\Socialite\Facades\Socialite;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -24,7 +27,35 @@ class RegistrationOtpTest extends TestCase
         parent::setUp();
 
         cache()->flush();
+        session()->start();
         View::share('logo', [(object) ['logo' => '']]);
+    }
+
+    public function test_initial_mail_send_failure_does_not_create_pending_registration_or_user(): void
+    {
+        Mail::swap(new class
+        {
+            public function to($email)
+            {
+                return $this;
+            }
+
+            public function send($mailable): void
+            {
+                throw new \RuntimeException('mail transport down');
+            }
+        });
+
+        Livewire::test(Register::class)
+            ->set('name', 'Mail Failure User')
+            ->set('email', 'mail-failure@example.test')
+            ->set('password', 'Password123')
+            ->set('password_confirmation', 'Password123')
+            ->call('register')
+            ->assertHasErrors(['email']);
+
+        $this->assertNull(session(RegistrationOtpService::SESSION_KEY));
+        $this->assertDatabaseMissing('users', ['email' => 'mail-failure@example.test']);
     }
 
     public function test_user_is_not_created_before_valid_otp(): void
@@ -71,6 +102,7 @@ class RegistrationOtpTest extends TestCase
         $user = User::where('email', 'verified@example.test')->first();
 
         $this->assertNotNull($user);
+        $this->assertNotNull($user->email_verified_at);
         $this->assertAuthenticatedAs($user);
         $this->assertNull(session(RegistrationOtpService::SESSION_KEY));
     }
@@ -160,6 +192,140 @@ class RegistrationOtpTest extends TestCase
         Mail::assertSent(RegistrationOtpMail::class, 1);
     }
 
+    public function test_resend_mail_failure_keeps_previous_otp_valid(): void
+    {
+        Mail::fake();
+
+        $component = Livewire::test(Register::class)
+            ->set('name', 'Resend Failure User')
+            ->set('email', 'resend-failure@example.test')
+            ->set('password', 'Password123')
+            ->set('password_confirmation', 'Password123')
+            ->call('register');
+
+        $firstOtp = $this->extractSentOtp();
+        $pendingRegistration = $this->pendingRegistration();
+
+        $this->travel(61)->seconds();
+
+        Mail::swap(new class
+        {
+            public function to($email)
+            {
+                return $this;
+            }
+
+            public function send($mailable): void
+            {
+                throw new \RuntimeException('mail transport down');
+            }
+        });
+
+        $component->call('resendOtp')
+            ->assertHasErrors(['otp']);
+
+        $this->assertSame($pendingRegistration['otp'], $this->pendingRegistration()['otp']);
+
+        $component->set('otp', $firstOtp)
+            ->call('verifyOtp')
+            ->assertRedirect('/');
+    }
+
+    public function test_cooldown_cannot_be_bypassed_by_editing_and_resubmitting_the_same_email(): void
+    {
+        Mail::fake();
+
+        Livewire::test(Register::class)
+            ->set('name', 'Cooldown Bypass User')
+            ->set('email', 'cooldown-bypass@example.test')
+            ->set('password', 'Password123')
+            ->set('password_confirmation', 'Password123')
+            ->call('register')
+            ->call('editRegistration')
+            ->set('email', 'cooldown-bypass@example.test')
+            ->set('password', 'Password123')
+            ->set('password_confirmation', 'Password123')
+            ->call('register')
+            ->assertHasErrors(['email']);
+
+        Mail::assertSent(RegistrationOtpMail::class, 1);
+    }
+
+    public function test_rate_limit_per_email_is_enforced(): void
+    {
+        Mail::fake();
+
+        $service = app(RegistrationOtpService::class);
+
+        for ($attempt = 1; $attempt <= RegistrationOtpService::EMAIL_RATE_LIMIT_ATTEMPTS; $attempt++) {
+            $service->start('Email Limited User', 'email-limit@example.test', Hash::make('Password123'));
+            $service->clear();
+            $this->travel(61)->seconds();
+        }
+
+        try {
+            $service->start('Email Limited User', 'email-limit@example.test', Hash::make('Password123'));
+            $this->fail('Expected email rate limit validation exception was not thrown.');
+        } catch (ValidationException $exception) {
+            $this->assertSame(
+                'Terlalu banyak permintaan OTP. Silakan coba lagi beberapa saat.',
+                $exception->errors()['email'][0]
+            );
+        }
+    }
+
+    public function test_rate_limit_per_ip_is_enforced(): void
+    {
+        Mail::fake();
+
+        $service = app(RegistrationOtpService::class);
+
+        for ($attempt = 1; $attempt <= RegistrationOtpService::IP_RATE_LIMIT_ATTEMPTS; $attempt++) {
+            $service->start('IP Limited User', "ip-limit-{$attempt}@example.test", Hash::make('Password123'));
+            $service->clear();
+        }
+
+        try {
+            $service->start('IP Limited User', 'ip-limit-overflow@example.test', Hash::make('Password123'));
+            $this->fail('Expected IP rate limit validation exception was not thrown.');
+        } catch (ValidationException $exception) {
+            $this->assertSame(
+                'Terlalu banyak permintaan OTP. Silakan coba lagi beberapa saat.',
+                $exception->errors()['email'][0]
+            );
+        }
+    }
+
+    public function test_resend_success_invalidates_old_otp_and_activates_new_otp(): void
+    {
+        Mail::fake();
+
+        $component = Livewire::test(Register::class)
+            ->set('name', 'Resend Success User')
+            ->set('email', 'resend-success@example.test')
+            ->set('password', 'Password123')
+            ->set('password_confirmation', 'Password123')
+            ->call('register');
+
+        $firstOtp = $this->extractSentOtp();
+
+        $this->travel(61)->seconds();
+
+        $component->call('resendOtp');
+
+        $secondOtp = $this->extractSentOtp(1);
+
+        $this->assertNotSame($firstOtp, $secondOtp);
+
+        $component->set('otp', $firstOtp)
+            ->call('verifyOtp')
+            ->assertHasErrors(['otp']);
+
+        $component->set('otp', $secondOtp)
+            ->call('verifyOtp')
+            ->assertRedirect('/');
+    }
+
     public function test_duplicate_email_is_rejected_when_otp_is_verified(): void
     {
         Mail::fake();
@@ -187,6 +353,30 @@ class RegistrationOtpTest extends TestCase
 
         $this->assertGuest();
         $this->assertSame(1, User::where('email', 'duplicate@example.test')->count());
+    }
+
+    public function test_duplicate_race_during_user_creation_returns_validation_error_instead_of_http_500(): void
+    {
+        Mail::fake();
+
+        $component = Livewire::test(Register::class)
+            ->set('name', 'Race User')
+            ->set('email', 'race@example.test')
+            ->set('password', 'Password123')
+            ->set('password_confirmation', 'Password123')
+            ->call('register');
+
+        DB::partialMock()
+            ->shouldReceive('transaction')
+            ->once()
+            ->andThrow($this->duplicateEmailQueryException());
+
+        $component->set('otp', $this->extractSentOtp())
+            ->call('verifyOtp')
+            ->assertHasErrors(['email']);
+
+        $this->assertGuest();
+        $this->assertSame(0, User::withTrashed()->where('email', 'race@example.test')->count());
     }
 
     public function test_changing_email_invalidates_previous_otp(): void
@@ -264,5 +454,24 @@ class RegistrationOtpTest extends TestCase
         preg_match('/\b(\d{6})\b/', $mail->render(), $matches);
 
         return $matches[1];
+    }
+
+    private function duplicateEmailQueryException(): QueryException
+    {
+        $previous = new \PDOException(
+            "SQLSTATE[23000]: Integrity constraint violation: 1062 Duplicate entry 'race@example.test' for key 'users_email_unique'"
+        );
+        $previous->errorInfo = [
+            '23000',
+            1062,
+            "Duplicate entry 'race@example.test' for key 'users_email_unique'",
+        ];
+
+        return new QueryException(
+            'mysql',
+            'insert into `users` (`email`) values (?)',
+            ['race@example.test'],
+            $previous
+        );
     }
 }

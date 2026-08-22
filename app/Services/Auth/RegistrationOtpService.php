@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
+use Throwable;
 use Illuminate\Validation\ValidationException;
 
 class RegistrationOtpService
@@ -17,7 +18,8 @@ class RegistrationOtpService
     public const OTP_TTL_MINUTES = 5;
     public const RESEND_COOLDOWN_SECONDS = 60;
     public const MAX_ATTEMPTS = 5;
-    public const SEND_RATE_LIMIT_ATTEMPTS = 5;
+    public const EMAIL_RATE_LIMIT_ATTEMPTS = 5;
+    public const IP_RATE_LIMIT_ATTEMPTS = 20;
     public const SEND_RATE_LIMIT_DECAY_SECONDS = 600;
 
     public function start(string $name, string $email, string $hashedPassword): array
@@ -25,24 +27,17 @@ class RegistrationOtpService
         $normalizedEmail = $this->normalizeEmail($email);
 
         $this->assertEmailUnique($normalizedEmail);
-        $this->ensureCanSend($normalizedEmail);
+        $this->ensureCanSend($normalizedEmail, 'email');
 
-        $plainOtp = $this->generateOtp();
+        [$pendingRegistration, $plainOtp] = $this->makePendingRegistration(
+            trim($name),
+            $normalizedEmail,
+            $hashedPassword
+        );
 
-        $pendingRegistration = [
-            'name' => trim($name),
-            'email' => $normalizedEmail,
-            'password' => $hashedPassword,
-            'otp' => Hash::make($plainOtp),
-            'expires_at' => now()->addMinutes(self::OTP_TTL_MINUTES),
-            'attempts' => 0,
-            'sent_at' => now(),
-        ];
-
-        session()->put(self::SESSION_KEY, $pendingRegistration);
-        RateLimiter::hit($this->sendRateLimitKey($normalizedEmail), self::SEND_RATE_LIMIT_DECAY_SECONDS);
-
-        Mail::to($normalizedEmail)->send(new RegistrationOtpMail($pendingRegistration['name'], $plainOtp));
+        $this->sendOtpMail($pendingRegistration['name'], $normalizedEmail, $plainOtp, 'email');
+        $this->storePendingRegistration($pendingRegistration);
+        $this->recordSuccessfulSend($normalizedEmail);
 
         return $pendingRegistration;
     }
@@ -50,28 +45,25 @@ class RegistrationOtpService
     public function resend(): array
     {
         $pendingRegistration = $this->requirePendingRegistration();
-
-        if ($this->cooldownRemaining($pendingRegistration) > 0) {
-            throw ValidationException::withMessages([
-                'otp' => 'Kode OTP baru dapat dikirim ulang setelah cooldown selesai.',
-            ]);
-        }
-
         $this->assertEmailUnique($pendingRegistration['email']);
-        $this->ensureCanSend($pendingRegistration['email']);
+        $this->ensureCanSend($pendingRegistration['email'], 'otp');
 
-        $plainOtp = $this->generateOtp();
-        $pendingRegistration['otp'] = Hash::make($plainOtp);
-        $pendingRegistration['expires_at'] = now()->addMinutes(self::OTP_TTL_MINUTES);
-        $pendingRegistration['attempts'] = 0;
-        $pendingRegistration['sent_at'] = now();
+        [$replacementRegistration, $plainOtp] = $this->makePendingRegistration(
+            $pendingRegistration['name'],
+            $pendingRegistration['email'],
+            $pendingRegistration['password']
+        );
 
-        session()->put(self::SESSION_KEY, $pendingRegistration);
-        RateLimiter::hit($this->sendRateLimitKey($pendingRegistration['email']), self::SEND_RATE_LIMIT_DECAY_SECONDS);
+        $this->sendOtpMail(
+            $replacementRegistration['name'],
+            $replacementRegistration['email'],
+            $plainOtp,
+            'otp'
+        );
+        $this->storePendingRegistration($replacementRegistration);
+        $this->recordSuccessfulSend($replacementRegistration['email']);
 
-        Mail::to($pendingRegistration['email'])->send(new RegistrationOtpMail($pendingRegistration['name'], $plainOtp));
-
-        return $pendingRegistration;
+        return $replacementRegistration;
     }
 
     public function verify(string $plainOtp): array
@@ -121,11 +113,17 @@ class RegistrationOtpService
     {
         $pendingRegistration ??= $this->getPendingRegistration();
 
-        if (! is_array($pendingRegistration) || ! isset($pendingRegistration['sent_at'])) {
+        if (! is_array($pendingRegistration) || empty($pendingRegistration['email'])) {
             return 0;
         }
 
-        return max(0, now()->diffInSeconds($pendingRegistration['sent_at']->copy()->addSeconds(self::RESEND_COOLDOWN_SECONDS), false));
+        $cooldownKey = $this->cooldownRateLimitKey($pendingRegistration['email']);
+
+        if (! RateLimiter::tooManyAttempts($cooldownKey, 1)) {
+            return 0;
+        }
+
+        return RateLimiter::availableIn($cooldownKey);
     }
 
     public function clear(): void
@@ -133,20 +131,32 @@ class RegistrationOtpService
         session()->forget(self::SESSION_KEY);
     }
 
-    private function ensureCanSend(string $email): void
+    private function ensureCanSend(string $email, string $errorKey): void
     {
-        $rateLimitKey = $this->sendRateLimitKey($email);
+        $cooldownKey = $this->cooldownRateLimitKey($email);
 
-        if (RateLimiter::tooManyAttempts($rateLimitKey, self::SEND_RATE_LIMIT_ATTEMPTS)) {
+        if (RateLimiter::tooManyAttempts($cooldownKey, 1)) {
             throw ValidationException::withMessages([
-                'email' => 'Terlalu banyak permintaan OTP. Silakan coba lagi beberapa saat.',
+                $errorKey => 'Kode OTP baru dapat dikirim ulang setelah cooldown selesai.',
+            ]);
+        }
+
+        if (RateLimiter::tooManyAttempts($this->emailRateLimitKey($email), self::EMAIL_RATE_LIMIT_ATTEMPTS)) {
+            throw ValidationException::withMessages([
+                $errorKey => 'Terlalu banyak permintaan OTP. Silakan coba lagi beberapa saat.',
+            ]);
+        }
+
+        if (RateLimiter::tooManyAttempts($this->ipRateLimitKey(), self::IP_RATE_LIMIT_ATTEMPTS)) {
+            throw ValidationException::withMessages([
+                $errorKey => 'Terlalu banyak permintaan OTP. Silakan coba lagi beberapa saat.',
             ]);
         }
     }
 
     private function assertEmailUnique(string $email): void
     {
-        if (User::where('email', $email)->exists()) {
+        if (User::withTrashed()->where('email', $email)->exists()) {
             throw ValidationException::withMessages([
                 'email' => 'Email sudah terdaftar.',
             ]);
@@ -176,13 +186,63 @@ class RegistrationOtpService
         return str_pad((string) random_int(0, 999999), self::OTP_LENGTH, '0', STR_PAD_LEFT);
     }
 
+    private function makePendingRegistration(string $name, string $email, string $hashedPassword): array
+    {
+        $plainOtp = $this->generateOtp();
+
+        return [[
+            'name' => $name,
+            'email' => $email,
+            'password' => $hashedPassword,
+            'otp' => Hash::make($plainOtp),
+            'expires_at' => now()->addMinutes(self::OTP_TTL_MINUTES),
+            'attempts' => 0,
+            'sent_at' => now(),
+        ], $plainOtp];
+    }
+
+    private function sendOtpMail(string $name, string $email, string $plainOtp, string $errorKey): void
+    {
+        try {
+            Mail::to($email)->send(new RegistrationOtpMail($name, $plainOtp));
+        } catch (Throwable $throwable) {
+            report($throwable);
+
+            throw ValidationException::withMessages([
+                $errorKey => 'Gagal mengirim kode OTP. Silakan coba lagi.',
+            ]);
+        }
+    }
+
+    private function storePendingRegistration(array $pendingRegistration): void
+    {
+        session()->put(self::SESSION_KEY, $pendingRegistration);
+    }
+
+    private function recordSuccessfulSend(string $email): void
+    {
+        RateLimiter::hit($this->cooldownRateLimitKey($email), self::RESEND_COOLDOWN_SECONDS);
+        RateLimiter::hit($this->emailRateLimitKey($email), self::SEND_RATE_LIMIT_DECAY_SECONDS);
+        RateLimiter::hit($this->ipRateLimitKey(), self::SEND_RATE_LIMIT_DECAY_SECONDS);
+    }
+
     private function normalizeEmail(string $email): string
     {
         return Str::lower(trim($email));
     }
 
-    private function sendRateLimitKey(string $email): string
+    private function cooldownRateLimitKey(string $email): string
     {
-        return 'register-otp:'.sha1($this->normalizeEmail($email).'|'.request()->ip());
+        return 'register-otp-cooldown:'.sha1($this->normalizeEmail($email));
+    }
+
+    private function emailRateLimitKey(string $email): string
+    {
+        return 'register-otp-email:'.sha1($this->normalizeEmail($email));
+    }
+
+    private function ipRateLimitKey(): string
+    {
+        return 'register-otp-ip:'.sha1((string) (request()->ip() ?? 'unknown'));
     }
 }
