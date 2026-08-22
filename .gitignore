@@ -22,5 +22,5 @@ yarn-error.log
 /bootstrap/cache/*.php
 /bootstrap/cache/*.tmp
 !/bootstrap/cache/.gitignore
-
+/public/vendor/livewire/
 .env.testing
