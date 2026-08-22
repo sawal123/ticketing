@@ -61,6 +61,37 @@ class PendingEventActionsTest extends TestCase
             $table->timestamps();
             $table->softDeletes();
         });
+
+        Schema::create('hargas', function ($table) {
+            $table->id();
+            $table->string('uid');
+            $table->unsignedBigInteger('sold_qty')->default(0);
+            $table->unsignedBigInteger('reserved_qty')->default(0);
+        });
+
+        Schema::create('carts', function ($table) {
+            $table->id();
+            $table->string('event_uid');
+            $table->softDeletes();
+        });
+
+        Schema::create('harga_carts', function ($table) {
+            $table->id();
+            $table->string('event_uid');
+            $table->softDeletes();
+        });
+
+        Schema::create('transactions', function ($table) {
+            $table->id();
+            $table->string('event_uid');
+            $table->softDeletes();
+        });
+
+        Schema::create('cashes', function ($table) {
+            $table->id();
+            $table->string('uid_event');
+            $table->softDeletes();
+        });
     }
 
     public function test_owner_can_soft_delete_pending_event(): void
