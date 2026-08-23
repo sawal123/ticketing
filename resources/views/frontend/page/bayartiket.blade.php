@@ -1231,6 +1231,11 @@
 
         function showConfirmModal(e) {
             e.preventDefault();
+            const form = document.getElementById('paynowForm');
+
+            if (!form || (typeof form.reportValidity === 'function' && !form.reportValidity())) {
+                return;
+            }
 
             if (document.querySelectorAll('.pay-option').length === 0) {
                 openCheckoutSwal({
@@ -1272,6 +1277,14 @@
             const selectedPayElement = document.querySelector('.pay-option.selected .pay-name');
             const paymentName = selectedPayElement ? selectedPayElement.textContent : 'N/A';
             const grandTotal = document.getElementById('grand-total').textContent;
+            const ticketHolderNameInput = form.querySelector('[name="ticket_holder_name"]');
+            const recipientOptionInput = form.querySelector('[name="ticket_recipient_email_option"]:checked');
+            const otherRecipientEmailInput = form.querySelector('[name="ticket_recipient_other_email"]');
+            const ticketHolderName = ticketHolderNameInput ? ticketHolderNameInput.value.trim() : '';
+            const recipientOption = recipientOptionInput ? recipientOptionInput.value : 'use_account_email';
+            const ticketRecipientEmail = recipientOption === 'other_email'
+                ? (otherRecipientEmailInput ? otherRecipientEmailInput.value.trim() : '')
+                : @json(Auth::user()->email);
 
             ticketHtml += `
                 <div class="checkout-ticket-total">
@@ -1287,9 +1300,13 @@
                         <p class="checkout-summary-copy">Periksa kembali detail pesanan Anda sebelum melanjutkan pembayaran.</p>
                         <div class="checkout-summary-meta">
                             <div class="checkout-summary-card">
-                                <label class="checkout-summary-label">Email Pembeli</label>
-                                <div class="checkout-summary-value">{{ Auth::user()->email }}</div>
-                                <small class="checkout-summary-note">E-ticket akan dikirim ke email ini</small>
+                                <label class="checkout-summary-label">Nama Pemegang Tiket</label>
+                                <div class="checkout-summary-value">${ticketHolderName}</div>
+                            </div>
+                            <div class="checkout-summary-card">
+                                <label class="checkout-summary-label">Email Penerima Tiket</label>
+                                <div class="checkout-summary-value">${ticketRecipientEmail}</div>
+                                <small class="checkout-summary-note">Email penerima yang dipilih</small>
                             </div>
                             <div class="checkout-summary-card">
                                 <label class="checkout-summary-label">Metode Pembayaran</label>
