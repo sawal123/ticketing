@@ -162,12 +162,15 @@ class TicketReservationService
                 ]);
             }
 
+            $rowChanges = [];
+            $netDeltaByHargaId = [];
+
             foreach ($hargaCarts as $hargaCart) {
                 $masterHarga = $hargas->get($hargaCart->harga_id);
 
-                if (! $masterHarga || $masterHarga->status !== 'active') {
+                if (! $masterHarga) {
                     throw ValidationException::withMessages([
-                        'items' => 'Kategori tiket tidak tersedia.',
+                        'items' => 'Kategori tiket tidak valid.',
                     ]);
                 }
 
@@ -179,28 +182,61 @@ class TicketReservationService
                     ]);
                 }
 
-                $delta = $requestedQuantity - (int) $hargaCart->quantity;
+                $currentQuantity = (int) $hargaCart->quantity;
+                $delta = $requestedQuantity - $currentQuantity;
 
-                if ($delta > 0 && $masterHarga->remainingQty() < $delta) {
+                $rowChanges[$hargaCart->id] = [
+                    'harga_cart' => $hargaCart,
+                    'requested_quantity' => $requestedQuantity,
+                ];
+
+                $netDeltaByHargaId[$hargaCart->harga_id] = ($netDeltaByHargaId[$hargaCart->harga_id] ?? 0) + $delta;
+            }
+
+            foreach ($netDeltaByHargaId as $hargaId => $netDelta) {
+                $masterHarga = $hargas->get($hargaId);
+
+                if (! $masterHarga) {
                     throw ValidationException::withMessages([
-                        'items' => "Stok tiket {$masterHarga->kategori} baru saja habis.",
+                        'items' => 'Kategori tiket tidak valid.',
+                    ]);
+                }
+
+                if ($netDelta > 0) {
+                    if ($masterHarga->status !== 'active') {
+                        throw ValidationException::withMessages([
+                            'items' => 'Kategori tiket tidak tersedia.',
+                        ]);
+                    }
+
+                    if ($masterHarga->remainingQty() < $netDelta) {
+                        throw ValidationException::withMessages([
+                            'items' => "Stok tiket {$masterHarga->kategori} baru saja habis.",
+                        ]);
+                    }
+                }
+
+                if ((int) $masterHarga->reserved_qty + $netDelta < 0) {
+                    throw ValidationException::withMessages([
+                        'items' => 'Jumlah tiket tidak valid.',
                     ]);
                 }
             }
 
-            foreach ($hargaCarts as $hargaCart) {
-                $masterHarga = $hargas->get($hargaCart->harga_id);
-                $requestedQuantity = (int) $requestedItems[$hargaCart->id]['quantity'];
-                $currentQuantity = (int) $hargaCart->quantity;
-                $delta = $requestedQuantity - $currentQuantity;
-
-                if ($delta > 0) {
-                    $masterHarga->reserved_qty = (int) $masterHarga->reserved_qty + $delta;
-                    $masterHarga->save();
-                } elseif ($delta < 0) {
-                    $masterHarga->reserved_qty = max(0, (int) $masterHarga->reserved_qty - abs($delta));
-                    $masterHarga->save();
+            foreach ($netDeltaByHargaId as $hargaId => $netDelta) {
+                if ($netDelta === 0) {
+                    continue;
                 }
+
+                $masterHarga = $hargas->get($hargaId);
+                $masterHarga->reserved_qty = max(0, (int) $masterHarga->reserved_qty + $netDelta);
+                $masterHarga->save();
+            }
+
+            foreach ($rowChanges as $change) {
+                /** @var HargaCart $hargaCart */
+                $hargaCart = $change['harga_cart'];
+                $requestedQuantity = $change['requested_quantity'];
 
                 if ($requestedQuantity === 0) {
                     $hargaCart->delete();

@@ -249,6 +249,11 @@
                             style="margin-top:16px;display:grid;gap:12px;">
                             @csrf
                             <input type="hidden" name="cart_uid" value="{{ $cart->uid }}">
+                            <input type="hidden" name="ticket_holder_name" value="{{ $ticketHolderNameValue }}">
+                            <input type="hidden" name="ticket_recipient_email_option"
+                                value="{{ $selectedRecipientEmailOption }}">
+                            <input type="hidden" name="ticket_recipient_other_email"
+                                value="{{ $ticketRecipientOtherEmailValue }}">
                             @foreach ($ticketRows as $hargaRow)
                                 <div
                                     style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border-radius:14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);">

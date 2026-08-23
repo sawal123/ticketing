@@ -276,10 +276,13 @@ class BuyTicketController extends Controller
                 $this->parseQuantityUpdateItems($request)
             );
         } catch (ValidationException $exception) {
-            return redirect()->back()->with('error', collect($exception->errors())->flatten()->first());
+            return redirect()->back()
+                ->withInput($this->recipientInput($request))
+                ->with('error', collect($exception->errors())->flatten()->first());
         }
 
         return redirect('/detail-ticket/'.$cart->uid.'/'.Auth::user()->uid)
+            ->withInput($this->recipientInput($request))
             ->with('success', 'Jumlah tiket berhasil diperbarui.');
     }
 
@@ -351,5 +354,14 @@ class BuyTicketController extends Controller
             ->filter(fn (array $item) => $item['harga_cart_id'] > 0)
             ->values()
             ->all();
+    }
+
+    protected function recipientInput(Request $request): array
+    {
+        return $request->only([
+            'ticket_holder_name',
+            'ticket_recipient_email_option',
+            'ticket_recipient_other_email',
+        ]);
     }
 }
