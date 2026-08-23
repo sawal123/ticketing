@@ -354,6 +354,41 @@ class CheckoutRecipientSnapshotTest extends TestCase
         }
     }
 
+    public function test_non_active_reservation_statuses_keep_snapshot_locked(): void
+    {
+        $user = $this->user();
+        $event = $this->event();
+        $lockedStatuses = [
+            Cart::STATUS_PAYMENT_REVIEW,
+            Cart::STATUS_UNPAID,
+        ];
+
+        foreach ($lockedStatuses as $status) {
+            $cart = $this->cart($user, $event, [
+                'status' => $status,
+                'ticket_holder_name' => 'Snapshot '.$status,
+                'ticket_recipient_email' => Str::lower($status).'@example.test',
+            ]);
+
+            $this->actingAs($user)
+                ->from('/detail-ticket/'.$cart->uid.'/'.$user->uid)
+                ->post('/paynow', [
+                    'cart_uid' => $cart->uid,
+                    'payment_gateway_id' => 999,
+                    'ticket_holder_name' => 'Perubahan '.$status,
+                    'ticket_recipient_email_option' => 'other_email',
+                    'ticket_recipient_other_email' => 'change-'.$status.'@example.test',
+                ])
+                ->assertRedirect('/detail-ticket/'.$cart->uid.'/'.$user->uid)
+                ->assertSessionHasErrors(['msg']);
+
+            $cart->refresh();
+
+            $this->assertSame('Snapshot '.$status, $cart->ticket_holder_name);
+            $this->assertSame(Str::lower($status).'@example.test', $cart->ticket_recipient_email);
+        }
+    }
+
     public function test_midtrans_url_failure_keeps_cart_retryable_without_dead_end(): void
     {
         $user = $this->user();
