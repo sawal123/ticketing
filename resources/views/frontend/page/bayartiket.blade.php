@@ -106,6 +106,92 @@
                 </div>
             @endif
 
+            @php
+                $recipientSnapshotLocked = $cart->recipientSnapshotLocked();
+                $selectedRecipientEmailOption = old(
+                    'ticket_recipient_email_option',
+                    filled($cart->ticket_recipient_email) && $cart->ticket_recipient_email !== Auth::user()->email
+                        ? 'other_email'
+                        : 'use_account_email'
+                );
+                $ticketHolderNameValue = old('ticket_holder_name', $cart->ticket_holder_name);
+                $ticketRecipientOtherEmailValue = old(
+                    'ticket_recipient_other_email',
+                    $selectedRecipientEmailOption === 'other_email' ? $cart->ticket_recipient_email : ''
+                );
+            @endphp
+
+            <div class="card"
+                @if (!$recipientSnapshotLocked) x-data="{ recipientEmailOption: @js($selectedRecipientEmailOption) }" @endif>
+                <div class="card-header">
+                    <div class="card-icon" style="background:rgba(61,217,196,0.12);">👤</div>
+                    <div class="card-title">Informasi Pemegang Tiket</div>
+                </div>
+                <div class="card-body">
+                    @if (!$recipientSnapshotLocked)
+                        <div style="display:grid;gap:16px;">
+                            <div>
+                                <label for="ticketHolderName"
+                                    style="display:block;font-weight:700;font-size:13px;margin-bottom:8px;color:#fff;">
+                                    Nama Lengkap sesuai KTP *
+                                </label>
+                                <input type="text" id="ticketHolderName" name="ticket_holder_name"
+                                    value="{{ $ticketHolderNameValue }}" maxlength="255" required form="paynowForm"
+                                    class="voucher-input" placeholder="Masukkan nama lengkap pemegang tiket">
+                                <div style="margin-top:8px;font-size:12px;color:var(--muted);line-height:1.6;">
+                                    Pastikan nama sesuai dengan identitas yang akan digunakan saat menghadiri event.
+                                </div>
+                            </div>
+
+                            <div>
+                                <div style="display:block;font-weight:700;font-size:13px;margin-bottom:10px;color:#fff;">
+                                    Email Penerima Tiket
+                                </div>
+
+                                <label
+                                    style="display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border-radius:14px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.03);cursor:pointer;">
+                                    <input type="radio" name="ticket_recipient_email_option" value="use_account_email"
+                                        form="paynowForm" x-model="recipientEmailOption">
+                                    <span style="display:grid;gap:4px;">
+                                        <span style="font-size:13px;color:#fff;">Gunakan email akun saat ini</span>
+                                        <span style="font-size:12px;color:var(--muted);">{{ Auth::user()->email }}</span>
+                                    </span>
+                                </label>
+
+                                <label
+                                    style="display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border-radius:14px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.03);cursor:pointer;margin-top:10px;">
+                                    <input type="radio" name="ticket_recipient_email_option" value="other_email"
+                                        form="paynowForm" x-model="recipientEmailOption">
+                                    <span style="font-size:13px;color:#fff;">Kirim ke email lain</span>
+                                </label>
+
+                                <div x-show="recipientEmailOption === 'other_email'" x-cloak style="margin-top:12px;">
+                                    <input type="email" name="ticket_recipient_other_email"
+                                        value="{{ $ticketRecipientOtherEmailValue }}" maxlength="255"
+                                        form="paynowForm" class="voucher-input" placeholder="nama@email.com"
+                                        :required="recipientEmailOption === 'other_email'"
+                                        :disabled="recipientEmailOption !== 'other_email'">
+                                </div>
+                            </div>
+                        </div>
+                    @else
+                        <div style="display:grid;gap:12px;">
+                            <div class="detail-row">
+                                <span class="label">Nama Pemegang Tiket</span>
+                                <span class="value">{{ $cart->ticket_holder_name ?: '-' }}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="label">Snapshot Email Penerima</span>
+                                <span class="value">{{ $cart->ticket_recipient_email ?: '-' }}</span>
+                            </div>
+                            <div style="font-size:12px;color:var(--muted);line-height:1.6;">
+                                Informasi pemegang tiket tidak dapat diubah setelah proses pembayaran dimulai.
+                            </div>
+                        </div>
+                    @endif
+                </div>
+            </div>
+
             <!-- TICKET DETAIL -->
             <div class="card">
                 <div class="card-header">
@@ -494,12 +580,20 @@
                 return false;
             }
 
+            if (typeof form.reportValidity === 'function' && !form.reportValidity()) {
+                return false;
+            }
+
             form.dataset.submitting = '1';
             form.querySelectorAll('.btn-pay').forEach(btn => {
                 btn.disabled = true;
                 btn.innerHTML = '<span>Memproses...</span>';
             });
-            form.submit();
+            if (typeof form.requestSubmit === 'function') {
+                form.requestSubmit();
+            } else {
+                form.submit();
+            }
 
             return true;
         }

@@ -763,6 +763,8 @@ class CheckoutPaymentOtpTest extends TestCase
             $table->string('user_uid');
             $table->string('event_uid');
             $table->string('invoice')->nullable();
+            $table->string('ticket_holder_name')->nullable();
+            $table->string('ticket_recipient_email')->nullable();
             $table->string('status');
             $table->text('link')->nullable();
             $table->string('payment_type')->nullable();
@@ -929,6 +931,8 @@ class CheckoutPaymentOtpTest extends TestCase
             'user_uid' => $user->uid,
             'event_uid' => $event->uid,
             'invoice' => 'INV-'.Str::upper(Str::random(8)),
+            'ticket_holder_name' => 'Snapshot Holder',
+            'ticket_recipient_email' => $user->email,
             'status' => Cart::STATUS_RESERVED,
             'expires_at' => now()->addMinutes(15),
         ], $attributes));
