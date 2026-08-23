@@ -41,6 +41,8 @@ class Cart extends Model
         'user_uid',
         'event_uid',
         'invoice',
+        'ticket_holder_name',
+        'ticket_recipient_email',
         'gate_token_hash',
         'gate_token_encrypted',
         'gate_manual_code_hash',
@@ -139,5 +141,16 @@ class Cart extends Model
     {
         return filled($this->link)
             && ($this->payment_link_expires_at === null || $this->payment_link_expires_at->isFuture());
+    }
+
+    public function recipientSnapshotLocked(): bool
+    {
+        return $this->hasActivePaymentLink()
+            || ! in_array($this->status, self::ACTIVE_RESERVATION_STATUSES, true);
+    }
+
+    public function hasRecipientSnapshot(): bool
+    {
+        return filled($this->ticket_holder_name) && filled($this->ticket_recipient_email);
     }
 }

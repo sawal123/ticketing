@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Midtrans\Config as konfig;
 use Midtrans\Snap;
@@ -57,6 +58,10 @@ class TransactionController extends Controller
         'gopay' => 'gopay',
         'shopeepay' => 'shopeepay',
     ];
+
+    private const RECIPIENT_EMAIL_OPTION_ACCOUNT = 'use_account_email';
+
+    private const RECIPIENT_EMAIL_OPTION_OTHER = 'other_email';
 
     public function paynow(
         Request $request,
@@ -107,6 +112,16 @@ class TransactionController extends Controller
 
                 if ($cart->hasActivePaymentLink()) {
                     return ['redirect_url' => $cart->link, 'expired' => false];
+                }
+
+                if ($cart->recipientSnapshotLocked()) {
+                    $this->assertRecipientSnapshotExists($cart);
+                } elseif ($cart->hasRecipientSnapshot() && ! $this->requestIncludesRecipientSnapshot($request)) {
+                    // Existing carts can continue using their stored snapshot when paynow is posted directly.
+                } else {
+                    $recipientSnapshot = $this->resolveRecipientSnapshot($request);
+                    $cart->ticket_holder_name = $recipientSnapshot['ticket_holder_name'];
+                    $cart->ticket_recipient_email = $recipientSnapshot['ticket_recipient_email'];
                 }
 
                 $event = $cart->event;
@@ -230,7 +245,9 @@ class TransactionController extends Controller
 
             return redirect($paymentUrl);
         } catch (ValidationException $exception) {
-            return back()->withErrors(['msg' => collect($exception->errors())->flatten()->first()]);
+            return back()
+                ->withInput($this->recipientInput($request))
+                ->withErrors(['msg' => collect($exception->errors())->flatten()->first()]);
         } catch (Exception $exception) {
             Log::error('Gagal membuat transaksi Midtrans', [
                 'cart_uid' => $cartUid,
@@ -238,7 +255,9 @@ class TransactionController extends Controller
                 'error' => $exception->getMessage(),
             ]);
 
-            return back()->withErrors(['msg' => 'Gagal membuat transaksi pembayaran. Silakan coba lagi.']);
+            return back()
+                ->withInput($this->recipientInput($request))
+                ->withErrors(['msg' => 'Gagal membuat transaksi pembayaran. Silakan coba lagi.']);
         } finally {
             optional($lock)->release();
         }
@@ -421,5 +440,55 @@ class TransactionController extends Controller
         $slug = Str::lower((string) $gateway->slug);
 
         return self::LEGACY_MIDTRANS_PAYMENT_CODE_MAP[$slug] ?? null;
+    }
+
+    protected function resolveRecipientSnapshot(Request $request): array
+    {
+        $validated = $request->validate([
+            'ticket_holder_name' => 'required|string|max:255',
+            'ticket_recipient_email_option' => ['required', Rule::in([
+                self::RECIPIENT_EMAIL_OPTION_ACCOUNT,
+                self::RECIPIENT_EMAIL_OPTION_OTHER,
+            ])],
+            'ticket_recipient_other_email' => 'nullable|email|max:255|required_if:ticket_recipient_email_option,'.self::RECIPIENT_EMAIL_OPTION_OTHER,
+        ]);
+
+        $ticketRecipientEmail = $validated['ticket_recipient_email_option'] === self::RECIPIENT_EMAIL_OPTION_ACCOUNT
+            ? Auth::user()->email
+            : trim((string) $validated['ticket_recipient_other_email']);
+
+        return [
+            'ticket_holder_name' => trim((string) $validated['ticket_holder_name']),
+            'ticket_recipient_email' => $ticketRecipientEmail,
+        ];
+    }
+
+    protected function assertRecipientSnapshotExists(Cart $cart): void
+    {
+        if ($cart->hasRecipientSnapshot()) {
+            return;
+        }
+
+        throw ValidationException::withMessages([
+            'cart_uid' => 'Informasi pemegang tiket belum lengkap. Silakan checkout ulang.',
+        ]);
+    }
+
+    protected function requestIncludesRecipientSnapshot(Request $request): bool
+    {
+        return $request->hasAny([
+            'ticket_holder_name',
+            'ticket_recipient_email_option',
+            'ticket_recipient_other_email',
+        ]);
+    }
+
+    protected function recipientInput(Request $request): array
+    {
+        return $request->only([
+            'ticket_holder_name',
+            'ticket_recipient_email_option',
+            'ticket_recipient_other_email',
+        ]);
     }
 }
