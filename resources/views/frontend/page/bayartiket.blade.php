@@ -107,6 +107,7 @@
             @endif
 
             @php
+                $hasActivePaymentLink = $cart->hasActivePaymentLink();
                 $recipientSnapshotLocked = $cart->recipientSnapshotLocked();
                 $selectedRecipientEmailOption = old(
                     'ticket_recipient_email_option',
@@ -151,7 +152,8 @@
                                 <label
                                     style="display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border-radius:14px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.03);cursor:pointer;">
                                     <input type="radio" name="ticket_recipient_email_option" value="use_account_email"
-                                        form="paynowForm" x-model="recipientEmailOption">
+                                        form="paynowForm" x-model="recipientEmailOption" required
+                                        @checked($selectedRecipientEmailOption === 'use_account_email')>
                                     <span style="display:grid;gap:4px;">
                                         <span style="font-size:13px;color:#fff;">Gunakan email akun saat ini</span>
                                         <span style="font-size:12px;color:var(--muted);">{{ Auth::user()->email }}</span>
@@ -161,7 +163,8 @@
                                 <label
                                     style="display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border-radius:14px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.03);cursor:pointer;margin-top:10px;">
                                     <input type="radio" name="ticket_recipient_email_option" value="other_email"
-                                        form="paynowForm" x-model="recipientEmailOption">
+                                        form="paynowForm" x-model="recipientEmailOption" required
+                                        @checked($selectedRecipientEmailOption === 'other_email')>
                                     <span style="font-size:13px;color:#fff;">Kirim ke email lain</span>
                                 </label>
 
@@ -181,7 +184,7 @@
                                 <span class="value">{{ $cart->ticket_holder_name ?: '-' }}</span>
                             </div>
                             <div class="detail-row">
-                                <span class="label">Snapshot Email Penerima</span>
+                                <span class="label">Email Penerima Tiket</span>
                                 <span class="value">{{ $cart->ticket_recipient_email ?: '-' }}</span>
                             </div>
                             <div style="font-size:12px;color:var(--muted);line-height:1.6;">
@@ -247,7 +250,7 @@
             </div>
 
             <!-- PAYMENT METHOD -->
-            @if (!$cart->link)
+            @if (!$hasActivePaymentLink)
                 <div class="card">
                     <div class="card-header">
                         <div class="card-icon" style="background:rgba(108,92,231,0.12);">💳</div>
@@ -312,9 +315,9 @@
 
                             <input type="text" class="voucher-input" id="voucherInput" name="code"
                                 placeholder="Masukan Code Voucher.." value="{{ $voucher->code ?? '' }}"
-                                {{ $cart->link ? 'readonly' : '' }}>
+                                {{ $hasActivePaymentLink ? 'readonly' : '' }}>
 
-                            <button type="submit" class="btn-voucher" {{ $cart->link ? 'disabled' : '' }}>
+                            <button type="submit" class="btn-voucher" {{ $hasActivePaymentLink ? 'disabled' : '' }}>
                                 Gunakan
                             </button>
                         </form>
@@ -339,7 +342,7 @@
                     </div>
 
                     <!-- REMOVE VOUCHER -->
-                    @if (!$cart->link && $voucher && $voucher->code)
+                    @if (!$hasActivePaymentLink && $voucher && $voucher->code)
                         <div style="margin-top:10px;">
                             <form action="{{ url('/closeVoucher') }}" method="post">
                                 @csrf
@@ -461,11 +464,11 @@
                                 value="{{ $selectedPaymentGatewayId ?? '' }}">
                             <input type="hidden" name="cart_uid" value="{{ $cart->uid }}">
 
-                            @if ($cart->status === \App\Models\Cart::STATUS_RESERVED)
+                            @if (!$hasActivePaymentLink)
                                 <button type="button" class="btn-pay" onclick="showConfirmModal(event)"
                                     {{ $hasAvailablePaymentGateways ? '' : 'disabled' }}>
                                     <span>🔐</span>
-                                    <span>Bayar Sekarang</span>
+                                    <span>{{ $cart->status === \App\Models\Cart::STATUS_PENDING ? 'Coba Pembayaran Lagi' : 'Bayar Sekarang' }}</span>
                                 </button>
                             @else
                                 <a href="{{ $cart->link }}" class="btn-pay"
@@ -924,6 +927,16 @@
             return Swal.fire(checkoutSwalConfig(options));
         }
 
+        function escapeHtml(value) {
+            return String(value ?? '').replace(/[&<>"']/g, (character) => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;',
+            }[character]));
+        }
+
         function updateOtpResendButton() {
             const resendButton = document.getElementById('paymentOtpResendButton');
 
@@ -1262,10 +1275,11 @@
             let ticketHtml = '<div class="checkout-ticket-box">';
 
             ticketRows.forEach(row => {
-                const category = row.querySelector('.ticket-tier-badge').textContent;
+                const category = escapeHtml(row.querySelector('.ticket-tier-badge').textContent.trim());
                 const qtyInfo = row.querySelector('.ticket-qty-info').textContent;
-                const total = row.querySelector('.ticket-total-cell').textContent;
-                const qty = qtyInfo.split(' × ')[1];
+                const total = escapeHtml(row.querySelector('.ticket-total-cell').textContent.trim());
+                const qtyParts = qtyInfo.split(/x|×/i);
+                const qty = escapeHtml((qtyParts[qtyParts.length - 1] || '').trim());
 
                 ticketHtml += `
                     <div class="checkout-ticket-row">
@@ -1275,16 +1289,16 @@
             });
 
             const selectedPayElement = document.querySelector('.pay-option.selected .pay-name');
-            const paymentName = selectedPayElement ? selectedPayElement.textContent : 'N/A';
-            const grandTotal = document.getElementById('grand-total').textContent;
+            const paymentName = escapeHtml(selectedPayElement ? selectedPayElement.textContent.trim() : 'N/A');
+            const grandTotal = escapeHtml(document.getElementById('grand-total').textContent.trim());
             const ticketHolderNameInput = form.querySelector('[name="ticket_holder_name"]');
             const recipientOptionInput = form.querySelector('[name="ticket_recipient_email_option"]:checked');
             const otherRecipientEmailInput = form.querySelector('[name="ticket_recipient_other_email"]');
-            const ticketHolderName = ticketHolderNameInput ? ticketHolderNameInput.value.trim() : '';
+            const ticketHolderName = escapeHtml(ticketHolderNameInput ? ticketHolderNameInput.value.trim() : '');
             const recipientOption = recipientOptionInput ? recipientOptionInput.value : 'use_account_email';
-            const ticketRecipientEmail = recipientOption === 'other_email'
+            const ticketRecipientEmail = escapeHtml(recipientOption === 'other_email'
                 ? (otherRecipientEmailInput ? otherRecipientEmailInput.value.trim() : '')
-                : @json(Auth::user()->email);
+                : @json(Auth::user()->email));
 
             ticketHtml += `
                 <div class="checkout-ticket-total">

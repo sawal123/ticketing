@@ -245,7 +245,9 @@ class TransactionController extends Controller
 
             return redirect($paymentUrl);
         } catch (ValidationException $exception) {
-            return back()->withErrors(['msg' => collect($exception->errors())->flatten()->first()]);
+            return back()
+                ->withInput($this->recipientInput($request))
+                ->withErrors(['msg' => collect($exception->errors())->flatten()->first()]);
         } catch (Exception $exception) {
             Log::error('Gagal membuat transaksi Midtrans', [
                 'cart_uid' => $cartUid,
@@ -253,7 +255,9 @@ class TransactionController extends Controller
                 'error' => $exception->getMessage(),
             ]);
 
-            return back()->withErrors(['msg' => 'Gagal membuat transaksi pembayaran. Silakan coba lagi.']);
+            return back()
+                ->withInput($this->recipientInput($request))
+                ->withErrors(['msg' => 'Gagal membuat transaksi pembayaran. Silakan coba lagi.']);
         } finally {
             optional($lock)->release();
         }
@@ -473,6 +477,15 @@ class TransactionController extends Controller
     protected function requestIncludesRecipientSnapshot(Request $request): bool
     {
         return $request->hasAny([
+            'ticket_holder_name',
+            'ticket_recipient_email_option',
+            'ticket_recipient_other_email',
+        ]);
+    }
+
+    protected function recipientInput(Request $request): array
+    {
+        return $request->only([
             'ticket_holder_name',
             'ticket_recipient_email_option',
             'ticket_recipient_other_email',

@@ -145,7 +145,8 @@ class Cart extends Model
 
     public function recipientSnapshotLocked(): bool
     {
-        return $this->status !== self::STATUS_RESERVED || $this->hasActivePaymentLink();
+        return $this->hasActivePaymentLink()
+            || in_array($this->status, self::TERMINAL_STATUSES, true);
     }
 
     public function hasRecipientSnapshot(): bool

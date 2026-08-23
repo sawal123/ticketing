@@ -75,6 +75,8 @@ class CheckoutRecipientSnapshotTest extends TestCase
         $this->fakeMidtransRedirectWithPayloadCapture($capturedPayload);
 
         $user = $this->user(['name' => 'Pembeli Akun']);
+        $originalName = $user->name;
+        $originalEmail = $user->email;
         $event = $this->event();
         $cart = $this->cart($user, $event);
         $harga = $this->harga($event);
@@ -88,6 +90,7 @@ class CheckoutRecipientSnapshotTest extends TestCase
             'payment_gateway_id' => $gateway->id,
             'ticket_holder_name' => 'Nama Sesuai KTP',
             'ticket_recipient_email_option' => 'use_account_email',
+            'ticket_recipient_other_email' => 'forged@example.test',
         ])->assertRedirect('https://pay.example.test/snap');
 
         $cart->refresh();
@@ -95,11 +98,12 @@ class CheckoutRecipientSnapshotTest extends TestCase
 
         $this->assertSame(Cart::STATUS_PENDING, $cart->status);
         $this->assertSame('Nama Sesuai KTP', $cart->ticket_holder_name);
-        $this->assertSame($user->email, $cart->ticket_recipient_email);
+        $this->assertSame($originalEmail, $cart->ticket_recipient_email);
         $this->assertSame($user->uid, $cart->user_uid);
-        $this->assertSame('Pembeli Akun', $user->name);
-        $this->assertSame($user->email, $capturedPayload['customer_details']['email']);
-        $this->assertSame($user->name, $capturedPayload['customer_details']['first_name']);
+        $this->assertSame($originalName, $user->name);
+        $this->assertSame($originalEmail, $user->email);
+        $this->assertSame($originalEmail, $capturedPayload['customer_details']['email']);
+        $this->assertSame($originalName, $capturedPayload['customer_details']['first_name']);
     }
 
     public function test_other_email_option_stores_alternative_snapshot_without_changing_midtrans_customer_identity(): void
@@ -108,6 +112,8 @@ class CheckoutRecipientSnapshotTest extends TestCase
         $this->fakeMidtransRedirectWithPayloadCapture($capturedPayload);
 
         $user = $this->user();
+        $originalName = $user->name;
+        $originalEmail = $user->email;
         $event = $this->event();
         $cart = $this->cart($user, $event);
         $harga = $this->harga($event);
@@ -129,9 +135,41 @@ class CheckoutRecipientSnapshotTest extends TestCase
 
         $this->assertSame('Nama Legal Satu', $cart->ticket_holder_name);
         $this->assertSame('recipient@example.test', $cart->ticket_recipient_email);
-        $this->assertSame($user->email, $capturedPayload['customer_details']['email']);
-        $this->assertSame($user->name, $capturedPayload['customer_details']['first_name']);
-        $this->assertSame($user->email, $user->fresh()->email);
+        $this->assertSame($originalEmail, $capturedPayload['customer_details']['email']);
+        $this->assertSame($originalName, $capturedPayload['customer_details']['first_name']);
+        $this->assertSame($originalName, $user->name);
+        $this->assertSame($originalEmail, $user->email);
+    }
+
+    public function test_invalid_recipient_option_is_rejected_and_only_recipient_inputs_are_flashed(): void
+    {
+        $user = $this->user();
+        $event = $this->event();
+        $cart = $this->cart($user, $event);
+        $harga = $this->harga($event);
+        $gateway = $this->gateway();
+
+        $this->hargaCart($cart, $harga, 1);
+        $this->eventGateway($event, $gateway);
+
+        $this->actingAs($user)
+            ->from('/detail-ticket/'.$cart->uid.'/'.$user->uid)
+            ->post('/paynow', [
+                'cart_uid' => $cart->uid,
+                'payment_gateway_id' => $gateway->id,
+                'ticket_holder_name' => 'Nama Tiket',
+                'ticket_recipient_email_option' => 'invalid_option',
+                'ticket_recipient_other_email' => 'recipient@example.test',
+            ])
+            ->assertRedirect('/detail-ticket/'.$cart->uid.'/'.$user->uid)
+            ->assertSessionHasErrors(['msg']);
+
+        $this->assertSame([
+            'ticket_holder_name' => 'Nama Tiket',
+            'ticket_recipient_email_option' => 'invalid_option',
+            'ticket_recipient_other_email' => 'recipient@example.test',
+        ], session()->getOldInput());
+        $this->assertNull($cart->fresh()->ticket_recipient_email);
     }
 
     public function test_invalid_alternative_email_is_rejected(): void
@@ -217,6 +255,43 @@ class CheckoutRecipientSnapshotTest extends TestCase
         $this->assertNull($cart->ticket_recipient_email);
     }
 
+    public function test_pending_without_active_payment_link_allows_recipient_update_and_retry(): void
+    {
+        $capturedPayload = null;
+        $this->fakeMidtransRedirectWithPayloadCapture($capturedPayload, 'https://pay.example.test/retry');
+
+        $user = $this->user();
+        $event = $this->event();
+        $cart = $this->cart($user, $event, [
+            'status' => Cart::STATUS_PENDING,
+            'link' => null,
+            'payment_link_expires_at' => now()->subMinute(),
+            'ticket_holder_name' => 'Snapshot Lama',
+            'ticket_recipient_email' => 'lama@example.test',
+        ]);
+        $harga = $this->harga($event);
+        $gateway = $this->gateway();
+
+        $this->hargaCart($cart, $harga, 1);
+        $this->eventGateway($event, $gateway);
+
+        $this->actingAs($user)->post('/paynow', [
+            'cart_uid' => $cart->uid,
+            'payment_gateway_id' => $gateway->id,
+            'ticket_holder_name' => 'Snapshot Baru',
+            'ticket_recipient_email_option' => 'other_email',
+            'ticket_recipient_other_email' => 'baru@example.test',
+        ])->assertRedirect('https://pay.example.test/retry');
+
+        $cart->refresh();
+
+        $this->assertSame(Cart::STATUS_PENDING, $cart->status);
+        $this->assertSame('Snapshot Baru', $cart->ticket_holder_name);
+        $this->assertSame('baru@example.test', $cart->ticket_recipient_email);
+        $this->assertSame('https://pay.example.test/retry', $cart->link);
+        $this->assertSame($user->email, $capturedPayload['customer_details']['email']);
+    }
+
     public function test_snapshot_cannot_be_overwritten_after_active_payment_link_exists(): void
     {
         $user = $this->user();
@@ -241,6 +316,95 @@ class CheckoutRecipientSnapshotTest extends TestCase
 
         $this->assertSame('Snapshot Awal', $cart->ticket_holder_name);
         $this->assertSame('snapshot@example.test', $cart->ticket_recipient_email);
+    }
+
+    public function test_terminal_statuses_keep_snapshot_locked(): void
+    {
+        $user = $this->user();
+        $event = $this->event();
+        $terminalStatuses = [
+            Cart::STATUS_SUCCESS,
+            Cart::STATUS_CANCELLED,
+            Cart::STATUS_EXPIRED,
+        ];
+
+        foreach ($terminalStatuses as $status) {
+            $cart = $this->cart($user, $event, [
+                'status' => $status,
+                'ticket_holder_name' => 'Snapshot '.$status,
+                'ticket_recipient_email' => Str::lower($status).'@example.test',
+            ]);
+
+            $this->actingAs($user)
+                ->from('/detail-ticket/'.$cart->uid.'/'.$user->uid)
+                ->post('/paynow', [
+                    'cart_uid' => $cart->uid,
+                    'payment_gateway_id' => 999,
+                    'ticket_holder_name' => 'Perubahan '.$status,
+                    'ticket_recipient_email_option' => 'other_email',
+                    'ticket_recipient_other_email' => 'change-'.$status.'@example.test',
+                ])
+                ->assertRedirect('/detail-ticket/'.$cart->uid.'/'.$user->uid)
+                ->assertSessionHasErrors(['msg']);
+
+            $cart->refresh();
+
+            $this->assertSame('Snapshot '.$status, $cart->ticket_holder_name);
+            $this->assertSame(Str::lower($status).'@example.test', $cart->ticket_recipient_email);
+        }
+    }
+
+    public function test_midtrans_url_failure_keeps_cart_retryable_without_dead_end(): void
+    {
+        $user = $this->user();
+        $event = $this->event();
+        $cart = $this->cart($user, $event);
+        $harga = $this->harga($event);
+        $gateway = $this->gateway();
+
+        $this->hargaCart($cart, $harga, 1);
+        $this->eventGateway($event, $gateway);
+
+        $midtrans = Mockery::mock('alias:Midtrans\Snap');
+        $midtrans->shouldReceive('createTransaction')
+            ->once()
+            ->andThrow(new \RuntimeException('Midtrans unavailable'));
+        $midtrans->shouldReceive('createTransaction')
+            ->once()
+            ->andReturn((object) ['redirect_url' => 'https://pay.example.test/recovered']);
+
+        $this->actingAs($user)
+            ->from('/detail-ticket/'.$cart->uid.'/'.$user->uid)
+            ->post('/paynow', [
+                'cart_uid' => $cart->uid,
+                'payment_gateway_id' => $gateway->id,
+                'ticket_holder_name' => 'Nama Pertama',
+                'ticket_recipient_email_option' => 'other_email',
+                'ticket_recipient_other_email' => 'first@example.test',
+            ])
+            ->assertRedirect('/detail-ticket/'.$cart->uid.'/'.$user->uid)
+            ->assertSessionHasErrors(['msg']);
+
+        $cart->refresh();
+
+        $this->assertSame(Cart::STATUS_PENDING, $cart->status);
+        $this->assertNull($cart->link);
+        $this->assertSame('Nama Pertama', $cart->ticket_holder_name);
+        $this->assertSame('first@example.test', $cart->ticket_recipient_email);
+
+        $this->actingAs($user)->post('/paynow', [
+            'cart_uid' => $cart->uid,
+            'payment_gateway_id' => $gateway->id,
+            'ticket_holder_name' => 'Nama Kedua',
+            'ticket_recipient_email_option' => 'other_email',
+            'ticket_recipient_other_email' => 'second@example.test',
+        ])->assertRedirect('https://pay.example.test/recovered');
+
+        $cart->refresh();
+
+        $this->assertSame('Nama Kedua', $cart->ticket_holder_name);
+        $this->assertSame('second@example.test', $cart->ticket_recipient_email);
+        $this->assertSame('https://pay.example.test/recovered', $cart->link);
     }
 
     public function test_verified_checkout_payment_otp_flow_still_works_with_recipient_snapshot(): void
