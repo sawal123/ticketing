@@ -243,6 +243,12 @@ class VoucherTaxTicketSecurityTest extends TestCase
             ->set('cover', UploadedFile::fake()->image('cover.jpg'))
             ->set('deskripsi', 'Event description')
             ->set('category_id', $category->id)
+            ->set('organizer_name', 'PT Event')
+            ->set('responsible_name', 'Penanggung Jawab')
+            ->set('responsible_position', 'Manager')
+            ->set('phone', '081234567890')
+            ->set('email', 'organizer@example.test')
+            ->set('address', 'Alamat organizer event')
             ->call('save');
 
         $event = Event::where('event', 'Fee Event')->firstOrFail();
@@ -255,6 +261,14 @@ class VoucherTaxTicketSecurityTest extends TestCase
     {
         [$tenant, $event] = $this->tenantWithEvent();
         $event->update(['fee' => 5]);
+        $event->organizer()->create([
+            'organizer_name' => 'Organizer Lama',
+            'responsible_name' => 'Penanggung Jawab Lama',
+            'responsible_position' => 'Manager Lama',
+            'phone' => '081111111111',
+            'email' => 'lama@example.test',
+            'address' => 'Alamat organizer lama',
+        ]);
         $category = Category::create(['name' => 'Sports', 'slug' => 'sports']);
         $event->update(['category_id' => $category->id]);
 
@@ -287,6 +301,12 @@ class VoucherTaxTicketSecurityTest extends TestCase
                 ->set('cover', UploadedFile::fake()->image('cover.jpg'))
                 ->set('deskripsi', 'Event description')
                 ->set('category_id', $category->id)
+                ->set('organizer_name', 'PT Event')
+                ->set('responsible_name', 'Penanggung Jawab')
+                ->set('responsible_position', 'Manager')
+                ->set('phone', '081234567890')
+                ->set('email', 'organizer@example.test')
+                ->set('address', 'Alamat organizer event')
                 ->call('save')
                 ->assertHasErrors('fee');
         }
