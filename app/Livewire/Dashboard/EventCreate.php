@@ -137,6 +137,10 @@ class EventCreate extends Component
 
     protected function rules()
     {
+        $existingBankAccount = $this->editingEventUid
+            ? $this->ownedEventQuery($this->editingEventUid)->with('bankAccount')->firstOrFail()->bankAccount
+            : null;
+
         return [
             'event' => 'required|string|max:255',
             'fee' => 'required|numeric|min:0|max:100',
@@ -161,12 +165,24 @@ class EventCreate extends Component
             'bank_name' => 'required|string|max:100',
             'account_number' => 'required|string|max:50',
             'account_holder_name' => 'required|string|max:255',
-            'bank_book' => $this->bankBookRules(),
+            'bank_book' => $this->bankBookRules($existingBankAccount),
         ];
     }
 
     public function save()
     {
+        $event = null;
+        $existingBankAccount = null;
+        if ($this->editingEventUid) {
+            $event = $this->ownedEventQuery($this->editingEventUid)->with('bankAccount')->firstOrFail();
+            $existingBankAccount = $event->bankAccount;
+            $uid = $this->editingEventUid;
+            $slug = $event->slug;
+        } else {
+            $uid = (string) Str::uuid();
+            $slug = Str::slug($this->event).'-'.Str::random(5);
+        }
+
         $this->validate();
 
         $eventStart = Carbon::parse($this->event_start);
@@ -178,44 +194,14 @@ class EventCreate extends Component
             $this->venue_province,
         ])->filter(fn ($value) => filled($value))->implode(', ');
 
-        $event = null;
-        $existingBankAccount = null;
-        if ($this->editingEventUid) {
-            $event = $this->ownedEventQuery($this->editingEventUid)->firstOrFail();
-            $existingBankAccount = $event->bankAccount;
-            $uid = $this->editingEventUid;
-            $slug = $event->slug;
-        } else {
-            $uid = (string) Str::uuid();
-            $slug = Str::slug($this->event).'-'.Str::random(5);
-        }
-
-        // Handle Cover Upload
         $coverName = $this->existingCover;
-        $oldCover = null;
-        if ($this->cover) {
-            $oldCover = $this->editingEventUid ? $this->existingCover : null;
-            $coverName = app(SecureImageStorage::class)->storeBasename($this->cover, 'cover');
-        }
-
-        if (! $this->editingEventUid && blank($coverName)) {
-            $this->addError('cover', 'Cover event wajib diupload sebelum event disimpan.');
-
-            return null;
-        }
-
-        $bankBookPath = $this->existingBankBookPath;
-        $bankBookOriginalName = $this->existingBankBookOriginalName;
+        $oldCover = $this->editingEventUid ? $this->existingCover : null;
+        $bankBookPath = $existingBankAccount?->bank_book_path;
+        $bankBookOriginalName = $existingBankAccount?->bank_book_original_name;
         $bankBookMime = $existingBankAccount?->bank_book_mime;
         $oldBankBookPath = null;
-
-        if ($this->bank_book) {
-            $storedBankBook = $this->storeBankBook($this->bank_book, $uid);
-            $bankBookPath = $storedBankBook['path'];
-            $bankBookOriginalName = $storedBankBook['original_name'];
-            $bankBookMime = $storedBankBook['mime'];
-            $oldBankBookPath = $existingBankAccount?->bank_book_path;
-        }
+        $newCoverStored = false;
+        $newBankBookStored = false;
 
         $eventData = [
             'category_id' => $this->category_id,
@@ -252,11 +238,40 @@ class EventCreate extends Component
             'bank_book_mime' => $bankBookMime,
         ];
 
-        $newCoverStored = $this->cover !== null;
-        $newBankBookStored = $this->bank_book !== null;
-
         try {
-            DB::transaction(function () use (&$event, $uid, $slug, $eventData, $organizerData, $bankAccountData, $existingBankAccount) {
+            if ($this->cover instanceof UploadedFile) {
+                $coverName = app(SecureImageStorage::class)->storeBasename($this->cover, 'cover');
+                $eventData['cover'] = $coverName;
+                $newCoverStored = true;
+            }
+
+            if (! $this->editingEventUid && blank($coverName)) {
+                $this->addError('cover', 'Cover event wajib diupload sebelum event disimpan.');
+
+                return null;
+            }
+
+            if ($this->bank_book instanceof UploadedFile) {
+                $storedBankBook = $this->storeBankBook($this->bank_book, $uid);
+                $bankBookPath = $storedBankBook['path'];
+                $bankBookOriginalName = $storedBankBook['original_name'];
+                $bankBookMime = $storedBankBook['mime'];
+                $oldBankBookPath = $existingBankAccount?->bank_book_path;
+                $newBankBookStored = true;
+            }
+
+            $bankAccountData = [
+                'bank_name' => $this->bank_name,
+                'account_number' => $this->account_number,
+                'account_holder_name' => $this->account_holder_name,
+                'bank_book_path' => $bankBookPath,
+                'bank_book_original_name' => $bankBookOriginalName,
+                'bank_book_mime' => $bankBookMime,
+            ];
+
+            $bankAccountState = $this->resolveBankAccountState($existingBankAccount, $newBankBookStored);
+
+            DB::transaction(function () use (&$event, $uid, $slug, $eventData, $organizerData, $bankAccountData, $bankAccountState) {
                 if (! $this->editingEventUid) {
                     $user = auth()->user();
                     $ownerId = ($user->role === 'staff') ? $user->parent_uid : $user->uid;
@@ -279,11 +294,7 @@ class EventCreate extends Component
 
                 EventBankAccount::updateOrCreate(
                     ['event_uid' => $event->uid],
-                    $bankAccountData + [
-                        'status' => $existingBankAccount?->status ?? 'pending',
-                        'verified_at' => $existingBankAccount?->verified_at,
-                        'verified_by' => $existingBankAccount?->verified_by,
-                    ]
+                    $bankAccountData + $bankAccountState
                 );
             });
         } catch (\Throwable $exception) {
@@ -298,9 +309,11 @@ class EventCreate extends Component
             throw $exception;
         }
 
-        app(SecureImageStorage::class)->delete('cover', $oldCover);
+        if ($newCoverStored && filled($oldCover) && $oldCover !== $coverName) {
+            app(SecureImageStorage::class)->delete('cover', $oldCover);
+        }
 
-        if ($newBankBookStored && filled($oldBankBookPath)) {
+        if ($newBankBookStored && filled($oldBankBookPath) && $oldBankBookPath !== $bankBookPath) {
             Storage::disk('local')->delete($oldBankBookPath);
         }
 
@@ -330,9 +343,9 @@ class EventCreate extends Component
             ->when($user->role !== 'admin', fn ($query) => $query->where('user_uid', $ownerId));
     }
 
-    private function bankBookRules(): array
+    private function bankBookRules(?EventBankAccount $existingBankAccount): array
     {
-        $required = blank($this->editingEventUid) || blank($this->existingBankBookPath);
+        $required = blank($this->editingEventUid) || blank($existingBankAccount?->bank_book_path);
 
         return [
             $required ? 'required' : 'nullable',
@@ -340,6 +353,38 @@ class EventCreate extends Component
             'mimes:pdf,jpg,jpeg,png',
             'mimetypes:application/pdf,image/jpeg,image/png',
             'max:5120',
+        ];
+    }
+
+    private function bankAccountHasChanges(?EventBankAccount $existingBankAccount, bool $newBankBookStored): bool
+    {
+        if (! $existingBankAccount) {
+            return true;
+        }
+
+        if ($newBankBookStored) {
+            return true;
+        }
+
+        return $existingBankAccount->bank_name !== $this->bank_name
+            || $existingBankAccount->account_number !== $this->account_number
+            || $existingBankAccount->account_holder_name !== $this->account_holder_name;
+    }
+
+    private function resolveBankAccountState(?EventBankAccount $existingBankAccount, bool $newBankBookStored): array
+    {
+        if ($this->bankAccountHasChanges($existingBankAccount, $newBankBookStored)) {
+            return [
+                'status' => 'pending',
+                'verified_at' => null,
+                'verified_by' => null,
+            ];
+        }
+
+        return [
+            'status' => $existingBankAccount?->status ?? 'pending',
+            'verified_at' => $existingBankAccount?->verified_at,
+            'verified_by' => $existingBankAccount?->verified_by,
         ];
     }
 
@@ -360,13 +405,29 @@ class EventCreate extends Component
             throw new \RuntimeException('Format buku rekening tidak valid.');
         }
 
-        $path = $file->storeAs(
-            'private/events/'.$eventUid.'/bank',
-            Str::uuid().'.'.$extension,
-            'local'
-        );
+        $filePath = $file->getRealPath();
+        if (! is_string($filePath) || $filePath === '' || ! is_file($filePath)) {
+            $filePath = $file->getPathname();
+        }
 
-        if (! is_string($path) || $path === '') {
+        if (! is_string($filePath) || $filePath === '' || ! is_file($filePath)) {
+            throw new \RuntimeException('Buku rekening tidak dapat dibaca.');
+        }
+
+        $stream = fopen($filePath, 'rb');
+        if ($stream === false) {
+            throw new \RuntimeException('Buku rekening tidak dapat dibaca.');
+        }
+
+        $path = 'private/events/'.$eventUid.'/bank/'.Str::uuid().'.'.$extension;
+
+        try {
+            $stored = Storage::disk('local')->put($path, $stream);
+        } finally {
+            fclose($stream);
+        }
+
+        if (! $stored) {
             throw new \RuntimeException('Buku rekening gagal disimpan.');
         }
 

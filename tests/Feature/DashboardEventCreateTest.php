@@ -32,8 +32,8 @@ class DashboardEventCreateTest extends TestCase
         DB::reconnect('sqlite');
 
         View::share('logo', [(object) ['logo' => '']]);
-        Storage::fake('local');
-        Storage::fake('public');
+        Storage::persistentFake('local');
+        Storage::persistentFake('public');
         $this->withoutMiddleware([GlobalDataMiddleware::class, LogActivityMiddleware::class]);
         $this->artisan('migrate:fresh', ['--database' => 'sqlite']);
     }
@@ -473,6 +473,224 @@ class DashboardEventCreateTest extends TestCase
         Storage::disk('local')->assertExists($bankAccount->bank_book_path);
     }
 
+    public function test_tampering_bank_book_display_properties_cannot_override_authoritative_database_path(): void
+    {
+        $tenant = $this->tenant();
+        $category = Category::create(['name' => 'Tamper', 'slug' => 'tamper']);
+        $event = $this->event($tenant, ['category_id' => $category->id]);
+
+        EventOrganizer::create([
+            'event_uid' => $event->uid,
+            'organizer_name' => 'Organizer Tamper',
+            'responsible_name' => 'PJ Tamper',
+            'responsible_position' => 'Manager',
+            'phone' => '081234567811',
+            'email' => 'tamper@example.test',
+            'address' => 'Alamat tamper',
+        ]);
+
+        EventBankAccount::create([
+            'event_uid' => $event->uid,
+            'bank_name' => 'Bank Aman',
+            'account_number' => '777888999',
+            'account_holder_name' => 'Pemilik Aman',
+            'bank_book_path' => 'private/events/'.$event->uid.'/bank/real-book.pdf',
+            'bank_book_original_name' => 'real-book.pdf',
+            'bank_book_mime' => 'application/pdf',
+            'status' => 'verified',
+            'verified_at' => '2026-08-20 10:00:00',
+            'verified_by' => 'admin-verified',
+        ]);
+        Storage::disk('local')->put('private/events/'.$event->uid.'/bank/real-book.pdf', 'real');
+
+        Livewire::actingAs($tenant)
+            ->test(EventCreate::class, ['uid' => $event->uid])
+            ->set('existingBankBookPath', 'private/events/hacked/bank/evil.pdf')
+            ->set('existingBankBookOriginalName', 'evil.pdf')
+            ->call('save');
+
+        $bankAccount = $event->fresh()->bankAccount()->firstOrFail();
+
+        $this->assertSame('private/events/'.$event->uid.'/bank/real-book.pdf', $bankAccount->bank_book_path);
+        $this->assertSame('real-book.pdf', $bankAccount->bank_book_original_name);
+        $this->assertSame('verified', $bankAccount->status);
+        $this->assertSame('2026-08-20 10:00:00', $bankAccount->verified_at?->format('Y-m-d H:i:s'));
+        $this->assertSame('admin-verified', $bankAccount->verified_by);
+    }
+
+    public function test_tampering_bank_book_display_properties_cannot_bypass_required_upload_when_database_has_no_bank_book(): void
+    {
+        $tenant = $this->tenant();
+        $category = Category::create(['name' => 'Tamper Legacy', 'slug' => 'tamper-legacy']);
+        $event = $this->event($tenant, ['category_id' => $category->id]);
+
+        EventOrganizer::create([
+            'event_uid' => $event->uid,
+            'organizer_name' => 'Organizer Legacy Bank',
+            'responsible_name' => 'PJ Legacy Bank',
+            'responsible_position' => 'Manager',
+            'phone' => '081234567822',
+            'email' => 'legacy-bank@example.test',
+            'address' => 'Alamat legacy bank',
+        ]);
+
+        EventBankAccount::create([
+            'event_uid' => $event->uid,
+            'bank_name' => 'Bank Legacy',
+            'account_number' => '123123123',
+            'account_holder_name' => 'Pemilik Legacy',
+            'bank_book_path' => '',
+            'bank_book_original_name' => null,
+            'bank_book_mime' => null,
+            'status' => 'pending',
+        ]);
+
+        Livewire::actingAs($tenant)
+            ->test(EventCreate::class, ['uid' => $event->uid])
+            ->set('existingBankBookPath', 'private/events/fake/bank/fake.pdf')
+            ->set('existingBankBookOriginalName', 'fake.pdf')
+            ->call('save')
+            ->assertHasErrors([
+                'bank_book' => ['required'],
+            ]);
+
+        $bankAccount = $event->fresh()->bankAccount()->firstOrFail();
+
+        $this->assertSame('', $bankAccount->bank_book_path);
+        $this->assertNull($bankAccount->bank_book_original_name);
+    }
+
+    public function test_updating_account_number_resets_bank_account_verification_state(): void
+    {
+        $tenant = $this->tenant();
+        $category = Category::create(['name' => 'Verification Reset', 'slug' => 'verification-reset']);
+        $event = $this->event($tenant, ['category_id' => $category->id]);
+
+        EventOrganizer::create([
+            'event_uid' => $event->uid,
+            'organizer_name' => 'Organizer Verified',
+            'responsible_name' => 'PJ Verified',
+            'responsible_position' => 'Manager',
+            'phone' => '081234567833',
+            'email' => 'verified@example.test',
+            'address' => 'Alamat verified',
+        ]);
+
+        EventBankAccount::create([
+            'event_uid' => $event->uid,
+            'bank_name' => 'Bank Verified',
+            'account_number' => '111222333',
+            'account_holder_name' => 'Pemilik Verified',
+            'bank_book_path' => 'private/events/'.$event->uid.'/bank/verified.pdf',
+            'bank_book_original_name' => 'verified.pdf',
+            'bank_book_mime' => 'application/pdf',
+            'status' => 'verified',
+            'verified_at' => '2026-08-20 10:00:00',
+            'verified_by' => 'admin-verified',
+        ]);
+        Storage::disk('local')->put('private/events/'.$event->uid.'/bank/verified.pdf', 'verified');
+
+        Livewire::actingAs($tenant)
+            ->test(EventCreate::class, ['uid' => $event->uid])
+            ->set('account_number', '999888777')
+            ->call('save');
+
+        $bankAccount = $event->fresh()->bankAccount()->firstOrFail();
+
+        $this->assertSame('999888777', $bankAccount->account_number);
+        $this->assertSame('pending', $bankAccount->status);
+        $this->assertNull($bankAccount->verified_at);
+        $this->assertNull($bankAccount->verified_by);
+        $this->assertSame('private/events/'.$event->uid.'/bank/verified.pdf', $bankAccount->bank_book_path);
+    }
+
+    public function test_replacing_bank_book_resets_bank_account_verification_state(): void
+    {
+        $tenant = $this->tenant();
+        $category = Category::create(['name' => 'Verification Replace', 'slug' => 'verification-replace']);
+        $event = $this->event($tenant, ['category_id' => $category->id]);
+
+        EventOrganizer::create([
+            'event_uid' => $event->uid,
+            'organizer_name' => 'Organizer Replace Verified',
+            'responsible_name' => 'PJ Replace Verified',
+            'responsible_position' => 'Manager',
+            'phone' => '081234567844',
+            'email' => 'replace-verified@example.test',
+            'address' => 'Alamat replace verified',
+        ]);
+
+        EventBankAccount::create([
+            'event_uid' => $event->uid,
+            'bank_name' => 'Bank Replace Verified',
+            'account_number' => '222333444',
+            'account_holder_name' => 'Pemilik Replace Verified',
+            'bank_book_path' => 'private/events/'.$event->uid.'/bank/replace-old.pdf',
+            'bank_book_original_name' => 'replace-old.pdf',
+            'bank_book_mime' => 'application/pdf',
+            'status' => 'verified',
+            'verified_at' => '2026-08-21 09:00:00',
+            'verified_by' => 'admin-verified',
+        ]);
+        Storage::disk('local')->put('private/events/'.$event->uid.'/bank/replace-old.pdf', 'old');
+
+        Livewire::actingAs($tenant)
+            ->test(EventCreate::class, ['uid' => $event->uid])
+            ->set('bank_book', UploadedFile::fake()->create('replace-new.pdf', 128, 'application/pdf'))
+            ->call('save');
+
+        $bankAccount = $event->fresh()->bankAccount()->firstOrFail();
+
+        $this->assertSame('pending', $bankAccount->status);
+        $this->assertNull($bankAccount->verified_at);
+        $this->assertNull($bankAccount->verified_by);
+        $this->assertSame('replace-new.pdf', $bankAccount->bank_book_original_name);
+        Storage::disk('local')->assertMissing('private/events/'.$event->uid.'/bank/replace-old.pdf');
+        Storage::disk('local')->assertExists($bankAccount->bank_book_path);
+    }
+
+    public function test_saving_without_bank_account_changes_keeps_existing_verification_state(): void
+    {
+        $tenant = $this->tenant();
+        $category = Category::create(['name' => 'Verification Keep', 'slug' => 'verification-keep']);
+        $event = $this->event($tenant, ['category_id' => $category->id]);
+
+        EventOrganizer::create([
+            'event_uid' => $event->uid,
+            'organizer_name' => 'Organizer Keep',
+            'responsible_name' => 'PJ Keep',
+            'responsible_position' => 'Manager',
+            'phone' => '081234567855',
+            'email' => 'keep@example.test',
+            'address' => 'Alamat keep',
+        ]);
+
+        EventBankAccount::create([
+            'event_uid' => $event->uid,
+            'bank_name' => 'Bank Keep',
+            'account_number' => '333444555',
+            'account_holder_name' => 'Pemilik Keep',
+            'bank_book_path' => 'private/events/'.$event->uid.'/bank/keep.pdf',
+            'bank_book_original_name' => 'keep.pdf',
+            'bank_book_mime' => 'application/pdf',
+            'status' => 'verified',
+            'verified_at' => '2026-08-22 08:00:00',
+            'verified_by' => 'admin-keep',
+        ]);
+        Storage::disk('local')->put('private/events/'.$event->uid.'/bank/keep.pdf', 'keep');
+
+        Livewire::actingAs($tenant)
+            ->test(EventCreate::class, ['uid' => $event->uid])
+            ->call('save');
+
+        $bankAccount = $event->fresh()->bankAccount()->firstOrFail();
+
+        $this->assertSame('verified', $bankAccount->status);
+        $this->assertSame('2026-08-22 08:00:00', $bankAccount->verified_at?->format('Y-m-d H:i:s'));
+        $this->assertSame('admin-keep', $bankAccount->verified_by);
+        $this->assertSame('private/events/'.$event->uid.'/bank/keep.pdf', $bankAccount->bank_book_path);
+    }
+
     public function test_validation_rejects_invalid_bank_book_and_missing_bank_fields(): void
     {
         $tenant = $this->tenant();
@@ -593,6 +811,7 @@ class DashboardEventCreateTest extends TestCase
         $this->assertDatabaseCount('event_organizers', 0);
         $this->assertDatabaseCount('event_bank_accounts', 0);
         $this->assertSame([], Storage::disk('local')->allFiles('private/events'));
+        $this->assertSame([], Storage::disk('public')->allFiles('cover'));
     }
 
     private function tenant(): User
