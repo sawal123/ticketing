@@ -66,7 +66,7 @@ class EventCreate extends Component
             $this->event = $eventData->event;
             $this->fee = $eventData->fee;
             $eventStart = $eventData->tanggal ? Carbon::parse($eventData->tanggal) : null;
-            $eventEnd = $eventData->event_end ? Carbon::parse($eventData->event_end) : ($eventStart ? $eventStart->copy()->addHours(2) : null);
+            $eventEnd = $eventData->event_end ? Carbon::parse($eventData->event_end) : null;
 
             $this->start_sale = $eventData->start_sale ? Carbon::parse($eventData->start_sale)->format('Y-m-d H:i') : null;
             $this->event_start = $eventStart?->format('Y-m-d H:i');

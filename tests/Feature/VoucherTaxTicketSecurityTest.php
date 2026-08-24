@@ -16,9 +16,8 @@ use App\Models\HargaCart;
 use App\Models\User;
 use App\Models\Voucher;
 use App\Services\Tickets\TicketPricingService;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Config;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\View;
@@ -28,19 +27,15 @@ use Tests\TestCase;
 
 class VoucherTaxTicketSecurityTest extends TestCase
 {
+    use RefreshDatabase;
+
     protected function setUp(): void
     {
         parent::setUp();
 
-        Config::set('database.default', 'sqlite');
-        Config::set('database.connections.sqlite.database', ':memory:');
-        DB::purge('sqlite');
-        DB::reconnect('sqlite');
-
         View::share('logo', [(object) ['logo' => '']]);
         $this->withoutMiddleware([GlobalDataMiddleware::class, LogActivityMiddleware::class]);
         Storage::fake('public');
-        $this->artisan('migrate:fresh', ['--database' => 'sqlite']);
     }
 
     public function test_voucher_code_from_event_a_cannot_be_used_for_event_b(): void

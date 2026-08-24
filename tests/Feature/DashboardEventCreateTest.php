@@ -157,6 +157,55 @@ class DashboardEventCreateTest extends TestCase
             ]);
     }
 
+    public function test_legacy_event_mount_does_not_invent_new_fields_and_requires_explicit_completion_before_save(): void
+    {
+        $tenant = $this->tenant();
+        $category = Category::create(['name' => 'Legacy', 'slug' => 'legacy']);
+        $event = $this->event($tenant, [
+            'category_id' => $category->id,
+            'alamat' => 'Alamat Venue Lama',
+            'tanggal' => '2026-09-10 19:00:00',
+            'event_end' => null,
+            'venue_name' => null,
+            'venue_address' => null,
+            'venue_city' => null,
+            'venue_province' => null,
+        ]);
+
+        Livewire::actingAs($tenant)
+            ->test(EventCreate::class, ['uid' => $event->uid])
+            ->assertSet('event_start', '2026-09-10 19:00')
+            ->assertSet('event_end', null)
+            ->assertSet('venue_address', 'Alamat Venue Lama')
+            ->assertSet('venue_name', null)
+            ->assertSet('venue_city', null)
+            ->assertSet('venue_province', null)
+            ->call('save')
+            ->assertHasErrors([
+                'event_end' => ['required'],
+                'venue_name' => ['required'],
+                'venue_city' => ['required'],
+                'venue_province' => ['required'],
+            ]);
+
+        Livewire::actingAs($tenant)
+            ->test(EventCreate::class, ['uid' => $event->uid])
+            ->set('event_end', '2026-09-10 22:00')
+            ->set('venue_name', 'Venue Legacy Baru')
+            ->set('venue_city', 'Bandung')
+            ->set('venue_province', 'Jawa Barat')
+            ->call('save');
+
+        $event->refresh();
+
+        $this->assertSame('2026-09-10 22:00:00', substr((string) $event->event_end, 0, 19));
+        $this->assertSame('Venue Legacy Baru', $event->venue_name);
+        $this->assertSame('Alamat Venue Lama', $event->venue_address);
+        $this->assertSame('Bandung', $event->venue_city);
+        $this->assertSame('Jawa Barat', $event->venue_province);
+        $this->assertSame('Venue Legacy Baru, Alamat Venue Lama, Bandung, Jawa Barat', $event->alamat);
+    }
+
     private function tenant(): User
     {
         return User::factory()->create([
