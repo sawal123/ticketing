@@ -139,7 +139,6 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/checkVoucer', [BuyTicketController::class, 'checkVoucher']);
     Route::post('/closeVoucher', [BuyTicketController::class, 'closeVoucher']);
     Route::post('/checkout', [BuyTicketController::class, 'checkout'])->middleware('throttle:checkout');
-    Route::post('/checkout/update-quantity', [BuyTicketController::class, 'updateQuantity'])->middleware('throttle:checkout');
     Route::get('/transaksi', [landingController::class, 'listTransaksi']);
 
     Route::post('/checkout-payment-otp/send', [CheckoutPaymentOtpController::class, 'send'])->name('checkout-payment-otp.send');
