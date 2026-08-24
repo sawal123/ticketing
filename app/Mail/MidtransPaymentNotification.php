@@ -68,7 +68,7 @@ class MidtransPaymentNotification extends Mailable
         return new Content(
             view: 'email.notif-email',
             with: [
-                'name' => $this->user->name,
+                'name' => filled($this->cart->ticket_holder_name) ? $this->cart->ticket_holder_name : $this->user->name,
                 'cart' => $this->cart->invoice,
                 'event' => $this->event,
                 'ticketUrl' => $this->ticketUrl,

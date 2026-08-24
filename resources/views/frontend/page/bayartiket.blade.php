@@ -15,6 +15,10 @@
         <span style="color:var(--gold);">Checkout</span>
     </div>
 
+    @php
+        $ticketDeliveryEmail = filled($cart->ticket_recipient_email) ? $cart->ticket_recipient_email : Auth::user()->email;
+    @endphp
+
     <!-- SUCCESS BANNER (Show only when status is SUCCESS) -->
     @if ($cart->status === \App\Models\Cart::STATUS_SUCCESS)
         <div class="success-hero">
@@ -24,7 +28,7 @@
                     <h2 class="success-title">Pembayaran Berhasil!</h2>
                     <p class="success-desc">
                         Selamat, tiket Anda telah terkonfirmasi. E-Ticket & Barcode telah dikirim ke email:
-                        <strong>{{ Auth::user()->email }}</strong>.<br>
+                        <strong>{{ $ticketDeliveryEmail }}</strong>.<br>
                         <small>(Silakan periksa kotak masuk atau folder SPAM Anda)</small>
                     </p>
                 </div>
@@ -186,7 +190,7 @@
                             </div>
                             <div class="detail-row">
                                 <span class="label">Email Penerima Tiket</span>
-                                <span class="value">{{ $cart->ticket_recipient_email ?: '-' }}</span>
+                                <span class="value">{{ $ticketDeliveryEmail ?: '-' }}</span>
                             </div>
                             <div style="font-size:12px;color:var(--muted);line-height:1.6;">
                                 Informasi pemegang tiket tidak dapat diubah setelah proses pembayaran dimulai.

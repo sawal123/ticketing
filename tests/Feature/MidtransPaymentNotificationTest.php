@@ -47,6 +47,8 @@ class MidtransPaymentNotificationTest extends TestCase
         $event = $this->event(['event' => 'Midtrans Render Event']);
         $cart = $this->onlineCart($buyer, $event, [
             'invoice' => 'INV-CART-123',
+            'ticket_holder_name' => 'Ticket Holder Snapshot',
+            'ticket_recipient_email' => 'friend-recipient@example.test',
         ]);
 
         (new sendEmailETransaksi($buyer, $cart))->handle();
@@ -54,7 +56,8 @@ class MidtransPaymentNotificationTest extends TestCase
         Mail::assertSent(MidtransPaymentNotification::class, function (MidtransPaymentNotification $mail) use ($cart) {
             $html = $mail->render();
 
-            $this->assertTrue($mail->hasTo('online-ticket@example.test'));
+            $this->assertTrue($mail->hasTo('friend-recipient@example.test'));
+            $this->assertFalse($mail->hasTo('online-ticket@example.test'));
             $this->assertFalse($mail->isResend);
             $this->assertSame(
                 'Barcode Verifikasi GOTIK - Midtrans Render Event',
@@ -68,7 +71,7 @@ class MidtransPaymentNotificationTest extends TestCase
             $this->assertStringNotContainsString('/generate-barcode/', $mail->ticketUrl);
             $this->assertStringNotContainsString($cart->invoice, $mail->ticketUrl);
             $this->assertStringContainsString('INV-CART-123', $html);
-            $this->assertStringContainsString('Hi, Online Ticket Buyer', $html);
+            $this->assertStringContainsString('Hi, Ticket Holder Snapshot', $html);
             $this->assertStringContainsString('Midtrans Render Event', $html);
             $this->assertStringContainsString('Ticketing &amp; Event Access', $html);
             $this->assertStringContainsString('Lihat Barcode Tiket', $html);
@@ -76,6 +79,25 @@ class MidtransPaymentNotificationTest extends TestCase
 
             return true;
         });
+    }
+
+    public function test_midtrans_payment_notification_falls_back_to_purchaser_name_for_legacy_cart(): void
+    {
+        $buyer = $this->user([
+            'name' => 'Legacy Buyer Name',
+            'email' => 'legacy-buyer@example.test',
+        ]);
+        $event = $this->event(['event' => 'Legacy Fallback Event']);
+        $cart = $this->onlineCart($buyer, $event, [
+            'ticket_holder_name' => null,
+            'ticket_recipient_email' => null,
+        ]);
+
+        $mail = new MidtransPaymentNotification($buyer, $cart);
+        $html = $mail->render();
+
+        $this->assertSame('Legacy Buyer Name', $mail->content()->with['name']);
+        $this->assertStringContainsString('Hi, Legacy Buyer Name', $html);
     }
 
     public function test_cash_payment_notification_email_keeps_signed_cash_ticket_url(): void
@@ -276,6 +298,8 @@ class MidtransPaymentNotificationTest extends TestCase
             $table->string('user_uid');
             $table->string('event_uid');
             $table->string('invoice')->nullable();
+            $table->string('ticket_holder_name')->nullable();
+            $table->string('ticket_recipient_email')->nullable();
             $table->char('gate_token_hash', 64)->nullable()->unique();
             $table->text('gate_token_encrypted')->nullable();
             $table->char('gate_manual_code_hash', 64)->nullable()->unique();
