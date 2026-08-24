@@ -127,6 +127,10 @@ class CheckoutRecipientSnapshotTest extends TestCase
             ->assertOk()
             ->assertSee('Gunakan email akun saat ini')
             ->assertSee('buyer@example.test')
+            ->assertSee('name="ticket_holder_name"', false)
+            ->assertSee('form="paynowForm"', false)
+            ->assertSee("form.elements.namedItem('ticket_holder_name')", false)
+            ->assertDontSee("form.querySelector('[name=\"ticket_holder_name\"]')", false)
             ->assertDontSee('Kirim ke email lain')
             ->assertDontSee('Perbarui Jumlah Tiket')
             ->assertDontSee('/checkout/update-quantity');

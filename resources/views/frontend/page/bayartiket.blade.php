@@ -1267,7 +1267,7 @@
             const selectedPayElement = document.querySelector('.pay-option.selected .pay-name');
             const paymentName = escapeHtml(selectedPayElement ? selectedPayElement.textContent.trim() : 'N/A');
             const grandTotal = escapeHtml(document.getElementById('grand-total').textContent.trim());
-            const ticketHolderNameInput = form.querySelector('[name="ticket_holder_name"]');
+            const ticketHolderNameInput = form.elements.namedItem('ticket_holder_name');
             const ticketHolderName = escapeHtml(ticketHolderNameInput ? ticketHolderNameInput.value.trim() : '');
             const ticketRecipientEmail = escapeHtml(@json(Auth::user()->email));
 
@@ -1291,7 +1291,7 @@
                             <div class="checkout-summary-card">
                                 <label class="checkout-summary-label">Email Penerima Tiket</label>
                                 <div class="checkout-summary-value">${ticketRecipientEmail}</div>
-                                <small class="checkout-summary-note">Email penerima yang dipilih</small>
+                                <small class="checkout-summary-note">Tiket akan dikirim ke email akun Anda</small>
                             </div>
                             <div class="checkout-summary-card">
                                 <label class="checkout-summary-label">Metode Pembayaran</label>
