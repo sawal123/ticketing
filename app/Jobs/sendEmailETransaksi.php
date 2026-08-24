@@ -69,6 +69,41 @@ class sendEmailETransaksi implements ShouldBeUnique, ShouldQueue
             return;
         }
 
-        Mail::to($user)->send(new MidtransPaymentNotification($user, $cart, $this->isResend));
+        $recipient = self::resolveRecipient($user, $cart);
+
+        if (! $recipient) {
+            return;
+        }
+
+        Mail::to($recipient['email'], $recipient['name'])
+            ->send(new MidtransPaymentNotification($user, $cart, $this->isResend));
+    }
+
+    public static function resolveRecipient(User $user, Cart $cart): ?array
+    {
+        $snapshotEmail = trim((string) $cart->ticket_recipient_email);
+        $snapshotName = trim((string) $cart->ticket_holder_name);
+
+        if ($snapshotEmail !== '') {
+            if (filter_var($snapshotEmail, FILTER_VALIDATE_EMAIL) === false) {
+                return null;
+            }
+
+            return [
+                'email' => $snapshotEmail,
+                'name' => $snapshotName !== '' ? $snapshotName : $user->name,
+            ];
+        }
+
+        $fallbackEmail = trim((string) $user->email);
+
+        if ($fallbackEmail === '' || filter_var($fallbackEmail, FILTER_VALIDATE_EMAIL) === false) {
+            return null;
+        }
+
+        return [
+            'email' => $fallbackEmail,
+            'name' => $snapshotName !== '' ? $snapshotName : $user->name,
+        ];
     }
 }

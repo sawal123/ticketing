@@ -45,7 +45,7 @@ class ResendGateTickets extends Command
         $this->line("Event UID  : {$event->uid}");
         $this->line('Isi tiket  : QR gate token + kode manual');
         $this->line("Akan kirim : {$recipients->count()}");
-        $this->line("Dilewati   : {$invalid} (email/data pembeli tidak valid)");
+        $this->line("Dilewati   : {$invalid} (email/data penerima tiket invalid)");
 
         if (! $execute) {
             $this->info('Dry-run selesai. Tidak ada email yang dijadwalkan.');
@@ -102,12 +102,27 @@ class ResendGateTickets extends Command
 
     private function recipientIsValid(Cart $cart): bool
     {
+        return $this->resolveRecipient($cart) !== null;
+    }
+
+    private function resolveRecipient(Cart $cart): ?array
+    {
         if ($cart->payment_type === 'cash') {
-            return $cart->cashBuyer
-                && filter_var($cart->cashBuyer->email, FILTER_VALIDATE_EMAIL) !== false;
+            if (! $cart->cashBuyer
+                || filter_var($cart->cashBuyer->email, FILTER_VALIDATE_EMAIL) === false) {
+                return null;
+            }
+
+            return [
+                'email' => $cart->cashBuyer->email,
+                'name' => $cart->cashBuyer->name,
+            ];
         }
 
-        return $cart->users
-            && filter_var($cart->users->email, FILTER_VALIDATE_EMAIL) !== false;
+        if (! $cart->users) {
+            return null;
+        }
+
+        return sendEmailETransaksi::resolveRecipient($cart->users, $cart);
     }
 }
