@@ -25,9 +25,17 @@ class EventCreate extends Component
 
     public $start_sale;
 
-    public $tanggal; // End Date / Event Date
+    public $event_start;
 
-    public $alamat;
+    public $event_end;
+
+    public $venue_name;
+
+    public $venue_address;
+
+    public $venue_city;
+
+    public $venue_province;
 
     public $map;
 
@@ -57,9 +65,16 @@ class EventCreate extends Component
 
             $this->event = $eventData->event;
             $this->fee = $eventData->fee;
+            $eventStart = $eventData->tanggal ? Carbon::parse($eventData->tanggal) : null;
+            $eventEnd = $eventData->event_end ? Carbon::parse($eventData->event_end) : null;
+
             $this->start_sale = $eventData->start_sale ? Carbon::parse($eventData->start_sale)->format('Y-m-d H:i') : null;
-            $this->tanggal = $eventData->tanggal ? Carbon::parse($eventData->tanggal)->format('Y-m-d H:i') : null;
-            $this->alamat = $eventData->alamat;
+            $this->event_start = $eventStart?->format('Y-m-d H:i');
+            $this->event_end = $eventEnd?->format('Y-m-d H:i');
+            $this->venue_name = $eventData->venue_name;
+            $this->venue_address = $eventData->venue_address ?: $eventData->alamat;
+            $this->venue_city = $eventData->venue_city;
+            $this->venue_province = $eventData->venue_province;
             $this->map = $eventData->map;
             $this->existingCover = $eventData->cover;
             $this->deskripsi = $eventData->deskripsi;
@@ -67,7 +82,9 @@ class EventCreate extends Component
             $this->selectedFasilitas = $eventData->fasilitas->pluck('id')->toArray();
         } else {
             $this->start_sale = Carbon::now()->format('Y-m-d H:i');
-            $this->tanggal = Carbon::now()->addDays(7)->format('Y-m-d H:i');
+            $eventStart = Carbon::now()->addDays(7);
+            $this->event_start = $eventStart->format('Y-m-d H:i');
+            $this->event_end = $eventStart->copy()->addHours(2)->format('Y-m-d H:i');
         }
     }
 
@@ -77,8 +94,12 @@ class EventCreate extends Component
             'event' => 'required|string|max:255',
             'fee' => 'required|numeric|min:0|max:100',
             'start_sale' => 'required|date',
-            'tanggal' => 'required|date|after:start_sale',
-            'alamat' => 'required|string',
+            'event_start' => 'required|date|after:start_sale',
+            'event_end' => 'required|date|after:event_start',
+            'venue_name' => 'required|string|max:255',
+            'venue_address' => 'required|string|max:500',
+            'venue_city' => 'required|string|max:255',
+            'venue_province' => 'required|string|max:255',
             'map' => 'nullable|url',
             'cover' => SecureImageStorage::rules(! $this->editingEventUid),
             'deskripsi' => 'required|string',
@@ -90,6 +111,15 @@ class EventCreate extends Component
     public function save()
     {
         $this->validate();
+
+        $eventStart = Carbon::parse($this->event_start);
+        $eventEnd = Carbon::parse($this->event_end);
+        $legacyAddress = collect([
+            $this->venue_name,
+            $this->venue_address,
+            $this->venue_city,
+            $this->venue_province,
+        ])->filter(fn ($value) => filled($value))->implode(', ');
 
         $event = null;
         if ($this->editingEventUid) {
@@ -118,10 +148,15 @@ class EventCreate extends Component
         $data = [
             'category_id' => $this->category_id,
             'event' => $this->event,
-            'alamat' => $this->alamat,
-            'tanggal' => $this->tanggal,
+            'alamat' => $legacyAddress,
+            'tanggal' => $eventStart->format('Y-m-d H:i:s'),
+            'event_end' => $eventEnd->format('Y-m-d H:i:s'),
+            'venue_name' => $this->venue_name,
+            'venue_address' => $this->venue_address,
+            'venue_city' => $this->venue_city,
+            'venue_province' => $this->venue_province,
             'fee' => $this->fee,
-            'start_sale' => $this->start_sale,
+            'start_sale' => Carbon::parse($this->start_sale)->format('Y-m-d H:i:s'),
             'deskripsi' => $this->deskripsi,
             'map' => $this->map,
             'cover' => $coverName,

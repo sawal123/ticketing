@@ -233,8 +233,12 @@ class VoucherTaxTicketSecurityTest extends TestCase
             ->set('event', 'Fee Event')
             ->set('fee', 10)
             ->set('start_sale', now()->format('Y-m-d H:i'))
-            ->set('tanggal', now()->addDay()->format('Y-m-d H:i'))
-            ->set('alamat', 'Jakarta')
+            ->set('event_start', now()->addDay()->format('Y-m-d H:i'))
+            ->set('event_end', now()->addDay()->addHours(2)->format('Y-m-d H:i'))
+            ->set('venue_name', 'Istora Senayan')
+            ->set('venue_address', 'Jl. Pintu Satu Senayan')
+            ->set('venue_city', 'Jakarta Pusat')
+            ->set('venue_province', 'DKI Jakarta')
             ->set('map', 'https://example.test/map')
             ->set('cover', UploadedFile::fake()->image('cover.jpg'))
             ->set('deskripsi', 'Event description')
@@ -273,8 +277,12 @@ class VoucherTaxTicketSecurityTest extends TestCase
                 ->set('event', 'Invalid Fee')
                 ->set('fee', $fee)
                 ->set('start_sale', now()->format('Y-m-d H:i'))
-                ->set('tanggal', now()->addDay()->format('Y-m-d H:i'))
-                ->set('alamat', 'Jakarta')
+                ->set('event_start', now()->addDay()->format('Y-m-d H:i'))
+                ->set('event_end', now()->addDay()->addHours(2)->format('Y-m-d H:i'))
+                ->set('venue_name', 'Istora Senayan')
+                ->set('venue_address', 'Jl. Pintu Satu Senayan')
+                ->set('venue_city', 'Jakarta Pusat')
+                ->set('venue_province', 'DKI Jakarta')
                 ->set('map', 'https://example.test/map')
                 ->set('cover', UploadedFile::fake()->image('cover.jpg'))
                 ->set('deskripsi', 'Event description')
@@ -498,8 +506,13 @@ class VoucherTaxTicketSecurityTest extends TestCase
             'uid' => $uid,
             'user_uid' => $tenant->uid,
             'event' => 'Security Event '.$uid,
-            'alamat' => 'Jakarta',
+            'alamat' => 'Istora Senayan, Jl. Pintu Satu Senayan, Jakarta Pusat, DKI Jakarta',
             'tanggal' => now()->addDay()->format('Y-m-d H:i'),
+            'event_end' => now()->addDay()->addHours(2)->format('Y-m-d H:i:s'),
+            'venue_name' => 'Istora Senayan',
+            'venue_address' => 'Jl. Pintu Satu Senayan',
+            'venue_city' => 'Jakarta Pusat',
+            'venue_province' => 'DKI Jakarta',
             'status' => 'active',
             'cover' => 'cover.jpg',
             'fee' => 0,

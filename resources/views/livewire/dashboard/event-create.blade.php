@@ -21,160 +21,212 @@
 
     <form wire:submit.prevent="save" class="space-y-6">
         <x-admin.card padding="p-8">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-                <!-- Event Name -->
-                <div class="md:col-span-1">
-                    <label class="block text-[11px] font-black text-slate-400 uppercase tracking-[0.1em] mb-2">Event
-                        Name</label>
-                    <x-admin.input wire:model="event" placeholder="e.g. Annual Tech Leadership Summit 2024" required />
-                </div>
+            <div class="space-y-10">
+                <section class="space-y-6">
+                    <div>
+                        <h2 class="text-lg font-black text-slate-800 dark:text-white">Informasi Event</h2>
+                        <p class="text-sm text-slate-500 dark:text-slate-400">Isi informasi dasar event dan kategori yang sesuai.</p>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="md:col-span-1">
+                            <label class="block text-[11px] font-black text-slate-400 uppercase tracking-[0.1em] mb-2">Nama Event</label>
+                            <x-admin.input wire:model="event" placeholder="Contoh: Festival Musik Akhir Tahun" required />
+                            @error('event') <span class="text-rose-500 text-xs mt-1">{{ $message }}</span> @enderror
+                        </div>
 
-                <!-- Event Tax -->
-                <div class="md:col-span-1">
-                    <label class="block text-[11px] font-black text-slate-400 uppercase tracking-[0.1em] mb-2">Event Tax
-                        (%)</label>
-                    <div class="relative">
-                        <x-admin.input type="number" wire:model="fee" min="0" max="100" placeholder="15" />
-                        <div class="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
-                            <span class="text-slate-400 font-bold">%</span>
+                        <div class="md:col-span-1">
+                            <label class="block text-[11px] font-black text-slate-400 uppercase tracking-[0.1em] mb-2">Kategori Event</label>
+                            <select wire:model="category_id"
+                                class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-800 dark:text-slate-200 text-sm focus:ring-2 focus:ring-indigo-500 transition-all"
+                                required>
+                                <option value="">Pilih kategori</option>
+                                @foreach($categories as $cat)
+                                    <option value="{{ $cat->id }}">{{ $cat->name }}</option>
+                                @endforeach
+                            </select>
+                            @error('category_id') <span class="text-rose-500 text-xs mt-1">{{ $message }}</span> @enderror
+                        </div>
+
+                        <div class="md:col-span-2">
+                            <label class="block text-[11px] font-black text-slate-400 uppercase tracking-[0.1em] mb-2">Fasilitas</label>
+                            <div class="flex flex-wrap gap-2">
+                                @foreach($fasilitasData as $f)
+                                    <label class="cursor-pointer">
+                                        <input type="checkbox" wire:model="selectedFasilitas" value="{{ $f->id }}"
+                                            class="sr-only peer">
+                                        <div
+                                            class="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-500 dark:text-slate-400 peer-checked:bg-indigo-600 peer-checked:text-white peer-checked:border-indigo-600 transition-all">
+                                            {{ $f->name }}
+                                        </div>
+                                    </label>
+                                @endforeach
+                            </div>
                         </div>
                     </div>
-                </div>
+                </section>
 
-                <!-- Start Date & Time -->
-                <div class="md:col-span-1" wire:ignore>
-                    <label class="block text-[11px] font-black text-slate-400 uppercase tracking-[0.1em] mb-2">Start
-                        Date & Time (Sale Start)</label>
-                    <div class="relative" x-data
-                        x-init="flatpickr($refs.startSale, { enableTime: true, dateFormat: 'Y-m-d H:i', time_24hr: true })">
-                        <x-admin.input x-ref="startSale" wire:model="start_sale" placeholder="YYYY-MM-DD HH:MM"
-                            icon="calendar" required />
+                <section class="space-y-6 border-t border-slate-100 dark:border-slate-700 pt-8">
+                    <div>
+                        <h2 class="text-lg font-black text-slate-800 dark:text-white">Jadwal Event</h2>
+                        <p class="text-sm text-slate-500 dark:text-slate-400">Pastikan urutan waktu penjualan dan pelaksanaan event sudah benar.</p>
                     </div>
-                    @error('start_sale') <span class="text-rose-500 text-[10px] mt-1">{{ $message }}</span> @enderror
-                </div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div wire:ignore>
+                            <label class="block text-[11px] font-black text-slate-400 uppercase tracking-[0.1em] mb-2">Mulai Penjualan Tiket</label>
+                            <div class="relative" x-data
+                                x-init="flatpickr($refs.startSale, { enableTime: true, dateFormat: 'Y-m-d H:i', time_24hr: true })">
+                                <x-admin.input x-ref="startSale" wire:model="start_sale" placeholder="YYYY-MM-DD HH:MM"
+                                    icon="calendar" required />
+                            </div>
+                            @error('start_sale') <span class="text-rose-500 text-xs mt-1">{{ $message }}</span> @enderror
+                        </div>
 
-                <!-- End Date & Time -->
-                <div class="md:col-span-1" wire:ignore>
-                    <label class="block text-[11px] font-black text-slate-400 uppercase tracking-[0.1em] mb-2">End Date
-                        & Time (Event Start)</label>
-                    <div class="relative" x-data
-                        x-init="flatpickr($refs.tanggal, { enableTime: true, dateFormat: 'Y-m-d H:i', time_24hr: true })">
-                        <x-admin.input x-ref="tanggal" wire:model="tanggal" placeholder="YYYY-MM-DD HH:MM"
-                            icon="calendar" required />
+                        <div wire:ignore>
+                            <label class="block text-[11px] font-black text-slate-400 uppercase tracking-[0.1em] mb-2">Tanggal &amp; Waktu Mulai Event</label>
+                            <div class="relative" x-data
+                                x-init="flatpickr($refs.eventStart, { enableTime: true, dateFormat: 'Y-m-d H:i', time_24hr: true })">
+                                <x-admin.input x-ref="eventStart" wire:model="event_start" placeholder="YYYY-MM-DD HH:MM"
+                                    icon="calendar" required />
+                            </div>
+                            @error('event_start') <span class="text-rose-500 text-xs mt-1">{{ $message }}</span> @enderror
+                        </div>
+
+                        <div wire:ignore>
+                            <label class="block text-[11px] font-black text-slate-400 uppercase tracking-[0.1em] mb-2">Tanggal &amp; Waktu Selesai Event</label>
+                            <div class="relative" x-data
+                                x-init="flatpickr($refs.eventEnd, { enableTime: true, dateFormat: 'Y-m-d H:i', time_24hr: true })">
+                                <x-admin.input x-ref="eventEnd" wire:model="event_end" placeholder="YYYY-MM-DD HH:MM"
+                                    icon="calendar" required />
+                            </div>
+                            @error('event_end') <span class="text-rose-500 text-xs mt-1">{{ $message }}</span> @enderror
+                        </div>
                     </div>
-                    @error('tanggal') <span class="text-rose-500 text-[10px] mt-1">{{ $message }}</span> @enderror
-                </div>
+                </section>
 
-                <!-- Category -->
-                <div class="md:col-span-1">
-                    <label
-                        class="block text-[11px] font-black text-slate-400 uppercase tracking-[0.1em] mb-2">Category</label>
-                    <select wire:model="category_id"
-                        class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-800 dark:text-slate-200 text-sm focus:ring-2 focus:ring-indigo-500 transition-all"
-                        required>
-                        <option value="">Select Category</option>
-                        @foreach($categories as $cat)
-                            <option value="{{ $cat->id }}">{{ $cat->name }}</option>
-                        @endforeach
-                    </select>
-                </div>
+                <section class="space-y-6 border-t border-slate-100 dark:border-slate-700 pt-8">
+                    <div>
+                        <h2 class="text-lg font-black text-slate-800 dark:text-white">Lokasi Event</h2>
+                        <p class="text-sm text-slate-500 dark:text-slate-400">Gunakan detail venue yang lengkap agar menjadi sumber data event yang rapi.</p>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-[11px] font-black text-slate-400 uppercase tracking-[0.1em] mb-2">Nama Venue</label>
+                            <x-admin.input wire:model="venue_name" placeholder="Contoh: Istora Senayan" icon="map-pin" required />
+                            @error('venue_name') <span class="text-rose-500 text-xs mt-1">{{ $message }}</span> @enderror
+                        </div>
 
-                <!-- Facilities -->
-                <div class="md:col-span-1">
-                    <label
-                        class="block text-[11px] font-black text-slate-400 uppercase tracking-[0.1em] mb-2">Facilities</label>
-                    <div class="flex flex-wrap gap-2">
-                        @foreach($fasilitasData as $f)
-                            <label class="cursor-pointer">
-                                <input type="checkbox" wire:model="selectedFasilitas" value="{{ $f->id }}"
-                                    class="sr-only peer">
-                                <div
-                                    class="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-500 dark:text-slate-400 peer-checked:bg-indigo-600 peer-checked:text-white peer-checked:border-indigo-600 transition-all">
-                                    {{ $f->name }}
+                        <div>
+                            <label class="block text-[11px] font-black text-slate-400 uppercase tracking-[0.1em] mb-2">Alamat Venue</label>
+                            <x-admin.input wire:model="venue_address" placeholder="Contoh: Jl. Pintu Satu Senayan" icon="map-pin" required />
+                            @error('venue_address') <span class="text-rose-500 text-xs mt-1">{{ $message }}</span> @enderror
+                        </div>
+
+                        <div>
+                            <label class="block text-[11px] font-black text-slate-400 uppercase tracking-[0.1em] mb-2">Kota/Kabupaten</label>
+                            <x-admin.input wire:model="venue_city" placeholder="Contoh: Jakarta Pusat" required />
+                            @error('venue_city') <span class="text-rose-500 text-xs mt-1">{{ $message }}</span> @enderror
+                        </div>
+
+                        <div>
+                            <label class="block text-[11px] font-black text-slate-400 uppercase tracking-[0.1em] mb-2">Provinsi</label>
+                            <x-admin.input wire:model="venue_province" placeholder="Contoh: DKI Jakarta" required />
+                            @error('venue_province') <span class="text-rose-500 text-xs mt-1">{{ $message }}</span> @enderror
+                        </div>
+
+                        <div class="md:col-span-2">
+                            <label class="block text-[11px] font-black text-slate-400 uppercase tracking-[0.1em] mb-2">Link Google Maps</label>
+                            <x-admin.input wire:model="map" placeholder="https://maps.google.com/..." icon="link" />
+                            @error('map') <span class="text-rose-500 text-xs mt-1">{{ $message }}</span> @enderror
+                        </div>
+                    </div>
+                </section>
+
+                <section class="space-y-6 border-t border-slate-100 dark:border-slate-700 pt-8">
+                    <div>
+                        <h2 class="text-lg font-black text-slate-800 dark:text-white">Pajak</h2>
+                        <p class="text-sm text-slate-500 dark:text-slate-400">Pajak ini dibebankan ke pembeli tiket dan tetap disimpan pada field pajak event existing.</p>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-[11px] font-black text-slate-400 uppercase tracking-[0.1em] mb-2">Pajak Tiket (%)</label>
+                            <div class="relative">
+                                <x-admin.input type="number" wire:model="fee" min="0" max="100" placeholder="15" />
+                                <div class="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
+                                    <span class="text-slate-400 font-bold">%</span>
                                 </div>
-                            </label>
-                        @endforeach
-                    </div>
-                </div>
-
-                <!-- Venue Address -->
-                <div class="md:col-span-2">
-                    <label class="block text-[11px] font-black text-slate-400 uppercase tracking-[0.1em] mb-2">Venue
-                        Address</label>
-                    <x-admin.input wire:model="alamat" placeholder="123 Convention Plaza, San Francisco, CA"
-                        icon="map-pin" required />
-                </div>
-
-                <!-- Map Link -->
-                <div class="md:col-span-2">
-                    <label class="block text-[11px] font-black text-slate-400 uppercase tracking-[0.1em] mb-2">Map Link
-                        (Google Maps)</label>
-                    <x-admin.input wire:model="map" placeholder="https://goo.gl/maps/..." icon="link" />
-                </div>
-
-                <!-- Cover Thumbnail -->
-                <div class="md:col-span-2">
-                    <label class="block text-[11px] font-black text-slate-400 uppercase tracking-[0.1em] mb-2">Cover
-                        Thumbnail</label>
-                    <div x-data="{ isDragging: false }" @dragover.prevent="isDragging = true"
-                        @dragleave.prevent="isDragging = false"
-                        @drop.prevent="isDragging = false; $refs.fileInput.files = $event.dataTransfer.files; $refs.fileInput.dispatchEvent(new Event('change'))"
-                        class="relative w-full aspect-[16/5] border-2 border-dashed rounded-3xl flex flex-col items-center justify-center transition-all duration-300"
-                        :class="isDragging ? 'border-indigo-500 bg-indigo-50/50' : 'border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50'">
-                        @if ($cover)
-                            <img src="{{ $cover->temporaryUrl() }}"
-                                class="absolute inset-0 w-full h-full object-cover rounded-3xl">
-                            <div
-                                class="absolute inset-0 bg-black/40 rounded-3xl flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                                <x-admin.button type="button" @click="$refs.fileInput.click()" variant="secondary"
-                                    size="sm">Change Image</x-admin.button>
                             </div>
-                        @elseif ($existingCover)
-                            <img src="{{ asset('storage/cover/' . $existingCover) }}"
-                                class="absolute inset-0 w-full h-full object-cover rounded-3xl">
-                            <div
-                                class="absolute inset-0 bg-black/40 rounded-3xl flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                                <x-admin.button type="button" @click="$refs.fileInput.click()" variant="secondary"
-                                    size="sm">Change Image</x-admin.button>
-                            </div>
-                        @else
-                            <div class="text-center p-8">
-                                <div
-                                    class="w-16 h-16 bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 flex items-center justify-center mx-auto mb-4">
-                                    <i data-lucide="upload-cloud" class="w-8 h-8 text-indigo-600"></i>
-                                </div>
-                                <h3 class="text-lg font-bold text-slate-800 dark:text-white mb-1">Click or drag and drop to
-                                    upload</h3>
-                                <p class="text-sm text-slate-500">PNG, JPG or WEBP (Recommended 1600x900px)</p>
-                            </div>
-                        @endif
-                        <input type="file" x-ref="fileInput" wire:model="cover" accept="image/png,image/jpeg,image/webp"
-                            class="absolute inset-0 opacity-0 cursor-pointer">
+                            <div class="mt-2 text-xs text-slate-500 dark:text-slate-400">Pajak yang dibebankan ke pembeli.</div>
+                            @error('fee') <span class="text-rose-500 text-xs mt-1">{{ $message }}</span> @enderror
+                        </div>
                     </div>
-                    <div wire:loading wire:target="cover" class="text-indigo-600 text-xs font-semibold mt-2">
-                        Mengupload cover...
-                    </div>
-                    @error('cover') <span class="text-rose-500 text-xs mt-1">{{ $message }}</span> @enderror
-                </div>
+                </section>
 
-                <!-- Event Description -->
-                <div class="md:col-span-2">
-                    <label class="block text-[11px] font-black text-slate-400 uppercase tracking-[0.1em] mb-2">Event
-                        Description</label>
-                    <div wire:ignore x-data="{
-                        init() {
-                            const trixEditor = this.$refs.trix;
-                            trixEditor.addEventListener('trix-change', () => {
-                                @this.set('deskripsi', trixEditor.value);
-                            });
-                        }
-                    }">
-                        <input id="deskripsi" type="hidden" name="content" value="{{ $deskripsi }}">
-                        <trix-editor input="deskripsi" x-ref="trix"
-                            class="trix-content min-h-[300px] rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 focus:ring-2 focus:ring-indigo-500 transition-all"></trix-editor>
+                <section class="space-y-6 border-t border-slate-100 dark:border-slate-700 pt-8">
+                    <div>
+                        <h2 class="text-lg font-black text-slate-800 dark:text-white">Cover &amp; Deskripsi</h2>
+                        <p class="text-sm text-slate-500 dark:text-slate-400">Lengkapi visual event dan deskripsi utama untuk halaman event.</p>
                     </div>
-                    @error('deskripsi') <span class="text-rose-500 text-xs mt-1">{{ $message }}</span> @enderror
-                </div>
+                    <div class="grid grid-cols-1 gap-6">
+                        <div>
+                            <label class="block text-[11px] font-black text-slate-400 uppercase tracking-[0.1em] mb-2">Cover Event</label>
+                            <div x-data="{ isDragging: false }" @dragover.prevent="isDragging = true"
+                                @dragleave.prevent="isDragging = false"
+                                @drop.prevent="isDragging = false; $refs.fileInput.files = $event.dataTransfer.files; $refs.fileInput.dispatchEvent(new Event('change'))"
+                                class="relative w-full aspect-[16/5] border-2 border-dashed rounded-3xl flex flex-col items-center justify-center transition-all duration-300"
+                                :class="isDragging ? 'border-indigo-500 bg-indigo-50/50' : 'border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50'">
+                                @if ($cover)
+                                    <img src="{{ $cover->temporaryUrl() }}"
+                                        class="absolute inset-0 w-full h-full object-cover rounded-3xl">
+                                    <div
+                                        class="absolute inset-0 bg-black/40 rounded-3xl flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                                        <x-admin.button type="button" @click="$refs.fileInput.click()" variant="secondary"
+                                            size="sm">Change Image</x-admin.button>
+                                    </div>
+                                @elseif ($existingCover)
+                                    <img src="{{ asset('storage/cover/' . $existingCover) }}"
+                                        class="absolute inset-0 w-full h-full object-cover rounded-3xl">
+                                    <div
+                                        class="absolute inset-0 bg-black/40 rounded-3xl flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                                        <x-admin.button type="button" @click="$refs.fileInput.click()" variant="secondary"
+                                            size="sm">Change Image</x-admin.button>
+                                    </div>
+                                @else
+                                    <div class="text-center p-8">
+                                        <div
+                                            class="w-16 h-16 bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 flex items-center justify-center mx-auto mb-4">
+                                            <i data-lucide="upload-cloud" class="w-8 h-8 text-indigo-600"></i>
+                                        </div>
+                                        <h3 class="text-lg font-bold text-slate-800 dark:text-white mb-1">Click or drag and drop to upload</h3>
+                                        <p class="text-sm text-slate-500">PNG, JPG or WEBP (Recommended 1600x900px)</p>
+                                    </div>
+                                @endif
+                                <input type="file" x-ref="fileInput" wire:model="cover" accept="image/png,image/jpeg,image/webp"
+                                    class="absolute inset-0 opacity-0 cursor-pointer">
+                            </div>
+                            <div wire:loading wire:target="cover" class="text-indigo-600 text-xs font-semibold mt-2">
+                                Mengupload cover...
+                            </div>
+                            @error('cover') <span class="text-rose-500 text-xs mt-1">{{ $message }}</span> @enderror
+                        </div>
+
+                        <div>
+                            <label class="block text-[11px] font-black text-slate-400 uppercase tracking-[0.1em] mb-2">Deskripsi Event</label>
+                            <div wire:ignore x-data="{
+                                init() {
+                                    const trixEditor = this.$refs.trix;
+                                    trixEditor.addEventListener('trix-change', () => {
+                                        @this.set('deskripsi', trixEditor.value);
+                                    });
+                                }
+                            }">
+                                <input id="deskripsi" type="hidden" name="content" value="{{ $deskripsi }}">
+                                <trix-editor input="deskripsi" x-ref="trix"
+                                    class="trix-content min-h-[300px] rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 focus:ring-2 focus:ring-indigo-500 transition-all"></trix-editor>
+                            </div>
+                            @error('deskripsi') <span class="text-rose-500 text-xs mt-1">{{ $message }}</span> @enderror
+                        </div>
+                    </div>
+                </section>
             </div>
 
             <div class="flex items-center justify-end gap-4 pt-6 border-t border-slate-100 dark:border-slate-700">
