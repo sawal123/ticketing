@@ -153,4 +153,17 @@ class Cart extends Model
     {
         return filled($this->ticket_holder_name) && filled($this->ticket_recipient_email);
     }
+
+    public function canUpdateCheckoutQuantity(): bool
+    {
+        return $this->status === self::STATUS_RESERVED
+            && ! $this->isReservationExpired()
+            && $this->reservation_released_at === null
+            && ! $this->hasActivePaymentLink()
+            && ! filled($this->link)
+            && $this->gross_amount === null
+            && $this->payment_gateway_id === null
+            && $this->payment_link_expires_at === null
+            && ! filled($this->payment_type);
+    }
 }

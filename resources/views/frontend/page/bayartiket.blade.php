@@ -108,6 +108,7 @@
 
             @php
                 $hasActivePaymentLink = $cart->hasActivePaymentLink();
+                $canUpdateCheckoutQuantity = $cart->canUpdateCheckoutQuantity();
                 $recipientSnapshotLocked = $cart->recipientSnapshotLocked();
                 $selectedRecipientEmailOption = old(
                     'ticket_recipient_email_option',
@@ -203,6 +204,7 @@
                 </div>
                 <div class="card-body">
                     @php
+                        $ticketRows = $harga;
                         $fee = 0;
                         $total1 = 0;
                     @endphp
@@ -216,24 +218,24 @@
                         <tbody>
 
 
-                            @foreach ($harga as $harga)
+                            @foreach ($ticketRows as $hargaRow)
                                 <tr class="ticket-row">
 
                                     <td>
-                                        <div class="ticket-tier-badge">{{ $harga->kategori_harga }}</div>
+                                        <div class="ticket-tier-badge">{{ $hargaRow->kategori_harga }}</div>
                                         <div class="ticket-qty-info">Rp
-                                            {{ number_format($harga->harga_ticket, 0, ',', '.') }} ×
-                                            {{ $harga->quantity }}
+                                            {{ number_format($hargaRow->harga_ticket, 0, ',', '.') }} ×
+                                            {{ $hargaRow->quantity }}
                                         </div>
                                         @php
-                                            $fee += $harga->quantity;
+                                            $fee += $hargaRow->quantity;
                                         @endphp
                                         <div class="ticket-qty-sub">{{ $fee }} tiket · Harga per tiket</div>
                                     </td>
 
                                     <td class="ticket-total-cell">
                                         @php
-                                            $total1 = (int) $harga->quantity * (int) $harga->harga_ticket;
+                                            $total1 = (int) $hargaRow->quantity * (int) $hargaRow->harga_ticket;
                                         @endphp
                                         Rp{{ number_format($total1 ?? 0) }}</td>
 
@@ -242,6 +244,47 @@
                             @endforeach
                         </tbody>
                     </table>
+                    @if ($canUpdateCheckoutQuantity)
+                        <form action="{{ url('/checkout/update-quantity') }}" method="post" id="updateQuantityForm"
+                            onsubmit="syncQuantityRecipientInputs()"
+                            style="margin-top:16px;display:grid;gap:12px;">
+                            @csrf
+                            <input type="hidden" name="cart_uid" value="{{ $cart->uid }}">
+                            <input type="hidden" name="ticket_holder_name" value="{{ $ticketHolderNameValue }}">
+                            <input type="hidden" name="ticket_recipient_email_option"
+                                value="{{ $selectedRecipientEmailOption }}">
+                            <input type="hidden" name="ticket_recipient_other_email"
+                                value="{{ $ticketRecipientOtherEmailValue }}">
+                            @foreach ($ticketRows as $hargaRow)
+                                <div
+                                    style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border-radius:14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);">
+                                    <div style="display:grid;gap:4px;">
+                                        <input type="hidden" name="items[{{ $hargaRow->id }}][harga_cart_id]"
+                                            value="{{ $hargaRow->id }}">
+                                        <span style="font-size:13px;color:#fff;font-weight:700;">{{ $hargaRow->kategori_harga }}</span>
+                                        <span style="font-size:12px;color:var(--muted);">Rp
+                                            {{ number_format($hargaRow->harga_ticket, 0, ',', '.') }} per tiket</span>
+                                    </div>
+                                    <div style="display:flex;align-items:center;gap:10px;">
+                                        <button type="button" class="copy-btn" onclick="adjustCheckoutQuantity(this, -1)"
+                                            data-quantity-target="quantity-{{ $hargaRow->id }}">-</button>
+                                        <input type="number" id="quantity-{{ $hargaRow->id }}"
+                                            name="items[{{ $hargaRow->id }}][quantity]" value="{{ $hargaRow->quantity }}"
+                                            min="0" max="5" data-ticket-quantity class="voucher-input"
+                                            style="width:88px;padding:10px 12px;text-align:center;" readonly>
+                                        <button type="button" class="copy-btn" onclick="adjustCheckoutQuantity(this, 1)"
+                                            data-quantity-target="quantity-{{ $hargaRow->id }}">+</button>
+                                    </div>
+                                </div>
+                            @endforeach
+                            <div style="font-size:12px;color:var(--muted);line-height:1.6;">
+                                Total dan biaya pembayaran akan dihitung ulang dari server setelah jumlah tiket diperbarui.
+                            </div>
+                            <button type="submit" class="btn-pay">
+                                <span>Perbarui Jumlah Tiket</span>
+                            </button>
+                        </form>
+                    @endif
                     <div class="ticket-summary-row">
                         <div class="ticket-count-pill">✓ Total {{ $fee }} Tiket</div>
                         <span style="font-size:12px;color:var(--muted);">Tiket akan dikirim via email</span>
@@ -536,6 +579,25 @@
             @if ($cart->status === \App\Models\Cart::STATUS_RESERVED && $cart->gross_amount === null)
                 updateCheckoutTotals(resolvedInternetFee);
             @endif
+        }
+
+        function adjustCheckoutQuantity(button, delta) {
+            const targetId = button.dataset.quantityTarget;
+            const input = targetId ? document.getElementById(targetId) : null;
+
+            if (!input) {
+                return;
+            }
+
+            const quantityInputs = Array.from(document.querySelectorAll('#updateQuantityForm [data-ticket-quantity]'));
+            const currentValue = parseInt(input.value, 10) || 0;
+            const otherTotal = quantityInputs
+                .filter((quantityInput) => quantityInput !== input)
+                .reduce((total, quantityInput) => total + (parseInt(quantityInput.value, 10) || 0), 0);
+
+            const nextValue = Math.max(0, Math.min(5 - otherTotal, currentValue + delta));
+
+            input.value = nextValue;
         }
 
         document.addEventListener('DOMContentLoaded', function() {
@@ -1139,6 +1201,39 @@
 
             const form = document.querySelector('form[action="{{ url('/paynow') }}"]');
             submitPaynowOnce(form);
+        }
+
+        function syncQuantityRecipientInputs() {
+            const updateQuantityForm = document.getElementById('updateQuantityForm');
+
+            if (!updateQuantityForm) {
+                return;
+            }
+
+            const ticketHolderNameInput = document.querySelector('[name="ticket_holder_name"][form="paynowForm"]');
+            const recipientOptionInput = document.querySelector(
+                '[name="ticket_recipient_email_option"][form="paynowForm"]:checked'
+            );
+            const otherRecipientEmailInput = document.querySelector(
+                '[name="ticket_recipient_other_email"][form="paynowForm"]'
+            );
+            const quantityTicketHolderNameInput = updateQuantityForm.querySelector('[name="ticket_holder_name"]');
+            const quantityRecipientOptionInput = updateQuantityForm.querySelector('[name="ticket_recipient_email_option"]');
+            const quantityOtherRecipientEmailInput = updateQuantityForm.querySelector(
+                '[name="ticket_recipient_other_email"]'
+            );
+
+            if (quantityTicketHolderNameInput && ticketHolderNameInput) {
+                quantityTicketHolderNameInput.value = ticketHolderNameInput.value;
+            }
+
+            if (quantityRecipientOptionInput && recipientOptionInput) {
+                quantityRecipientOptionInput.value = recipientOptionInput.value;
+            }
+
+            if (quantityOtherRecipientEmailInput && otherRecipientEmailInput) {
+                quantityOtherRecipientEmailInput.value = otherRecipientEmailInput.value;
+            }
         }
 
         function openOtpModal({

@@ -260,6 +260,32 @@ class BuyTicketController extends Controller
         return redirect('/detail-ticket/'.$cart->uid.'/'.Auth::user()->uid);
     }
 
+    public function updateQuantity(Request $request, TicketReservationService $reservationService)
+    {
+        try {
+            $request->validate([
+                'cart_uid' => 'required|string',
+                'items' => 'required|array|min:1',
+                'items.*.harga_cart_id' => 'required|integer',
+                'items.*.quantity' => 'required|integer|min:0|max:5',
+            ]);
+
+            $cart = $reservationService->updateCheckoutQuantities(
+                (string) $request->input('cart_uid'),
+                Auth::user()->uid,
+                $this->parseQuantityUpdateItems($request)
+            );
+        } catch (ValidationException $exception) {
+            return redirect()->back()
+                ->withInput($this->recipientInput($request))
+                ->with('error', collect($exception->errors())->flatten()->first());
+        }
+
+        return redirect('/detail-ticket/'.$cart->uid.'/'.Auth::user()->uid)
+            ->withInput($this->recipientInput($request))
+            ->with('success', 'Jumlah tiket berhasil diperbarui.');
+    }
+
     protected function parseCheckoutItems(Request $request): array
     {
         $items = [];
@@ -314,5 +340,28 @@ class BuyTicketController extends Controller
             ->sortBy('harga_id')
             ->values()
             ->all();
+    }
+
+    protected function parseQuantityUpdateItems(Request $request): array
+    {
+        return collect((array) $request->input('items', []))
+            ->map(function ($item) {
+                return [
+                    'harga_cart_id' => (int) ($item['harga_cart_id'] ?? 0),
+                    'quantity' => (int) ($item['quantity'] ?? -1),
+                ];
+            })
+            ->filter(fn (array $item) => $item['harga_cart_id'] > 0)
+            ->values()
+            ->all();
+    }
+
+    protected function recipientInput(Request $request): array
+    {
+        return $request->only([
+            'ticket_holder_name',
+            'ticket_recipient_email_option',
+            'ticket_recipient_other_email',
+        ]);
     }
 }
