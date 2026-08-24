@@ -4,15 +4,18 @@ namespace App\Livewire\Dashboard;
 
 use App\Models\Category;
 use App\Models\Event;
+use App\Models\EventBankAccount;
 use App\Models\EventOrganizer;
 use App\Models\Fasilitas;
 use App\Services\SecureImageStorage;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Livewire\WithFileUploads;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
 
 class EventCreate extends Component
 {
@@ -63,6 +66,18 @@ class EventCreate extends Component
 
     public $address;
 
+    public $bank_name;
+
+    public $account_number;
+
+    public $account_holder_name;
+
+    public $bank_book;
+
+    public $existingBankBookPath = null;
+
+    public $existingBankBookOriginalName = null;
+
     public function mount($uid = null)
     {
         if ($uid) {
@@ -82,6 +97,7 @@ class EventCreate extends Component
             $eventStart = $eventData->tanggal ? Carbon::parse($eventData->tanggal) : null;
             $eventEnd = $eventData->event_end ? Carbon::parse($eventData->event_end) : null;
             $organizer = $eventData->organizer;
+            $bankAccount = $eventData->bankAccount;
 
             $this->start_sale = $eventData->start_sale ? Carbon::parse($eventData->start_sale)->format('Y-m-d H:i') : null;
             $this->event_start = $eventStart?->format('Y-m-d H:i');
@@ -101,6 +117,11 @@ class EventCreate extends Component
             $this->phone = $organizer?->phone;
             $this->email = $organizer?->email;
             $this->address = $organizer?->address;
+            $this->bank_name = $bankAccount?->bank_name;
+            $this->account_number = $bankAccount?->account_number;
+            $this->account_holder_name = $bankAccount?->account_holder_name;
+            $this->existingBankBookPath = $bankAccount?->bank_book_path;
+            $this->existingBankBookOriginalName = $bankAccount?->bank_book_original_name;
         } else {
             $user = auth()->user();
             $this->start_sale = Carbon::now()->format('Y-m-d H:i');
@@ -137,6 +158,10 @@ class EventCreate extends Component
             'phone' => 'required|string|max:30',
             'email' => 'required|email|max:255',
             'address' => 'required|string|max:500',
+            'bank_name' => 'required|string|max:100',
+            'account_number' => 'required|string|max:50',
+            'account_holder_name' => 'required|string|max:255',
+            'bank_book' => $this->bankBookRules(),
         ];
     }
 
@@ -154,8 +179,10 @@ class EventCreate extends Component
         ])->filter(fn ($value) => filled($value))->implode(', ');
 
         $event = null;
+        $existingBankAccount = null;
         if ($this->editingEventUid) {
             $event = $this->ownedEventQuery($this->editingEventUid)->firstOrFail();
+            $existingBankAccount = $event->bankAccount;
             $uid = $this->editingEventUid;
             $slug = $event->slug;
         } else {
@@ -175,6 +202,19 @@ class EventCreate extends Component
             $this->addError('cover', 'Cover event wajib diupload sebelum event disimpan.');
 
             return null;
+        }
+
+        $bankBookPath = $this->existingBankBookPath;
+        $bankBookOriginalName = $this->existingBankBookOriginalName;
+        $bankBookMime = $existingBankAccount?->bank_book_mime;
+        $oldBankBookPath = null;
+
+        if ($this->bank_book) {
+            $storedBankBook = $this->storeBankBook($this->bank_book, $uid);
+            $bankBookPath = $storedBankBook['path'];
+            $bankBookOriginalName = $storedBankBook['original_name'];
+            $bankBookMime = $storedBankBook['mime'];
+            $oldBankBookPath = $existingBankAccount?->bank_book_path;
         }
 
         $eventData = [
@@ -203,10 +243,20 @@ class EventCreate extends Component
             'address' => $this->address,
         ];
 
+        $bankAccountData = [
+            'bank_name' => $this->bank_name,
+            'account_number' => $this->account_number,
+            'account_holder_name' => $this->account_holder_name,
+            'bank_book_path' => $bankBookPath,
+            'bank_book_original_name' => $bankBookOriginalName,
+            'bank_book_mime' => $bankBookMime,
+        ];
+
         $newCoverStored = $this->cover !== null;
+        $newBankBookStored = $this->bank_book !== null;
 
         try {
-            DB::transaction(function () use (&$event, $uid, $slug, $eventData, $organizerData) {
+            DB::transaction(function () use (&$event, $uid, $slug, $eventData, $organizerData, $bankAccountData, $existingBankAccount) {
                 if (! $this->editingEventUid) {
                     $user = auth()->user();
                     $ownerId = ($user->role === 'staff') ? $user->parent_uid : $user->uid;
@@ -226,16 +276,33 @@ class EventCreate extends Component
                     ['event_uid' => $event->uid],
                     $organizerData
                 );
+
+                EventBankAccount::updateOrCreate(
+                    ['event_uid' => $event->uid],
+                    $bankAccountData + [
+                        'status' => $existingBankAccount?->status ?? 'pending',
+                        'verified_at' => $existingBankAccount?->verified_at,
+                        'verified_by' => $existingBankAccount?->verified_by,
+                    ]
+                );
             });
         } catch (\Throwable $exception) {
             if ($newCoverStored && filled($coverName)) {
                 app(SecureImageStorage::class)->delete('cover', $coverName);
             }
 
+            if ($newBankBookStored && filled($bankBookPath)) {
+                Storage::disk('local')->delete($bankBookPath);
+            }
+
             throw $exception;
         }
 
         app(SecureImageStorage::class)->delete('cover', $oldCover);
+
+        if ($newBankBookStored && filled($oldBankBookPath)) {
+            Storage::disk('local')->delete($oldBankBookPath);
+        }
 
         // Sync Fasilitas
         $event->fasilitas()->sync($this->selectedFasilitas);
@@ -261,5 +328,57 @@ class EventCreate extends Component
 
         return Event::where('uid', $uid)
             ->when($user->role !== 'admin', fn ($query) => $query->where('user_uid', $ownerId));
+    }
+
+    private function bankBookRules(): array
+    {
+        $required = blank($this->editingEventUid) || blank($this->existingBankBookPath);
+
+        return [
+            $required ? 'required' : 'nullable',
+            'file',
+            'mimes:pdf,jpg,jpeg,png',
+            'mimetypes:application/pdf,image/jpeg,image/png',
+            'max:5120',
+        ];
+    }
+
+    /**
+     * @return array{path: string, original_name: string, mime: string}
+     */
+    private function storeBankBook(UploadedFile $file, string $eventUid): array
+    {
+        $mime = $file->getMimeType();
+        $extension = match ($mime) {
+            'application/pdf' => 'pdf',
+            'image/jpeg' => 'jpg',
+            'image/png' => 'png',
+            default => null,
+        };
+
+        if ($extension === null) {
+            throw new \RuntimeException('Format buku rekening tidak valid.');
+        }
+
+        $path = $file->storeAs(
+            'private/events/'.$eventUid.'/bank',
+            Str::uuid().'.'.$extension,
+            'local'
+        );
+
+        if (! is_string($path) || $path === '') {
+            throw new \RuntimeException('Buku rekening gagal disimpan.');
+        }
+
+        $originalName = basename(str_replace('\\', '/', $file->getClientOriginalName()));
+        if ($originalName === '') {
+            $originalName = basename($path);
+        }
+
+        return [
+            'path' => $path,
+            'original_name' => $originalName,
+            'mime' => $mime,
+        ];
     }
 }

@@ -149,6 +149,48 @@
 
                 <section class="space-y-6 border-t border-slate-100 dark:border-slate-700 pt-8">
                     <div>
+                        <h2 class="text-lg font-black text-slate-800 dark:text-white">Rekening Pencairan Event</h2>
+                        <p class="text-sm text-slate-500 dark:text-slate-400">Rekening ini disimpan khusus untuk event yang sedang Anda buat atau edit.</p>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-[11px] font-black text-slate-400 uppercase tracking-[0.1em] mb-2">Nama Bank</label>
+                            <x-admin.input wire:model="bank_name" placeholder="Contoh: Bank Central Asia" required />
+                            @error('bank_name') <span class="text-rose-500 text-xs mt-1">{{ $message }}</span> @enderror
+                        </div>
+
+                        <div>
+                            <label class="block text-[11px] font-black text-slate-400 uppercase tracking-[0.1em] mb-2">Nomor Rekening</label>
+                            <x-admin.input wire:model="account_number" placeholder="Contoh: 1234567890" required />
+                            @error('account_number') <span class="text-rose-500 text-xs mt-1">{{ $message }}</span> @enderror
+                        </div>
+
+                        <div>
+                            <label class="block text-[11px] font-black text-slate-400 uppercase tracking-[0.1em] mb-2">Nama Pemilik Rekening</label>
+                            <x-admin.input wire:model="account_holder_name" placeholder="Contoh: PT Event Nusantara" required />
+                            @error('account_holder_name') <span class="text-rose-500 text-xs mt-1">{{ $message }}</span> @enderror
+                        </div>
+
+                        <div>
+                            <label class="block text-[11px] font-black text-slate-400 uppercase tracking-[0.1em] mb-2">Buku Rekening</label>
+                            <input type="file" wire:model="bank_book" accept=".pdf,image/jpeg,image/png"
+                                class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-800 dark:text-slate-200 text-sm focus:ring-2 focus:ring-indigo-500 transition-all">
+                            @if ($existingBankBookOriginalName)
+                                <div class="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                                    File saat ini: {{ $existingBankBookOriginalName }}
+                                </div>
+                            @endif
+                            <div wire:loading wire:target="bank_book" class="text-indigo-600 text-xs font-semibold mt-2">
+                                Mengupload buku rekening...
+                            </div>
+                            <div class="mt-2 text-xs text-slate-500 dark:text-slate-400">Format yang diterima: PDF, JPG, JPEG, PNG. Maksimal 5 MB.</div>
+                            @error('bank_book') <span class="text-rose-500 text-xs mt-1">{{ $message }}</span> @enderror
+                        </div>
+                    </div>
+                </section>
+
+                <section class="space-y-6 border-t border-slate-100 dark:border-slate-700 pt-8">
+                    <div>
                         <h2 class="text-lg font-black text-slate-800 dark:text-white">Lokasi Event</h2>
                         <p class="text-sm text-slate-500 dark:text-slate-400">Gunakan detail venue yang lengkap agar menjadi sumber data event yang rapi.</p>
                     </div>

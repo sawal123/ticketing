@@ -7,6 +7,7 @@ use App\Http\Middleware\LogActivityMiddleware;
 use App\Livewire\Dashboard\EventCreate;
 use App\Models\Category;
 use App\Models\Event;
+use App\Models\EventBankAccount;
 use App\Models\EventOrganizer;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
@@ -31,6 +32,7 @@ class DashboardEventCreateTest extends TestCase
         DB::reconnect('sqlite');
 
         View::share('logo', [(object) ['logo' => '']]);
+        Storage::fake('local');
         Storage::fake('public');
         $this->withoutMiddleware([GlobalDataMiddleware::class, LogActivityMiddleware::class]);
         $this->artisan('migrate:fresh', ['--database' => 'sqlite']);
@@ -40,6 +42,7 @@ class DashboardEventCreateTest extends TestCase
     {
         $tenant = $this->tenant();
         $category = Category::create(['name' => 'Music', 'slug' => 'music']);
+        $bankBook = UploadedFile::fake()->create('bank-book.pdf', 256, 'application/pdf');
 
         Livewire::actingAs($tenant)
             ->test(EventCreate::class)
@@ -62,6 +65,10 @@ class DashboardEventCreateTest extends TestCase
             ->set('phone', '081234567890')
             ->set('email', 'organizer@example.test')
             ->set('address', 'Alamat penyelenggara lengkap')
+            ->set('bank_name', 'Bank Central Asia')
+            ->set('account_number', '1234567890')
+            ->set('account_holder_name', 'PT Event Nusantara')
+            ->set('bank_book', $bankBook)
             ->call('save');
 
         $event = Event::where('event', 'Festival Nusantara')->firstOrFail();
@@ -83,6 +90,15 @@ class DashboardEventCreateTest extends TestCase
         $this->assertSame('081234567890', $event->organizer->phone);
         $this->assertSame('organizer@example.test', $event->organizer->email);
         $this->assertSame('Alamat penyelenggara lengkap', $event->organizer->address);
+        $this->assertNotNull($event->bankAccount);
+        $this->assertSame('Bank Central Asia', $event->bankAccount->bank_name);
+        $this->assertSame('1234567890', $event->bankAccount->account_number);
+        $this->assertSame('PT Event Nusantara', $event->bankAccount->account_holder_name);
+        $this->assertSame('pending', $event->bankAccount->status);
+        $this->assertSame('bank-book.pdf', $event->bankAccount->bank_book_original_name);
+        $this->assertSame('application/pdf', $event->bankAccount->bank_book_mime);
+        $this->assertStringStartsWith('private/events/'.$event->uid.'/bank/', $event->bankAccount->bank_book_path);
+        Storage::disk('local')->assertExists($event->bankAccount->bank_book_path);
     }
 
     public function test_edit_event_updates_new_fields_and_keeps_existing_fee_column(): void
@@ -99,6 +115,17 @@ class DashboardEventCreateTest extends TestCase
             'email' => 'lama@example.test',
             'address' => 'Alamat lama organizer',
         ]);
+        EventBankAccount::create([
+            'event_uid' => $event->uid,
+            'bank_name' => 'Bank Lama',
+            'account_number' => '000111222',
+            'account_holder_name' => 'Pemilik Lama',
+            'bank_book_path' => 'private/events/'.$event->uid.'/bank/old-book.pdf',
+            'bank_book_original_name' => 'old-book.pdf',
+            'bank_book_mime' => 'application/pdf',
+            'status' => 'pending',
+        ]);
+        Storage::disk('local')->put('private/events/'.$event->uid.'/bank/old-book.pdf', 'legacy');
 
         Livewire::actingAs($tenant)
             ->test(EventCreate::class, ['uid' => $event->uid])
@@ -115,10 +142,14 @@ class DashboardEventCreateTest extends TestCase
             ->set('phone', '082222222222')
             ->set('email', 'baru@example.test')
             ->set('address', 'Alamat baru organizer')
+            ->set('bank_name', 'Bank Negara Indonesia')
+            ->set('account_number', '9876543210')
+            ->set('account_holder_name', 'Organizer Baru')
             ->call('save');
 
         $event->refresh();
         $organizer = $event->organizer()->first();
+        $bankAccount = $event->bankAccount()->first();
 
         $this->assertSame('Festival Nusantara Revisi', $event->event);
         $this->assertSame('2026-09-10 23:00:00', substr((string) $event->event_end, 0, 19));
@@ -134,6 +165,11 @@ class DashboardEventCreateTest extends TestCase
         $this->assertSame('082222222222', $organizer->phone);
         $this->assertSame('baru@example.test', $organizer->email);
         $this->assertSame('Alamat baru organizer', $organizer->address);
+        $this->assertSame('Bank Negara Indonesia', $bankAccount->bank_name);
+        $this->assertSame('9876543210', $bankAccount->account_number);
+        $this->assertSame('Organizer Baru', $bankAccount->account_holder_name);
+        $this->assertSame('private/events/'.$event->uid.'/bank/old-book.pdf', $bankAccount->bank_book_path);
+        Storage::disk('local')->assertExists($bankAccount->bank_book_path);
     }
 
     public function test_validation_rejects_invalid_date_order(): void
@@ -161,6 +197,10 @@ class DashboardEventCreateTest extends TestCase
             ->set('phone', '081234567890')
             ->set('email', 'uji@example.test')
             ->set('address', 'Alamat organizer uji')
+            ->set('bank_name', 'Bank Uji')
+            ->set('account_number', '123456789')
+            ->set('account_holder_name', 'Organizer Uji')
+            ->set('bank_book', UploadedFile::fake()->create('bank-book.pdf', 128, 'application/pdf'))
             ->set('category_id', $category->id)
             ->call('save')
             ->assertHasErrors([
@@ -194,6 +234,10 @@ class DashboardEventCreateTest extends TestCase
             ->set('phone', '081234567890')
             ->set('email', 'uji@example.test')
             ->set('address', 'Alamat organizer uji')
+            ->set('bank_name', 'Bank Uji')
+            ->set('account_number', '123456789')
+            ->set('account_holder_name', 'Organizer Uji')
+            ->set('bank_book', UploadedFile::fake()->create('bank-book.pdf', 128, 'application/pdf'))
             ->set('category_id', $category->id)
             ->call('save')
             ->assertHasErrors([
@@ -221,6 +265,17 @@ class DashboardEventCreateTest extends TestCase
             'email' => 'a@example.test',
             'address' => 'Alamat A',
         ]);
+        EventBankAccount::create([
+            'event_uid' => $eventA->uid,
+            'bank_name' => 'Bank A',
+            'account_number' => '111111',
+            'account_holder_name' => 'Pemilik A',
+            'bank_book_path' => 'private/events/'.$eventA->uid.'/bank/a.pdf',
+            'bank_book_original_name' => 'a.pdf',
+            'bank_book_mime' => 'application/pdf',
+            'status' => 'pending',
+        ]);
+        Storage::disk('local')->put('private/events/'.$eventA->uid.'/bank/a.pdf', 'a');
 
         EventOrganizer::create([
             'event_uid' => $eventB->uid,
@@ -231,6 +286,17 @@ class DashboardEventCreateTest extends TestCase
             'email' => 'b@example.test',
             'address' => 'Alamat B',
         ]);
+        EventBankAccount::create([
+            'event_uid' => $eventB->uid,
+            'bank_name' => 'Bank B',
+            'account_number' => '222222',
+            'account_holder_name' => 'Pemilik B',
+            'bank_book_path' => 'private/events/'.$eventB->uid.'/bank/b.pdf',
+            'bank_book_original_name' => 'b.pdf',
+            'bank_book_mime' => 'application/pdf',
+            'status' => 'pending',
+        ]);
+        Storage::disk('local')->put('private/events/'.$eventB->uid.'/bank/b.pdf', 'b');
 
         Livewire::actingAs($tenant)
             ->test(EventCreate::class, ['uid' => $eventA->uid])
@@ -240,6 +306,9 @@ class DashboardEventCreateTest extends TestCase
             ->set('phone', '081999999999')
             ->set('email', 'a-revisi@example.test')
             ->set('address', 'Alamat A Revisi')
+            ->set('bank_name', 'Bank A Revisi')
+            ->set('account_number', '333333')
+            ->set('account_holder_name', 'Pemilik A Revisi')
             ->call('save');
 
         $this->assertDatabaseHas('event_organizers', [
@@ -260,6 +329,20 @@ class DashboardEventCreateTest extends TestCase
             'phone' => '081000000002',
             'email' => 'b@example.test',
             'address' => 'Alamat B',
+        ]);
+
+        $this->assertDatabaseHas('event_bank_accounts', [
+            'event_uid' => $eventA->uid,
+            'bank_name' => 'Bank A Revisi',
+            'account_number' => '333333',
+            'account_holder_name' => 'Pemilik A Revisi',
+        ]);
+
+        $this->assertDatabaseHas('event_bank_accounts', [
+            'event_uid' => $eventB->uid,
+            'bank_name' => 'Bank B',
+            'account_number' => '222222',
+            'account_holder_name' => 'Pemilik B',
         ]);
     }
 
@@ -295,6 +378,10 @@ class DashboardEventCreateTest extends TestCase
                 'phone' => ['required'],
                 'email' => ['required'],
                 'address' => ['required'],
+                'bank_name' => ['required'],
+                'account_number' => ['required'],
+                'account_holder_name' => ['required'],
+                'bank_book' => ['required'],
                 'venue_name' => ['required'],
                 'venue_city' => ['required'],
                 'venue_province' => ['required'],
@@ -312,6 +399,10 @@ class DashboardEventCreateTest extends TestCase
             ->set('phone', '081111111111')
             ->set('email', 'legacy@example.test')
             ->set('address', 'Alamat organizer legacy')
+            ->set('bank_name', 'Bank Legacy')
+            ->set('account_number', '456789123')
+            ->set('account_holder_name', 'Organizer Legacy')
+            ->set('bank_book', UploadedFile::fake()->create('legacy-book.pdf', 128, 'application/pdf'))
             ->call('save');
 
         $event->refresh();
@@ -331,15 +422,133 @@ class DashboardEventCreateTest extends TestCase
             'email' => 'legacy@example.test',
             'address' => 'Alamat organizer legacy',
         ]);
+        $this->assertDatabaseHas('event_bank_accounts', [
+            'event_uid' => $event->uid,
+            'bank_name' => 'Bank Legacy',
+            'account_number' => '456789123',
+            'account_holder_name' => 'Organizer Legacy',
+            'status' => 'pending',
+        ]);
     }
 
-    public function test_create_event_and_organizer_are_saved_atomically(): void
+    public function test_replace_bank_book_updates_database_and_deletes_old_file_after_success(): void
+    {
+        $tenant = $this->tenant();
+        $category = Category::create(['name' => 'Replacement', 'slug' => 'replacement']);
+        $event = $this->event($tenant, ['category_id' => $category->id]);
+
+        EventOrganizer::create([
+            'event_uid' => $event->uid,
+            'organizer_name' => 'Organizer Replace',
+            'responsible_name' => 'PJ Replace',
+            'responsible_position' => 'Manager',
+            'phone' => '081234567800',
+            'email' => 'replace@example.test',
+            'address' => 'Alamat replace',
+        ]);
+
+        EventBankAccount::create([
+            'event_uid' => $event->uid,
+            'bank_name' => 'Bank Replace',
+            'account_number' => '111222333',
+            'account_holder_name' => 'Pemilik Replace',
+            'bank_book_path' => 'private/events/'.$event->uid.'/bank/old-book.pdf',
+            'bank_book_original_name' => 'old-book.pdf',
+            'bank_book_mime' => 'application/pdf',
+            'status' => 'pending',
+        ]);
+        Storage::disk('local')->put('private/events/'.$event->uid.'/bank/old-book.pdf', 'old');
+
+        Livewire::actingAs($tenant)
+            ->test(EventCreate::class, ['uid' => $event->uid])
+            ->set('bank_book', UploadedFile::fake()->create('new-book.pdf', 256, 'application/pdf'))
+            ->call('save');
+
+        $event->refresh();
+        $bankAccount = $event->bankAccount()->firstOrFail();
+
+        $this->assertNotSame('private/events/'.$event->uid.'/bank/old-book.pdf', $bankAccount->bank_book_path);
+        $this->assertSame('new-book.pdf', $bankAccount->bank_book_original_name);
+        Storage::disk('local')->assertMissing('private/events/'.$event->uid.'/bank/old-book.pdf');
+        Storage::disk('local')->assertExists($bankAccount->bank_book_path);
+    }
+
+    public function test_validation_rejects_invalid_bank_book_and_missing_bank_fields(): void
+    {
+        $tenant = $this->tenant();
+        $category = Category::create(['name' => 'Validation', 'slug' => 'validation']);
+
+        Livewire::actingAs($tenant)
+            ->test(EventCreate::class)
+            ->set('event', 'Invalid Bank Event')
+            ->set('fee', 10)
+            ->set('start_sale', '2026-09-01 10:00')
+            ->set('event_start', '2026-09-10 19:00')
+            ->set('event_end', '2026-09-10 22:00')
+            ->set('venue_name', 'Venue Validation')
+            ->set('venue_address', 'Alamat Validation')
+            ->set('venue_city', 'Jakarta')
+            ->set('venue_province', 'DKI Jakarta')
+            ->set('map', 'https://maps.google.com/?q=validation')
+            ->set('cover', UploadedFile::fake()->image('cover.jpg'))
+            ->set('deskripsi', 'Deskripsi validation')
+            ->set('organizer_name', 'Organizer Validation')
+            ->set('responsible_name', 'PJ Validation')
+            ->set('responsible_position', 'Manager Validation')
+            ->set('phone', '081234567890')
+            ->set('email', 'validation@example.test')
+            ->set('address', 'Alamat organizer validation')
+            ->set('bank_name', '')
+            ->set('account_number', '')
+            ->set('account_holder_name', '')
+            ->set('bank_book', UploadedFile::fake()->create('bank-book.svg', 10, 'image/svg+xml'))
+            ->set('category_id', $category->id)
+            ->call('save')
+            ->assertHasErrors([
+                'bank_name' => ['required'],
+                'account_number' => ['required'],
+                'account_holder_name' => ['required'],
+                'bank_book' => ['mimes'],
+            ]);
+
+        Livewire::actingAs($tenant)
+            ->test(EventCreate::class)
+            ->set('event', 'Large Bank Event')
+            ->set('fee', 10)
+            ->set('start_sale', '2026-09-01 10:00')
+            ->set('event_start', '2026-09-10 19:00')
+            ->set('event_end', '2026-09-10 22:00')
+            ->set('venue_name', 'Venue Validation')
+            ->set('venue_address', 'Alamat Validation')
+            ->set('venue_city', 'Jakarta')
+            ->set('venue_province', 'DKI Jakarta')
+            ->set('map', 'https://maps.google.com/?q=validation')
+            ->set('cover', UploadedFile::fake()->image('cover.jpg'))
+            ->set('deskripsi', 'Deskripsi validation')
+            ->set('organizer_name', 'Organizer Validation')
+            ->set('responsible_name', 'PJ Validation')
+            ->set('responsible_position', 'Manager Validation')
+            ->set('phone', '081234567890')
+            ->set('email', 'validation@example.test')
+            ->set('address', 'Alamat organizer validation')
+            ->set('bank_name', 'Bank Validation')
+            ->set('account_number', '123456789')
+            ->set('account_holder_name', 'Organizer Validation')
+            ->set('bank_book', UploadedFile::fake()->create('large-book.pdf', 6000, 'application/pdf'))
+            ->set('category_id', $category->id)
+            ->call('save')
+            ->assertHasErrors([
+                'bank_book' => ['max'],
+            ]);
+    }
+
+    public function test_create_event_organizer_and_bank_account_are_saved_atomically(): void
     {
         $tenant = $this->tenant();
         $category = Category::create(['name' => 'Atomic', 'slug' => 'atomic']);
 
-        EventOrganizer::creating(function () {
-            throw new \RuntimeException('forced organizer failure');
+        EventBankAccount::creating(function () {
+            throw new \RuntimeException('forced bank account failure');
         });
 
         try {
@@ -364,13 +573,17 @@ class DashboardEventCreateTest extends TestCase
                 ->set('phone', '081234567890')
                 ->set('email', 'atomic@example.test')
                 ->set('address', 'Alamat organizer atomic')
+                ->set('bank_name', 'Bank Atomic')
+                ->set('account_number', '123123123')
+                ->set('account_holder_name', 'Organizer Atomic')
+                ->set('bank_book', UploadedFile::fake()->create('atomic-book.pdf', 128, 'application/pdf'))
                 ->call('save');
 
-            $this->fail('Expected organizer creation to fail.');
+            $this->fail('Expected bank account creation to fail.');
         } catch (\RuntimeException $exception) {
-            $this->assertSame('forced organizer failure', $exception->getMessage());
+            $this->assertSame('forced bank account failure', $exception->getMessage());
         } finally {
-            EventOrganizer::flushEventListeners();
+            EventBankAccount::flushEventListeners();
         }
 
         $this->assertDatabaseMissing('events', [
@@ -378,6 +591,8 @@ class DashboardEventCreateTest extends TestCase
         ]);
 
         $this->assertDatabaseCount('event_organizers', 0);
+        $this->assertDatabaseCount('event_bank_accounts', 0);
+        $this->assertSame([], Storage::disk('local')->allFiles('private/events'));
     }
 
     private function tenant(): User
