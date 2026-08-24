@@ -136,6 +136,35 @@ class CheckoutQuantityUpdateTest extends TestCase
         $this->assertSame(1, $masterHarga->fresh()->reserved_qty);
     }
 
+    public function test_controller_validation_failure_only_flashes_recipient_input(): void
+    {
+        [$user, $cart, $hargaCart, $masterHarga] = $this->cartWithSingleTier();
+
+        $this->actingAs($user)
+            ->from('/detail-ticket/'.$cart->uid.'/'.$user->uid)
+            ->post('/checkout/update-quantity', [
+                'cart_uid' => $cart->uid,
+                'ticket_holder_name' => 'Nama Malformed UI',
+                'ticket_recipient_email_option' => 'other_email',
+                'ticket_recipient_other_email' => 'malformed@example.test',
+                'items' => [
+                    ['harga_cart_id' => $hargaCart->id],
+                ],
+            ])
+            ->assertRedirect('/detail-ticket/'.$cart->uid.'/'.$user->uid)
+            ->assertSessionHas('error');
+
+        $this->assertSame('Nama Malformed UI', session()->getOldInput('ticket_holder_name'));
+        $this->assertSame('other_email', session()->getOldInput('ticket_recipient_email_option'));
+        $this->assertSame('malformed@example.test', session()->getOldInput('ticket_recipient_other_email'));
+        $this->assertNull(session()->getOldInput('items'));
+        $this->assertNull(session()->getOldInput('cart_uid'));
+        $this->assertSame('Nama Snapshot', $cart->fresh()->ticket_holder_name);
+        $this->assertSame('recipient@example.test', $cart->fresh()->ticket_recipient_email);
+        $this->assertSame(1, $hargaCart->fresh()->quantity);
+        $this->assertSame(1, $masterHarga->fresh()->reserved_qty);
+    }
+
     public function test_quantity_zero_removes_tier_and_releases_reserved_stock(): void
     {
         $user = $this->user();

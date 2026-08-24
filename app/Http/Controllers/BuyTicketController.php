@@ -262,14 +262,14 @@ class BuyTicketController extends Controller
 
     public function updateQuantity(Request $request, TicketReservationService $reservationService)
     {
-        $request->validate([
-            'cart_uid' => 'required|string',
-            'items' => 'required|array|min:1',
-            'items.*.harga_cart_id' => 'required|integer',
-            'items.*.quantity' => 'required|integer|min:0|max:5',
-        ]);
-
         try {
+            $request->validate([
+                'cart_uid' => 'required|string',
+                'items' => 'required|array|min:1',
+                'items.*.harga_cart_id' => 'required|integer',
+                'items.*.quantity' => 'required|integer|min:0|max:5',
+            ]);
+
             $cart = $reservationService->updateCheckoutQuantities(
                 (string) $request->input('cart_uid'),
                 Auth::user()->uid,

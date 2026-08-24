@@ -246,6 +246,7 @@
                     </table>
                     @if ($canUpdateCheckoutQuantity)
                         <form action="{{ url('/checkout/update-quantity') }}" method="post" id="updateQuantityForm"
+                            onsubmit="syncQuantityRecipientInputs()"
                             style="margin-top:16px;display:grid;gap:12px;">
                             @csrf
                             <input type="hidden" name="cart_uid" value="{{ $cart->uid }}">
@@ -1200,6 +1201,39 @@
 
             const form = document.querySelector('form[action="{{ url('/paynow') }}"]');
             submitPaynowOnce(form);
+        }
+
+        function syncQuantityRecipientInputs() {
+            const updateQuantityForm = document.getElementById('updateQuantityForm');
+
+            if (!updateQuantityForm) {
+                return;
+            }
+
+            const ticketHolderNameInput = document.querySelector('[name="ticket_holder_name"][form="paynowForm"]');
+            const recipientOptionInput = document.querySelector(
+                '[name="ticket_recipient_email_option"][form="paynowForm"]:checked'
+            );
+            const otherRecipientEmailInput = document.querySelector(
+                '[name="ticket_recipient_other_email"][form="paynowForm"]'
+            );
+            const quantityTicketHolderNameInput = updateQuantityForm.querySelector('[name="ticket_holder_name"]');
+            const quantityRecipientOptionInput = updateQuantityForm.querySelector('[name="ticket_recipient_email_option"]');
+            const quantityOtherRecipientEmailInput = updateQuantityForm.querySelector(
+                '[name="ticket_recipient_other_email"]'
+            );
+
+            if (quantityTicketHolderNameInput && ticketHolderNameInput) {
+                quantityTicketHolderNameInput.value = ticketHolderNameInput.value;
+            }
+
+            if (quantityRecipientOptionInput && recipientOptionInput) {
+                quantityRecipientOptionInput.value = recipientOptionInput.value;
+            }
+
+            if (quantityOtherRecipientEmailInput && otherRecipientEmailInput) {
+                quantityOtherRecipientEmailInput.value = otherRecipientEmailInput.value;
+            }
         }
 
         function openOtpModal({
