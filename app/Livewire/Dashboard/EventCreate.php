@@ -4,9 +4,11 @@ namespace App\Livewire\Dashboard;
 
 use App\Models\Category;
 use App\Models\Event;
+use App\Models\EventOrganizer;
 use App\Models\Fasilitas;
 use App\Services\SecureImageStorage;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -49,6 +51,18 @@ class EventCreate extends Component
 
     public $selectedFasilitas = [];
 
+    public $organizer_name;
+
+    public $responsible_name;
+
+    public $responsible_position;
+
+    public $phone;
+
+    public $email;
+
+    public $address;
+
     public function mount($uid = null)
     {
         if ($uid) {
@@ -67,6 +81,7 @@ class EventCreate extends Component
             $this->fee = $eventData->fee;
             $eventStart = $eventData->tanggal ? Carbon::parse($eventData->tanggal) : null;
             $eventEnd = $eventData->event_end ? Carbon::parse($eventData->event_end) : null;
+            $organizer = $eventData->organizer;
 
             $this->start_sale = $eventData->start_sale ? Carbon::parse($eventData->start_sale)->format('Y-m-d H:i') : null;
             $this->event_start = $eventStart?->format('Y-m-d H:i');
@@ -80,11 +95,22 @@ class EventCreate extends Component
             $this->deskripsi = $eventData->deskripsi;
             $this->category_id = $eventData->category_id;
             $this->selectedFasilitas = $eventData->fasilitas->pluck('id')->toArray();
+            $this->organizer_name = $organizer?->organizer_name;
+            $this->responsible_name = $organizer?->responsible_name;
+            $this->responsible_position = $organizer?->responsible_position;
+            $this->phone = $organizer?->phone;
+            $this->email = $organizer?->email;
+            $this->address = $organizer?->address;
         } else {
+            $user = auth()->user();
             $this->start_sale = Carbon::now()->format('Y-m-d H:i');
             $eventStart = Carbon::now()->addDays(7);
             $this->event_start = $eventStart->format('Y-m-d H:i');
             $this->event_end = $eventStart->copy()->addHours(2)->format('Y-m-d H:i');
+            $this->responsible_name = $user?->name;
+            $this->phone = $user?->nomor;
+            $this->email = $user?->email;
+            $this->address = $user?->alamat;
         }
     }
 
@@ -105,6 +131,12 @@ class EventCreate extends Component
             'deskripsi' => 'required|string',
             'category_id' => 'required|exists:categories,id',
             'selectedFasilitas' => 'array',
+            'organizer_name' => 'required|string|max:255',
+            'responsible_name' => 'required|string|max:255',
+            'responsible_position' => 'required|string|max:255',
+            'phone' => 'required|string|max:30',
+            'email' => 'required|email|max:255',
+            'address' => 'required|string|max:500',
         ];
     }
 
@@ -145,7 +177,7 @@ class EventCreate extends Component
             return null;
         }
 
-        $data = [
+        $eventData = [
             'category_id' => $this->category_id,
             'event' => $this->event,
             'alamat' => $legacyAddress,
@@ -162,19 +194,45 @@ class EventCreate extends Component
             'cover' => $coverName,
         ];
 
-        if (! $this->editingEventUid) {
-            $user = auth()->user();
-            $ownerId = ($user->role === 'staff') ? $user->parent_uid : $user->uid;
+        $organizerData = [
+            'organizer_name' => $this->organizer_name,
+            'responsible_name' => $this->responsible_name,
+            'responsible_position' => $this->responsible_position,
+            'phone' => $this->phone,
+            'email' => $this->email,
+            'address' => $this->address,
+        ];
 
-            $data['uid'] = $uid;
-            $data['user_uid'] = $ownerId;
-            $data['status'] = 'inactive';
-            $data['slug'] = $slug;
-            $data['konfirmasi'] = null;
+        $newCoverStored = $this->cover !== null;
 
-            $event = Event::create($data);
-        } else {
-            $event->update($data);
+        try {
+            DB::transaction(function () use (&$event, $uid, $slug, $eventData, $organizerData) {
+                if (! $this->editingEventUid) {
+                    $user = auth()->user();
+                    $ownerId = ($user->role === 'staff') ? $user->parent_uid : $user->uid;
+
+                    $event = Event::create($eventData + [
+                        'uid' => $uid,
+                        'user_uid' => $ownerId,
+                        'status' => 'inactive',
+                        'slug' => $slug,
+                        'konfirmasi' => null,
+                    ]);
+                } else {
+                    $event->update($eventData);
+                }
+
+                EventOrganizer::updateOrCreate(
+                    ['event_uid' => $event->uid],
+                    $organizerData
+                );
+            });
+        } catch (\Throwable $exception) {
+            if ($newCoverStored && filled($coverName)) {
+                app(SecureImageStorage::class)->delete('cover', $coverName);
+            }
+
+            throw $exception;
         }
 
         app(SecureImageStorage::class)->delete('cover', $oldCover);

@@ -67,6 +67,50 @@
 
                 <section class="space-y-6 border-t border-slate-100 dark:border-slate-700 pt-8">
                     <div>
+                        <h2 class="text-lg font-black text-slate-800 dark:text-white">Informasi Penyelenggara</h2>
+                        <p class="text-sm text-slate-500 dark:text-slate-400">Data penyelenggara ini disimpan per event dan tidak mengikuti perubahan profil akun.</p>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-[11px] font-black text-slate-400 uppercase tracking-[0.1em] mb-2">Nama Penyelenggara</label>
+                            <x-admin.input wire:model="organizer_name" placeholder="Contoh: PT Event Nusantara" required />
+                            @error('organizer_name') <span class="text-rose-500 text-xs mt-1">{{ $message }}</span> @enderror
+                        </div>
+
+                        <div>
+                            <label class="block text-[11px] font-black text-slate-400 uppercase tracking-[0.1em] mb-2">Nama Penanggung Jawab</label>
+                            <x-admin.input wire:model="responsible_name" placeholder="Contoh: Sawalinto" required />
+                            @error('responsible_name') <span class="text-rose-500 text-xs mt-1">{{ $message }}</span> @enderror
+                        </div>
+
+                        <div>
+                            <label class="block text-[11px] font-black text-slate-400 uppercase tracking-[0.1em] mb-2">Jabatan Penanggung Jawab</label>
+                            <x-admin.input wire:model="responsible_position" placeholder="Contoh: Project Manager" required />
+                            @error('responsible_position') <span class="text-rose-500 text-xs mt-1">{{ $message }}</span> @enderror
+                        </div>
+
+                        <div>
+                            <label class="block text-[11px] font-black text-slate-400 uppercase tracking-[0.1em] mb-2">Nomor HP</label>
+                            <x-admin.input wire:model="phone" placeholder="08xxxxxxxxxx" required />
+                            @error('phone') <span class="text-rose-500 text-xs mt-1">{{ $message }}</span> @enderror
+                        </div>
+
+                        <div>
+                            <label class="block text-[11px] font-black text-slate-400 uppercase tracking-[0.1em] mb-2">Email</label>
+                            <x-admin.input type="email" wire:model="email" placeholder="penyelenggara@example.com" required />
+                            @error('email') <span class="text-rose-500 text-xs mt-1">{{ $message }}</span> @enderror
+                        </div>
+
+                        <div class="md:col-span-2">
+                            <label class="block text-[11px] font-black text-slate-400 uppercase tracking-[0.1em] mb-2">Alamat Penyelenggara</label>
+                            <x-admin.input wire:model="address" placeholder="Alamat lengkap penyelenggara" required />
+                            @error('address') <span class="text-rose-500 text-xs mt-1">{{ $message }}</span> @enderror
+                        </div>
+                    </div>
+                </section>
+
+                <section class="space-y-6 border-t border-slate-100 dark:border-slate-700 pt-8">
+                    <div>
                         <h2 class="text-lg font-black text-slate-800 dark:text-white">Jadwal Event</h2>
                         <p class="text-sm text-slate-500 dark:text-slate-400">Pastikan urutan waktu penjualan dan pelaksanaan event sudah benar.</p>
                     </div>

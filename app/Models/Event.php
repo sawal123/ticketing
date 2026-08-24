@@ -48,6 +48,11 @@ class Event extends Model
         return $this->belongsToMany(Fasilitas::class, 'event_fasilitas', 'event_uid', 'fasilitas_id', 'uid', 'id');
     }
 
+    public function organizer()
+    {
+        return $this->hasOne(EventOrganizer::class, 'event_uid', 'uid');
+    }
+
 
     public function harga()
     {
