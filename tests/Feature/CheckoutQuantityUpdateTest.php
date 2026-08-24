@@ -35,509 +35,46 @@ class CheckoutQuantityUpdateTest extends TestCase
         $this->withoutMiddleware([GlobalDataMiddleware::class, LogActivityMiddleware::class]);
     }
 
-    public function test_reserved_without_payment_link_can_increase_quantity(): void
+    public function test_removed_update_quantity_endpoint_returns_not_found_and_leaves_cart_unchanged(): void
     {
-        [$user, $cart, $hargaCart, $masterHarga] = $this->cartWithSingleTier();
+        $user = $this->user();
+        $event = $this->event();
+        $cart = $this->cart($user, $event);
+        $harga = $this->harga($event);
+        $hargaCart = $this->hargaCart($cart, $harga, 2, 1);
 
         $this->actingAs($user)
             ->post('/checkout/update-quantity', [
                 'cart_uid' => $cart->uid,
                 'items' => [
-                    ['harga_cart_id' => $hargaCart->id, 'quantity' => 3],
+                    ['harga_cart_id' => $hargaCart->id, 'quantity' => 4],
                 ],
             ])
-            ->assertRedirect('/detail-ticket/'.$cart->uid.'/'.$user->uid);
+            ->assertNotFound();
 
-        $cart->refresh();
-        $hargaCart->refresh();
-        $masterHarga->refresh();
-
-        $this->assertSame(3, $hargaCart->quantity);
-        $this->assertSame(3, $masterHarga->reserved_qty);
-        $this->assertSame('Nama Snapshot', $cart->ticket_holder_name);
-        $this->assertSame('recipient@example.test', $cart->ticket_recipient_email);
-        $this->assertNull($cart->gross_amount);
-        $this->assertNull($cart->link);
-        $this->assertDatabaseCount('transactions', 0);
-    }
-
-    public function test_reserved_can_decrease_quantity(): void
-    {
-        [$user, $cart, $hargaCart, $masterHarga] = $this->cartWithSingleTier(['quantity' => 3]);
-
-        $this->actingAs($user)
-            ->post('/checkout/update-quantity', [
-                'cart_uid' => $cart->uid,
-                'items' => [
-                    ['harga_cart_id' => $hargaCart->id, 'quantity' => 1],
-                ],
-            ])
-            ->assertRedirect('/detail-ticket/'.$cart->uid.'/'.$user->uid);
-
-        $this->assertSame(1, $hargaCart->fresh()->quantity);
-        $this->assertSame(1, $masterHarga->fresh()->reserved_qty);
-    }
-
-    public function test_recipient_input_is_preserved_after_quantity_update_success(): void
-    {
-        [$user, $cart, $hargaCart, $masterHarga] = $this->cartWithSingleTier();
-        $originalName = $user->name;
-        $originalEmail = $user->email;
-
-        $this->actingAs($user)
-            ->post('/checkout/update-quantity', [
-                'cart_uid' => $cart->uid,
-                'ticket_holder_name' => 'Nama Baru UI',
-                'ticket_recipient_email_option' => 'other_email',
-                'ticket_recipient_other_email' => 'ui-recipient@example.test',
-                'items' => [
-                    ['harga_cart_id' => $hargaCart->id, 'quantity' => 2],
-                ],
-            ])
-            ->assertRedirect('/detail-ticket/'.$cart->uid.'/'.$user->uid);
-
-        $this->assertSame('Nama Baru UI', session()->getOldInput('ticket_holder_name'));
-        $this->assertSame('other_email', session()->getOldInput('ticket_recipient_email_option'));
-        $this->assertSame('ui-recipient@example.test', session()->getOldInput('ticket_recipient_other_email'));
-        $this->assertNull(session()->getOldInput('items'));
-        $this->assertSame('Nama Snapshot', $cart->fresh()->ticket_holder_name);
-        $this->assertSame('recipient@example.test', $cart->fresh()->ticket_recipient_email);
-        $this->assertSame($originalName, $user->fresh()->name);
-        $this->assertSame($originalEmail, $user->fresh()->email);
         $this->assertSame(2, $hargaCart->fresh()->quantity);
-        $this->assertSame(2, $masterHarga->fresh()->reserved_qty);
-    }
-
-    public function test_recipient_input_is_preserved_after_quantity_update_failure(): void
-    {
-        [$user, $cart, $hargaCart, $masterHarga] = $this->cartWithSingleTier();
-
-        $this->actingAs($user)
-            ->from('/detail-ticket/'.$cart->uid.'/'.$user->uid)
-            ->post('/checkout/update-quantity', [
-                'cart_uid' => $cart->uid,
-                'ticket_holder_name' => 'Nama Gagal UI',
-                'ticket_recipient_email_option' => 'other_email',
-                'ticket_recipient_other_email' => 'gagal@example.test',
-                'items' => [
-                    ['harga_cart_id' => $hargaCart->id, 'quantity' => 0],
-                ],
-            ])
-            ->assertRedirect('/detail-ticket/'.$cart->uid.'/'.$user->uid)
-            ->assertSessionHas('error');
-
-        $this->assertSame('Nama Gagal UI', session()->getOldInput('ticket_holder_name'));
-        $this->assertSame('other_email', session()->getOldInput('ticket_recipient_email_option'));
-        $this->assertSame('gagal@example.test', session()->getOldInput('ticket_recipient_other_email'));
-        $this->assertNull(session()->getOldInput('items'));
+        $this->assertSame(2, $harga->fresh()->reserved_qty);
         $this->assertSame('Nama Snapshot', $cart->fresh()->ticket_holder_name);
-        $this->assertSame('recipient@example.test', $cart->fresh()->ticket_recipient_email);
-        $this->assertSame(1, $hargaCart->fresh()->quantity);
-        $this->assertSame(1, $masterHarga->fresh()->reserved_qty);
+        $this->assertSame($user->email, $cart->fresh()->ticket_recipient_email);
     }
 
-    public function test_controller_validation_failure_only_flashes_recipient_input(): void
+    public function test_checkout_page_does_not_render_quantity_update_controls(): void
     {
-        [$user, $cart, $hargaCart, $masterHarga] = $this->cartWithSingleTier();
-
-        $this->actingAs($user)
-            ->from('/detail-ticket/'.$cart->uid.'/'.$user->uid)
-            ->post('/checkout/update-quantity', [
-                'cart_uid' => $cart->uid,
-                'ticket_holder_name' => 'Nama Malformed UI',
-                'ticket_recipient_email_option' => 'other_email',
-                'ticket_recipient_other_email' => 'malformed@example.test',
-                'items' => [
-                    ['harga_cart_id' => $hargaCart->id],
-                ],
-            ])
-            ->assertRedirect('/detail-ticket/'.$cart->uid.'/'.$user->uid)
-            ->assertSessionHas('error');
-
-        $this->assertSame('Nama Malformed UI', session()->getOldInput('ticket_holder_name'));
-        $this->assertSame('other_email', session()->getOldInput('ticket_recipient_email_option'));
-        $this->assertSame('malformed@example.test', session()->getOldInput('ticket_recipient_other_email'));
-        $this->assertNull(session()->getOldInput('items'));
-        $this->assertNull(session()->getOldInput('cart_uid'));
-        $this->assertSame('Nama Snapshot', $cart->fresh()->ticket_holder_name);
-        $this->assertSame('recipient@example.test', $cart->fresh()->ticket_recipient_email);
-        $this->assertSame(1, $hargaCart->fresh()->quantity);
-        $this->assertSame(1, $masterHarga->fresh()->reserved_qty);
-    }
-
-    public function test_quantity_zero_removes_tier_and_releases_reserved_stock(): void
-    {
-        $user = $this->user();
+        $user = $this->user(['email' => 'buyer@example.test']);
         $event = $this->event();
         $cart = $this->cart($user, $event);
-        $vip = $this->harga($event, ['kategori' => 'VIP']);
-        $festival = $this->harga($event, ['kategori' => 'Festival']);
-        $vipCart = $this->hargaCart($cart, $vip, 1, 1);
-        $festivalCart = $this->hargaCart($cart, $festival, 2, 2);
-
-        $this->actingAs($user)
-            ->post('/checkout/update-quantity', [
-                'cart_uid' => $cart->uid,
-                'items' => [
-                    ['harga_cart_id' => $vipCart->id, 'quantity' => 0],
-                    ['harga_cart_id' => $festivalCart->id, 'quantity' => 2],
-                ],
-            ])
-            ->assertRedirect('/detail-ticket/'.$cart->uid.'/'.$user->uid);
-
-        $this->assertNotNull(DB::table('harga_carts')->where('id', $vipCart->id)->value('deleted_at'));
-        $this->assertSame(0, $vip->fresh()->reserved_qty);
-        $this->assertSame(2, $festival->fresh()->reserved_qty);
-    }
-
-    public function test_inactive_tier_can_decrease_quantity(): void
-    {
-        $user = $this->user();
-        $event = $this->event();
-        $cart = $this->cart($user, $event);
-        $inactiveHarga = $this->harga($event, ['status' => 'inactive', 'qty' => 5]);
-        $activeHarga = $this->harga($event, ['kategori' => 'Festival']);
-        $inactiveHargaCart = $this->hargaCart($cart, $inactiveHarga, 3, 1);
-        $activeHargaCart = $this->hargaCart($cart, $activeHarga, 1, 2);
-
-        $this->actingAs($user)
-            ->post('/checkout/update-quantity', [
-                'cart_uid' => $cart->uid,
-                'items' => [
-                    ['harga_cart_id' => $inactiveHargaCart->id, 'quantity' => 1],
-                    ['harga_cart_id' => $activeHargaCart->id, 'quantity' => 1],
-                ],
-            ])
-            ->assertRedirect('/detail-ticket/'.$cart->uid.'/'.$user->uid);
-
-        $this->assertSame(1, $inactiveHargaCart->fresh()->quantity);
-        $this->assertSame(1, $inactiveHarga->fresh()->reserved_qty);
-        $this->assertSame(1, $activeHargaCart->fresh()->quantity);
-        $this->assertSame(1, $activeHarga->fresh()->reserved_qty);
-    }
-
-    public function test_inactive_tier_can_be_removed_and_release_reserved_stock(): void
-    {
-        $user = $this->user();
-        $event = $this->event();
-        $cart = $this->cart($user, $event);
-        $inactiveHarga = $this->harga($event, ['status' => 'inactive']);
-        $activeHarga = $this->harga($event, ['kategori' => 'Festival']);
-        $inactiveHargaCart = $this->hargaCart($cart, $inactiveHarga, 1, 1);
-        $activeHargaCart = $this->hargaCart($cart, $activeHarga, 1, 2);
-
-        $this->actingAs($user)
-            ->post('/checkout/update-quantity', [
-                'cart_uid' => $cart->uid,
-                'items' => [
-                    ['harga_cart_id' => $inactiveHargaCart->id, 'quantity' => 0],
-                    ['harga_cart_id' => $activeHargaCart->id, 'quantity' => 1],
-                ],
-            ])
-            ->assertRedirect('/detail-ticket/'.$cart->uid.'/'.$user->uid);
-
-        $this->assertNotNull(DB::table('harga_carts')->where('id', $inactiveHargaCart->id)->value('deleted_at'));
-        $this->assertSame(0, $inactiveHarga->fresh()->reserved_qty);
-        $this->assertSame(1, $activeHargaCart->fresh()->quantity);
-    }
-
-    public function test_inactive_tier_cannot_increase_quantity(): void
-    {
-        [$user, $cart, $hargaCart, $masterHarga] = $this->cartWithSingleTier([
-            'harga' => ['status' => 'inactive'],
-        ]);
-
-        $this->actingAs($user)
-            ->from('/detail-ticket/'.$cart->uid.'/'.$user->uid)
-            ->post('/checkout/update-quantity', [
-                'cart_uid' => $cart->uid,
-                'items' => [
-                    ['harga_cart_id' => $hargaCart->id, 'quantity' => 2],
-                ],
-            ])
-            ->assertRedirect('/detail-ticket/'.$cart->uid.'/'.$user->uid)
-            ->assertSessionHas('error');
-
-        $this->assertSame(1, $hargaCart->fresh()->quantity);
-        $this->assertSame(1, $masterHarga->fresh()->reserved_qty);
-    }
-
-    public function test_total_quantity_less_than_one_is_rejected(): void
-    {
-        [$user, $cart, $hargaCart, $masterHarga] = $this->cartWithSingleTier();
-
-        $this->actingAs($user)
-            ->from('/detail-ticket/'.$cart->uid.'/'.$user->uid)
-            ->post('/checkout/update-quantity', [
-                'cart_uid' => $cart->uid,
-                'items' => [
-                    ['harga_cart_id' => $hargaCart->id, 'quantity' => 0],
-                ],
-            ])
-            ->assertRedirect('/detail-ticket/'.$cart->uid.'/'.$user->uid)
-            ->assertSessionHas('error');
-
-        $this->assertSame(1, $hargaCart->fresh()->quantity);
-        $this->assertSame(1, $masterHarga->fresh()->reserved_qty);
-    }
-
-    public function test_total_quantity_more_than_five_is_rejected(): void
-    {
-        $user = $this->user();
-        $event = $this->event();
-        $cart = $this->cart($user, $event);
-        $vip = $this->harga($event, ['kategori' => 'VIP']);
-        $festival = $this->harga($event, ['kategori' => 'Festival']);
-        $vipCart = $this->hargaCart($cart, $vip, 3, 1);
-        $festivalCart = $this->hargaCart($cart, $festival, 2, 2);
-
-        $this->actingAs($user)
-            ->from('/detail-ticket/'.$cart->uid.'/'.$user->uid)
-            ->post('/checkout/update-quantity', [
-                'cart_uid' => $cart->uid,
-                'items' => [
-                    ['harga_cart_id' => $vipCart->id, 'quantity' => 4],
-                    ['harga_cart_id' => $festivalCart->id, 'quantity' => 2],
-                ],
-            ])
-            ->assertRedirect('/detail-ticket/'.$cart->uid.'/'.$user->uid)
-            ->assertSessionHas('error');
-
-        $this->assertSame(3, $vipCart->fresh()->quantity);
-        $this->assertSame(2, $festivalCart->fresh()->quantity);
-    }
-
-    public function test_quantity_cannot_exceed_remaining_stock(): void
-    {
-        $user = $this->user();
-        $event = $this->event();
-        $cart = $this->cart($user, $event);
-        $masterHarga = $this->harga($event, ['qty' => 3, 'reserved_qty' => 1]);
-        $hargaCart = $this->hargaCart($cart, $masterHarga, 1, 1);
-
-        $this->actingAs($user)
-            ->from('/detail-ticket/'.$cart->uid.'/'.$user->uid)
-            ->post('/checkout/update-quantity', [
-                'cart_uid' => $cart->uid,
-                'items' => [
-                    ['harga_cart_id' => $hargaCart->id, 'quantity' => 3],
-                ],
-            ])
-            ->assertRedirect('/detail-ticket/'.$cart->uid.'/'.$user->uid)
-            ->assertSessionHas('error');
-
-        $this->assertSame(1, $hargaCart->fresh()->quantity);
-        $this->assertSame(2, $masterHarga->fresh()->reserved_qty);
-    }
-
-    public function test_failed_tier_update_rolls_back_all_quantity_changes(): void
-    {
-        $user = $this->user();
-        $event = $this->event();
-        $cart = $this->cart($user, $event);
-        $vip = $this->harga($event, ['kategori' => 'VIP', 'qty' => 5, 'reserved_qty' => 1]);
-        $festival = $this->harga($event, ['kategori' => 'Festival', 'qty' => 2, 'reserved_qty' => 1]);
-        $vipCart = $this->hargaCart($cart, $vip, 1, 1);
-        $festivalCart = $this->hargaCart($cart, $festival, 1, 2);
-
-        $this->actingAs($user)
-            ->from('/detail-ticket/'.$cart->uid.'/'.$user->uid)
-            ->post('/checkout/update-quantity', [
-                'cart_uid' => $cart->uid,
-                'items' => [
-                    ['harga_cart_id' => $vipCart->id, 'quantity' => 2],
-                    ['harga_cart_id' => $festivalCart->id, 'quantity' => 2],
-                ],
-            ])
-            ->assertRedirect('/detail-ticket/'.$cart->uid.'/'.$user->uid)
-            ->assertSessionHas('error');
-
-        $this->assertSame(1, $vipCart->fresh()->quantity);
-        $this->assertSame(1, $festivalCart->fresh()->quantity);
-        $this->assertSame(2, $vip->fresh()->reserved_qty);
-        $this->assertSame(2, $festival->fresh()->reserved_qty);
-    }
-
-    public function test_duplicate_master_harga_net_delta_rolls_back_when_stock_is_insufficient(): void
-    {
-        $user = $this->user();
-        $event = $this->event();
-        $cart = $this->cart($user, $event);
-        $masterHarga = $this->harga($event, ['qty' => 3]);
-        $firstHargaCart = $this->hargaCart($cart, $masterHarga, 1, 1);
-        $secondHargaCart = $this->hargaCart($cart, $masterHarga, 1, 2);
-
-        $this->actingAs($user)
-            ->from('/detail-ticket/'.$cart->uid.'/'.$user->uid)
-            ->post('/checkout/update-quantity', [
-                'cart_uid' => $cart->uid,
-                'items' => [
-                    ['harga_cart_id' => $firstHargaCart->id, 'quantity' => 2],
-                    ['harga_cart_id' => $secondHargaCart->id, 'quantity' => 2],
-                ],
-            ])
-            ->assertRedirect('/detail-ticket/'.$cart->uid.'/'.$user->uid)
-            ->assertSessionHas('error');
-
-        $this->assertSame(1, $firstHargaCart->fresh()->quantity);
-        $this->assertSame(1, $secondHargaCart->fresh()->quantity);
-        $this->assertSame(2, $masterHarga->fresh()->reserved_qty);
-    }
-
-    public function test_duplicate_master_harga_uses_net_delta_when_stock_is_sufficient(): void
-    {
-        $user = $this->user();
-        $event = $this->event();
-        $cart = $this->cart($user, $event);
-        $masterHarga = $this->harga($event, ['qty' => 4]);
-        $firstHargaCart = $this->hargaCart($cart, $masterHarga, 1, 1);
-        $secondHargaCart = $this->hargaCart($cart, $masterHarga, 1, 2);
-
-        $this->actingAs($user)
-            ->post('/checkout/update-quantity', [
-                'cart_uid' => $cart->uid,
-                'items' => [
-                    ['harga_cart_id' => $firstHargaCart->id, 'quantity' => 2],
-                    ['harga_cart_id' => $secondHargaCart->id, 'quantity' => 2],
-                ],
-            ])
-            ->assertRedirect('/detail-ticket/'.$cart->uid.'/'.$user->uid);
-
-        $this->assertSame(2, $firstHargaCart->fresh()->quantity);
-        $this->assertSame(2, $secondHargaCart->fresh()->quantity);
-        $this->assertSame(4, $masterHarga->fresh()->reserved_qty);
-    }
-
-    public function test_other_user_cannot_update_cart_quantity(): void
-    {
-        [$owner, $cart, $hargaCart] = $this->cartWithSingleTier();
-        $intruder = $this->user(['uid' => 'user-intruder', 'email' => 'intruder@example.test']);
-
-        $this->actingAs($intruder)
-            ->from('/detail-ticket/'.$cart->uid.'/'.$intruder->uid)
-            ->post('/checkout/update-quantity', [
-                'cart_uid' => $cart->uid,
-                'items' => [
-                    ['harga_cart_id' => $hargaCart->id, 'quantity' => 2],
-                ],
-            ])
-            ->assertRedirect('/detail-ticket/'.$cart->uid.'/'.$intruder->uid)
-            ->assertSessionHas('error');
-
-        $this->assertSame(1, $hargaCart->fresh()->quantity);
-        $this->assertSame($owner->uid, $cart->fresh()->user_uid);
-    }
-
-    public function test_harga_cart_from_another_cart_is_rejected(): void
-    {
-        [$user, $cart, $hargaCart] = $this->cartWithSingleTier();
-        $otherCart = $this->cart($user, $cart->event);
-        $otherHarga = $this->harga($cart->event, ['kategori' => 'Festival']);
-        $foreignHargaCart = $this->hargaCart($otherCart, $otherHarga, 1, 1);
-
-        $this->actingAs($user)
-            ->from('/detail-ticket/'.$cart->uid.'/'.$user->uid)
-            ->post('/checkout/update-quantity', [
-                'cart_uid' => $cart->uid,
-                'items' => [
-                    ['harga_cart_id' => $foreignHargaCart->id, 'quantity' => 2],
-                ],
-            ])
-            ->assertRedirect('/detail-ticket/'.$cart->uid.'/'.$user->uid)
-            ->assertSessionHas('error');
-
-        $this->assertSame(1, $hargaCart->fresh()->quantity);
-        $this->assertSame(1, $foreignHargaCart->fresh()->quantity);
-    }
-
-    public function test_expired_reservation_is_rejected(): void
-    {
-        [$user, $cart, $hargaCart] = $this->cartWithSingleTier([
-            'cart' => ['expires_at' => now()->subMinute()],
-        ]);
-
-        $this->actingAs($user)
-            ->from('/detail-ticket/'.$cart->uid.'/'.$user->uid)
-            ->post('/checkout/update-quantity', [
-                'cart_uid' => $cart->uid,
-                'items' => [
-                    ['harga_cart_id' => $hargaCart->id, 'quantity' => 2],
-                ],
-            ])
-            ->assertRedirect('/detail-ticket/'.$cart->uid.'/'.$user->uid)
-            ->assertSessionHas('error');
-
-        $this->assertSame(1, $hargaCart->fresh()->quantity);
-    }
-
-    public function test_pending_active_link_and_payment_snapshot_states_are_rejected(): void
-    {
-        $user = $this->user();
-        $event = $this->event();
-        $cases = [
-            'pending' => [
-                'status' => Cart::STATUS_PENDING,
-            ],
-            'active_link' => [
-                'status' => Cart::STATUS_RESERVED,
-                'link' => 'https://pay.example.test/existing',
-                'payment_link_expires_at' => now()->addMinutes(10),
-            ],
-            'gross_amount_snapshot' => [
-                'status' => Cart::STATUS_RESERVED,
-                'gross_amount' => 150000,
-                'payment_gateway_id' => 1,
-                'payment_type' => 'bca',
-            ],
-        ];
-
-        foreach ($cases as $attributes) {
-            $cart = $this->cart($user, $event, $attributes);
-            $harga = $this->harga($event);
-            $hargaCart = $this->hargaCart($cart, $harga, 1, 1);
-
-            $this->actingAs($user)
-                ->from('/detail-ticket/'.$cart->uid.'/'.$user->uid)
-                ->post('/checkout/update-quantity', [
-                    'cart_uid' => $cart->uid,
-                    'items' => [
-                        ['harga_cart_id' => $hargaCart->id, 'quantity' => 2],
-                    ],
-                ])
-                ->assertRedirect('/detail-ticket/'.$cart->uid.'/'.$user->uid)
-                ->assertSessionHas('error');
-
-            $this->assertSame(1, $hargaCart->fresh()->quantity);
-        }
-    }
-
-    public function test_pricing_after_update_uses_latest_quantity(): void
-    {
-        $user = $this->user();
-        $event = $this->event(['fee' => 10]);
-        $cart = $this->cart($user, $event);
-        $vip = $this->harga($event, ['kategori' => 'VIP']);
-        $festival = $this->harga($event, ['kategori' => 'Festival']);
-        $vipCart = $this->hargaCart($cart, $vip, 1, 1);
-        $festivalCart = $this->hargaCart($cart, $festival, 1, 2);
+        $harga = $this->harga($event);
         $gateway = $this->gateway();
+
+        $this->hargaCart($cart, $harga, 2, 1);
         $this->eventGateway($event, $gateway);
 
         $this->actingAs($user)
-            ->post('/checkout/update-quantity', [
-                'cart_uid' => $cart->uid,
-                'items' => [
-                    ['harga_cart_id' => $vipCart->id, 'quantity' => 2],
-                    ['harga_cart_id' => $festivalCart->id, 'quantity' => 2],
-                ],
-            ])
-            ->assertRedirect('/detail-ticket/'.$cart->uid.'/'.$user->uid);
-
-        $response = $this->actingAs($user)->get('/detail-ticket/'.$cart->uid.'/'.$user->uid);
-
-        $response->assertOk();
-        $response->assertSee('Total 4 Tiket');
-        $response->assertSee('Rp 600.000');
+            ->get('/detail-ticket/'.$cart->uid.'/'.$user->uid)
+            ->assertOk()
+            ->assertDontSee('Perbarui Jumlah Tiket')
+            ->assertDontSee('updateQuantityForm')
+            ->assertDontSee('/checkout/update-quantity');
     }
 
     protected function createSchema(): void
@@ -748,7 +285,7 @@ class CheckoutQuantityUpdateTest extends TestCase
             'event_uid' => $event->uid,
             'invoice' => 'INV-'.Str::upper(Str::random(8)),
             'ticket_holder_name' => 'Nama Snapshot',
-            'ticket_recipient_email' => 'recipient@example.test',
+            'ticket_recipient_email' => $user->email,
             'status' => Cart::STATUS_RESERVED,
             'expires_at' => now()->addMinutes(15),
         ], $attributes));
@@ -797,16 +334,5 @@ class CheckoutQuantityUpdateTest extends TestCase
             'fee_fixed' => null,
             'fee_percent' => null,
         ], $attributes));
-    }
-
-    protected function cartWithSingleTier(array $overrides = []): array
-    {
-        $user = $this->user();
-        $event = $this->event();
-        $cart = $this->cart($user, $event, $overrides['cart'] ?? []);
-        $harga = $this->harga($event, $overrides['harga'] ?? []);
-        $hargaCart = $this->hargaCart($cart, $harga, $overrides['quantity'] ?? 1, 1);
-
-        return [$user, $cart, $hargaCart, $harga];
     }
 }

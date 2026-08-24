@@ -112,23 +112,11 @@
 
             @php
                 $hasActivePaymentLink = $cart->hasActivePaymentLink();
-                $canUpdateCheckoutQuantity = $cart->canUpdateCheckoutQuantity();
                 $recipientSnapshotLocked = $cart->recipientSnapshotLocked();
-                $selectedRecipientEmailOption = old(
-                    'ticket_recipient_email_option',
-                    filled($cart->ticket_recipient_email) && $cart->ticket_recipient_email !== Auth::user()->email
-                        ? 'other_email'
-                        : 'use_account_email'
-                );
                 $ticketHolderNameValue = old('ticket_holder_name', $cart->ticket_holder_name);
-                $ticketRecipientOtherEmailValue = old(
-                    'ticket_recipient_other_email',
-                    $selectedRecipientEmailOption === 'other_email' ? $cart->ticket_recipient_email : ''
-                );
             @endphp
 
-            <div class="card"
-                @if (!$recipientSnapshotLocked) x-data="{ recipientEmailOption: @js($selectedRecipientEmailOption) }" @endif>
+            <div class="card">
                 <div class="card-header">
                     <div class="card-icon" style="background:rgba(61,217,196,0.12);">👤</div>
                     <div class="card-title">Informasi Pemegang Tiket</div>
@@ -154,31 +142,13 @@
                                     Email Penerima Tiket
                                 </div>
 
-                                <label
-                                    style="display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border-radius:14px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.03);cursor:pointer;">
-                                    <input type="radio" name="ticket_recipient_email_option" value="use_account_email"
-                                        form="paynowForm" x-model="recipientEmailOption" required
-                                        @checked($selectedRecipientEmailOption === 'use_account_email')>
-                                    <span style="display:grid;gap:4px;">
-                                        <span style="font-size:13px;color:#fff;">Gunakan email akun saat ini</span>
-                                        <span style="font-size:12px;color:var(--muted);">{{ Auth::user()->email }}</span>
-                                    </span>
-                                </label>
-
-                                <label
-                                    style="display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border-radius:14px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.03);cursor:pointer;margin-top:10px;">
-                                    <input type="radio" name="ticket_recipient_email_option" value="other_email"
-                                        form="paynowForm" x-model="recipientEmailOption" required
-                                        @checked($selectedRecipientEmailOption === 'other_email')>
-                                    <span style="font-size:13px;color:#fff;">Kirim ke email lain</span>
-                                </label>
-
-                                <div x-show="recipientEmailOption === 'other_email'" x-cloak style="margin-top:12px;">
-                                    <input type="email" name="ticket_recipient_other_email"
-                                        value="{{ $ticketRecipientOtherEmailValue }}" maxlength="255"
-                                        form="paynowForm" class="voucher-input" placeholder="nama@email.com"
-                                        :required="recipientEmailOption === 'other_email'"
-                                        :disabled="recipientEmailOption !== 'other_email'">
+                                <div
+                                    style="display:grid;gap:4px;padding:12px 14px;border-radius:14px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.03);">
+                                    <span style="font-size:13px;color:#fff;">Gunakan email akun saat ini</span>
+                                    <span style="font-size:12px;color:var(--muted);">{{ Auth::user()->email }}</span>
+                                </div>
+                                <div style="margin-top:8px;font-size:12px;color:var(--muted);line-height:1.6;">
+                                    Tiket akan dikirim ke email akun yang digunakan saat mendaftar.
                                 </div>
                             </div>
                         </div>
@@ -248,47 +218,6 @@
                             @endforeach
                         </tbody>
                     </table>
-                    @if ($canUpdateCheckoutQuantity)
-                        <form action="{{ url('/checkout/update-quantity') }}" method="post" id="updateQuantityForm"
-                            onsubmit="syncQuantityRecipientInputs()"
-                            style="margin-top:16px;display:grid;gap:12px;">
-                            @csrf
-                            <input type="hidden" name="cart_uid" value="{{ $cart->uid }}">
-                            <input type="hidden" name="ticket_holder_name" value="{{ $ticketHolderNameValue }}">
-                            <input type="hidden" name="ticket_recipient_email_option"
-                                value="{{ $selectedRecipientEmailOption }}">
-                            <input type="hidden" name="ticket_recipient_other_email"
-                                value="{{ $ticketRecipientOtherEmailValue }}">
-                            @foreach ($ticketRows as $hargaRow)
-                                <div
-                                    style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border-radius:14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);">
-                                    <div style="display:grid;gap:4px;">
-                                        <input type="hidden" name="items[{{ $hargaRow->id }}][harga_cart_id]"
-                                            value="{{ $hargaRow->id }}">
-                                        <span style="font-size:13px;color:#fff;font-weight:700;">{{ $hargaRow->kategori_harga }}</span>
-                                        <span style="font-size:12px;color:var(--muted);">Rp
-                                            {{ number_format($hargaRow->harga_ticket, 0, ',', '.') }} per tiket</span>
-                                    </div>
-                                    <div style="display:flex;align-items:center;gap:10px;">
-                                        <button type="button" class="copy-btn" onclick="adjustCheckoutQuantity(this, -1)"
-                                            data-quantity-target="quantity-{{ $hargaRow->id }}">-</button>
-                                        <input type="number" id="quantity-{{ $hargaRow->id }}"
-                                            name="items[{{ $hargaRow->id }}][quantity]" value="{{ $hargaRow->quantity }}"
-                                            min="0" max="5" data-ticket-quantity class="voucher-input"
-                                            style="width:88px;padding:10px 12px;text-align:center;" readonly>
-                                        <button type="button" class="copy-btn" onclick="adjustCheckoutQuantity(this, 1)"
-                                            data-quantity-target="quantity-{{ $hargaRow->id }}">+</button>
-                                    </div>
-                                </div>
-                            @endforeach
-                            <div style="font-size:12px;color:var(--muted);line-height:1.6;">
-                                Total dan biaya pembayaran akan dihitung ulang dari server setelah jumlah tiket diperbarui.
-                            </div>
-                            <button type="submit" class="btn-pay">
-                                <span>Perbarui Jumlah Tiket</span>
-                            </button>
-                        </form>
-                    @endif
                     <div class="ticket-summary-row">
                         <div class="ticket-count-pill">✓ Total {{ $fee }} Tiket</div>
                         <span style="font-size:12px;color:var(--muted);">Tiket akan dikirim via email</span>
@@ -583,25 +512,6 @@
             @if ($cart->status === \App\Models\Cart::STATUS_RESERVED && $cart->gross_amount === null)
                 updateCheckoutTotals(resolvedInternetFee);
             @endif
-        }
-
-        function adjustCheckoutQuantity(button, delta) {
-            const targetId = button.dataset.quantityTarget;
-            const input = targetId ? document.getElementById(targetId) : null;
-
-            if (!input) {
-                return;
-            }
-
-            const quantityInputs = Array.from(document.querySelectorAll('#updateQuantityForm [data-ticket-quantity]'));
-            const currentValue = parseInt(input.value, 10) || 0;
-            const otherTotal = quantityInputs
-                .filter((quantityInput) => quantityInput !== input)
-                .reduce((total, quantityInput) => total + (parseInt(quantityInput.value, 10) || 0), 0);
-
-            const nextValue = Math.max(0, Math.min(5 - otherTotal, currentValue + delta));
-
-            input.value = nextValue;
         }
 
         document.addEventListener('DOMContentLoaded', function() {
@@ -1207,39 +1117,6 @@
             submitPaynowOnce(form);
         }
 
-        function syncQuantityRecipientInputs() {
-            const updateQuantityForm = document.getElementById('updateQuantityForm');
-
-            if (!updateQuantityForm) {
-                return;
-            }
-
-            const ticketHolderNameInput = document.querySelector('[name="ticket_holder_name"][form="paynowForm"]');
-            const recipientOptionInput = document.querySelector(
-                '[name="ticket_recipient_email_option"][form="paynowForm"]:checked'
-            );
-            const otherRecipientEmailInput = document.querySelector(
-                '[name="ticket_recipient_other_email"][form="paynowForm"]'
-            );
-            const quantityTicketHolderNameInput = updateQuantityForm.querySelector('[name="ticket_holder_name"]');
-            const quantityRecipientOptionInput = updateQuantityForm.querySelector('[name="ticket_recipient_email_option"]');
-            const quantityOtherRecipientEmailInput = updateQuantityForm.querySelector(
-                '[name="ticket_recipient_other_email"]'
-            );
-
-            if (quantityTicketHolderNameInput && ticketHolderNameInput) {
-                quantityTicketHolderNameInput.value = ticketHolderNameInput.value;
-            }
-
-            if (quantityRecipientOptionInput && recipientOptionInput) {
-                quantityRecipientOptionInput.value = recipientOptionInput.value;
-            }
-
-            if (quantityOtherRecipientEmailInput && otherRecipientEmailInput) {
-                quantityOtherRecipientEmailInput.value = otherRecipientEmailInput.value;
-            }
-        }
-
         function openOtpModal({
             message = '',
             isLoading = false,
@@ -1390,14 +1267,9 @@
             const selectedPayElement = document.querySelector('.pay-option.selected .pay-name');
             const paymentName = escapeHtml(selectedPayElement ? selectedPayElement.textContent.trim() : 'N/A');
             const grandTotal = escapeHtml(document.getElementById('grand-total').textContent.trim());
-            const ticketHolderNameInput = form.querySelector('[name="ticket_holder_name"]');
-            const recipientOptionInput = form.querySelector('[name="ticket_recipient_email_option"]:checked');
-            const otherRecipientEmailInput = form.querySelector('[name="ticket_recipient_other_email"]');
+            const ticketHolderNameInput = form.elements.namedItem('ticket_holder_name');
             const ticketHolderName = escapeHtml(ticketHolderNameInput ? ticketHolderNameInput.value.trim() : '');
-            const recipientOption = recipientOptionInput ? recipientOptionInput.value : 'use_account_email';
-            const ticketRecipientEmail = escapeHtml(recipientOption === 'other_email'
-                ? (otherRecipientEmailInput ? otherRecipientEmailInput.value.trim() : '')
-                : @json(Auth::user()->email));
+            const ticketRecipientEmail = escapeHtml(@json(Auth::user()->email));
 
             ticketHtml += `
                 <div class="checkout-ticket-total">
@@ -1419,7 +1291,7 @@
                             <div class="checkout-summary-card">
                                 <label class="checkout-summary-label">Email Penerima Tiket</label>
                                 <div class="checkout-summary-value">${ticketRecipientEmail}</div>
-                                <small class="checkout-summary-note">Email penerima yang dipilih</small>
+                                <small class="checkout-summary-note">Tiket akan dikirim ke email akun Anda</small>
                             </div>
                             <div class="checkout-summary-card">
                                 <label class="checkout-summary-label">Metode Pembayaran</label>
