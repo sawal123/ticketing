@@ -743,6 +743,12 @@ class EventDetail extends Component
             } else {
                 $user = $cart->users;
                 if ($user) {
+                    if (! sendEmailETransaksi::resolveRecipient($user, $cart)) {
+                        session()->flash('error', 'Email penerima tiket tidak valid atau kosong.');
+
+                        return;
+                    }
+
                     app(GateTokenService::class)->ensureTicketAccessReady($cart);
                     $cart->refresh();
                     dispatch(new sendEmailETransaksi($user, $cart, true));

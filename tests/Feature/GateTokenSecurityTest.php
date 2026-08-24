@@ -7,6 +7,7 @@ use App\Http\Middleware\LogActivityMiddleware;
 use App\Jobs\sendEmailETransaksi;
 use App\Jobs\sendEmailTrnsaksi;
 use App\Livewire\Admin\EventDetail;
+use App\Livewire\Dashboard\EventDetail as DashboardEventDetail;
 use App\Mail\MidtransPaymentNotification;
 use App\Models\Cart;
 use App\Models\Cash;
@@ -749,6 +750,135 @@ class GateTokenSecurityTest extends TestCase
             && $job->isResend);
     }
 
+    public function test_admin_manual_resend_online_with_invalid_snapshot_recipient_does_not_queue(): void
+    {
+        Queue::fake();
+        [$owner, $event, $buyer, $cart] = $this->ticket(cartAttributes: [
+            'ticket_holder_name' => 'Broken Holder',
+            'ticket_recipient_email' => 'invalid-email',
+        ]);
+
+        $component = app(EventDetail::class);
+        $component->mount($event->uid);
+        $component->resendEmailUid = $cart->uid;
+        $component->resendEmail();
+
+        Queue::assertNothingPushed();
+        $cart->refresh();
+        $this->assertNull($cart->gate_token_hash);
+        $this->assertNull($cart->gate_token_encrypted);
+        $this->assertNull(session('message'));
+        $this->assertSame('Email penerima tiket tidak valid atau kosong.', session('error'));
+    }
+
+    public function test_dashboard_manual_resend_online_with_valid_snapshot_queues_resend_job(): void
+    {
+        Queue::fake();
+        [$owner, $event, $buyer, $cart] = $this->ticket(cartAttributes: [
+            'ticket_holder_name' => 'Dashboard Holder',
+            'ticket_recipient_email' => 'dashboard-recipient@example.test',
+        ]);
+        $this->actingAs($owner);
+
+        $component = app(DashboardEventDetail::class);
+        $component->mount($event->uid);
+        $component->resendEmailUid = $cart->uid;
+        $component->resendEmail();
+
+        Queue::assertPushed(sendEmailETransaksi::class, fn (sendEmailETransaksi $job) => $job->isResend === true
+            && $job->userUid === $buyer->uid
+            && $job->cartUid === $cart->uid);
+    }
+
+    public function test_dashboard_manual_resend_online_with_invalid_snapshot_does_not_queue(): void
+    {
+        Queue::fake();
+        [$owner, $event, $buyer, $cart] = $this->ticket(cartAttributes: [
+            'ticket_holder_name' => 'Invalid Dashboard Holder',
+            'ticket_recipient_email' => 'invalid-email',
+        ]);
+        $this->actingAs($owner);
+
+        $component = app(DashboardEventDetail::class);
+        $component->mount($event->uid);
+        $component->resendEmailUid = $cart->uid;
+        $component->resendEmail();
+
+        Queue::assertNothingPushed();
+        $cart->refresh();
+        $this->assertNull($cart->gate_token_hash);
+        $this->assertNull($cart->gate_token_encrypted);
+        $this->assertSame('Email penerima tiket tidak valid atau kosong.', session('error'));
+    }
+
+    public function test_dashboard_manual_resend_scanned_ticket_does_not_queue_or_issue_credentials(): void
+    {
+        Queue::fake();
+        [$owner, $event, $buyer, $cart] = $this->ticket(cartAttributes: [
+            'ticket_holder_name' => 'Scanned Dashboard Holder',
+            'ticket_recipient_email' => 'scanned-dashboard@example.test',
+            'scanned_at' => now(),
+        ]);
+        $this->actingAs($owner);
+
+        $component = app(DashboardEventDetail::class);
+        $component->mount($event->uid);
+        $component->resendEmailUid = $cart->uid;
+        $component->resendEmail();
+
+        Queue::assertNothingPushed();
+        $cart->refresh();
+        $this->assertNull($cart->gate_token_hash);
+        $this->assertNull($cart->gate_token_encrypted);
+        $this->assertNull($cart->gate_manual_code_hash);
+        $this->assertNull($cart->gate_manual_code_encrypted);
+        $this->assertSame('Tiket sudah digunakan dan tidak dapat dikirim ulang.', session('error'));
+    }
+
+    public function test_dashboard_manual_resend_confirmed_ticket_does_not_queue(): void
+    {
+        Queue::fake();
+        [$owner, $event, $buyer, $cart] = $this->ticket(cartAttributes: [
+            'ticket_holder_name' => 'Confirmed Dashboard Holder',
+            'ticket_recipient_email' => 'confirmed-dashboard@example.test',
+            'konfirmasi' => '1',
+        ]);
+        $this->actingAs($owner);
+
+        $component = app(DashboardEventDetail::class);
+        $component->mount($event->uid);
+        $component->resendEmailUid = $cart->uid;
+        $component->resendEmail();
+
+        Queue::assertNothingPushed();
+        $this->assertSame('Tiket sudah digunakan dan tidak dapat dikirim ulang.', session('error'));
+    }
+
+    public function test_dashboard_manual_resend_cash_queues_resend_job_for_cash_buyer(): void
+    {
+        Queue::fake();
+        [$owner, $event, $buyer, $cart] = $this->ticket();
+        $cart->update(['payment_type' => 'cash']);
+        Cash::create([
+            'uid' => $cart->uid,
+            'uid_user' => $owner->uid,
+            'uid_event' => $event->uid,
+            'name' => 'Dashboard Cash Buyer',
+            'email' => 'dashboard-cash@example.test',
+        ]);
+        $this->actingAs($owner);
+
+        $component = app(DashboardEventDetail::class);
+        $component->mount($event->uid);
+        $component->resendEmailUid = $cart->uid;
+        $component->resendEmail();
+
+        Queue::assertPushed(sendEmailTrnsaksi::class, fn (sendEmailTrnsaksi $job) => $job->cartUid === $cart->uid
+            && $job->recipientEmail === 'dashboard-cash@example.test'
+            && $job->recipientName === 'Dashboard Cash Buyer'
+            && $job->isResend === true);
+    }
+
     public function test_secure_online_ticket_url_uses_uid_proof_not_invoice_or_raw_token_and_opens_success_ticket(): void
     {
         [$owner, $event, $buyer, $cart] = $this->ticket();
@@ -954,6 +1084,8 @@ class GateTokenSecurityTest extends TestCase
             'user_uid' => $buyer->uid,
             'event_uid' => $event->uid,
             'invoice' => 'INV-'.Str::upper(Str::random(10)),
+            'ticket_holder_name' => null,
+            'ticket_recipient_email' => null,
             'status' => Cart::STATUS_SUCCESS,
             'konfirmasi' => null,
             'payment_type' => 'bank_transfer',
@@ -1030,12 +1162,37 @@ class GateTokenSecurityTest extends TestCase
             $table->softDeletes();
         });
 
+        Schema::create('talent', function ($table) {
+            $table->id();
+            $table->string('uid');
+            $table->string('talent')->nullable();
+            $table->string('gambar')->nullable();
+            $table->string('link')->nullable();
+            $table->timestamps();
+            $table->softDeletes();
+        });
+
+        Schema::create('hargas', function ($table) {
+            $table->id();
+            $table->string('uid');
+            $table->string('kategori')->nullable();
+            $table->unsignedInteger('qty')->default(0);
+            $table->unsignedInteger('sold_qty')->default(0);
+            $table->unsignedInteger('reserved_qty')->default(0);
+            $table->integer('harga')->default(0);
+            $table->string('status')->default('active');
+            $table->timestamps();
+            $table->softDeletes();
+        });
+
         Schema::create('carts', function ($table) {
             $table->id();
             $table->string('uid')->unique();
             $table->string('user_uid');
             $table->string('event_uid');
             $table->string('invoice')->nullable();
+            $table->string('ticket_holder_name')->nullable();
+            $table->string('ticket_recipient_email')->nullable();
             $table->char('gate_token_hash', 64)->nullable()->unique();
             $table->text('gate_token_encrypted')->nullable();
             $table->char('gate_manual_code_hash', 64)->nullable()->unique();
@@ -1057,6 +1214,7 @@ class GateTokenSecurityTest extends TestCase
             $table->id();
             $table->string('uid');
             $table->string('event_uid');
+            $table->unsignedBigInteger('harga_id')->nullable();
             $table->string('orderBy');
             $table->string('kategori_harga');
             $table->unsignedInteger('quantity');
