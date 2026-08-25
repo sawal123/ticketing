@@ -191,6 +191,46 @@
 
                 <section class="space-y-6 border-t border-slate-100 dark:border-slate-700 pt-8">
                     <div>
+                        <h2 class="text-lg font-black text-slate-800 dark:text-white">Dokumen Penyelenggara</h2>
+                        <p class="text-sm text-slate-500 dark:text-slate-400">Surat penyelenggara event atau seminar disimpan per event dan tetap private.</p>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-[11px] font-black text-slate-400 uppercase tracking-[0.1em] mb-2">Nomor Surat</label>
+                            <x-admin.input wire:model="document_number" placeholder="Contoh: 001/SP-EVENT/VIII/2026" required />
+                            @error('document_number') <span class="text-rose-500 text-xs mt-1">{{ $message }}</span> @enderror
+                        </div>
+
+                        <div wire:ignore>
+                            <label class="block text-[11px] font-black text-slate-400 uppercase tracking-[0.1em] mb-2">Tanggal Surat</label>
+                            <div class="relative" x-data
+                                x-init="flatpickr($refs.documentDate, { dateFormat: 'Y-m-d' })">
+                                <x-admin.input x-ref="documentDate" wire:model="document_date" placeholder="YYYY-MM-DD"
+                                    icon="calendar" required />
+                            </div>
+                            @error('document_date') <span class="text-rose-500 text-xs mt-1">{{ $message }}</span> @enderror
+                        </div>
+
+                        <div class="md:col-span-2">
+                            <label class="block text-[11px] font-black text-slate-400 uppercase tracking-[0.1em] mb-2">Surat Penyelenggara Event/Seminar</label>
+                            <input type="file" wire:model="organizer_letter" accept=".pdf,image/jpeg,image/png"
+                                class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-800 dark:text-slate-200 text-sm focus:ring-2 focus:ring-indigo-500 transition-all">
+                            @if ($existingOrganizerLetterOriginalName)
+                                <div class="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                                    File saat ini: {{ $existingOrganizerLetterOriginalName }}
+                                </div>
+                            @endif
+                            <div wire:loading wire:target="organizer_letter" class="text-indigo-600 text-xs font-semibold mt-2">
+                                Mengupload surat penyelenggara...
+                            </div>
+                            <div class="mt-2 text-xs text-slate-500 dark:text-slate-400">Format yang diterima: PDF, JPG, JPEG, PNG. Maksimal 5 MB.</div>
+                            @error('organizer_letter') <span class="text-rose-500 text-xs mt-1">{{ $message }}</span> @enderror
+                        </div>
+                    </div>
+                </section>
+
+                <section class="space-y-6 border-t border-slate-100 dark:border-slate-700 pt-8">
+                    <div>
                         <h2 class="text-lg font-black text-slate-800 dark:text-white">Lokasi Event</h2>
                         <p class="text-sm text-slate-500 dark:text-slate-400">Gunakan detail venue yang lengkap agar menjadi sumber data event yang rapi.</p>
                     </div>

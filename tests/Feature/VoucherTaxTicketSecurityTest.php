@@ -11,6 +11,7 @@ use App\Models\Cart;
 use App\Models\CartVoucher;
 use App\Models\Category;
 use App\Models\Event;
+use App\Models\EventDocument;
 use App\Models\Harga;
 use App\Models\HargaCart;
 use App\Models\User;
@@ -254,6 +255,9 @@ class VoucherTaxTicketSecurityTest extends TestCase
             ->set('account_number', '1234567890')
             ->set('account_holder_name', 'PT Event')
             ->set('bank_book', UploadedFile::fake()->create('bank-book.pdf', 128, 'application/pdf'))
+            ->set('document_number', 'FEE-001')
+            ->set('document_date', now()->toDateString())
+            ->set('organizer_letter', UploadedFile::fake()->create('organizer-letter.pdf', 128, 'application/pdf'))
             ->call('save');
 
         $event = Event::where('event', 'Fee Event')->firstOrFail();
@@ -284,6 +288,17 @@ class VoucherTaxTicketSecurityTest extends TestCase
             'status' => 'pending',
         ]);
         Storage::disk('local')->put('private/events/'.$event->uid.'/bank/old-book.pdf', 'old');
+        $event->organizerLetter()->create([
+            'uid' => (string) Str::uuid(),
+            'document_type' => EventDocument::TYPE_ORGANIZER_LETTER,
+            'document_number' => 'OLD-FEE-001',
+            'document_date' => now()->toDateString(),
+            'original_name' => 'old-organizer-letter.pdf',
+            'file_path' => 'private/events/'.$event->uid.'/documents/old-organizer-letter.pdf',
+            'mime_type' => 'application/pdf',
+            'status' => 'pending',
+        ]);
+        Storage::disk('local')->put('private/events/'.$event->uid.'/documents/old-organizer-letter.pdf', 'old-doc');
         $category = Category::create(['name' => 'Sports', 'slug' => 'sports']);
         $event->update(['category_id' => $category->id]);
 
@@ -326,6 +341,9 @@ class VoucherTaxTicketSecurityTest extends TestCase
                 ->set('account_number', '1234567890')
                 ->set('account_holder_name', 'PT Event')
                 ->set('bank_book', UploadedFile::fake()->create('bank-book.pdf', 128, 'application/pdf'))
+                ->set('document_number', 'FEE-VAL-001')
+                ->set('document_date', now()->toDateString())
+                ->set('organizer_letter', UploadedFile::fake()->create('organizer-letter.pdf', 128, 'application/pdf'))
                 ->call('save')
                 ->assertHasErrors('fee');
         }

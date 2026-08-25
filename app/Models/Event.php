@@ -58,6 +58,17 @@ class Event extends Model
         return $this->hasOne(EventBankAccount::class, 'event_uid', 'uid');
     }
 
+    public function documents()
+    {
+        return $this->hasMany(EventDocument::class, 'event_uid', 'uid');
+    }
+
+    public function organizerLetter()
+    {
+        return $this->hasOne(EventDocument::class, 'event_uid', 'uid')
+            ->where('document_type', EventDocument::TYPE_ORGANIZER_LETTER);
+    }
+
 
     public function harga()
     {
