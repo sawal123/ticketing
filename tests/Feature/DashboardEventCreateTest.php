@@ -801,6 +801,81 @@ class DashboardEventCreateTest extends TestCase
         $this->assertSame('', $organizerLetter->original_name);
     }
 
+    public function test_missing_existing_organizer_letter_file_requires_reupload_and_resets_verification_state(): void
+    {
+        $tenant = $this->tenant();
+        $category = Category::create(['name' => 'Missing Organizer Letter', 'slug' => 'missing-organizer-letter']);
+        $event = $this->event($tenant, ['category_id' => $category->id]);
+
+        EventOrganizer::create([
+            'event_uid' => $event->uid,
+            'organizer_name' => 'Organizer Missing File',
+            'responsible_name' => 'PJ Missing File',
+            'responsible_position' => 'Manager',
+            'phone' => '081234567824',
+            'email' => 'missing-file@example.test',
+            'address' => 'Alamat missing file',
+        ]);
+
+        EventBankAccount::create([
+            'event_uid' => $event->uid,
+            'bank_name' => 'Bank Missing File',
+            'account_number' => '456456456',
+            'account_holder_name' => 'Pemilik Missing File',
+            'bank_book_path' => 'private/events/'.$event->uid.'/bank/missing-file-bank.pdf',
+            'bank_book_original_name' => 'missing-file-bank.pdf',
+            'bank_book_mime' => 'application/pdf',
+            'status' => 'pending',
+        ]);
+        Storage::disk('local')->put('private/events/'.$event->uid.'/bank/missing-file-bank.pdf', 'bank');
+
+        EventDocument::create([
+            'uid' => (string) Str::uuid(),
+            'event_uid' => $event->uid,
+            'document_type' => EventDocument::TYPE_ORGANIZER_LETTER,
+            'document_number' => 'DOC-MISSING',
+            'document_date' => '2026-08-19',
+            'original_name' => 'missing-file-doc.pdf',
+            'file_path' => 'private/events/'.$event->uid.'/documents/missing-file-doc.pdf',
+            'mime_type' => 'application/pdf',
+            'status' => 'verified',
+            'verified_at' => '2026-08-22 12:00:00',
+            'verified_by' => 'admin-doc',
+            'rejection_reason' => 'old reason',
+        ]);
+
+        Livewire::actingAs($tenant)
+            ->test(EventCreate::class, ['uid' => $event->uid])
+            ->set('existingOrganizerLetterPath', 'private/events/hacked/documents/evil.pdf')
+            ->set('existingOrganizerLetterOriginalName', 'evil.pdf')
+            ->call('save')
+            ->assertHasErrors([
+                'organizer_letter' => ['required'],
+            ]);
+
+        $organizerLetter = $event->fresh()->organizerLetter()->firstOrFail();
+
+        $this->assertSame('private/events/'.$event->uid.'/documents/missing-file-doc.pdf', $organizerLetter->file_path);
+        $this->assertSame('missing-file-doc.pdf', $organizerLetter->original_name);
+
+        Livewire::actingAs($tenant)
+            ->test(EventCreate::class, ['uid' => $event->uid])
+            ->set('existingOrganizerLetterPath', 'private/events/hacked/documents/evil.pdf')
+            ->set('existingOrganizerLetterOriginalName', 'evil.pdf')
+            ->set('organizer_letter', UploadedFile::fake()->create('replacement-organizer-letter.pdf', 128, 'application/pdf'))
+            ->call('save');
+
+        $organizerLetter = $event->fresh()->organizerLetter()->firstOrFail();
+
+        $this->assertNotSame('private/events/'.$event->uid.'/documents/missing-file-doc.pdf', $organizerLetter->file_path);
+        $this->assertSame('replacement-organizer-letter.pdf', $organizerLetter->original_name);
+        $this->assertSame('pending', $organizerLetter->status);
+        $this->assertNull($organizerLetter->verified_at);
+        $this->assertNull($organizerLetter->verified_by);
+        $this->assertNull($organizerLetter->rejection_reason);
+        Storage::disk('local')->assertExists($organizerLetter->file_path);
+    }
+
     public function test_tampering_bank_book_display_properties_cannot_bypass_required_upload_when_database_has_no_bank_book(): void
     {
         $tenant = $this->tenant();

@@ -130,8 +130,12 @@ class EventCreate extends Component
             $this->existingBankBookOriginalName = $bankAccount?->bank_book_original_name;
             $this->document_number = $organizerLetter?->document_number;
             $this->document_date = $organizerLetter?->document_date?->format('Y-m-d');
-            $this->existingOrganizerLetterPath = $organizerLetter?->file_path;
-            $this->existingOrganizerLetterOriginalName = $organizerLetter?->original_name;
+            $this->existingOrganizerLetterPath = $this->organizerLetterFileExists($organizerLetter)
+                ? $organizerLetter?->file_path
+                : null;
+            $this->existingOrganizerLetterOriginalName = $this->organizerLetterFileExists($organizerLetter)
+                ? $organizerLetter?->original_name
+                : null;
         } else {
             $user = auth()->user();
             $this->start_sale = Carbon::now()->format('Y-m-d H:i');
@@ -429,7 +433,7 @@ class EventCreate extends Component
 
     private function organizerLetterRules(?EventDocument $existingOrganizerLetter): array
     {
-        $required = blank($this->editingEventUid) || blank($existingOrganizerLetter?->file_path);
+        $required = blank($this->editingEventUid) || ! $this->organizerLetterFileExists($existingOrganizerLetter);
 
         return [
             $required ? 'required' : 'nullable',
@@ -438,6 +442,13 @@ class EventCreate extends Component
             'mimetypes:application/pdf,image/jpeg,image/png',
             'max:5120',
         ];
+    }
+
+    private function organizerLetterFileExists(?EventDocument $existingOrganizerLetter): bool
+    {
+        $path = $existingOrganizerLetter?->file_path;
+
+        return filled($path) && Storage::disk('local')->exists($path);
     }
 
     private function bankAccountHasChanges(?EventBankAccount $existingBankAccount, bool $newBankBookStored): bool
