@@ -49,6 +49,11 @@
             <i data-lucide="ticket" class="w-4 h-4"></i>
             Manajemen Tiket
         </button>
+        <button wire:click="setTab('mou')"
+            class="flex items-center gap-2 cursor-pointer px-4 py-2 text-sm font-medium rounded-lg transition-all {{ $activeTab === 'mou' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700' }}">
+            <i data-lucide="file-badge" class="w-4 h-4"></i>
+            MOU
+        </button>
         <button wire:click="setTab('transaksi')"
             class="flex items-center gap-2 cursor-pointer px-4 py-2 text-sm font-medium rounded-lg transition-all {{ $activeTab === 'transaksi' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700' }}">
             <i data-lucide="shopping-cart" class="w-4 h-4"></i>
@@ -271,6 +276,26 @@
                         </tr>
                     @endforelse
                 </x-admin.table>
+            @elseif($activeTab === 'mou')
+                <div class="space-y-4">
+                    <div class="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm text-slate-500 shadow-sm">
+                        Preview MOU pada tahap ini bersifat read-only dan selalu membaca data live event yang terbaru.
+                    </div>
+
+                    @if ($mouPreview)
+                        @include('agreements.mou-preview', ['preview' => $mouPreview])
+                    @else
+                        <div class="rounded-[2rem] border-2 border-dashed border-slate-200 bg-white px-8 py-14 text-center shadow-sm">
+                            <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-slate-100 text-slate-400">
+                                <i data-lucide="file-search" class="h-8 w-8"></i>
+                            </div>
+                            <h3 class="mt-5 text-lg font-bold text-slate-900">MOU belum tersedia untuk event ini.</h3>
+                            <p class="mt-2 text-sm text-slate-500">
+                                Event lama tanpa agreement tetap aman dibuka, tetapi belum memiliki preview MOU.
+                            </p>
+                        </div>
+                    @endif
+                </div>
             @elseif($activeTab === 'transaksi')
                 <p class="mb-4 flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
                     <i data-lucide="info" class="w-3.5 h-3.5 shrink-0"></i>
