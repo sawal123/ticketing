@@ -9,6 +9,7 @@ use App\Models\Cash;
 use App\Models\Event;
 use App\Models\Harga;
 use App\Models\Talent;
+use App\Services\Agreements\AgreementPreviewService;
 use App\Services\Reports\FinancialSnapshotService;
 use App\Services\SecureImageStorage;
 use App\Services\Tickets\GateTokenService;
@@ -46,7 +47,7 @@ class EventDetail extends Component
     #[Layout('layouts.unified')]
     public $eventUid;
 
-    public $activeTab = 'umum'; // umum, tiket, transaksi
+    public $activeTab = 'umum'; // umum, tiket, mou, transaksi
 
     public $searchTransaction = '';
 
@@ -116,7 +117,7 @@ class EventDetail extends Component
 
     private function allowedTabs(): array
     {
-        return ['umum', 'tiket', 'transaksi'];
+        return ['umum', 'tiket', 'mou', 'transaksi'];
     }
 
     private function sanitizeFilters(): void
@@ -629,6 +630,11 @@ class EventDetail extends Component
                 ->paginate($this->perPage);
         }
 
+        $mouPreview = null;
+        if ($this->activeTab === 'mou') {
+            $mouPreview = app(AgreementPreviewService::class)->buildForEvent($event);
+        }
+
         $selectedTransaction = null;
         $discount = 0;
         $voucherCode = null;
@@ -656,6 +662,7 @@ class EventDetail extends Component
             'selectedTransaction' => $selectedTransaction,
             'discount' => $discount,
             'voucherCode' => $voucherCode,
+            'mouPreview' => $mouPreview,
         ]);
     }
 

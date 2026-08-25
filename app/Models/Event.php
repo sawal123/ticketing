@@ -74,6 +74,13 @@ class Event extends Model
         return $this->hasMany(Agreement::class, 'event_uid', 'uid');
     }
 
+    public function currentMouAgreement()
+    {
+        return $this->hasOne(Agreement::class, 'event_uid', 'uid')
+            ->where('type', Agreement::TYPE_MOU)
+            ->where('version', 1);
+    }
+
 
     public function harga()
     {

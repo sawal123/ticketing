@@ -21,6 +21,15 @@ class Agreement extends Model
     public const STATUS_COMPLETED = 'COMPLETED';
     public const STATUS_REJECTED = 'REJECTED';
     public const STATUS_CANCELLED = 'CANCELLED';
+    public const STATUSES = [
+        self::STATUS_DRAFT,
+        self::STATUS_READY,
+        self::STATUS_SENT_TO_PRIVY,
+        self::STATUS_SIGNING,
+        self::STATUS_COMPLETED,
+        self::STATUS_REJECTED,
+        self::STATUS_CANCELLED,
+    ];
 
     protected $fillable = [
         'uid',
