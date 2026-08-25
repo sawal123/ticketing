@@ -8,6 +8,7 @@ use App\Livewire\Dashboard\EventCreate;
 use App\Models\Category;
 use App\Models\Event;
 use App\Models\EventBankAccount;
+use App\Models\EventDocument;
 use App\Models\EventOrganizer;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
@@ -43,6 +44,7 @@ class DashboardEventCreateTest extends TestCase
         $tenant = $this->tenant();
         $category = Category::create(['name' => 'Music', 'slug' => 'music']);
         $bankBook = UploadedFile::fake()->create('bank-book.pdf', 256, 'application/pdf');
+        $organizerLetter = UploadedFile::fake()->create('organizer-letter.pdf', 256, 'application/pdf');
 
         Livewire::actingAs($tenant)
             ->test(EventCreate::class)
@@ -69,6 +71,9 @@ class DashboardEventCreateTest extends TestCase
             ->set('account_number', '1234567890')
             ->set('account_holder_name', 'PT Event Nusantara')
             ->set('bank_book', $bankBook)
+            ->set('document_number', '001/SP-EVENT/VIII/2026')
+            ->set('document_date', '2026-08-20')
+            ->set('organizer_letter', $organizerLetter)
             ->call('save');
 
         $event = Event::where('event', 'Festival Nusantara')->firstOrFail();
@@ -99,6 +104,15 @@ class DashboardEventCreateTest extends TestCase
         $this->assertSame('application/pdf', $event->bankAccount->bank_book_mime);
         $this->assertStringStartsWith('private/events/'.$event->uid.'/bank/', $event->bankAccount->bank_book_path);
         Storage::disk('local')->assertExists($event->bankAccount->bank_book_path);
+        $this->assertNotNull($event->organizerLetter);
+        $this->assertSame(EventDocument::TYPE_ORGANIZER_LETTER, $event->organizerLetter->document_type);
+        $this->assertNotEmpty($event->organizerLetter->uid);
+        $this->assertSame('001/SP-EVENT/VIII/2026', $event->organizerLetter->document_number);
+        $this->assertSame('2026-08-20', $event->organizerLetter->document_date?->format('Y-m-d'));
+        $this->assertSame('pending', $event->organizerLetter->status);
+        $this->assertSame('organizer-letter.pdf', $event->organizerLetter->original_name);
+        $this->assertStringStartsWith('private/events/'.$event->uid.'/documents/', $event->organizerLetter->file_path);
+        Storage::disk('local')->assertExists($event->organizerLetter->file_path);
     }
 
     public function test_edit_event_updates_new_fields_and_keeps_existing_fee_column(): void
@@ -126,6 +140,18 @@ class DashboardEventCreateTest extends TestCase
             'status' => 'pending',
         ]);
         Storage::disk('local')->put('private/events/'.$event->uid.'/bank/old-book.pdf', 'legacy');
+        EventDocument::create([
+            'uid' => (string) Str::uuid(),
+            'event_uid' => $event->uid,
+            'document_type' => EventDocument::TYPE_ORGANIZER_LETTER,
+            'document_number' => 'OLD-001',
+            'document_date' => '2026-08-10',
+            'original_name' => 'old-letter.pdf',
+            'file_path' => 'private/events/'.$event->uid.'/documents/old-letter.pdf',
+            'mime_type' => 'application/pdf',
+            'status' => 'pending',
+        ]);
+        Storage::disk('local')->put('private/events/'.$event->uid.'/documents/old-letter.pdf', 'old-letter');
 
         Livewire::actingAs($tenant)
             ->test(EventCreate::class, ['uid' => $event->uid])
@@ -145,11 +171,14 @@ class DashboardEventCreateTest extends TestCase
             ->set('bank_name', 'Bank Negara Indonesia')
             ->set('account_number', '9876543210')
             ->set('account_holder_name', 'Organizer Baru')
+            ->set('document_number', 'NEW-001')
+            ->set('document_date', '2026-08-25')
             ->call('save');
 
         $event->refresh();
         $organizer = $event->organizer()->first();
         $bankAccount = $event->bankAccount()->first();
+        $organizerLetter = $event->organizerLetter()->first();
 
         $this->assertSame('Festival Nusantara Revisi', $event->event);
         $this->assertSame('2026-09-10 23:00:00', substr((string) $event->event_end, 0, 19));
@@ -170,6 +199,10 @@ class DashboardEventCreateTest extends TestCase
         $this->assertSame('Organizer Baru', $bankAccount->account_holder_name);
         $this->assertSame('private/events/'.$event->uid.'/bank/old-book.pdf', $bankAccount->bank_book_path);
         Storage::disk('local')->assertExists($bankAccount->bank_book_path);
+        $this->assertSame('NEW-001', $organizerLetter->document_number);
+        $this->assertSame('2026-08-25', $organizerLetter->document_date?->format('Y-m-d'));
+        $this->assertSame('private/events/'.$event->uid.'/documents/old-letter.pdf', $organizerLetter->file_path);
+        Storage::disk('local')->assertExists($organizerLetter->file_path);
     }
 
     public function test_validation_rejects_invalid_date_order(): void
@@ -201,6 +234,9 @@ class DashboardEventCreateTest extends TestCase
             ->set('account_number', '123456789')
             ->set('account_holder_name', 'Organizer Uji')
             ->set('bank_book', UploadedFile::fake()->create('bank-book.pdf', 128, 'application/pdf'))
+            ->set('document_number', 'EXP-001')
+            ->set('document_date', '2026-08-20')
+            ->set('organizer_letter', UploadedFile::fake()->create('organizer-letter.pdf', 128, 'application/pdf'))
             ->set('category_id', $category->id)
             ->call('save')
             ->assertHasErrors([
@@ -238,6 +274,9 @@ class DashboardEventCreateTest extends TestCase
             ->set('account_number', '123456789')
             ->set('account_holder_name', 'Organizer Uji')
             ->set('bank_book', UploadedFile::fake()->create('bank-book.pdf', 128, 'application/pdf'))
+            ->set('document_number', 'COM-001')
+            ->set('document_date', '2026-08-20')
+            ->set('organizer_letter', UploadedFile::fake()->create('organizer-letter.pdf', 128, 'application/pdf'))
             ->set('category_id', $category->id)
             ->call('save')
             ->assertHasErrors([
@@ -276,6 +315,18 @@ class DashboardEventCreateTest extends TestCase
             'status' => 'pending',
         ]);
         Storage::disk('local')->put('private/events/'.$eventA->uid.'/bank/a.pdf', 'a');
+        EventDocument::create([
+            'uid' => (string) Str::uuid(),
+            'event_uid' => $eventA->uid,
+            'document_type' => EventDocument::TYPE_ORGANIZER_LETTER,
+            'document_number' => 'DOC-A',
+            'document_date' => '2026-08-01',
+            'original_name' => 'a-letter.pdf',
+            'file_path' => 'private/events/'.$eventA->uid.'/documents/a-letter.pdf',
+            'mime_type' => 'application/pdf',
+            'status' => 'pending',
+        ]);
+        Storage::disk('local')->put('private/events/'.$eventA->uid.'/documents/a-letter.pdf', 'doc-a');
 
         EventOrganizer::create([
             'event_uid' => $eventB->uid,
@@ -297,6 +348,18 @@ class DashboardEventCreateTest extends TestCase
             'status' => 'pending',
         ]);
         Storage::disk('local')->put('private/events/'.$eventB->uid.'/bank/b.pdf', 'b');
+        EventDocument::create([
+            'uid' => (string) Str::uuid(),
+            'event_uid' => $eventB->uid,
+            'document_type' => EventDocument::TYPE_ORGANIZER_LETTER,
+            'document_number' => 'DOC-B',
+            'document_date' => '2026-08-02',
+            'original_name' => 'b-letter.pdf',
+            'file_path' => 'private/events/'.$eventB->uid.'/documents/b-letter.pdf',
+            'mime_type' => 'application/pdf',
+            'status' => 'pending',
+        ]);
+        Storage::disk('local')->put('private/events/'.$eventB->uid.'/documents/b-letter.pdf', 'doc-b');
 
         Livewire::actingAs($tenant)
             ->test(EventCreate::class, ['uid' => $eventA->uid])
@@ -309,6 +372,8 @@ class DashboardEventCreateTest extends TestCase
             ->set('bank_name', 'Bank A Revisi')
             ->set('account_number', '333333')
             ->set('account_holder_name', 'Pemilik A Revisi')
+            ->set('document_number', 'DOC-A-REVISI')
+            ->set('document_date', '2026-08-15')
             ->call('save');
 
         $this->assertDatabaseHas('event_organizers', [
@@ -343,6 +408,18 @@ class DashboardEventCreateTest extends TestCase
             'bank_name' => 'Bank B',
             'account_number' => '222222',
             'account_holder_name' => 'Pemilik B',
+        ]);
+
+        $this->assertDatabaseHas('event_documents', [
+            'event_uid' => $eventA->uid,
+            'document_type' => EventDocument::TYPE_ORGANIZER_LETTER,
+            'document_number' => 'DOC-A-REVISI',
+        ]);
+
+        $this->assertDatabaseHas('event_documents', [
+            'event_uid' => $eventB->uid,
+            'document_type' => EventDocument::TYPE_ORGANIZER_LETTER,
+            'document_number' => 'DOC-B',
         ]);
     }
 
@@ -382,6 +459,9 @@ class DashboardEventCreateTest extends TestCase
                 'account_number' => ['required'],
                 'account_holder_name' => ['required'],
                 'bank_book' => ['required'],
+                'document_number' => ['required'],
+                'document_date' => ['required'],
+                'organizer_letter' => ['required'],
                 'venue_name' => ['required'],
                 'venue_city' => ['required'],
                 'venue_province' => ['required'],
@@ -403,6 +483,9 @@ class DashboardEventCreateTest extends TestCase
             ->set('account_number', '456789123')
             ->set('account_holder_name', 'Organizer Legacy')
             ->set('bank_book', UploadedFile::fake()->create('legacy-book.pdf', 128, 'application/pdf'))
+            ->set('document_number', 'LEG-001')
+            ->set('document_date', '2026-08-21')
+            ->set('organizer_letter', UploadedFile::fake()->create('legacy-letter.pdf', 128, 'application/pdf'))
             ->call('save');
 
         $event->refresh();
@@ -427,6 +510,12 @@ class DashboardEventCreateTest extends TestCase
             'bank_name' => 'Bank Legacy',
             'account_number' => '456789123',
             'account_holder_name' => 'Organizer Legacy',
+            'status' => 'pending',
+        ]);
+        $this->assertDatabaseHas('event_documents', [
+            'event_uid' => $event->uid,
+            'document_type' => EventDocument::TYPE_ORGANIZER_LETTER,
+            'document_number' => 'LEG-001',
             'status' => 'pending',
         ]);
     }
@@ -458,6 +547,18 @@ class DashboardEventCreateTest extends TestCase
             'status' => 'pending',
         ]);
         Storage::disk('local')->put('private/events/'.$event->uid.'/bank/old-book.pdf', 'old');
+        EventDocument::create([
+            'uid' => (string) Str::uuid(),
+            'event_uid' => $event->uid,
+            'document_type' => EventDocument::TYPE_ORGANIZER_LETTER,
+            'document_number' => 'DOC-OLD',
+            'document_date' => '2026-08-10',
+            'original_name' => 'old-organizer-letter.pdf',
+            'file_path' => 'private/events/'.$event->uid.'/documents/old-organizer-letter.pdf',
+            'mime_type' => 'application/pdf',
+            'status' => 'pending',
+        ]);
+        Storage::disk('local')->put('private/events/'.$event->uid.'/documents/old-organizer-letter.pdf', 'old-doc');
 
         Livewire::actingAs($tenant)
             ->test(EventCreate::class, ['uid' => $event->uid])
@@ -471,6 +572,61 @@ class DashboardEventCreateTest extends TestCase
         $this->assertSame('new-book.pdf', $bankAccount->bank_book_original_name);
         Storage::disk('local')->assertMissing('private/events/'.$event->uid.'/bank/old-book.pdf');
         Storage::disk('local')->assertExists($bankAccount->bank_book_path);
+    }
+
+    public function test_replace_organizer_letter_updates_database_and_deletes_old_file_after_success(): void
+    {
+        $tenant = $this->tenant();
+        $category = Category::create(['name' => 'Document Replacement', 'slug' => 'document-replacement']);
+        $event = $this->event($tenant, ['category_id' => $category->id]);
+
+        EventOrganizer::create([
+            'event_uid' => $event->uid,
+            'organizer_name' => 'Organizer Doc Replace',
+            'responsible_name' => 'PJ Doc Replace',
+            'responsible_position' => 'Manager',
+            'phone' => '081234567801',
+            'email' => 'doc-replace@example.test',
+            'address' => 'Alamat doc replace',
+        ]);
+
+        EventBankAccount::create([
+            'event_uid' => $event->uid,
+            'bank_name' => 'Bank Doc Replace',
+            'account_number' => '121212',
+            'account_holder_name' => 'Pemilik Doc Replace',
+            'bank_book_path' => 'private/events/'.$event->uid.'/bank/doc-replace-bank.pdf',
+            'bank_book_original_name' => 'doc-replace-bank.pdf',
+            'bank_book_mime' => 'application/pdf',
+            'status' => 'pending',
+        ]);
+        Storage::disk('local')->put('private/events/'.$event->uid.'/bank/doc-replace-bank.pdf', 'bank');
+
+        EventDocument::create([
+            'uid' => (string) Str::uuid(),
+            'event_uid' => $event->uid,
+            'document_type' => EventDocument::TYPE_ORGANIZER_LETTER,
+            'document_number' => 'DOC-REPLACE',
+            'document_date' => '2026-08-11',
+            'original_name' => 'old-doc.pdf',
+            'file_path' => 'private/events/'.$event->uid.'/documents/old-doc.pdf',
+            'mime_type' => 'application/pdf',
+            'status' => 'pending',
+        ]);
+        Storage::disk('local')->put('private/events/'.$event->uid.'/documents/old-doc.pdf', 'old-doc');
+
+        Livewire::actingAs($tenant)
+            ->test(EventCreate::class, ['uid' => $event->uid])
+            ->set('organizer_letter', UploadedFile::fake()->create('new-doc.pdf', 256, 'application/pdf'))
+            ->call('save');
+
+        $event->refresh();
+        $organizerLetter = $event->organizerLetter()->firstOrFail();
+
+        $this->assertNotSame('private/events/'.$event->uid.'/documents/old-doc.pdf', $organizerLetter->file_path);
+        $this->assertSame('new-doc.pdf', $organizerLetter->original_name);
+        Storage::disk('local')->assertMissing('private/events/'.$event->uid.'/documents/old-doc.pdf');
+        Storage::disk('local')->assertExists($organizerLetter->file_path);
     }
 
     public function test_tampering_bank_book_display_properties_cannot_override_authoritative_database_path(): void
@@ -502,6 +658,20 @@ class DashboardEventCreateTest extends TestCase
             'verified_by' => 'admin-verified',
         ]);
         Storage::disk('local')->put('private/events/'.$event->uid.'/bank/real-book.pdf', 'real');
+        EventDocument::create([
+            'uid' => (string) Str::uuid(),
+            'event_uid' => $event->uid,
+            'document_type' => EventDocument::TYPE_ORGANIZER_LETTER,
+            'document_number' => 'DOC-SECURE',
+            'document_date' => '2026-08-12',
+            'original_name' => 'real-doc.pdf',
+            'file_path' => 'private/events/'.$event->uid.'/documents/real-doc.pdf',
+            'mime_type' => 'application/pdf',
+            'status' => 'verified',
+            'verified_at' => '2026-08-20 10:00:00',
+            'verified_by' => 'admin-doc',
+        ]);
+        Storage::disk('local')->put('private/events/'.$event->uid.'/documents/real-doc.pdf', 'real-doc');
 
         Livewire::actingAs($tenant)
             ->test(EventCreate::class, ['uid' => $event->uid])
@@ -516,6 +686,194 @@ class DashboardEventCreateTest extends TestCase
         $this->assertSame('verified', $bankAccount->status);
         $this->assertSame('2026-08-20 10:00:00', $bankAccount->verified_at?->format('Y-m-d H:i:s'));
         $this->assertSame('admin-verified', $bankAccount->verified_by);
+    }
+
+    public function test_tampering_organizer_letter_display_properties_cannot_override_authoritative_database_path(): void
+    {
+        $tenant = $this->tenant();
+        $category = Category::create(['name' => 'Document Tamper', 'slug' => 'document-tamper']);
+        $event = $this->event($tenant, ['category_id' => $category->id]);
+
+        EventOrganizer::create([
+            'event_uid' => $event->uid,
+            'organizer_name' => 'Organizer Document Tamper',
+            'responsible_name' => 'PJ Document Tamper',
+            'responsible_position' => 'Manager',
+            'phone' => '081234567812',
+            'email' => 'document-tamper@example.test',
+            'address' => 'Alamat document tamper',
+        ]);
+
+        EventBankAccount::create([
+            'event_uid' => $event->uid,
+            'bank_name' => 'Bank Doc Tamper',
+            'account_number' => '555666777',
+            'account_holder_name' => 'Pemilik Doc Tamper',
+            'bank_book_path' => 'private/events/'.$event->uid.'/bank/doc-tamper-bank.pdf',
+            'bank_book_original_name' => 'doc-tamper-bank.pdf',
+            'bank_book_mime' => 'application/pdf',
+            'status' => 'pending',
+        ]);
+        Storage::disk('local')->put('private/events/'.$event->uid.'/bank/doc-tamper-bank.pdf', 'bank');
+
+        EventDocument::create([
+            'uid' => (string) Str::uuid(),
+            'event_uid' => $event->uid,
+            'document_type' => EventDocument::TYPE_ORGANIZER_LETTER,
+            'document_number' => 'DOC-TAMPER',
+            'document_date' => '2026-08-13',
+            'original_name' => 'real-organizer-doc.pdf',
+            'file_path' => 'private/events/'.$event->uid.'/documents/real-organizer-doc.pdf',
+            'mime_type' => 'application/pdf',
+            'status' => 'verified',
+            'verified_at' => '2026-08-20 11:00:00',
+            'verified_by' => 'admin-doc',
+        ]);
+        Storage::disk('local')->put('private/events/'.$event->uid.'/documents/real-organizer-doc.pdf', 'real-organizer-doc');
+
+        Livewire::actingAs($tenant)
+            ->test(EventCreate::class, ['uid' => $event->uid])
+            ->set('existingOrganizerLetterPath', 'private/events/hacked/documents/evil.pdf')
+            ->set('existingOrganizerLetterOriginalName', 'evil.pdf')
+            ->call('save');
+
+        $organizerLetter = $event->fresh()->organizerLetter()->firstOrFail();
+
+        $this->assertSame('private/events/'.$event->uid.'/documents/real-organizer-doc.pdf', $organizerLetter->file_path);
+        $this->assertSame('real-organizer-doc.pdf', $organizerLetter->original_name);
+        $this->assertSame('verified', $organizerLetter->status);
+        $this->assertSame('2026-08-20 11:00:00', $organizerLetter->verified_at?->format('Y-m-d H:i:s'));
+        $this->assertSame('admin-doc', $organizerLetter->verified_by);
+    }
+
+    public function test_tampering_organizer_letter_display_properties_cannot_bypass_required_upload_when_database_has_no_file(): void
+    {
+        $tenant = $this->tenant();
+        $category = Category::create(['name' => 'Document Legacy Tamper', 'slug' => 'document-legacy-tamper']);
+        $event = $this->event($tenant, ['category_id' => $category->id]);
+
+        EventOrganizer::create([
+            'event_uid' => $event->uid,
+            'organizer_name' => 'Organizer Legacy Document',
+            'responsible_name' => 'PJ Legacy Document',
+            'responsible_position' => 'Manager',
+            'phone' => '081234567823',
+            'email' => 'legacy-doc@example.test',
+            'address' => 'Alamat legacy doc',
+        ]);
+
+        EventBankAccount::create([
+            'event_uid' => $event->uid,
+            'bank_name' => 'Bank Legacy Doc',
+            'account_number' => '123123999',
+            'account_holder_name' => 'Pemilik Legacy Doc',
+            'bank_book_path' => 'private/events/'.$event->uid.'/bank/legacy-doc-bank.pdf',
+            'bank_book_original_name' => 'legacy-doc-bank.pdf',
+            'bank_book_mime' => 'application/pdf',
+            'status' => 'pending',
+        ]);
+        Storage::disk('local')->put('private/events/'.$event->uid.'/bank/legacy-doc-bank.pdf', 'bank');
+
+        EventDocument::create([
+            'uid' => (string) Str::uuid(),
+            'event_uid' => $event->uid,
+            'document_type' => EventDocument::TYPE_ORGANIZER_LETTER,
+            'document_number' => 'DOC-EMPTY',
+            'document_date' => '2026-08-14',
+            'original_name' => '',
+            'file_path' => '',
+            'mime_type' => '',
+            'status' => 'pending',
+        ]);
+
+        Livewire::actingAs($tenant)
+            ->test(EventCreate::class, ['uid' => $event->uid])
+            ->set('existingOrganizerLetterPath', 'private/events/fake/documents/fake.pdf')
+            ->set('existingOrganizerLetterOriginalName', 'fake.pdf')
+            ->call('save')
+            ->assertHasErrors([
+                'organizer_letter' => ['required'],
+            ]);
+
+        $organizerLetter = $event->fresh()->organizerLetter()->firstOrFail();
+
+        $this->assertSame('', $organizerLetter->file_path);
+        $this->assertSame('', $organizerLetter->original_name);
+    }
+
+    public function test_missing_existing_organizer_letter_file_requires_reupload_and_resets_verification_state(): void
+    {
+        $tenant = $this->tenant();
+        $category = Category::create(['name' => 'Missing Organizer Letter', 'slug' => 'missing-organizer-letter']);
+        $event = $this->event($tenant, ['category_id' => $category->id]);
+
+        EventOrganizer::create([
+            'event_uid' => $event->uid,
+            'organizer_name' => 'Organizer Missing File',
+            'responsible_name' => 'PJ Missing File',
+            'responsible_position' => 'Manager',
+            'phone' => '081234567824',
+            'email' => 'missing-file@example.test',
+            'address' => 'Alamat missing file',
+        ]);
+
+        EventBankAccount::create([
+            'event_uid' => $event->uid,
+            'bank_name' => 'Bank Missing File',
+            'account_number' => '456456456',
+            'account_holder_name' => 'Pemilik Missing File',
+            'bank_book_path' => 'private/events/'.$event->uid.'/bank/missing-file-bank.pdf',
+            'bank_book_original_name' => 'missing-file-bank.pdf',
+            'bank_book_mime' => 'application/pdf',
+            'status' => 'pending',
+        ]);
+        Storage::disk('local')->put('private/events/'.$event->uid.'/bank/missing-file-bank.pdf', 'bank');
+
+        EventDocument::create([
+            'uid' => (string) Str::uuid(),
+            'event_uid' => $event->uid,
+            'document_type' => EventDocument::TYPE_ORGANIZER_LETTER,
+            'document_number' => 'DOC-MISSING',
+            'document_date' => '2026-08-19',
+            'original_name' => 'missing-file-doc.pdf',
+            'file_path' => 'private/events/'.$event->uid.'/documents/missing-file-doc.pdf',
+            'mime_type' => 'application/pdf',
+            'status' => 'verified',
+            'verified_at' => '2026-08-22 12:00:00',
+            'verified_by' => 'admin-doc',
+            'rejection_reason' => 'old reason',
+        ]);
+
+        Livewire::actingAs($tenant)
+            ->test(EventCreate::class, ['uid' => $event->uid])
+            ->set('existingOrganizerLetterPath', 'private/events/hacked/documents/evil.pdf')
+            ->set('existingOrganizerLetterOriginalName', 'evil.pdf')
+            ->call('save')
+            ->assertHasErrors([
+                'organizer_letter' => ['required'],
+            ]);
+
+        $organizerLetter = $event->fresh()->organizerLetter()->firstOrFail();
+
+        $this->assertSame('private/events/'.$event->uid.'/documents/missing-file-doc.pdf', $organizerLetter->file_path);
+        $this->assertSame('missing-file-doc.pdf', $organizerLetter->original_name);
+
+        Livewire::actingAs($tenant)
+            ->test(EventCreate::class, ['uid' => $event->uid])
+            ->set('existingOrganizerLetterPath', 'private/events/hacked/documents/evil.pdf')
+            ->set('existingOrganizerLetterOriginalName', 'evil.pdf')
+            ->set('organizer_letter', UploadedFile::fake()->create('replacement-organizer-letter.pdf', 128, 'application/pdf'))
+            ->call('save');
+
+        $organizerLetter = $event->fresh()->organizerLetter()->firstOrFail();
+
+        $this->assertNotSame('private/events/'.$event->uid.'/documents/missing-file-doc.pdf', $organizerLetter->file_path);
+        $this->assertSame('replacement-organizer-letter.pdf', $organizerLetter->original_name);
+        $this->assertSame('pending', $organizerLetter->status);
+        $this->assertNull($organizerLetter->verified_at);
+        $this->assertNull($organizerLetter->verified_by);
+        $this->assertNull($organizerLetter->rejection_reason);
+        Storage::disk('local')->assertExists($organizerLetter->file_path);
     }
 
     public function test_tampering_bank_book_display_properties_cannot_bypass_required_upload_when_database_has_no_bank_book(): void
@@ -589,6 +947,20 @@ class DashboardEventCreateTest extends TestCase
             'verified_by' => 'admin-verified',
         ]);
         Storage::disk('local')->put('private/events/'.$event->uid.'/bank/verified.pdf', 'verified');
+        EventDocument::create([
+            'uid' => (string) Str::uuid(),
+            'event_uid' => $event->uid,
+            'document_type' => EventDocument::TYPE_ORGANIZER_LETTER,
+            'document_number' => 'DOC-BANK-VERIFY',
+            'document_date' => '2026-08-18',
+            'original_name' => 'bank-verify-doc.pdf',
+            'file_path' => 'private/events/'.$event->uid.'/documents/bank-verify-doc.pdf',
+            'mime_type' => 'application/pdf',
+            'status' => 'verified',
+            'verified_at' => '2026-08-20 10:30:00',
+            'verified_by' => 'admin-doc',
+        ]);
+        Storage::disk('local')->put('private/events/'.$event->uid.'/documents/bank-verify-doc.pdf', 'doc');
 
         Livewire::actingAs($tenant)
             ->test(EventCreate::class, ['uid' => $event->uid])
@@ -633,6 +1005,20 @@ class DashboardEventCreateTest extends TestCase
             'verified_by' => 'admin-verified',
         ]);
         Storage::disk('local')->put('private/events/'.$event->uid.'/bank/replace-old.pdf', 'old');
+        EventDocument::create([
+            'uid' => (string) Str::uuid(),
+            'event_uid' => $event->uid,
+            'document_type' => EventDocument::TYPE_ORGANIZER_LETTER,
+            'document_number' => 'DOC-BANK-REPLACE',
+            'document_date' => '2026-08-18',
+            'original_name' => 'bank-replace-doc.pdf',
+            'file_path' => 'private/events/'.$event->uid.'/documents/bank-replace-doc.pdf',
+            'mime_type' => 'application/pdf',
+            'status' => 'verified',
+            'verified_at' => '2026-08-20 10:45:00',
+            'verified_by' => 'admin-doc',
+        ]);
+        Storage::disk('local')->put('private/events/'.$event->uid.'/documents/bank-replace-doc.pdf', 'doc');
 
         Livewire::actingAs($tenant)
             ->test(EventCreate::class, ['uid' => $event->uid])
@@ -678,6 +1064,20 @@ class DashboardEventCreateTest extends TestCase
             'verified_by' => 'admin-keep',
         ]);
         Storage::disk('local')->put('private/events/'.$event->uid.'/bank/keep.pdf', 'keep');
+        EventDocument::create([
+            'uid' => (string) Str::uuid(),
+            'event_uid' => $event->uid,
+            'document_type' => EventDocument::TYPE_ORGANIZER_LETTER,
+            'document_number' => 'DOC-BANK-KEEP',
+            'document_date' => '2026-08-18',
+            'original_name' => 'bank-keep-doc.pdf',
+            'file_path' => 'private/events/'.$event->uid.'/documents/bank-keep-doc.pdf',
+            'mime_type' => 'application/pdf',
+            'status' => 'verified',
+            'verified_at' => '2026-08-20 11:00:00',
+            'verified_by' => 'admin-doc',
+        ]);
+        Storage::disk('local')->put('private/events/'.$event->uid.'/documents/bank-keep-doc.pdf', 'doc');
 
         Livewire::actingAs($tenant)
             ->test(EventCreate::class, ['uid' => $event->uid])
@@ -689,6 +1089,181 @@ class DashboardEventCreateTest extends TestCase
         $this->assertSame('2026-08-22 08:00:00', $bankAccount->verified_at?->format('Y-m-d H:i:s'));
         $this->assertSame('admin-keep', $bankAccount->verified_by);
         $this->assertSame('private/events/'.$event->uid.'/bank/keep.pdf', $bankAccount->bank_book_path);
+    }
+
+    public function test_updating_document_number_resets_organizer_letter_verification_state(): void
+    {
+        $tenant = $this->tenant();
+        $category = Category::create(['name' => 'Document Verification Reset', 'slug' => 'document-verification-reset']);
+        $event = $this->event($tenant, ['category_id' => $category->id]);
+
+        EventOrganizer::create([
+            'event_uid' => $event->uid,
+            'organizer_name' => 'Organizer Doc Verified',
+            'responsible_name' => 'PJ Doc Verified',
+            'responsible_position' => 'Manager',
+            'phone' => '081234567866',
+            'email' => 'doc-verified@example.test',
+            'address' => 'Alamat doc verified',
+        ]);
+
+        EventBankAccount::create([
+            'event_uid' => $event->uid,
+            'bank_name' => 'Bank Doc Verified',
+            'account_number' => '444555666',
+            'account_holder_name' => 'Pemilik Doc Verified',
+            'bank_book_path' => 'private/events/'.$event->uid.'/bank/doc-verified-bank.pdf',
+            'bank_book_original_name' => 'doc-verified-bank.pdf',
+            'bank_book_mime' => 'application/pdf',
+            'status' => 'pending',
+        ]);
+        Storage::disk('local')->put('private/events/'.$event->uid.'/bank/doc-verified-bank.pdf', 'bank');
+
+        EventDocument::create([
+            'uid' => (string) Str::uuid(),
+            'event_uid' => $event->uid,
+            'document_type' => EventDocument::TYPE_ORGANIZER_LETTER,
+            'document_number' => 'DOC-VERIFY-1',
+            'document_date' => '2026-08-15',
+            'original_name' => 'doc-verified.pdf',
+            'file_path' => 'private/events/'.$event->uid.'/documents/doc-verified.pdf',
+            'mime_type' => 'application/pdf',
+            'status' => 'verified',
+            'verified_at' => '2026-08-22 08:00:00',
+            'verified_by' => 'admin-doc',
+            'rejection_reason' => 'old',
+        ]);
+        Storage::disk('local')->put('private/events/'.$event->uid.'/documents/doc-verified.pdf', 'doc');
+
+        Livewire::actingAs($tenant)
+            ->test(EventCreate::class, ['uid' => $event->uid])
+            ->set('document_number', 'DOC-VERIFY-2')
+            ->call('save');
+
+        $organizerLetter = $event->fresh()->organizerLetter()->firstOrFail();
+
+        $this->assertSame('DOC-VERIFY-2', $organizerLetter->document_number);
+        $this->assertSame('pending', $organizerLetter->status);
+        $this->assertNull($organizerLetter->verified_at);
+        $this->assertNull($organizerLetter->verified_by);
+        $this->assertNull($organizerLetter->rejection_reason);
+    }
+
+    public function test_replacing_organizer_letter_resets_verification_state(): void
+    {
+        $tenant = $this->tenant();
+        $category = Category::create(['name' => 'Document Verification Replace', 'slug' => 'document-verification-replace']);
+        $event = $this->event($tenant, ['category_id' => $category->id]);
+
+        EventOrganizer::create([
+            'event_uid' => $event->uid,
+            'organizer_name' => 'Organizer Doc Replace Verify',
+            'responsible_name' => 'PJ Doc Replace Verify',
+            'responsible_position' => 'Manager',
+            'phone' => '081234567877',
+            'email' => 'doc-replace-verify@example.test',
+            'address' => 'Alamat doc replace verify',
+        ]);
+
+        EventBankAccount::create([
+            'event_uid' => $event->uid,
+            'bank_name' => 'Bank Doc Replace Verify',
+            'account_number' => '777111222',
+            'account_holder_name' => 'Pemilik Doc Replace Verify',
+            'bank_book_path' => 'private/events/'.$event->uid.'/bank/doc-replace-verify-bank.pdf',
+            'bank_book_original_name' => 'doc-replace-verify-bank.pdf',
+            'bank_book_mime' => 'application/pdf',
+            'status' => 'pending',
+        ]);
+        Storage::disk('local')->put('private/events/'.$event->uid.'/bank/doc-replace-verify-bank.pdf', 'bank');
+
+        EventDocument::create([
+            'uid' => (string) Str::uuid(),
+            'event_uid' => $event->uid,
+            'document_type' => EventDocument::TYPE_ORGANIZER_LETTER,
+            'document_number' => 'DOC-REPLACE-VERIFY',
+            'document_date' => '2026-08-16',
+            'original_name' => 'doc-old-verify.pdf',
+            'file_path' => 'private/events/'.$event->uid.'/documents/doc-old-verify.pdf',
+            'mime_type' => 'application/pdf',
+            'status' => 'verified',
+            'verified_at' => '2026-08-22 09:00:00',
+            'verified_by' => 'admin-doc',
+            'rejection_reason' => 'old',
+        ]);
+        Storage::disk('local')->put('private/events/'.$event->uid.'/documents/doc-old-verify.pdf', 'doc-old');
+
+        Livewire::actingAs($tenant)
+            ->test(EventCreate::class, ['uid' => $event->uid])
+            ->set('organizer_letter', UploadedFile::fake()->create('doc-new-verify.pdf', 128, 'application/pdf'))
+            ->call('save');
+
+        $organizerLetter = $event->fresh()->organizerLetter()->firstOrFail();
+
+        $this->assertSame('pending', $organizerLetter->status);
+        $this->assertNull($organizerLetter->verified_at);
+        $this->assertNull($organizerLetter->verified_by);
+        $this->assertNull($organizerLetter->rejection_reason);
+        $this->assertSame('doc-new-verify.pdf', $organizerLetter->original_name);
+        Storage::disk('local')->assertMissing('private/events/'.$event->uid.'/documents/doc-old-verify.pdf');
+        Storage::disk('local')->assertExists($organizerLetter->file_path);
+    }
+
+    public function test_saving_without_document_changes_keeps_existing_document_verification_state(): void
+    {
+        $tenant = $this->tenant();
+        $category = Category::create(['name' => 'Document Verification Keep', 'slug' => 'document-verification-keep']);
+        $event = $this->event($tenant, ['category_id' => $category->id]);
+
+        EventOrganizer::create([
+            'event_uid' => $event->uid,
+            'organizer_name' => 'Organizer Doc Keep',
+            'responsible_name' => 'PJ Doc Keep',
+            'responsible_position' => 'Manager',
+            'phone' => '081234567888',
+            'email' => 'doc-keep@example.test',
+            'address' => 'Alamat doc keep',
+        ]);
+
+        EventBankAccount::create([
+            'event_uid' => $event->uid,
+            'bank_name' => 'Bank Doc Keep',
+            'account_number' => '999111333',
+            'account_holder_name' => 'Pemilik Doc Keep',
+            'bank_book_path' => 'private/events/'.$event->uid.'/bank/doc-keep-bank.pdf',
+            'bank_book_original_name' => 'doc-keep-bank.pdf',
+            'bank_book_mime' => 'application/pdf',
+            'status' => 'pending',
+        ]);
+        Storage::disk('local')->put('private/events/'.$event->uid.'/bank/doc-keep-bank.pdf', 'bank');
+
+        EventDocument::create([
+            'uid' => (string) Str::uuid(),
+            'event_uid' => $event->uid,
+            'document_type' => EventDocument::TYPE_ORGANIZER_LETTER,
+            'document_number' => 'DOC-KEEP',
+            'document_date' => '2026-08-17',
+            'original_name' => 'doc-keep.pdf',
+            'file_path' => 'private/events/'.$event->uid.'/documents/doc-keep.pdf',
+            'mime_type' => 'application/pdf',
+            'status' => 'verified',
+            'verified_at' => '2026-08-22 10:00:00',
+            'verified_by' => 'admin-doc',
+            'rejection_reason' => 'keep',
+        ]);
+        Storage::disk('local')->put('private/events/'.$event->uid.'/documents/doc-keep.pdf', 'doc');
+
+        Livewire::actingAs($tenant)
+            ->test(EventCreate::class, ['uid' => $event->uid])
+            ->call('save');
+
+        $organizerLetter = $event->fresh()->organizerLetter()->firstOrFail();
+
+        $this->assertSame('verified', $organizerLetter->status);
+        $this->assertSame('2026-08-22 10:00:00', $organizerLetter->verified_at?->format('Y-m-d H:i:s'));
+        $this->assertSame('admin-doc', $organizerLetter->verified_by);
+        $this->assertSame('keep', $organizerLetter->rejection_reason);
+        $this->assertSame('private/events/'.$event->uid.'/documents/doc-keep.pdf', $organizerLetter->file_path);
     }
 
     public function test_validation_rejects_invalid_bank_book_and_missing_bank_fields(): void
@@ -720,6 +1295,9 @@ class DashboardEventCreateTest extends TestCase
             ->set('account_number', '')
             ->set('account_holder_name', '')
             ->set('bank_book', UploadedFile::fake()->create('bank-book.svg', 10, 'image/svg+xml'))
+            ->set('document_number', '')
+            ->set('document_date', '')
+            ->set('organizer_letter', UploadedFile::fake()->create('organizer-letter.svg', 10, 'image/svg+xml'))
             ->set('category_id', $category->id)
             ->call('save')
             ->assertHasErrors([
@@ -727,6 +1305,9 @@ class DashboardEventCreateTest extends TestCase
                 'account_number' => ['required'],
                 'account_holder_name' => ['required'],
                 'bank_book' => ['mimes'],
+                'document_number' => ['required'],
+                'document_date' => ['required'],
+                'organizer_letter' => ['mimes'],
             ]);
 
         Livewire::actingAs($tenant)
@@ -753,22 +1334,26 @@ class DashboardEventCreateTest extends TestCase
             ->set('account_number', '123456789')
             ->set('account_holder_name', 'Organizer Validation')
             ->set('bank_book', UploadedFile::fake()->create('large-book.pdf', 6000, 'application/pdf'))
+            ->set('document_number', 'VAL-001')
+            ->set('document_date', '2026-08-20')
+            ->set('organizer_letter', UploadedFile::fake()->create('large-organizer-letter.pdf', 6000, 'application/pdf'))
             ->set('category_id', $category->id)
             ->call('save')
             ->assertHasErrors([
                 'bank_book' => ['max'],
+                'organizer_letter' => ['max'],
             ]);
     }
 
-    public function test_create_event_organizer_and_bank_account_are_saved_atomically(): void
+    public function test_create_event_organizer_bank_account_and_document_are_saved_atomically(): void
     {
         $tenant = $this->tenant();
         $category = Category::create(['name' => 'Atomic', 'slug' => 'atomic']);
         $initialLocalFiles = Storage::disk('local')->allFiles('private/events');
         $initialCoverFiles = Storage::disk('public')->allFiles('cover');
 
-        EventBankAccount::creating(function () {
-            throw new \RuntimeException('forced bank account failure');
+        EventDocument::creating(function () {
+            throw new \RuntimeException('forced organizer letter failure');
         });
 
         try {
@@ -797,13 +1382,16 @@ class DashboardEventCreateTest extends TestCase
                 ->set('account_number', '123123123')
                 ->set('account_holder_name', 'Organizer Atomic')
                 ->set('bank_book', UploadedFile::fake()->create('atomic-book.pdf', 128, 'application/pdf'))
+                ->set('document_number', 'AT-001')
+                ->set('document_date', '2026-08-20')
+                ->set('organizer_letter', UploadedFile::fake()->create('atomic-organizer-letter.pdf', 128, 'application/pdf'))
                 ->call('save');
 
-            $this->fail('Expected bank account creation to fail.');
+            $this->fail('Expected organizer letter creation to fail.');
         } catch (\RuntimeException $exception) {
-            $this->assertSame('forced bank account failure', $exception->getMessage());
+            $this->assertSame('forced organizer letter failure', $exception->getMessage());
         } finally {
-            EventBankAccount::flushEventListeners();
+            EventDocument::flushEventListeners();
         }
 
         $this->assertDatabaseMissing('events', [
@@ -812,6 +1400,7 @@ class DashboardEventCreateTest extends TestCase
 
         $this->assertDatabaseCount('event_organizers', 0);
         $this->assertDatabaseCount('event_bank_accounts', 0);
+        $this->assertDatabaseCount('event_documents', 0);
         $this->assertSame($initialLocalFiles, Storage::disk('local')->allFiles('private/events'));
         $this->assertSame($initialCoverFiles, Storage::disk('public')->allFiles('cover'));
     }

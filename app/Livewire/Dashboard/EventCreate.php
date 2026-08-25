@@ -5,6 +5,7 @@ namespace App\Livewire\Dashboard;
 use App\Models\Category;
 use App\Models\Event;
 use App\Models\EventBankAccount;
+use App\Models\EventDocument;
 use App\Models\EventOrganizer;
 use App\Models\Fasilitas;
 use App\Services\SecureImageStorage;
@@ -78,19 +79,23 @@ class EventCreate extends Component
 
     public $existingBankBookOriginalName = null;
 
+    public $document_number;
+
+    public $document_date;
+
+    public $organizer_letter;
+
+    public $existingOrganizerLetterPath = null;
+
+    public $existingOrganizerLetterOriginalName = null;
+
     public function mount($uid = null)
     {
         if ($uid) {
             $this->editingEventUid = $uid;
-            $eventData = Event::where('uid', $uid)->firstOrFail();
-
-            $user = auth()->user();
-            $ownerId = ($user->role === 'staff') ? $user->parent_uid : $user->uid;
-
-            // Check ownership
-            if ($eventData->user_uid !== $ownerId && $user->role !== 'admin') {
-                abort(403);
-            }
+            $eventData = $this->ownedEventQuery($uid)
+                ->with(['organizer', 'bankAccount', 'organizerLetter', 'fasilitas'])
+                ->firstOrFail();
 
             $this->event = $eventData->event;
             $this->fee = $eventData->fee;
@@ -98,6 +103,7 @@ class EventCreate extends Component
             $eventEnd = $eventData->event_end ? Carbon::parse($eventData->event_end) : null;
             $organizer = $eventData->organizer;
             $bankAccount = $eventData->bankAccount;
+            $organizerLetter = $eventData->organizerLetter;
 
             $this->start_sale = $eventData->start_sale ? Carbon::parse($eventData->start_sale)->format('Y-m-d H:i') : null;
             $this->event_start = $eventStart?->format('Y-m-d H:i');
@@ -122,6 +128,14 @@ class EventCreate extends Component
             $this->account_holder_name = $bankAccount?->account_holder_name;
             $this->existingBankBookPath = $bankAccount?->bank_book_path;
             $this->existingBankBookOriginalName = $bankAccount?->bank_book_original_name;
+            $this->document_number = $organizerLetter?->document_number;
+            $this->document_date = $organizerLetter?->document_date?->format('Y-m-d');
+            $this->existingOrganizerLetterPath = $this->organizerLetterFileExists($organizerLetter)
+                ? $organizerLetter?->file_path
+                : null;
+            $this->existingOrganizerLetterOriginalName = $this->organizerLetterFileExists($organizerLetter)
+                ? $organizerLetter?->original_name
+                : null;
         } else {
             $user = auth()->user();
             $this->start_sale = Carbon::now()->format('Y-m-d H:i');
@@ -137,9 +151,13 @@ class EventCreate extends Component
 
     protected function rules()
     {
-        $existingBankAccount = $this->editingEventUid
-            ? $this->ownedEventQuery($this->editingEventUid)->with('bankAccount')->firstOrFail()->bankAccount
+        $existingEvent = $this->editingEventUid
+            ? $this->ownedEventQuery($this->editingEventUid)
+                ->with(['bankAccount', 'organizerLetter'])
+                ->firstOrFail()
             : null;
+        $existingBankAccount = $existingEvent?->bankAccount;
+        $existingOrganizerLetter = $existingEvent?->organizerLetter;
 
         return [
             'event' => 'required|string|max:255',
@@ -166,6 +184,9 @@ class EventCreate extends Component
             'account_number' => 'required|string|max:50',
             'account_holder_name' => 'required|string|max:255',
             'bank_book' => $this->bankBookRules($existingBankAccount),
+            'document_number' => 'required|string|max:100',
+            'document_date' => 'required|date',
+            'organizer_letter' => $this->organizerLetterRules($existingOrganizerLetter),
         ];
     }
 
@@ -173,9 +194,13 @@ class EventCreate extends Component
     {
         $event = null;
         $existingBankAccount = null;
+        $existingOrganizerLetter = null;
         if ($this->editingEventUid) {
-            $event = $this->ownedEventQuery($this->editingEventUid)->with('bankAccount')->firstOrFail();
+            $event = $this->ownedEventQuery($this->editingEventUid)
+                ->with(['bankAccount', 'organizerLetter'])
+                ->firstOrFail();
             $existingBankAccount = $event->bankAccount;
+            $existingOrganizerLetter = $event->organizerLetter;
             $uid = $this->editingEventUid;
             $slug = $event->slug;
         } else {
@@ -200,8 +225,13 @@ class EventCreate extends Component
         $bankBookOriginalName = $existingBankAccount?->bank_book_original_name;
         $bankBookMime = $existingBankAccount?->bank_book_mime;
         $oldBankBookPath = null;
+        $organizerLetterPath = $existingOrganizerLetter?->file_path;
+        $organizerLetterOriginalName = $existingOrganizerLetter?->original_name;
+        $organizerLetterMime = $existingOrganizerLetter?->mime_type;
+        $oldOrganizerLetterPath = null;
         $newCoverStored = false;
         $newBankBookStored = false;
+        $newOrganizerLetterStored = false;
 
         $eventData = [
             'category_id' => $this->category_id,
@@ -238,6 +268,15 @@ class EventCreate extends Component
             'bank_book_mime' => $bankBookMime,
         ];
 
+        $documentData = [
+            'document_type' => EventDocument::TYPE_ORGANIZER_LETTER,
+            'document_number' => $this->document_number,
+            'document_date' => Carbon::parse($this->document_date)->format('Y-m-d'),
+            'original_name' => $organizerLetterOriginalName,
+            'file_path' => $organizerLetterPath,
+            'mime_type' => $organizerLetterMime,
+        ];
+
         try {
             if ($this->cover instanceof UploadedFile) {
                 $coverName = app(SecureImageStorage::class)->storeBasename($this->cover, 'cover');
@@ -260,6 +299,15 @@ class EventCreate extends Component
                 $newBankBookStored = true;
             }
 
+            if ($this->organizer_letter instanceof UploadedFile) {
+                $storedOrganizerLetter = $this->storeOrganizerLetter($this->organizer_letter, $uid);
+                $organizerLetterPath = $storedOrganizerLetter['path'];
+                $organizerLetterOriginalName = $storedOrganizerLetter['original_name'];
+                $organizerLetterMime = $storedOrganizerLetter['mime'];
+                $oldOrganizerLetterPath = $existingOrganizerLetter?->file_path;
+                $newOrganizerLetterStored = true;
+            }
+
             $bankAccountData = [
                 'bank_name' => $this->bank_name,
                 'account_number' => $this->account_number,
@@ -270,8 +318,17 @@ class EventCreate extends Component
             ];
 
             $bankAccountState = $this->resolveBankAccountState($existingBankAccount, $newBankBookStored);
+            $documentData = [
+                'document_type' => EventDocument::TYPE_ORGANIZER_LETTER,
+                'document_number' => $this->document_number,
+                'document_date' => Carbon::parse($this->document_date)->format('Y-m-d'),
+                'original_name' => $organizerLetterOriginalName,
+                'file_path' => $organizerLetterPath,
+                'mime_type' => $organizerLetterMime,
+            ];
+            $documentState = $this->resolveOrganizerLetterState($existingOrganizerLetter, $newOrganizerLetterStored);
 
-            DB::transaction(function () use (&$event, $uid, $slug, $eventData, $organizerData, $bankAccountData, $bankAccountState) {
+            DB::transaction(function () use (&$event, $uid, $slug, $eventData, $organizerData, $bankAccountData, $bankAccountState, $documentData, $documentState, $existingOrganizerLetter) {
                 if (! $this->editingEventUid) {
                     $user = auth()->user();
                     $ownerId = ($user->role === 'staff') ? $user->parent_uid : $user->uid;
@@ -296,6 +353,16 @@ class EventCreate extends Component
                     ['event_uid' => $event->uid],
                     $bankAccountData + $bankAccountState
                 );
+
+                EventDocument::updateOrCreate(
+                    [
+                        'event_uid' => $event->uid,
+                        'document_type' => EventDocument::TYPE_ORGANIZER_LETTER,
+                    ],
+                    $documentData + $documentState + [
+                        'uid' => $existingOrganizerLetter?->uid ?? (string) Str::uuid(),
+                    ]
+                );
             });
         } catch (\Throwable $exception) {
             if ($newCoverStored && filled($coverName)) {
@@ -304,6 +371,10 @@ class EventCreate extends Component
 
             if ($newBankBookStored && filled($bankBookPath)) {
                 Storage::disk('local')->delete($bankBookPath);
+            }
+
+            if ($newOrganizerLetterStored && filled($organizerLetterPath)) {
+                Storage::disk('local')->delete($organizerLetterPath);
             }
 
             throw $exception;
@@ -315,6 +386,10 @@ class EventCreate extends Component
 
         if ($newBankBookStored && filled($oldBankBookPath) && $oldBankBookPath !== $bankBookPath) {
             Storage::disk('local')->delete($oldBankBookPath);
+        }
+
+        if ($newOrganizerLetterStored && filled($oldOrganizerLetterPath) && $oldOrganizerLetterPath !== $organizerLetterPath) {
+            Storage::disk('local')->delete($oldOrganizerLetterPath);
         }
 
         // Sync Fasilitas
@@ -356,6 +431,26 @@ class EventCreate extends Component
         ];
     }
 
+    private function organizerLetterRules(?EventDocument $existingOrganizerLetter): array
+    {
+        $required = blank($this->editingEventUid) || ! $this->organizerLetterFileExists($existingOrganizerLetter);
+
+        return [
+            $required ? 'required' : 'nullable',
+            'file',
+            'mimes:pdf,jpg,jpeg,png',
+            'mimetypes:application/pdf,image/jpeg,image/png',
+            'max:5120',
+        ];
+    }
+
+    private function organizerLetterFileExists(?EventDocument $existingOrganizerLetter): bool
+    {
+        $path = $existingOrganizerLetter?->file_path;
+
+        return filled($path) && Storage::disk('local')->exists($path);
+    }
+
     private function bankAccountHasChanges(?EventBankAccount $existingBankAccount, bool $newBankBookStored): bool
     {
         if (! $existingBankAccount) {
@@ -385,6 +480,39 @@ class EventCreate extends Component
             'status' => $existingBankAccount?->status ?? 'pending',
             'verified_at' => $existingBankAccount?->verified_at,
             'verified_by' => $existingBankAccount?->verified_by,
+        ];
+    }
+
+    private function organizerLetterHasChanges(?EventDocument $existingOrganizerLetter, bool $newOrganizerLetterStored): bool
+    {
+        if (! $existingOrganizerLetter) {
+            return true;
+        }
+
+        if ($newOrganizerLetterStored) {
+            return true;
+        }
+
+        return $existingOrganizerLetter->document_number !== $this->document_number
+            || optional($existingOrganizerLetter->document_date)->format('Y-m-d') !== Carbon::parse($this->document_date)->format('Y-m-d');
+    }
+
+    private function resolveOrganizerLetterState(?EventDocument $existingOrganizerLetter, bool $newOrganizerLetterStored): array
+    {
+        if ($this->organizerLetterHasChanges($existingOrganizerLetter, $newOrganizerLetterStored)) {
+            return [
+                'status' => 'pending',
+                'verified_by' => null,
+                'verified_at' => null,
+                'rejection_reason' => null,
+            ];
+        }
+
+        return [
+            'status' => $existingOrganizerLetter?->status ?? 'pending',
+            'verified_by' => $existingOrganizerLetter?->verified_by,
+            'verified_at' => $existingOrganizerLetter?->verified_at,
+            'rejection_reason' => $existingOrganizerLetter?->rejection_reason,
         ];
     }
 
@@ -429,6 +557,61 @@ class EventCreate extends Component
 
         if (! $stored) {
             throw new \RuntimeException('Buku rekening gagal disimpan.');
+        }
+
+        $originalName = basename(str_replace('\\', '/', $file->getClientOriginalName()));
+        if ($originalName === '') {
+            $originalName = basename($path);
+        }
+
+        return [
+            'path' => $path,
+            'original_name' => $originalName,
+            'mime' => $mime,
+        ];
+    }
+
+    /**
+     * @return array{path: string, original_name: string, mime: string}
+     */
+    private function storeOrganizerLetter(UploadedFile $file, string $eventUid): array
+    {
+        $mime = $file->getMimeType();
+        $extension = match ($mime) {
+            'application/pdf' => 'pdf',
+            'image/jpeg' => 'jpg',
+            'image/png' => 'png',
+            default => null,
+        };
+
+        if ($extension === null) {
+            throw new \RuntimeException('Format surat penyelenggara tidak valid.');
+        }
+
+        $filePath = $file->getRealPath();
+        if (! is_string($filePath) || $filePath === '' || ! is_file($filePath)) {
+            $filePath = $file->getPathname();
+        }
+
+        if (! is_string($filePath) || $filePath === '' || ! is_file($filePath)) {
+            throw new \RuntimeException('Surat penyelenggara tidak dapat dibaca.');
+        }
+
+        $stream = fopen($filePath, 'rb');
+        if ($stream === false) {
+            throw new \RuntimeException('Surat penyelenggara tidak dapat dibaca.');
+        }
+
+        $path = 'private/events/'.$eventUid.'/documents/'.Str::uuid().'.'.$extension;
+
+        try {
+            $stored = Storage::disk('local')->put($path, $stream);
+        } finally {
+            fclose($stream);
+        }
+
+        if (! $stored) {
+            throw new \RuntimeException('Surat penyelenggara gagal disimpan.');
         }
 
         $originalName = basename(str_replace('\\', '/', $file->getClientOriginalName()));
