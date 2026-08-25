@@ -104,4 +104,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(Transaction::class, 'user_uid', 'uid');
     }
+
+    public function agreements()
+    {
+        return $this->hasMany(Agreement::class, 'tenant_user_uid', 'uid');
+    }
 }
