@@ -94,6 +94,29 @@ class EventDeleteToctouSecurityTest extends TestCase
         ]);
     }
 
+    public function test_admin_legacy_route_cannot_delete_event_with_completed_agreement(): void
+    {
+        [$tenant, $event] = $this->tenantWithEvent();
+        $this->harga($event);
+        $agreement = $this->agreement($tenant, $event, [
+            'status' => Agreement::STATUS_COMPLETED,
+        ]);
+        $admin = $this->user([
+            'email' => 'admin-event-delete@example.test',
+            'role' => 'admin',
+        ]);
+
+        $this->actingAs($admin)
+            ->get('/admin/old/events/delete/'.$event->uid)
+            ->assertSessionHas('error', 'Event tidak dapat dihapus karena memiliki agreement yang sudah selesai.');
+
+        $this->assertDatabaseHas('events', ['uid' => $event->uid, 'deleted_at' => null]);
+        $this->assertDatabaseHas('agreements', [
+            'id' => $agreement->id,
+            'status' => Agreement::STATUS_COMPLETED,
+        ]);
+    }
+
     public function test_pending_event_with_draft_agreement_keeps_existing_delete_behavior(): void
     {
         [$tenant, $event] = $this->tenantWithEvent();
