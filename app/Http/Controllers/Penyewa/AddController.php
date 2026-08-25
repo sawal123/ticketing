@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Penyewa;
 
 use App\Http\Controllers\Controller;
-use App\Models\Agreement;
 use App\Models\Bank;
 use App\Models\Event;
 use App\Models\EventDate;
@@ -33,63 +32,9 @@ class AddController extends Controller
 
     public function addEvent(Request $request): RedirectResponse
     {
-        $validate = Validator::make($request->all(), [
-            'event' => 'required|string|max:255',
-            'fee' => 'required|numeric|min:0|max:100', // Tambahkan validasi fee
-            'alamat' => 'required|string|max:255',
-            'start' => 'required|string',
-            'end' => 'required|string',
-            'map' => 'required|string|max:255',
-            'deskripsi' => 'required|string',
-            'cover' => SecureImageStorage::rules(),
-        ]);
-        $validate->validate();
-
-        $uid = Str::uuid();
-        // dd($uid);
-
-        $startEvent = new EventDate([
-            'uid' => $uid,
-            'start' => $request->start,
-            'end' => $request->end,
-        ]);
-
-        $coverBasename = null;
-
-        $event = new Event([
-            'uid' => $uid,
-            'user_uid' => Auth::user()->uid,
-            'event' => $request->event,
-            'alamat' => $request->alamat,
-            'tanggal' => $request->start,
-            'status' => 'inactive',
-            'fee' => $request->fee, // AMBIL DARI INPUT
-            'deskripsi' => $request->deskripsi,
-            'map' => $request->map,
-            'slug' => Str::slug($request->event),
-            'konfirmasi' => null,
-        ]);
-        if ($request->hasFile('cover')) {
-            $coverBasename = $this->images->storeBasename($request->file('cover'), 'cover');
-            $event['cover'] = $coverBasename;
-        }
-
-        try {
-            DB::beginTransaction();
-            $event->save();
-            $startEvent->save();
-            Agreement::createDraftForEvent($event, (string) Auth::user()->uid);
-            DB::commit();
-
-            return redirect('dashboard/event/eventDetail/'.$uid)->with('addEvent', 'Event Berhasil Disimpan..');
-        } catch (Exception $e) {
-            DB::rollback();
-            if (filled($coverBasename)) {
-                $this->images->delete('cover', $coverBasename);
-            }
-
-            return redirect()->back()->with('error', 'Tambah Event Gagal. Silahkan coba lagi.');
-        }
+        return redirect()
+            ->route('dashboard.event.create')
+            ->with('error', 'Form event lama sudah ditutup. Gunakan form event baru.');
     }
 
     public function addTalent(Request $request)
