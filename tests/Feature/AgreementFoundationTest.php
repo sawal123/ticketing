@@ -29,6 +29,48 @@ class AgreementFoundationTest extends TestCase
         $this->assertSame($tenant->uid, $agreement->tenant->uid);
     }
 
+    public function test_create_draft_for_event_uses_event_owner_as_tenant_and_keeps_placeholders_null(): void
+    {
+        [$tenant, $event] = $this->tenantWithEvent();
+
+        $agreement = Agreement::createDraftForEvent($event, $tenant->uid);
+
+        $this->assertNotEmpty($agreement->uid);
+        $this->assertSame($event->uid, $agreement->event_uid);
+        $this->assertSame($event->user_uid, $agreement->tenant_user_uid);
+        $this->assertSame($tenant->uid, $agreement->created_by);
+        $this->assertSame(Agreement::TYPE_MOU, $agreement->type);
+        $this->assertSame(1, $agreement->version);
+        $this->assertSame(Agreement::STATUS_DRAFT, $agreement->status);
+        $this->assertNull($agreement->event_snapshot);
+        $this->assertNull($agreement->party_snapshot);
+        $this->assertNull($agreement->bank_snapshot);
+        $this->assertNull($agreement->document_snapshot);
+        $this->assertNull($agreement->commercial_snapshot);
+        $this->assertNull($agreement->document_number);
+        $this->assertNull($agreement->template_version);
+        $this->assertNull($agreement->unsigned_pdf_path);
+        $this->assertNull($agreement->signed_pdf_path);
+        $this->assertNull($agreement->privy_document_id);
+        $this->assertNull($agreement->privy_status);
+        $this->assertNull($agreement->privy_reference);
+        $this->assertNull($agreement->sent_to_privy_at);
+        $this->assertNull($agreement->signed_at);
+        $this->assertNull($agreement->completed_at);
+    }
+
+    public function test_create_draft_for_event_is_idempotent_for_mou_version_one(): void
+    {
+        [$tenant, $event] = $this->tenantWithEvent();
+
+        $first = Agreement::createDraftForEvent($event, $tenant->uid);
+        $second = Agreement::createDraftForEvent($event, 'another-actor');
+
+        $this->assertSame($first->id, $second->id);
+        $this->assertSame($tenant->uid, $second->created_by);
+        $this->assertDatabaseCount('agreements', 1);
+    }
+
     public function test_snapshot_fields_are_cast_to_array(): void
     {
         [$tenant, $event] = $this->tenantWithEvent();

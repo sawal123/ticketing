@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 use LogicException;
 
 class Agreement extends Model
@@ -97,6 +98,23 @@ class Agreement extends Model
     public function isCompleted(): bool
     {
         return $this->status === self::STATUS_COMPLETED;
+    }
+
+    public static function createDraftForEvent(Event $event, string $actorUid): self
+    {
+        return static::query()->firstOrCreate(
+            [
+                'event_uid' => $event->uid,
+                'type' => self::TYPE_MOU,
+                'version' => 1,
+            ],
+            [
+                'uid' => (string) Str::uuid(),
+                'tenant_user_uid' => $event->user_uid,
+                'status' => self::STATUS_DRAFT,
+                'created_by' => $actorUid,
+            ]
+        );
     }
 
     protected function performInsert(Builder $query)
