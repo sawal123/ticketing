@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Penyewa;
 
 use App\Http\Controllers\Controller;
+use App\Models\Agreement;
 use App\Models\Bank;
 use App\Models\Event;
 use App\Models\EventDate;
@@ -53,13 +54,15 @@ class AddController extends Controller
             'end' => $request->end,
         ]);
 
+        $coverBasename = null;
+
         $event = new Event([
             'uid' => $uid,
             'user_uid' => Auth::user()->uid,
             'event' => $request->event,
             'alamat' => $request->alamat,
             'tanggal' => $request->start,
-            'status' => 'active',
+            'status' => 'inactive',
             'fee' => $request->fee, // AMBIL DARI INPUT
             'deskripsi' => $request->deskripsi,
             'map' => $request->map,
@@ -67,18 +70,23 @@ class AddController extends Controller
             'konfirmasi' => null,
         ]);
         if ($request->hasFile('cover')) {
-            $event['cover'] = $this->images->storeBasename($request->file('cover'), 'cover');
+            $coverBasename = $this->images->storeBasename($request->file('cover'), 'cover');
+            $event['cover'] = $coverBasename;
         }
 
         try {
             DB::beginTransaction();
             $event->save();
             $startEvent->save();
+            Agreement::createDraftForEvent($event, (string) Auth::user()->uid);
             DB::commit();
 
             return redirect('dashboard/event/eventDetail/'.$uid)->with('addEvent', 'Event Berhasil Disimpan..');
         } catch (Exception $e) {
             DB::rollback();
+            if (filled($coverBasename)) {
+                $this->images->delete('cover', $coverBasename);
+            }
 
             return redirect()->back()->with('error', 'Tambah Event Gagal. Silahkan coba lagi.');
         }

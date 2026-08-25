@@ -201,6 +201,85 @@ class DashboardEventCreateTest extends TestCase
         $this->assertSame($event->user_uid, $agreement->tenant_user_uid);
     }
 
+    public function test_staff_cannot_open_event_create_routes_over_http(): void
+    {
+        $owner = $this->tenant(['email' => 'owner-m5-http@example.test']);
+        $staff = $this->user([
+            'email' => 'staff-m5-http@example.test',
+            'role' => 'staff',
+            'parent_uid' => $owner->uid,
+        ]);
+        $ownerEvent = $this->event($owner, ['event' => 'Festival Owner Staff Http']);
+
+        $this->actingAs($staff)
+            ->get(route('dashboard.event.create'))
+            ->assertForbidden();
+
+        $this->actingAs($staff)
+            ->get(route('dashboard.event.edit', $ownerEvent->uid))
+            ->assertForbidden();
+    }
+
+    public function test_legacy_dashboard_add_event_creates_mou_draft_and_keeps_new_event_inactive(): void
+    {
+        $tenant = $this->tenant(['email' => 'legacy-dashboard@example.test']);
+
+        $response = $this->actingAs($tenant)->post(route('dashboard.old.addEvent'), [
+            'event' => 'Legacy Dashboard Event',
+            'fee' => 7,
+            'alamat' => 'Alamat Legacy Dashboard',
+            'start' => '2026-09-15 19:00:00',
+            'end' => '2026-09-15 22:00:00',
+            'map' => 'https://maps.google.com/?q=legacy-dashboard',
+            'deskripsi' => 'Deskripsi legacy dashboard',
+            'cover' => UploadedFile::fake()->image('legacy-dashboard.jpg'),
+        ]);
+
+        $event = Event::where('event', 'Legacy Dashboard Event')->firstOrFail();
+        $agreement = Agreement::where('event_uid', $event->uid)
+            ->where('type', Agreement::TYPE_MOU)
+            ->where('version', 1)
+            ->sole();
+
+        $response->assertRedirect('dashboard/event/eventDetail/'.$event->uid);
+        $this->assertSame('inactive', $event->status);
+        $this->assertSame($tenant->uid, $event->user_uid);
+        $this->assertSame($event->user_uid, $agreement->tenant_user_uid);
+        $this->assertSame($tenant->uid, $agreement->created_by);
+        $this->assertSame(Agreement::STATUS_DRAFT, $agreement->status);
+    }
+
+    public function test_legacy_admin_add_event_creates_mou_draft_and_keeps_new_event_inactive(): void
+    {
+        $admin = $this->user([
+            'email' => 'legacy-admin@example.test',
+            'role' => 'admin',
+        ]);
+
+        $response = $this->actingAs($admin)->post('/admin/old/addEvents', [
+            'event' => 'Legacy Admin Event',
+            'fee' => 9,
+            'alamat' => 'Alamat Legacy Admin',
+            'tanggal' => '2026-09-20 19:00:00',
+            'map' => 'https://maps.google.com/?q=legacy-admin',
+            'deskripsi' => 'Deskripsi legacy admin',
+            'cover' => UploadedFile::fake()->image('legacy-admin.jpg'),
+        ]);
+
+        $event = Event::where('event', 'Legacy Admin Event')->firstOrFail();
+        $agreement = Agreement::where('event_uid', $event->uid)
+            ->where('type', Agreement::TYPE_MOU)
+            ->where('version', 1)
+            ->sole();
+
+        $response->assertRedirect('admin/event/eventDetail/'.$event->uid);
+        $this->assertSame('inactive', $event->status);
+        $this->assertSame($admin->uid, $event->user_uid);
+        $this->assertSame($event->user_uid, $agreement->tenant_user_uid);
+        $this->assertSame($admin->uid, $agreement->created_by);
+        $this->assertSame(Agreement::STATUS_DRAFT, $agreement->status);
+    }
+
     public function test_edit_event_updates_new_fields_and_keeps_existing_fee_column(): void
     {
         $tenant = $this->tenant();
