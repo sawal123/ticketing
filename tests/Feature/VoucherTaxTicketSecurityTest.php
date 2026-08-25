@@ -35,6 +35,7 @@ class VoucherTaxTicketSecurityTest extends TestCase
 
         View::share('logo', [(object) ['logo' => '']]);
         $this->withoutMiddleware([GlobalDataMiddleware::class, LogActivityMiddleware::class]);
+        Storage::fake('local');
         Storage::fake('public');
     }
 
@@ -249,6 +250,10 @@ class VoucherTaxTicketSecurityTest extends TestCase
             ->set('phone', '081234567890')
             ->set('email', 'organizer@example.test')
             ->set('address', 'Alamat organizer event')
+            ->set('bank_name', 'Bank Central Asia')
+            ->set('account_number', '1234567890')
+            ->set('account_holder_name', 'PT Event')
+            ->set('bank_book', UploadedFile::fake()->create('bank-book.pdf', 128, 'application/pdf'))
             ->call('save');
 
         $event = Event::where('event', 'Fee Event')->firstOrFail();
@@ -269,6 +274,16 @@ class VoucherTaxTicketSecurityTest extends TestCase
             'email' => 'lama@example.test',
             'address' => 'Alamat organizer lama',
         ]);
+        $event->bankAccount()->create([
+            'bank_name' => 'Bank Lama',
+            'account_number' => '111222333',
+            'account_holder_name' => 'Pemilik Lama',
+            'bank_book_path' => 'private/events/'.$event->uid.'/bank/old-book.pdf',
+            'bank_book_original_name' => 'old-book.pdf',
+            'bank_book_mime' => 'application/pdf',
+            'status' => 'pending',
+        ]);
+        Storage::disk('local')->put('private/events/'.$event->uid.'/bank/old-book.pdf', 'old');
         $category = Category::create(['name' => 'Sports', 'slug' => 'sports']);
         $event->update(['category_id' => $category->id]);
 
@@ -307,6 +322,10 @@ class VoucherTaxTicketSecurityTest extends TestCase
                 ->set('phone', '081234567890')
                 ->set('email', 'organizer@example.test')
                 ->set('address', 'Alamat organizer event')
+                ->set('bank_name', 'Bank Central Asia')
+                ->set('account_number', '1234567890')
+                ->set('account_holder_name', 'PT Event')
+                ->set('bank_book', UploadedFile::fake()->create('bank-book.pdf', 128, 'application/pdf'))
                 ->call('save')
                 ->assertHasErrors('fee');
         }

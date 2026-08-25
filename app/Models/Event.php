@@ -53,6 +53,11 @@ class Event extends Model
         return $this->hasOne(EventOrganizer::class, 'event_uid', 'uid');
     }
 
+    public function bankAccount()
+    {
+        return $this->hasOne(EventBankAccount::class, 'event_uid', 'uid');
+    }
+
 
     public function harga()
     {
