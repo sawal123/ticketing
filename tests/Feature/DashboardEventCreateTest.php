@@ -32,8 +32,8 @@ class DashboardEventCreateTest extends TestCase
         DB::reconnect('sqlite');
 
         View::share('logo', [(object) ['logo' => '']]);
-        Storage::persistentFake('local');
-        Storage::persistentFake('public');
+        Storage::fake('local');
+        Storage::fake('public');
         $this->withoutMiddleware([GlobalDataMiddleware::class, LogActivityMiddleware::class]);
         $this->artisan('migrate:fresh', ['--database' => 'sqlite']);
     }
@@ -764,6 +764,8 @@ class DashboardEventCreateTest extends TestCase
     {
         $tenant = $this->tenant();
         $category = Category::create(['name' => 'Atomic', 'slug' => 'atomic']);
+        $initialLocalFiles = Storage::disk('local')->allFiles('private/events');
+        $initialCoverFiles = Storage::disk('public')->allFiles('cover');
 
         EventBankAccount::creating(function () {
             throw new \RuntimeException('forced bank account failure');
@@ -810,8 +812,8 @@ class DashboardEventCreateTest extends TestCase
 
         $this->assertDatabaseCount('event_organizers', 0);
         $this->assertDatabaseCount('event_bank_accounts', 0);
-        $this->assertSame([], Storage::disk('local')->allFiles('private/events'));
-        $this->assertSame([], Storage::disk('public')->allFiles('cover'));
+        $this->assertSame($initialLocalFiles, Storage::disk('local')->allFiles('private/events'));
+        $this->assertSame($initialCoverFiles, Storage::disk('public')->allFiles('cover'));
     }
 
     private function tenant(): User
