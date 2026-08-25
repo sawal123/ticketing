@@ -13,6 +13,7 @@ use App\Models\EventOrganizer;
 use App\Models\EventPaymentGateway;
 use App\Models\PaymentGateway;
 use App\Models\User;
+use App\Services\Agreements\AgreementPreviewService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\View;
@@ -242,13 +243,205 @@ class AgreementPreviewTest extends TestCase
         $this->actingAs($tenant)
             ->get(route('dashboard.event.detail', $event->uid).'?activeTab=mou')
             ->assertOk()
-            ->assertSeeText('Pajak Tiket (Pembeli)')
+            ->assertSeeText('Jenis Biaya Pembeli')
+            ->assertSeeText('Persentase')
+            ->assertSeeText('Biaya Pembeli')
             ->assertSeeText('11%')
             ->assertSeeText('Gateway Manual Preview')
             ->assertSeeText('MANUAL')
             ->assertSeeText('Rp 4.500')
             ->assertSeeText('1.5%')
             ->assertSeeText('Aktif');
+    }
+
+    public function test_preview_renders_buyer_fee_as_percent_when_event_fee_is_100_or_less(): void
+    {
+        $tenant = $this->tenant(['email' => 'buyer-percent@example.test']);
+        $event = $this->event($tenant, [
+            'event' => 'Konser Buyer Percent',
+            'fee' => 10,
+        ]);
+        $this->agreement($tenant, $event);
+
+        $this->actingAs($tenant)
+            ->get(route('dashboard.event.detail', $event->uid).'?activeTab=mou')
+            ->assertOk()
+            ->assertSeeText('Jenis Biaya Pembeli')
+            ->assertSeeText('Persentase')
+            ->assertSeeText('Biaya Pembeli')
+            ->assertSeeText('10%')
+            ->assertDontSeeText('Rp 10');
+    }
+
+    public function test_preview_renders_buyer_fee_as_fixed_amount_when_event_fee_is_above_100(): void
+    {
+        $tenant = $this->tenant(['email' => 'buyer-fixed@example.test']);
+        $event = $this->event($tenant, [
+            'event' => 'Konser Buyer Fixed',
+            'fee' => 5000,
+        ]);
+        $this->agreement($tenant, $event);
+
+        $this->actingAs($tenant)
+            ->get(route('dashboard.event.detail', $event->uid).'?activeTab=mou')
+            ->assertOk()
+            ->assertSeeText('Jenis Biaya Pembeli')
+            ->assertSeeText('Nominal Tetap')
+            ->assertSeeText('Biaya Pembeli')
+            ->assertSeeText('Rp 5.000')
+            ->assertDontSeeText('5000%');
+    }
+
+    public function test_preview_uses_global_gateway_new_defaults_when_present(): void
+    {
+        $tenant = $this->tenant(['email' => 'gateway-global-new@example.test']);
+        $event = $this->event($tenant, ['event' => 'Konser Gateway Global New']);
+        $this->agreement($tenant, $event);
+        $gateway = $this->gateway([
+            'payment' => 'Gateway Global New',
+            'default_fee_fixed' => 2000,
+            'default_fee_percent' => 3,
+        ]);
+        $this->eventGateway($event, $gateway, [
+            'fee_mode' => EventPaymentGateway::FEE_MODE_GLOBAL,
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($tenant)
+            ->get(route('dashboard.event.detail', $event->uid).'?activeTab=mou')
+            ->assertOk()
+            ->assertSeeText('Gateway Global New')
+            ->assertSeeText('GLOBAL')
+            ->assertSeeText('Rp 2.000')
+            ->assertSeeText('3%');
+    }
+
+    public function test_preview_keeps_explicit_zero_global_defaults_without_falling_back_to_legacy_biaya(): void
+    {
+        $tenant = $this->tenant(['email' => 'gateway-global-zero@example.test']);
+        $event = $this->event($tenant, ['event' => 'Konser Gateway Zero']);
+        $this->agreement($tenant, $event);
+        $gateway = $this->gateway([
+            'payment' => 'Gateway Zero Default',
+            'biaya' => 4000,
+            'biaya_type' => 'rupiah',
+            'default_fee_fixed' => 0,
+            'default_fee_percent' => 0,
+        ]);
+        $this->eventGateway($event, $gateway, [
+            'fee_mode' => EventPaymentGateway::FEE_MODE_GLOBAL,
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($tenant)
+            ->get(route('dashboard.event.detail', $event->uid).'?activeTab=mou')
+            ->assertOk()
+            ->assertSeeText('Gateway Zero Default')
+            ->assertSeeText('Rp 0')
+            ->assertSeeText('0%')
+            ->assertDontSeeText('Rp 4.000');
+    }
+
+    public function test_preview_uses_legacy_gateway_rupiah_fallback_when_new_defaults_are_null(): void
+    {
+        $tenant = $this->tenant(['email' => 'gateway-legacy-rupiah@example.test']);
+        $event = $this->event($tenant, ['event' => 'Konser Gateway Legacy Rupiah']);
+        $this->agreement($tenant, $event);
+        $gateway = $this->gateway([
+            'payment' => 'Gateway Legacy Rupiah',
+            'biaya' => 4000,
+            'biaya_type' => 'rupiah',
+            'default_fee_fixed' => 0,
+            'default_fee_percent' => 0,
+        ]);
+        $eventGateway = $this->eventGateway($event, $gateway, [
+            'fee_mode' => EventPaymentGateway::FEE_MODE_GLOBAL,
+            'is_active' => true,
+        ]);
+        $gateway->setAttribute('default_fee_fixed', null);
+        $gateway->setAttribute('default_fee_percent', null);
+        $eventGateway->setRelation('paymentGateway', $gateway);
+        $event->setRelation('eventPaymentGateways', collect([$eventGateway]));
+
+        $preview = app(AgreementPreviewService::class)->buildForEvent($event);
+        $html = view('agreements.mou-preview', ['preview' => $preview])->render();
+
+        $this->assertStringContainsString('Gateway Legacy Rupiah', $html);
+        $this->assertStringContainsString('Rp 4.000', $html);
+        $this->assertStringContainsString('0%', $html);
+    }
+
+    public function test_preview_uses_legacy_gateway_percent_fallback_when_new_defaults_are_null(): void
+    {
+        $tenant = $this->tenant(['email' => 'gateway-legacy-percent@example.test']);
+        $event = $this->event($tenant, ['event' => 'Konser Gateway Legacy Percent']);
+        $this->agreement($tenant, $event);
+        $gateway = $this->gateway([
+            'payment' => 'Gateway Legacy Percent',
+            'biaya' => 3,
+            'biaya_type' => 'persen',
+            'default_fee_fixed' => 0,
+            'default_fee_percent' => 0,
+        ]);
+        $eventGateway = $this->eventGateway($event, $gateway, [
+            'fee_mode' => EventPaymentGateway::FEE_MODE_GLOBAL,
+            'is_active' => true,
+        ]);
+        $gateway->setAttribute('default_fee_fixed', null);
+        $gateway->setAttribute('default_fee_percent', null);
+        $eventGateway->setRelation('paymentGateway', $gateway);
+        $event->setRelation('eventPaymentGateways', collect([$eventGateway]));
+
+        $preview = app(AgreementPreviewService::class)->buildForEvent($event);
+        $html = view('agreements.mou-preview', ['preview' => $preview])->render();
+
+        $this->assertStringContainsString('Gateway Legacy Percent', $html);
+        $this->assertStringContainsString('Rp 0', $html);
+        $this->assertStringContainsString('3%', $html);
+    }
+
+    public function test_preview_excludes_globally_inactive_gateway_from_active_payment_methods_and_marks_it_inactive(): void
+    {
+        $tenant = $this->tenant(['email' => 'gateway-global-inactive@example.test']);
+        $event = $this->event($tenant, ['event' => 'Konser Gateway Global Inactive']);
+        $this->agreement($tenant, $event);
+        $gateway = $this->gateway([
+            'payment' => 'Gateway Global Inactive',
+            'is_active' => false,
+        ]);
+        $this->eventGateway($event, $gateway, [
+            'is_active' => true,
+        ]);
+
+        $response = $this->actingAs($tenant)
+            ->get(route('dashboard.event.detail', $event->uid).'?activeTab=mou');
+
+        $response->assertOk()
+            ->assertSeeText('Gateway Global Inactive')
+            ->assertSeeText('Nonaktif')
+            ->assertDontSee('<p class="mt-2 text-sm font-semibold text-slate-900">Gateway Global Inactive</p>', false);
+    }
+
+    public function test_preview_marks_event_inactive_gateway_as_effectively_inactive(): void
+    {
+        $tenant = $this->tenant(['email' => 'gateway-event-inactive@example.test']);
+        $event = $this->event($tenant, ['event' => 'Konser Gateway Event Inactive']);
+        $this->agreement($tenant, $event);
+        $gateway = $this->gateway([
+            'payment' => 'Gateway Event Inactive',
+            'is_active' => true,
+        ]);
+        $this->eventGateway($event, $gateway, [
+            'is_active' => false,
+        ]);
+
+        $response = $this->actingAs($tenant)
+            ->get(route('dashboard.event.detail', $event->uid).'?activeTab=mou');
+
+        $response->assertOk()
+            ->assertSeeText('Gateway Event Inactive')
+            ->assertSeeText('Nonaktif')
+            ->assertDontSee('<p class="mt-2 text-sm font-semibold text-slate-900">Gateway Event Inactive</p>', false);
     }
 
     private function tenant(array $overrides = []): User
@@ -385,6 +578,34 @@ class AgreementPreviewTest extends TestCase
             'sent_to_privy_at' => null,
             'signed_at' => null,
             'completed_at' => null,
+        ], $overrides));
+    }
+
+    private function gateway(array $overrides = []): PaymentGateway
+    {
+        return PaymentGateway::create(array_merge([
+            'payment' => 'Gateway '.Str::random(6),
+            'category' => 'bank_transfer',
+            'biaya' => 0,
+            'biaya_type' => 'rupiah',
+            'default_fee_fixed' => 0,
+            'default_fee_percent' => 0,
+            'midtrans_code' => null,
+            'icon' => null,
+            'is_active' => true,
+            'slug' => 'gateway-'.Str::lower(Str::random(8)),
+        ], $overrides));
+    }
+
+    private function eventGateway(Event $event, PaymentGateway $gateway, array $overrides = []): EventPaymentGateway
+    {
+        return EventPaymentGateway::create(array_merge([
+            'event_id' => $event->id,
+            'payment_gateway_id' => $gateway->id,
+            'is_active' => true,
+            'fee_mode' => EventPaymentGateway::FEE_MODE_GLOBAL,
+            'fee_fixed' => null,
+            'fee_percent' => null,
         ], $overrides));
     }
 }

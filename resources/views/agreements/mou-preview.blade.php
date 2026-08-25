@@ -114,9 +114,17 @@
                         <dd class="font-semibold text-slate-900">{{ $preview['event']['start_sale'] }}</dd>
                     </div>
                     <div>
-                        <dt class="text-slate-500">Pajak Tiket (Pembeli)</dt>
-                        <dd class="font-semibold text-slate-900">{{ $preview['event']['ticket_tax_percent'] }}%</dd>
+                        <dt class="text-slate-500">Jenis Biaya Pembeli</dt>
+                        <dd class="font-semibold text-slate-900">{{ $preview['event']['ticket_tax']['mode_label'] }}</dd>
                     </div>
+                </div>
+                <div>
+                    <dt class="text-slate-500">Biaya Pembeli</dt>
+                    <dd class="font-semibold text-slate-900">{{ $preview['event']['ticket_tax']['value'] }}</dd>
+                </div>
+                <div>
+                    <dt class="text-slate-500">Sumber Biaya Pembeli</dt>
+                    <dd class="font-semibold text-slate-900">events.fee</dd>
                 </div>
                 <div class="grid gap-3 md:grid-cols-2">
                     <div>
@@ -229,7 +237,9 @@
                         @forelse ($preview['commercial']['payment_gateways'] as $gateway)
                             <tr>
                                 <td class="px-4 py-3 font-semibold text-slate-900">{{ $gateway['payment'] }}</td>
-                                <td class="px-4 py-3 text-slate-700">{{ $gateway['is_active'] ? 'Aktif' : 'Nonaktif' }}</td>
+                                <td class="px-4 py-3 text-slate-700">
+                                    {{ $gateway['effective_is_active'] ? 'Aktif' : 'Nonaktif' }}
+                                </td>
                                 <td class="px-4 py-3 text-slate-700">{{ strtoupper($gateway['fee_mode']) }}</td>
                                 <td class="px-4 py-3 text-slate-700">Rp {{ number_format((float) $gateway['resolved_fee_fixed'], 0, ',', '.') }}</td>
                                 <td class="px-4 py-3 text-slate-700">{{ $gateway['resolved_fee_percent'] }}%</td>
