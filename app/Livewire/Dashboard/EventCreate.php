@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Dashboard;
 
+use App\Models\Agreement;
 use App\Models\Category;
 use App\Models\Event;
 use App\Models\EventBankAccount;
@@ -329,6 +330,8 @@ class EventCreate extends Component
             $documentState = $this->resolveOrganizerLetterState($existingOrganizerLetter, $newOrganizerLetterStored);
 
             DB::transaction(function () use (&$event, $uid, $slug, $eventData, $organizerData, $bankAccountData, $bankAccountState, $documentData, $documentState, $existingOrganizerLetter) {
+                $actorUid = (string) auth()->user()->uid;
+
                 if (! $this->editingEventUid) {
                     $user = auth()->user();
                     $ownerId = ($user->role === 'staff') ? $user->parent_uid : $user->uid;
@@ -363,6 +366,10 @@ class EventCreate extends Component
                         'uid' => $existingOrganizerLetter?->uid ?? (string) Str::uuid(),
                     ]
                 );
+
+                if (! $this->editingEventUid) {
+                    Agreement::createDraftForEvent($event, $actorUid);
+                }
             });
         } catch (\Throwable $exception) {
             if ($newCoverStored && filled($coverName)) {

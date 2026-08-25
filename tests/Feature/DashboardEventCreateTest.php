@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Http\Middleware\GlobalDataMiddleware;
 use App\Http\Middleware\LogActivityMiddleware;
 use App\Livewire\Dashboard\EventCreate;
+use App\Models\Agreement;
 use App\Models\Category;
 use App\Models\Event;
 use App\Models\EventBankAccount;
@@ -113,6 +114,168 @@ class DashboardEventCreateTest extends TestCase
         $this->assertSame('organizer-letter.pdf', $event->organizerLetter->original_name);
         $this->assertStringStartsWith('private/events/'.$event->uid.'/documents/', $event->organizerLetter->file_path);
         Storage::disk('local')->assertExists($event->organizerLetter->file_path);
+
+        $agreements = Agreement::where('event_uid', $event->uid)
+            ->where('type', Agreement::TYPE_MOU)
+            ->where('version', 1)
+            ->get();
+        $agreement = $agreements->sole();
+
+        $this->assertCount(1, $agreements);
+        $this->assertNotEmpty($agreement->uid);
+        $this->assertSame($event->uid, $agreement->event_uid);
+        $this->assertSame($event->user_uid, $agreement->tenant_user_uid);
+        $this->assertSame($tenant->uid, $agreement->created_by);
+        $this->assertSame(Agreement::TYPE_MOU, $agreement->type);
+        $this->assertSame(1, $agreement->version);
+        $this->assertSame(Agreement::STATUS_DRAFT, $agreement->status);
+        $this->assertNull($agreement->event_snapshot);
+        $this->assertNull($agreement->party_snapshot);
+        $this->assertNull($agreement->bank_snapshot);
+        $this->assertNull($agreement->document_snapshot);
+        $this->assertNull($agreement->commercial_snapshot);
+        $this->assertNull($agreement->document_number);
+        $this->assertNull($agreement->template_version);
+        $this->assertNull($agreement->unsigned_pdf_path);
+        $this->assertNull($agreement->signed_pdf_path);
+        $this->assertNull($agreement->privy_document_id);
+        $this->assertNull($agreement->privy_status);
+        $this->assertNull($agreement->privy_reference);
+        $this->assertNull($agreement->sent_to_privy_at);
+        $this->assertNull($agreement->signed_at);
+        $this->assertNull($agreement->completed_at);
+        $this->assertTrue($event->fresh()->agreements->contains(fn (Agreement $item) => $item->id === $agreement->id));
+        $this->assertSame($event->uid, $agreement->event->uid);
+        $this->assertSame($tenant->uid, $agreement->tenant->uid);
+    }
+
+    public function test_staff_created_event_uses_parent_owner_for_agreement_tenant_and_staff_for_created_by(): void
+    {
+        $owner = $this->tenant(['email' => 'owner-m5@example.test']);
+        $staff = $this->user([
+            'email' => 'staff-m5@example.test',
+            'role' => 'staff',
+            'parent_uid' => $owner->uid,
+        ]);
+        $category = Category::create(['name' => 'Music Staff', 'slug' => 'music-staff']);
+
+        Livewire::actingAs($staff)
+            ->test(EventCreate::class)
+            ->set('event', 'Festival Staff')
+            ->set('fee', 10)
+            ->set('start_sale', '2026-09-01 10:00')
+            ->set('event_start', '2026-09-10 19:00')
+            ->set('event_end', '2026-09-10 22:00')
+            ->set('venue_name', 'Venue Staff')
+            ->set('venue_address', 'Alamat Venue Staff')
+            ->set('venue_city', 'Jakarta')
+            ->set('venue_province', 'DKI Jakarta')
+            ->set('map', 'https://maps.google.com/?q=staff')
+            ->set('cover', UploadedFile::fake()->image('staff-cover.jpg'))
+            ->set('deskripsi', 'Deskripsi event staff')
+            ->set('category_id', $category->id)
+            ->set('organizer_name', 'Organizer Staff')
+            ->set('responsible_name', 'PJ Staff')
+            ->set('responsible_position', 'Manager Staff')
+            ->set('phone', '081234567890')
+            ->set('email', 'staff-organizer@example.test')
+            ->set('address', 'Alamat organizer staff')
+            ->set('bank_name', 'Bank Staff')
+            ->set('account_number', '987654321')
+            ->set('account_holder_name', 'Organizer Staff')
+            ->set('bank_book', UploadedFile::fake()->create('staff-book.pdf', 128, 'application/pdf'))
+            ->set('document_number', 'STF-001')
+            ->set('document_date', '2026-08-20')
+            ->set('organizer_letter', UploadedFile::fake()->create('staff-letter.pdf', 128, 'application/pdf'))
+            ->call('save');
+
+        $event = Event::where('event', 'Festival Staff')->firstOrFail();
+        $agreement = Agreement::where('event_uid', $event->uid)
+            ->where('type', Agreement::TYPE_MOU)
+            ->where('version', 1)
+            ->sole();
+
+        $this->assertSame($owner->uid, $event->user_uid);
+        $this->assertSame($owner->uid, $agreement->tenant_user_uid);
+        $this->assertSame($staff->uid, $agreement->created_by);
+        $this->assertSame($event->user_uid, $agreement->tenant_user_uid);
+    }
+
+    public function test_staff_can_open_event_routes_over_http(): void
+    {
+        $owner = $this->tenant(['email' => 'owner-m5-http@example.test']);
+        $staff = $this->user([
+            'email' => 'staff-m5-http@example.test',
+            'role' => 'staff',
+            'parent_uid' => $owner->uid,
+        ]);
+        $ownerEvent = $this->event($owner, ['event' => 'Festival Owner Staff Http']);
+
+        $this->actingAs($staff)
+            ->get(route('dashboard.event'))
+            ->assertOk();
+
+        $this->actingAs($staff)
+            ->get(route('dashboard.event.create'))
+            ->assertOk();
+
+        $this->actingAs($staff)
+            ->get(route('dashboard.event.edit', $ownerEvent->uid))
+            ->assertOk();
+
+        $this->actingAs($staff)
+            ->get(route('dashboard.event.detail', $ownerEvent->uid))
+            ->assertOk();
+    }
+
+    public function test_legacy_dashboard_add_event_is_closed_and_does_not_create_event(): void
+    {
+        $tenant = $this->tenant(['email' => 'legacy-dashboard@example.test']);
+        $initialEventCount = Event::count();
+        $initialAgreementCount = Agreement::count();
+
+        $response = $this->actingAs($tenant)->post(route('dashboard.old.addEvent'), [
+            'event' => 'Legacy Dashboard Event',
+            'fee' => 7,
+            'alamat' => 'Alamat Legacy Dashboard',
+            'start' => '2026-09-15 19:00:00',
+            'end' => '2026-09-15 22:00:00',
+            'map' => 'https://maps.google.com/?q=legacy-dashboard',
+            'deskripsi' => 'Deskripsi legacy dashboard',
+            'cover' => UploadedFile::fake()->image('legacy-dashboard.jpg'),
+        ]);
+
+        $response->assertRedirect(route('dashboard.event.create'));
+        $response->assertSessionHas('error', 'Form event lama sudah ditutup. Gunakan form event baru.');
+        $this->assertSame($initialEventCount, Event::count());
+        $this->assertSame($initialAgreementCount, Agreement::count());
+        $this->assertDatabaseMissing('events', ['event' => 'Legacy Dashboard Event']);
+    }
+
+    public function test_legacy_admin_add_event_is_closed_and_does_not_create_event(): void
+    {
+        $admin = $this->user([
+            'email' => 'legacy-admin@example.test',
+            'role' => 'admin',
+        ]);
+        $initialEventCount = Event::count();
+        $initialAgreementCount = Agreement::count();
+
+        $response = $this->actingAs($admin)->post('/admin/old/addEvents', [
+            'event' => 'Legacy Admin Event',
+            'fee' => 9,
+            'alamat' => 'Alamat Legacy Admin',
+            'tanggal' => '2026-09-20 19:00:00',
+            'map' => 'https://maps.google.com/?q=legacy-admin',
+            'deskripsi' => 'Deskripsi legacy admin',
+            'cover' => UploadedFile::fake()->image('legacy-admin.jpg'),
+        ]);
+
+        $response->assertRedirect(route('admin.event'));
+        $response->assertSessionHas('error', 'Form event legacy admin sudah ditutup. Event baru harus diajukan oleh penyewa melalui form event baru.');
+        $this->assertSame($initialEventCount, Event::count());
+        $this->assertSame($initialAgreementCount, Agreement::count());
+        $this->assertDatabaseMissing('events', ['event' => 'Legacy Admin Event']);
     }
 
     public function test_edit_event_updates_new_fields_and_keeps_existing_fee_column(): void
@@ -120,6 +283,7 @@ class DashboardEventCreateTest extends TestCase
         $tenant = $this->tenant();
         $category = Category::create(['name' => 'Talk Show', 'slug' => 'talk-show']);
         $event = $this->event($tenant, ['category_id' => $category->id, 'fee' => 5]);
+        $agreement = Agreement::createDraftForEvent($event, $tenant->uid);
         EventOrganizer::create([
             'event_uid' => $event->uid,
             'organizer_name' => 'Organizer Lama',
@@ -203,6 +367,17 @@ class DashboardEventCreateTest extends TestCase
         $this->assertSame('2026-08-25', $organizerLetter->document_date?->format('Y-m-d'));
         $this->assertSame('private/events/'.$event->uid.'/documents/old-letter.pdf', $organizerLetter->file_path);
         Storage::disk('local')->assertExists($organizerLetter->file_path);
+
+        $agreements = Agreement::where('event_uid', $event->uid)->orderBy('id')->get();
+        $this->assertCount(1, $agreements);
+        $this->assertSame($agreement->uid, $agreements->first()->uid);
+        $this->assertSame(1, $agreements->first()->version);
+        $this->assertSame(Agreement::STATUS_DRAFT, $agreements->first()->status);
+        $this->assertNull($agreements->first()->event_snapshot);
+        $this->assertNull($agreements->first()->party_snapshot);
+        $this->assertNull($agreements->first()->bank_snapshot);
+        $this->assertNull($agreements->first()->document_snapshot);
+        $this->assertNull($agreements->first()->commercial_snapshot);
     }
 
     public function test_validation_rejects_invalid_date_order(): void
@@ -518,6 +693,7 @@ class DashboardEventCreateTest extends TestCase
             'document_number' => 'LEG-001',
             'status' => 'pending',
         ]);
+        $this->assertDatabaseCount('agreements', 0);
     }
 
     public function test_replace_bank_book_updates_database_and_deletes_old_file_after_success(): void
@@ -1405,9 +1581,70 @@ class DashboardEventCreateTest extends TestCase
         $this->assertSame($initialCoverFiles, Storage::disk('public')->allFiles('cover'));
     }
 
-    private function tenant(): User
+    public function test_create_event_rolls_back_everything_when_agreement_creation_fails(): void
     {
-        return User::factory()->create([
+        $tenant = $this->tenant(['email' => 'atomic-agreement@example.test']);
+        $category = Category::create(['name' => 'Atomic Agreement', 'slug' => 'atomic-agreement']);
+        $initialLocalFiles = Storage::disk('local')->allFiles('private/events');
+        $initialCoverFiles = Storage::disk('public')->allFiles('cover');
+
+        Agreement::creating(function () {
+            throw new \RuntimeException('forced agreement failure');
+        });
+
+        try {
+            Livewire::actingAs($tenant)
+                ->test(EventCreate::class)
+                ->set('event', 'Atomic Agreement Event')
+                ->set('fee', 10)
+                ->set('start_sale', '2026-09-01 10:00')
+                ->set('event_start', '2026-09-10 19:00')
+                ->set('event_end', '2026-09-10 22:00')
+                ->set('venue_name', 'Venue Agreement Atomic')
+                ->set('venue_address', 'Alamat Venue Agreement Atomic')
+                ->set('venue_city', 'Jakarta')
+                ->set('venue_province', 'DKI Jakarta')
+                ->set('map', 'https://maps.google.com/?q=agreement-atomic')
+                ->set('cover', UploadedFile::fake()->image('agreement-atomic-cover.jpg'))
+                ->set('deskripsi', 'Deskripsi atomic agreement')
+                ->set('category_id', $category->id)
+                ->set('organizer_name', 'Organizer Agreement Atomic')
+                ->set('responsible_name', 'PJ Agreement Atomic')
+                ->set('responsible_position', 'Manager Agreement Atomic')
+                ->set('phone', '081234567890')
+                ->set('email', 'agreement-atomic@example.test')
+                ->set('address', 'Alamat organizer agreement atomic')
+                ->set('bank_name', 'Bank Agreement Atomic')
+                ->set('account_number', '999888777')
+                ->set('account_holder_name', 'Organizer Agreement Atomic')
+                ->set('bank_book', UploadedFile::fake()->create('agreement-atomic-book.pdf', 128, 'application/pdf'))
+                ->set('document_number', 'AT-AGR-001')
+                ->set('document_date', '2026-08-20')
+                ->set('organizer_letter', UploadedFile::fake()->create('agreement-atomic-letter.pdf', 128, 'application/pdf'))
+                ->call('save');
+
+            $this->fail('Expected agreement creation to fail.');
+        } catch (\RuntimeException $exception) {
+            $this->assertSame('forced agreement failure', $exception->getMessage());
+        } finally {
+            Agreement::flushEventListeners();
+            Agreement::clearBootedModels();
+        }
+
+        $this->assertDatabaseMissing('events', [
+            'event' => 'Atomic Agreement Event',
+        ]);
+        $this->assertDatabaseCount('event_organizers', 0);
+        $this->assertDatabaseCount('event_bank_accounts', 0);
+        $this->assertDatabaseCount('event_documents', 0);
+        $this->assertDatabaseCount('agreements', 0);
+        $this->assertSame($initialLocalFiles, Storage::disk('local')->allFiles('private/events'));
+        $this->assertSame($initialCoverFiles, Storage::disk('public')->allFiles('cover'));
+    }
+
+    private function tenant(array $overrides = []): User
+    {
+        return User::factory()->create(array_merge([
             'uid' => (string) Str::uuid(),
             'name' => 'Tenant Event',
             'email' => fake()->unique()->safeEmail(),
@@ -1419,7 +1656,24 @@ class DashboardEventCreateTest extends TestCase
             'kota' => 'Jakarta',
             'gender' => 'pria',
             'password' => Hash::make('Password123'),
-        ]);
+        ], $overrides));
+    }
+
+    private function user(array $overrides = []): User
+    {
+        return User::factory()->create(array_merge([
+            'uid' => (string) Str::uuid(),
+            'name' => 'Generic Event User',
+            'email' => fake()->unique()->safeEmail(),
+            'role' => 'penyewa',
+            'gambar' => '-',
+            'nomor' => '08123456789',
+            'birthday' => '2000-01-01',
+            'alamat' => 'Alamat User',
+            'kota' => 'Jakarta',
+            'gender' => 'pria',
+            'password' => Hash::make('Password123'),
+        ], $overrides));
     }
 
     private function event(User $tenant, array $overrides = []): Event

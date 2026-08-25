@@ -169,21 +169,25 @@ Route::get('/signin', [PenyewaController::class, 'login'])->name('signIn');
 Route::post('/signin/cekLogin', [LoginController::class, 'index'])->name('cekLogin');
 
 Route::prefix('dashboard')
-    ->middleware(['roles:penyewa'])
     ->group(function () {
         // =========================================================
         // NEW LIVEWIRE DASHBOARD (PRIMARY)
         // =========================================================
-        Route::get('/', DemoIndex::class)->name('dashboard');
-        Route::get('/event', DashboardEventIndex::class)->name('dashboard.event');
-        Route::get('/event/create', EventCreate::class)->name('dashboard.event.create');
-        Route::get('/event/edit/{uid}', EventCreate::class)->name('dashboard.event.edit');
-        Route::get('/event/{uid}', DashboardEventDetail::class)->name('dashboard.event.detail');
-        Route::get('/voucher', VoucherIndex::class)->name('dashboard.voucher');
-        Route::get('/penarikan', DashboardPenarikanIndex::class)->name('dashboard.penarikan');
-        Route::get('/staff-index', StaffIndex::class)->name('dashboard.staff');
-        Route::get('/partner', PartnerIndex::class)->name('dashboard.partner');
-        Route::get('/settings', SettingsIndex::class)->name('dashboard.settings');
+        Route::middleware(['roles:penyewa'])->group(function () {
+            Route::get('/', DemoIndex::class)->name('dashboard');
+            Route::get('/voucher', VoucherIndex::class)->name('dashboard.voucher');
+            Route::get('/penarikan', DashboardPenarikanIndex::class)->name('dashboard.penarikan');
+            Route::get('/staff-index', StaffIndex::class)->name('dashboard.staff');
+            Route::get('/partner', PartnerIndex::class)->name('dashboard.partner');
+            Route::get('/settings', SettingsIndex::class)->name('dashboard.settings');
+        });
+
+        Route::middleware(['roles:penyewa,staff'])->group(function () {
+            Route::get('/event', DashboardEventIndex::class)->name('dashboard.event');
+            Route::get('/event/create', EventCreate::class)->name('dashboard.event.create');
+            Route::get('/event/edit/{uid}', EventCreate::class)->name('dashboard.event.edit');
+            Route::get('/event/{uid}', DashboardEventDetail::class)->name('dashboard.event.detail');
+        });
 
         // =========================================================
         // LEGACY DASHBOARD (MOVED TO /old)
