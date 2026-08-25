@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Http\Middleware\GlobalDataMiddleware;
 use App\Http\Middleware\LogActivityMiddleware;
 use App\Livewire\Dashboard\EventIndex;
+use App\Models\Agreement;
 use App\Models\Cart;
 use App\Models\Cash;
 use App\Models\Event;
@@ -53,6 +54,59 @@ class EventDeleteToctouSecurityTest extends TestCase
             ->delete(route('dashboard.old.events.destroy', $event->uid));
 
         $this->assertDatabaseMissing('events', ['uid' => $event->uid]);
+    }
+
+    public function test_pending_event_with_completed_agreement_cannot_be_soft_deleted_from_livewire_flow(): void
+    {
+        [$tenant, $event] = $this->tenantWithEvent();
+        $this->harga($event);
+        $agreement = $this->agreement($tenant, $event, [
+            'status' => Agreement::STATUS_COMPLETED,
+        ]);
+
+        Livewire::actingAs($tenant)
+            ->test(EventIndex::class)
+            ->call('deletePendingEvent', $event->uid);
+
+        $this->assertDatabaseHas('events', ['uid' => $event->uid, 'deleted_at' => null]);
+        $this->assertDatabaseHas('agreements', [
+            'id' => $agreement->id,
+            'status' => Agreement::STATUS_COMPLETED,
+        ]);
+    }
+
+    public function test_pending_event_with_completed_agreement_cannot_be_force_deleted_from_legacy_route(): void
+    {
+        [$tenant, $event] = $this->tenantWithEvent();
+        $this->harga($event);
+        $agreement = $this->agreement($tenant, $event, [
+            'status' => Agreement::STATUS_COMPLETED,
+        ]);
+
+        $this->actingAs($tenant)
+            ->delete(route('dashboard.old.events.destroy', $event->uid))
+            ->assertSessionHas('error', 'Event tidak dapat dihapus karena memiliki agreement yang sudah selesai.');
+
+        $this->assertDatabaseHas('events', ['uid' => $event->uid, 'deleted_at' => null]);
+        $this->assertDatabaseHas('agreements', [
+            'id' => $agreement->id,
+            'status' => Agreement::STATUS_COMPLETED,
+        ]);
+    }
+
+    public function test_pending_event_with_draft_agreement_keeps_existing_delete_behavior(): void
+    {
+        [$tenant, $event] = $this->tenantWithEvent();
+        $this->harga($event);
+        $this->agreement($tenant, $event, [
+            'status' => Agreement::STATUS_DRAFT,
+        ]);
+
+        Livewire::actingAs($tenant)
+            ->test(EventIndex::class)
+            ->call('deletePendingEvent', $event->uid);
+
+        $this->assertSoftDeleted('events', ['uid' => $event->uid]);
     }
 
     public function test_tenant_cannot_delete_another_tenants_event(): void
@@ -336,5 +390,16 @@ class EventDeleteToctouSecurityTest extends TestCase
             'lahir' => '2000-01-01',
             'gender' => 'pria',
         ]);
+    }
+
+    private function agreement(User $tenant, Event $event, array $overrides = []): Agreement
+    {
+        return Agreement::create(array_merge([
+            'uid' => (string) Str::uuid(),
+            'event_uid' => $event->uid,
+            'tenant_user_uid' => $tenant->uid,
+            'type' => Agreement::TYPE_MOU,
+            'status' => Agreement::STATUS_DRAFT,
+        ], $overrides));
     }
 }

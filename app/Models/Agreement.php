@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use LogicException;
@@ -65,21 +66,17 @@ class Agreement extends Model
     protected static function booted(): void
     {
         static::updating(function (Agreement $agreement) {
-            if ($agreement->getOriginal('status') === self::STATUS_COMPLETED) {
-                throw new LogicException('Completed agreement is immutable.');
-            }
+            $agreement->ensurePersistedAgreementIsMutable();
         });
 
         static::deleting(function (Agreement $agreement) {
-            if ($agreement->status === self::STATUS_COMPLETED) {
-                throw new LogicException('Completed agreement cannot be deleted.');
-            }
+            $agreement->ensurePersistedAgreementCanBeDeleted();
         });
     }
 
     public function event()
     {
-        return $this->belongsTo(Event::class, 'event_uid', 'uid');
+        return $this->belongsTo(Event::class, 'event_uid', 'uid')->withTrashed();
     }
 
     public function tenant()
@@ -100,5 +97,72 @@ class Agreement extends Model
     public function isCompleted(): bool
     {
         return $this->status === self::STATUS_COMPLETED;
+    }
+
+    protected function performInsert(Builder $query)
+    {
+        $this->ensureTenantMatchesEventOwner();
+
+        return parent::performInsert($query);
+    }
+
+    protected function performUpdate(Builder $query)
+    {
+        $this->ensurePersistedAgreementIsMutable();
+        $this->ensureTenantMatchesEventOwner();
+
+        return parent::performUpdate($query);
+    }
+
+    protected function performDeleteOnModel()
+    {
+        $this->ensurePersistedAgreementCanBeDeleted();
+
+        return parent::performDeleteOnModel();
+    }
+
+    private function ensurePersistedAgreementIsMutable(): void
+    {
+        if (! $this->exists) {
+            return;
+        }
+
+        $persistedStatus = static::query()
+            ->whereKey($this->getKey())
+            ->value('status');
+
+        if ($persistedStatus === self::STATUS_COMPLETED) {
+            throw new LogicException('Completed agreement is immutable.');
+        }
+    }
+
+    private function ensurePersistedAgreementCanBeDeleted(): void
+    {
+        if (! $this->exists) {
+            return;
+        }
+
+        $persistedStatus = static::query()
+            ->whereKey($this->getKey())
+            ->value('status');
+
+        if ($persistedStatus === self::STATUS_COMPLETED) {
+            throw new LogicException('Completed agreement cannot be deleted.');
+        }
+    }
+
+    private function ensureTenantMatchesEventOwner(): void
+    {
+        if (! $this->event_uid || ! $this->tenant_user_uid) {
+            return;
+        }
+
+        $eventOwnerUid = Event::withTrashed()
+            ->where('uid', $this->event_uid)
+            ->value('user_uid');
+
+        if ($eventOwnerUid !== $this->tenant_user_uid) {
+            throw new LogicException('Agreement tenant must match the event owner.');
+        }
     }
 }

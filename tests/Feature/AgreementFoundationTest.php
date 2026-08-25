@@ -20,12 +20,7 @@ class AgreementFoundationTest extends TestCase
     {
         [$tenant, $event] = $this->tenantWithEvent();
 
-        $agreement = Agreement::create([
-            'uid' => (string) Str::uuid(),
-            'event_uid' => $event->uid,
-            'tenant_user_uid' => $tenant->uid,
-            'type' => Agreement::TYPE_MOU,
-        ]);
+        $agreement = $this->agreement($tenant, $event);
 
         $this->assertNotNull($agreement->id);
         $this->assertSame(1, $agreement->version);
@@ -38,11 +33,7 @@ class AgreementFoundationTest extends TestCase
     {
         [$tenant, $event] = $this->tenantWithEvent();
 
-        $agreement = Agreement::create([
-            'uid' => (string) Str::uuid(),
-            'event_uid' => $event->uid,
-            'tenant_user_uid' => $tenant->uid,
-            'type' => Agreement::TYPE_MOU,
+        $agreement = $this->agreement($tenant, $event, [
             'event_snapshot' => ['event' => 'Konser A'],
             'party_snapshot' => ['tenant' => 'PT Maju'],
             'bank_snapshot' => ['bank' => 'BCA'],
@@ -60,55 +51,70 @@ class AgreementFoundationTest extends TestCase
     public function test_event_isolation_keeps_agreements_scoped_to_each_event(): void
     {
         [$tenant, $eventA] = $this->tenantWithEvent(['email' => 'agreement-a@example.test']);
-        [, $eventB] = $this->tenantWithEvent(['email' => 'agreement-b@example.test']);
-
-        $agreementA = Agreement::create([
-            'uid' => (string) Str::uuid(),
-            'event_uid' => $eventA->uid,
-            'tenant_user_uid' => $tenant->uid,
-            'type' => Agreement::TYPE_MOU,
+        $eventB = $this->event($tenant, [
+            'event' => 'Agreement Event B',
+            'slug' => 'agreement-event-b-'.Str::lower(Str::random(8)),
         ]);
 
-        $agreementB = Agreement::create([
-            'uid' => (string) Str::uuid(),
-            'event_uid' => $eventB->uid,
-            'tenant_user_uid' => $tenant->uid,
-            'type' => Agreement::TYPE_MOU,
-        ]);
+        $agreementA = $this->agreement($tenant, $eventA);
+        $agreementB = $this->agreement($tenant, $eventB, ['version' => 2]);
 
         $this->assertTrue($eventA->agreements->contains($agreementA));
         $this->assertFalse($eventA->agreements->contains($agreementB));
         $this->assertTrue($eventB->agreements->contains($agreementB));
         $this->assertFalse($eventB->agreements->contains($agreementA));
+        $this->assertSame($tenant->uid, $agreementA->tenant->uid);
+        $this->assertSame($tenant->uid, $agreementB->tenant->uid);
+    }
+
+    public function test_agreement_rejects_mismatched_event_owner_and_tenant_on_create(): void
+    {
+        [$tenantA] = $this->tenantWithEvent(['email' => 'agreement-create-a@example.test']);
+        [$tenantB, $eventB] = $this->tenantWithEvent(['email' => 'agreement-create-b@example.test']);
+
+        $this->expectException(LogicException::class);
+        $this->expectExceptionMessage('Agreement tenant must match the event owner.');
+
+        $this->agreement($tenantA, $eventB, [
+            'tenant_user_uid' => $tenantA->uid,
+        ]);
+    }
+
+    public function test_draft_agreement_rejects_mismatched_event_owner_and_tenant_on_update(): void
+    {
+        [$tenantA, $eventA] = $this->tenantWithEvent(['email' => 'agreement-update-a@example.test']);
+        [, $eventB] = $this->tenantWithEvent(['email' => 'agreement-update-b@example.test']);
+
+        $agreement = $this->agreement($tenantA, $eventA);
+
+        try {
+            $agreement->update(['event_uid' => $eventB->uid]);
+            $this->fail('Expected mismatched event owner and tenant update to fail.');
+        } catch (LogicException $exception) {
+            $this->assertSame('Agreement tenant must match the event owner.', $exception->getMessage());
+        }
+
+        $agreement->refresh();
+
+        $this->assertSame($eventA->uid, $agreement->event_uid);
+        $this->assertSame($tenantA->uid, $agreement->tenant_user_uid);
     }
 
     public function test_same_event_and_type_can_have_different_versions_but_not_duplicate_version(): void
     {
         [$tenant, $event] = $this->tenantWithEvent();
 
-        Agreement::create([
-            'uid' => (string) Str::uuid(),
-            'event_uid' => $event->uid,
-            'tenant_user_uid' => $tenant->uid,
-            'type' => Agreement::TYPE_MOU,
+        $this->agreement($tenant, $event, [
             'version' => 1,
         ]);
 
-        Agreement::create([
-            'uid' => (string) Str::uuid(),
-            'event_uid' => $event->uid,
-            'tenant_user_uid' => $tenant->uid,
-            'type' => Agreement::TYPE_MOU,
+        $this->agreement($tenant, $event, [
             'version' => 2,
         ]);
 
         $this->expectException(QueryException::class);
 
-        Agreement::create([
-            'uid' => (string) Str::uuid(),
-            'event_uid' => $event->uid,
-            'tenant_user_uid' => $tenant->uid,
-            'type' => Agreement::TYPE_MOU,
+        $this->agreement($tenant, $event, [
             'version' => 1,
         ]);
     }
@@ -117,28 +123,16 @@ class AgreementFoundationTest extends TestCase
     {
         [$tenant, $event] = $this->tenantWithEvent();
 
-        $draft = Agreement::create([
-            'uid' => (string) Str::uuid(),
-            'event_uid' => $event->uid,
-            'tenant_user_uid' => $tenant->uid,
-            'type' => Agreement::TYPE_MOU,
+        $draft = $this->agreement($tenant, $event, [
             'status' => Agreement::STATUS_DRAFT,
         ]);
 
-        $ready = Agreement::create([
-            'uid' => (string) Str::uuid(),
-            'event_uid' => $event->uid,
-            'tenant_user_uid' => $tenant->uid,
-            'type' => Agreement::TYPE_MOU,
+        $ready = $this->agreement($tenant, $event, [
             'version' => 2,
             'status' => Agreement::STATUS_READY,
         ]);
 
-        $completed = Agreement::create([
-            'uid' => (string) Str::uuid(),
-            'event_uid' => $event->uid,
-            'tenant_user_uid' => $tenant->uid,
-            'type' => Agreement::TYPE_MOU,
+        $completed = $this->agreement($tenant, $event, [
             'version' => 3,
             'status' => Agreement::STATUS_COMPLETED,
         ]);
@@ -160,11 +154,7 @@ class AgreementFoundationTest extends TestCase
     {
         [$tenant, $event] = $this->tenantWithEvent();
 
-        $agreement = Agreement::create([
-            'uid' => (string) Str::uuid(),
-            'event_uid' => $event->uid,
-            'tenant_user_uid' => $tenant->uid,
-            'type' => Agreement::TYPE_MOU,
+        $agreement = $this->agreement($tenant, $event, [
             'document_number' => 'MOU-001',
             'status' => Agreement::STATUS_COMPLETED,
             'version' => 1,
@@ -204,15 +194,66 @@ class AgreementFoundationTest extends TestCase
         ]);
     }
 
+    public function test_agreement_can_transition_to_completed_but_stale_instance_cannot_save_quietly_afterwards(): void
+    {
+        [$tenant, $event] = $this->tenantWithEvent();
+        $agreement = $this->agreement($tenant, $event, [
+            'document_number' => 'MOU-DRAFT',
+            'status' => Agreement::STATUS_DRAFT,
+        ]);
+
+        $staleAgreement = Agreement::findOrFail($agreement->id);
+        $freshAgreement = Agreement::findOrFail($agreement->id);
+
+        $freshAgreement->update([
+            'status' => Agreement::STATUS_COMPLETED,
+            'document_number' => 'MOU-COMPLETE',
+        ]);
+
+        try {
+            $staleAgreement->document_number = 'MOU-SHOULD-FAIL';
+            $staleAgreement->saveQuietly();
+            $this->fail('Expected stale quiet save to fail once the agreement is completed.');
+        } catch (LogicException $exception) {
+            $this->assertSame('Completed agreement is immutable.', $exception->getMessage());
+        }
+
+        $agreement->refresh();
+
+        $this->assertSame(Agreement::STATUS_COMPLETED, $agreement->status);
+        $this->assertSame('MOU-COMPLETE', $agreement->document_number);
+    }
+
+    public function test_completed_agreement_cannot_be_deleted_quietly_even_from_stale_instance(): void
+    {
+        [$tenant, $event] = $this->tenantWithEvent();
+        $agreement = $this->agreement($tenant, $event, [
+            'status' => Agreement::STATUS_DRAFT,
+        ]);
+
+        $staleAgreement = Agreement::findOrFail($agreement->id);
+        Agreement::findOrFail($agreement->id)->update([
+            'status' => Agreement::STATUS_COMPLETED,
+        ]);
+
+        try {
+            $staleAgreement->deleteQuietly();
+            $this->fail('Expected stale quiet delete to fail once the agreement is completed.');
+        } catch (LogicException $exception) {
+            $this->assertSame('Completed agreement cannot be deleted.', $exception->getMessage());
+        }
+
+        $this->assertDatabaseHas('agreements', [
+            'id' => $agreement->id,
+            'status' => Agreement::STATUS_COMPLETED,
+        ]);
+    }
+
     public function test_draft_agreement_remains_editable(): void
     {
         [$tenant, $event] = $this->tenantWithEvent();
 
-        $agreement = Agreement::create([
-            'uid' => (string) Str::uuid(),
-            'event_uid' => $event->uid,
-            'tenant_user_uid' => $tenant->uid,
-            'type' => Agreement::TYPE_MOU,
+        $agreement = $this->agreement($tenant, $event, [
             'status' => Agreement::STATUS_DRAFT,
         ]);
 
@@ -229,6 +270,20 @@ class AgreementFoundationTest extends TestCase
         $this->assertSame(2, $agreement->version);
         $this->assertSame(['event' => 'Editable'], $agreement->event_snapshot);
         $this->assertSame('private/agreements/draft.pdf', $agreement->signed_pdf_path);
+    }
+
+    public function test_agreement_event_relation_still_resolves_after_event_is_soft_deleted(): void
+    {
+        [$tenant, $event] = $this->tenantWithEvent();
+        $agreement = $this->agreement($tenant, $event);
+
+        $event->delete();
+        $agreement->refresh();
+
+        $this->assertNotNull($agreement->event);
+        $this->assertTrue($agreement->event->trashed());
+        $this->assertSame($event->uid, $agreement->event->uid);
+        $this->assertSame($event->uid, $agreement->event_uid);
     }
 
     public function test_existing_event_does_not_require_agreement(): void
@@ -287,6 +342,16 @@ class AgreementFoundationTest extends TestCase
             'start_sale' => now()->format('Y-m-d H:i:s'),
             'slug' => 'agreement-event-'.$uid,
             'konfirmasi' => null,
+        ], $overrides));
+    }
+
+    private function agreement(User $tenant, Event $event, array $overrides = []): Agreement
+    {
+        return Agreement::create(array_merge([
+            'uid' => (string) Str::uuid(),
+            'event_uid' => $event->uid,
+            'tenant_user_uid' => $tenant->uid,
+            'type' => Agreement::TYPE_MOU,
         ], $overrides));
     }
 }
