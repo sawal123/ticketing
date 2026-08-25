@@ -69,6 +69,11 @@ class Event extends Model
             ->where('document_type', EventDocument::TYPE_ORGANIZER_LETTER);
     }
 
+    public function agreements()
+    {
+        return $this->hasMany(Agreement::class, 'event_uid', 'uid');
+    }
+
 
     public function harga()
     {

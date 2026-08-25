@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Penyewa;
 
 use App\Http\Controllers\Controller;
+use App\Models\Agreement;
 use App\Models\Cart;
 use App\Models\Cash;
 use App\Models\Event;
@@ -71,6 +72,12 @@ class DeleteController extends Controller
                 if ($this->eventHasHistoricalRecords($event->uid)) {
                     throw ValidationException::withMessages([
                         'event' => 'Event tidak dapat dihapus karena sudah memiliki riwayat transaksi.',
+                    ]);
+                }
+
+                if ($this->eventHasCompletedAgreement($event->uid)) {
+                    throw ValidationException::withMessages([
+                        'event' => 'Event tidak dapat dihapus karena memiliki agreement yang sudah selesai.',
                     ]);
                 }
 
@@ -191,6 +198,15 @@ class DeleteController extends Controller
         return HargaCart::query()->where('event_uid', $eventUid)->exists()
             || Transaction::query()->where('event_uid', $eventUid)->exists()
             || Cash::query()->where('uid_event', $eventUid)->exists();
+    }
+
+    private function eventHasCompletedAgreement(string $eventUid): bool
+    {
+        return Agreement::query()
+            ->where('event_uid', $eventUid)
+            ->where('status', Agreement::STATUS_COMPLETED)
+            ->lockForUpdate()
+            ->exists();
     }
 
     private function hargaHasTransactions(Harga $harga): bool

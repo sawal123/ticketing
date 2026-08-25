@@ -92,6 +92,13 @@ class PendingEventActionsTest extends TestCase
             $table->string('uid_event');
             $table->softDeletes();
         });
+
+        Schema::create('agreements', function ($table) {
+            $table->id();
+            $table->string('event_uid');
+            $table->string('status');
+            $table->timestamps();
+        });
     }
 
     public function test_owner_can_soft_delete_pending_event(): void

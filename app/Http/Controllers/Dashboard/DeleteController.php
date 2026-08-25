@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Dashboard;
 
 use App\Http\Controllers\Controller;
+use App\Models\Agreement;
 use App\Models\Cart;
 use App\Models\Cash;
 use App\Models\Contact;
@@ -20,6 +21,7 @@ use App\Services\SecureImageStorage;
 use App\Services\Tickets\TicketReservationService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class DeleteController extends Controller
 {
@@ -74,23 +76,51 @@ class DeleteController extends Controller
 
     public function deleteEvent($uid)
     {
-        $event = Event::where('uid', $uid)->first();
-        if ($event) {
-            $this->images->delete('cover', $event->cover);
-            $event->delete();
-            $talent = Talent::where('uid', $event->uid)->get();
-            if ($talent) {
+        $coverToDelete = null;
+        $talentImagesToDelete = [];
+
+        try {
+            DB::transaction(function () use ($uid, &$coverToDelete, &$talentImagesToDelete) {
+                $event = Event::where('uid', $uid)->lockForUpdate()->first();
+
+                if (! $event) {
+                    return;
+                }
+
+                if (Agreement::query()
+                    ->where('event_uid', $event->uid)
+                    ->where('status', Agreement::STATUS_COMPLETED)
+                    ->lockForUpdate()
+                    ->exists()) {
+                    throw ValidationException::withMessages([
+                        'event' => 'Event tidak dapat dihapus karena memiliki agreement yang sudah selesai.',
+                    ]);
+                }
+
+                $coverToDelete = $event->cover;
+                $event->delete();
+
+                $talent = Talent::where('uid', $event->uid)->lockForUpdate()->get();
                 foreach ($talent as $talentItem) {
-                    $this->images->delete('talent', $talentItem->gambar);
+                    $talentImagesToDelete[] = $talentItem->gambar;
                     $talentItem->delete();
                 }
-            }
-            $harga = Harga::where('uid', $event->uid)->get();
-            if ($harga) {
+
+                $harga = Harga::where('uid', $event->uid)->lockForUpdate()->get();
                 foreach ($harga as $hargaItem) {
                     $hargaItem->delete();
                 }
-            }
+            }, 3);
+        } catch (ValidationException $e) {
+            return redirect()->back()->with('error', $e->errors()['event'][0] ?? 'Event tidak dapat dihapus.');
+        }
+
+        if ($coverToDelete) {
+            $this->images->delete('cover', $coverToDelete);
+        }
+
+        foreach ($talentImagesToDelete as $talentImage) {
+            $this->images->delete('talent', $talentImage);
         }
 
         return redirect()->back()->with('deleteEvent', 'Event Berhasil Dihapus');

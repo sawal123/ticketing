@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Dashboard;
 
+use App\Models\Agreement;
 use App\Models\Cart;
 use App\Models\Cash;
 use App\Models\Event;
@@ -86,6 +87,12 @@ class EventIndex extends Component
                     ]);
                 }
 
+                if ($this->eventHasCompletedAgreement($event->uid)) {
+                    throw ValidationException::withMessages([
+                        'event' => 'Event tidak dapat dihapus karena memiliki agreement yang sudah selesai.',
+                    ]);
+                }
+
                 $event->delete();
             }, 3);
         } catch (ValidationException $e) {
@@ -112,6 +119,15 @@ class EventIndex extends Component
         return HargaCart::query()->where('event_uid', $eventUid)->exists()
             || Transaction::query()->where('event_uid', $eventUid)->exists()
             || Cash::query()->where('uid_event', $eventUid)->exists();
+    }
+
+    private function eventHasCompletedAgreement(string $eventUid): bool
+    {
+        return Agreement::query()
+            ->where('event_uid', $eventUid)
+            ->where('status', Agreement::STATUS_COMPLETED)
+            ->lockForUpdate()
+            ->exists();
     }
 
     public function render()
