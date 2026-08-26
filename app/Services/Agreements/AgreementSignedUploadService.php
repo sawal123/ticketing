@@ -105,8 +105,14 @@ class AgreementSignedUploadService
                 }
 
                 $lockedAgreement->fill([
+                    'status' => Agreement::STATUS_READY,
                     'signed_pdf_path' => $path,
+                    'signed_review_status' => Agreement::SIGNED_REVIEW_PENDING,
+                    'signed_verified_by' => null,
+                    'signed_verified_at' => null,
+                    'signed_rejection_reason' => null,
                     'signed_at' => now(),
+                    'completed_at' => null,
                 ])->save();
 
                 $lockedAgreement->refresh();

@@ -965,6 +965,10 @@ class AgreementFinalizationTest extends TestCase
             $table->string('privy_reference')->nullable();
             $table->string('unsigned_pdf_path')->nullable();
             $table->string('signed_pdf_path')->nullable();
+            $table->string('signed_review_status')->nullable();
+            $table->string('signed_verified_by')->nullable();
+            $table->timestamp('signed_verified_at')->nullable();
+            $table->text('signed_rejection_reason')->nullable();
             $table->timestamp('sent_to_privy_at')->nullable();
             $table->timestamp('signed_at')->nullable();
             $table->timestamp('completed_at')->nullable();

@@ -4,6 +4,7 @@ namespace App\Livewire\Admin;
 
 use App\Jobs\sendEmailETransaksi;
 use App\Jobs\sendEmailTrnsaksi;
+use App\Models\Agreement;
 use App\Models\Cart;
 use App\Models\Event;
 use App\Models\EventPaymentGateway;
@@ -12,6 +13,7 @@ use App\Models\PaymentGateway;
 use App\Services\Agreements\AgreementFinalizationService;
 use App\Services\Agreements\AgreementPreviewService;
 use App\Services\Agreements\AgreementReviewService;
+use App\Services\Agreements\AgreementSignedVerificationService;
 use App\Services\Payments\PaymentConfigurationAuditService;
 use App\Services\Reports\FinancialSnapshotService;
 use App\Services\Tickets\GateTokenService;
@@ -67,6 +69,8 @@ class EventDetail extends Component
     public $bankRejectionReason = '';
 
     public $organizerLetterRejectionReason = '';
+
+    public $signedMouRejectionReason = '';
 
     protected $queryString = [
         'activeTab' => ['except' => 'umum'],
@@ -720,6 +724,50 @@ class EventDetail extends Component
         session()->flash('message', 'MOU berhasil difinalisasi. PDF unsigned telah disimpan.');
     }
 
+    public function approveSignedMou(): void
+    {
+        $this->authorizeAgreementReview();
+
+        $actor = Auth::user();
+        abort_unless($actor, 403);
+
+        try {
+            app(AgreementSignedVerificationService::class)
+                ->approveForEvent($this->getCurrentEventModel(), $actor->uid);
+        } catch (\Throwable $e) {
+            session()->flash('error', 'Verifikasi MOU bertanda tangan gagal: '.$e->getMessage());
+
+            return;
+        }
+
+        $this->signedMouRejectionReason = '';
+        session()->flash('message', 'MOU bertanda tangan berhasil diverifikasi.');
+    }
+
+    public function rejectSignedMou(): void
+    {
+        $this->authorizeAgreementReview();
+
+        $validated = $this->validate([
+            'signedMouRejectionReason' => 'required|string|max:1000',
+        ]);
+
+        $actor = Auth::user();
+        abort_unless($actor, 403);
+
+        try {
+            app(AgreementSignedVerificationService::class)
+                ->rejectForEvent($this->getCurrentEventModel(), $actor->uid, $validated['signedMouRejectionReason']);
+        } catch (\Throwable $e) {
+            session()->flash('error', 'Penolakan MOU bertanda tangan gagal: '.$e->getMessage());
+
+            return;
+        }
+
+        $this->signedMouRejectionReason = '';
+        session()->flash('message', 'MOU bertanda tangan ditolak dan menunggu upload ulang tenant.');
+    }
+
     private function eventPaymentGatewayAuditValues(?EventPaymentGateway $eventPaymentGateway): array
     {
         return [
@@ -870,6 +918,9 @@ class EventDetail extends Component
         $currentMouAgreement = null;
         $finalizeMouAvailable = false;
         $mouUnsignedAvailable = false;
+        $mouSignedAvailable = false;
+        $mouSignedReviewStatus = null;
+        $mouSignedReviewActionable = false;
 
         if ($this->activeTab === 'pembayaran' && $this->canManagePaymentTab()) {
             if ($this->paymentGatewayConfigs === []) {
@@ -895,6 +946,13 @@ class EventDetail extends Component
             $mouUnsignedAvailable = $currentMouAgreement !== null
                 && $currentMouAgreement->isReady()
                 && filled($currentMouAgreement->unsigned_pdf_path);
+            $mouSignedAvailable = $currentMouAgreement !== null
+                && filled($currentMouAgreement->signed_pdf_path);
+            $mouSignedReviewStatus = $currentMouAgreement?->signed_review_status;
+            $mouSignedReviewActionable = $currentMouAgreement !== null
+                && $currentMouAgreement->isReady()
+                && $mouSignedAvailable
+                && in_array($mouSignedReviewStatus, [null, Agreement::SIGNED_REVIEW_PENDING], true);
         }
 
         $transactions = [];
@@ -939,6 +997,9 @@ class EventDetail extends Component
             'currentMouAgreement' => $currentMouAgreement,
             'finalizeMouAvailable' => $finalizeMouAvailable,
             'mouUnsignedAvailable' => $mouUnsignedAvailable,
+            'mouSignedAvailable' => $mouSignedAvailable,
+            'mouSignedReviewStatus' => $mouSignedReviewStatus,
+            'mouSignedReviewActionable' => $mouSignedReviewActionable,
             'transactions' => $transactions,
             'selectedTransaction' => $selectedTransaction,
             'discount' => $discount,
