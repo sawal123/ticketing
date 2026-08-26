@@ -480,6 +480,7 @@ class EventCreate extends Component
                 'status' => 'pending',
                 'verified_at' => null,
                 'verified_by' => null,
+                'rejection_reason' => null,
             ];
         }
 
@@ -487,6 +488,7 @@ class EventCreate extends Component
             'status' => $existingBankAccount?->status ?? 'pending',
             'verified_at' => $existingBankAccount?->verified_at,
             'verified_by' => $existingBankAccount?->verified_by,
+            'rejection_reason' => $existingBankAccount?->rejection_reason,
         ];
     }
 

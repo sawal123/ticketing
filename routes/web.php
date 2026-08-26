@@ -113,13 +113,6 @@ Route::get('/dashboard/event/{uid}/export-pdf', EventTransactionPdfController::c
 Route::get('/penarikan/{uid}/transfer-proof', PenarikanTransferProofController::class)
     ->middleware('auth')
     ->name('penarikan.transfer-proof.show');
-Route::middleware('auth')->group(function () {
-    Route::get('/admin/event/{uid}/review/bank-book', [AdminEventReviewFileController::class, 'bankBook'])
-        ->name('admin.event.review.bank-book');
-    Route::get('/admin/event/{uid}/review/organizer-letter', [AdminEventReviewFileController::class, 'organizerLetter'])
-        ->name('admin.event.review.organizer-letter');
-});
-
 Route::post('/api/callback', [TransactionController::class, 'callback'])
     ->withoutMiddleware([
         VerifyCsrfToken::class,
@@ -253,6 +246,10 @@ Route::prefix('admin')
         Route::get('/', DashboardDemo::class)->name('admin');
         Route::get('/event', EventIndex::class)->name('admin.event');
         Route::get('/event/{uid}', EventDetail::class)->name('admin.event.detail');
+        Route::get('/event/{uid}/review/bank-book', [AdminEventReviewFileController::class, 'bankBook'])
+            ->name('admin.event.review.bank-book');
+        Route::get('/event/{uid}/review/organizer-letter', [AdminEventReviewFileController::class, 'organizerLetter'])
+            ->name('admin.event.review.organizer-letter');
         Route::get('/transaksi', TransaksiIndex::class)->name('admin.transaksi');
         Route::get('/penarikan', PenarikanIndex::class)->name('admin.penarikan');
         Route::get('/payment-gateway', PaymentGatewayIndex::class)->name('admin.payments');

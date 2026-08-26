@@ -1149,6 +1149,7 @@ class DashboardEventCreateTest extends TestCase
         $this->assertSame('pending', $bankAccount->status);
         $this->assertNull($bankAccount->verified_at);
         $this->assertNull($bankAccount->verified_by);
+        $this->assertNull($bankAccount->rejection_reason);
         $this->assertSame('private/events/'.$event->uid.'/bank/verified.pdf', $bankAccount->bank_book_path);
     }
 
@@ -1206,6 +1207,7 @@ class DashboardEventCreateTest extends TestCase
         $this->assertSame('pending', $bankAccount->status);
         $this->assertNull($bankAccount->verified_at);
         $this->assertNull($bankAccount->verified_by);
+        $this->assertNull($bankAccount->rejection_reason);
         $this->assertSame('replace-new.pdf', $bankAccount->bank_book_original_name);
         Storage::disk('local')->assertMissing('private/events/'.$event->uid.'/bank/replace-old.pdf');
         Storage::disk('local')->assertExists($bankAccount->bank_book_path);

@@ -23,6 +23,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\Str;
 use Livewire\Livewire;
+use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
 use Tests\TestCase;
 
 class AdminAgreementReviewTest extends TestCase
@@ -78,7 +79,30 @@ class AdminAgreementReviewTest extends TestCase
 
         $this->actingAs($tenant)
             ->get(route('admin.event.review.bank-book', $event->uid))
-            ->assertForbidden();
+            ->assertRedirect('/');
+    }
+
+    public function test_locked_event_uid_cannot_be_tampered_from_client_for_review_actions(): void
+    {
+        $admin = $this->admin();
+        $tenant = $this->tenant();
+        $eventA = $this->event($tenant, ['event' => 'Locked Event A']);
+        $eventB = $this->event($tenant, ['event' => 'Locked Event B']);
+        $bankA = $this->bankAccount($eventA, ['status' => 'pending']);
+        $bankB = $this->bankAccount($eventB, ['status' => 'pending']);
+
+        $this->expectException(CannotUpdateLockedPropertyException::class);
+
+        Livewire::actingAs($admin)
+            ->test(EventDetail::class, ['uid' => $eventA->uid])
+            ->set('eventUid', $eventB->uid)
+            ->call('approveBankAccount');
+
+        $bankA->refresh();
+        $bankB->refresh();
+
+        $this->assertSame('pending', $bankA->status);
+        $this->assertSame('pending', $bankB->status);
     }
 
     public function test_approve_bank_account_succeeds(): void

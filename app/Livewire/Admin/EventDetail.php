@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -26,6 +27,7 @@ class EventDetail extends Component
 {
     use WithPagination;
 
+    #[Locked]
     public $eventUid;
 
     public $activeTab = 'umum'; // umum, tiket, transaksi
