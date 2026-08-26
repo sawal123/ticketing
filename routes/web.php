@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\SlideController;
 use App\Http\Controllers\Auth\GoogleController;
 use App\Http\Controllers\Auth\UserLoginController;
 use App\Http\Controllers\Auth\UserRegisterController;
+use App\Http\Controllers\AdminEventMouPdfController;
 use App\Http\Controllers\AdminEventReviewFileController;
 use App\Http\Controllers\BarcodeController;
 use App\Http\Controllers\BuyTicketController;
@@ -250,6 +251,8 @@ Route::prefix('admin')
             ->name('admin.event.review.bank-book');
         Route::get('/event/{uid}/review/organizer-letter', [AdminEventReviewFileController::class, 'organizerLetter'])
             ->name('admin.event.review.organizer-letter');
+        Route::get('/event/{uid}/review/mou/unsigned', [AdminEventMouPdfController::class, 'unsigned'])
+            ->name('admin.event.review.mou.unsigned');
         Route::get('/transaksi', TransaksiIndex::class)->name('admin.transaksi');
         Route::get('/penarikan', PenarikanIndex::class)->name('admin.penarikan');
         Route::get('/payment-gateway', PaymentGatewayIndex::class)->name('admin.payments');
