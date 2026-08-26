@@ -137,7 +137,7 @@ class AgreementFinalizationTest extends TestCase
         $this->assertNull($agreement->commercial_snapshot);
         $this->assertNull($agreement->unsigned_pdf_path);
         $this->assertNull($agreement->template_version);
-        $this->assertFalse(Storage::disk('local')->exists('private/agreements/'.$agreement->uid.'/unsigned.pdf'));
+        $this->assertFalse(Storage::disk('local')->exists('private/agreements/' . $agreement->uid . '/unsigned.pdf'));
     }
 
     public function test_finalization_is_rejected_when_organizer_document_or_payment_invalid(): void
@@ -443,9 +443,7 @@ class AgreementFinalizationTest extends TestCase
 
         $realDisk = Storage::disk('local');
         $failing = new class($realDisk) {
-            public function __construct(private $inner)
-            {
-            }
+            public function __construct(private $inner) {}
 
             public function exists(string $path): bool
             {
@@ -501,7 +499,7 @@ class AgreementFinalizationTest extends TestCase
         $this->assertNull($agreement->document_snapshot);
         $this->assertNull($agreement->commercial_snapshot);
         $this->assertNull($agreement->unsigned_pdf_path);
-        $this->assertFalse($realDisk->exists('private/agreements/'.$agreement->uid.'/unsigned.pdf'));
+        $this->assertFalse($realDisk->exists('private/agreements/' . $agreement->uid . '/unsigned.pdf'));
     }
 
     public function test_pdf_storage_return_false_keeps_agreement_draft_and_no_orphan_pdf(): void
@@ -521,9 +519,7 @@ class AgreementFinalizationTest extends TestCase
         // The local disk is configured with 'throw' => false, so put() may
         // return false WITHOUT raising an exception. Simulate exactly that.
         $failing = new class($realDisk) {
-            public function __construct(private $inner)
-            {
-            }
+            public function __construct(private $inner) {}
 
             public function exists(string $path): bool
             {
@@ -579,7 +575,7 @@ class AgreementFinalizationTest extends TestCase
         $this->assertNull($agreement->document_snapshot);
         $this->assertNull($agreement->commercial_snapshot);
         $this->assertNull($agreement->unsigned_pdf_path);
-        $this->assertFalse($realDisk->exists('private/agreements/'.$agreement->uid.'/unsigned.pdf'));
+        $this->assertFalse($realDisk->exists('private/agreements/' . $agreement->uid . '/unsigned.pdf'));
     }
 
     public function test_db_failure_after_pdf_write_cleans_up_new_file(): void
@@ -615,7 +611,7 @@ class AgreementFinalizationTest extends TestCase
         $this->assertNull($agreement->bank_snapshot);
         $this->assertNull($agreement->document_snapshot);
         $this->assertNull($agreement->commercial_snapshot);
-        $this->assertFalse(Storage::disk('local')->exists('private/agreements/'.$agreement->uid.'/unsigned.pdf'));
+        $this->assertFalse(Storage::disk('local')->exists('private/agreements/' . $agreement->uid . '/unsigned.pdf'));
     }
 
     public function test_private_unsigned_pdf_route_access_control(): void
@@ -686,7 +682,7 @@ class AgreementFinalizationTest extends TestCase
         $agreement->refresh();
 
         $this->actingAs($admin)
-            ->get(route('admin.event.detail', $event->uid).'?activeTab=review-mou')
+            ->get(route('admin.event.detail', $event->uid) . '?activeTab=review-mou')
             ->assertOk()
             ->assertSeeText(Agreement::STATUS_READY)
             ->assertDontSeeText($agreement->unsigned_pdf_path)
@@ -1006,8 +1002,8 @@ class AgreementFinalizationTest extends TestCase
     private function event(User $tenant, array $overrides = []): Event
     {
         $category = Category::create([
-            'name' => 'Category '.Str::random(6),
-            'slug' => 'category-'.Str::lower(Str::random(8)),
+            'name' => 'Category ' . Str::random(6),
+            'slug' => 'category-' . Str::lower(Str::random(8)),
         ]);
         $uid = (string) Str::uuid();
 
@@ -1015,7 +1011,7 @@ class AgreementFinalizationTest extends TestCase
             'uid' => $uid,
             'category_id' => $category->id,
             'user_uid' => $tenant->uid,
-            'event' => 'Finalization Event '.$uid,
+            'event' => 'Finalization Event ' . $uid,
             'alamat' => 'Alamat Finalization Event',
             'tanggal' => '2026-09-10 19:00:00',
             'event_end' => '2026-09-10 22:00:00',
@@ -1030,7 +1026,7 @@ class AgreementFinalizationTest extends TestCase
             'deskripsi' => 'Deskripsi finalization',
             'map' => 'https://maps.google.com/?q=finalization',
             'start_sale' => '2026-09-01 10:00:00',
-            'slug' => 'finalization-'.Str::lower(Str::random(8)),
+            'slug' => 'finalization-' . Str::lower(Str::random(8)),
             'konfirmasi' => null,
             'payment_otp_enabled' => false,
         ], $overrides));
@@ -1056,7 +1052,7 @@ class AgreementFinalizationTest extends TestCase
             'bank_name' => 'Bank Finalization',
             'account_number' => '1234567890',
             'account_holder_name' => 'Organizer Finalization',
-            'bank_book_path' => 'private/events/'.$event->uid.'/bank/book-finalization.pdf',
+            'bank_book_path' => 'private/events/' . $event->uid . '/bank/book-finalization.pdf',
             'bank_book_original_name' => 'book-finalization.pdf',
             'bank_book_mime' => 'application/pdf',
             'status' => 'pending',
@@ -1093,7 +1089,7 @@ class AgreementFinalizationTest extends TestCase
             'document_number' => 'DOC-FINALIZATION-001',
             'document_date' => '2026-08-20',
             'original_name' => 'organizer-finalization.pdf',
-            'file_path' => 'private/events/'.$event->uid.'/documents/organizer-finalization.pdf',
+            'file_path' => 'private/events/' . $event->uid . '/documents/organizer-finalization.pdf',
             'mime_type' => 'application/pdf',
             'status' => 'pending',
             'verified_by' => null,
@@ -1151,7 +1147,7 @@ class AgreementFinalizationTest extends TestCase
     private function gateway(array $overrides = []): PaymentGateway
     {
         return PaymentGateway::create(array_merge([
-            'payment' => 'Gateway Finalization '.Str::random(5),
+            'payment' => 'Gateway Finalization ' . Str::random(5),
             'category' => 'bank_transfer',
             'biaya' => 0,
             'biaya_type' => 'rupiah',
@@ -1160,7 +1156,7 @@ class AgreementFinalizationTest extends TestCase
             'midtrans_code' => null,
             'icon' => null,
             'is_active' => true,
-            'slug' => 'gateway-finalization-'.Str::lower(Str::random(8)),
+            'slug' => 'gateway-finalization-' . Str::lower(Str::random(8)),
         ], $overrides));
     }
 

@@ -306,8 +306,8 @@ class AgreementSignedVerificationTest extends TestCase
     private function event(User $tenant, array $overrides = []): Event
     {
         $category = Category::create([
-            'name' => 'Category '.Str::random(6),
-            'slug' => 'category-'.Str::lower(Str::random(8)),
+            'name' => 'Category ' . Str::random(6),
+            'slug' => 'category-' . Str::lower(Str::random(8)),
         ]);
         $uid = (string) Str::uuid();
 
@@ -315,7 +315,7 @@ class AgreementSignedVerificationTest extends TestCase
             'uid' => $uid,
             'category_id' => $category->id,
             'user_uid' => $tenant->uid,
-            'event' => 'M10 Event '.$uid,
+            'event' => 'M10 Event ' . $uid,
             'alamat' => 'Alamat M10 Event',
             'tanggal' => '2026-09-10 19:00:00',
             'event_end' => '2026-09-10 22:00:00',
@@ -330,7 +330,7 @@ class AgreementSignedVerificationTest extends TestCase
             'deskripsi' => 'Deskripsi M10',
             'map' => 'https://maps.google.com/?q=m10',
             'start_sale' => '2026-09-01 10:00:00',
-            'slug' => 'm10-'.Str::lower(Str::random(8)),
+            'slug' => 'm10-' . Str::lower(Str::random(8)),
             'konfirmasi' => null,
             'payment_otp_enabled' => false,
         ], $overrides));
@@ -388,12 +388,12 @@ class AgreementSignedVerificationTest extends TestCase
 
     private function unsignedPath(string $agreementUid): string
     {
-        return self::DIR.'/'.$agreementUid.'/unsigned.pdf';
+        return self::DIR . '/' . $agreementUid . '/unsigned.pdf';
     }
 
     private function signedPath(string $agreementUid): string
     {
-        return self::DIR.'/'.$agreementUid.'/signed.pdf';
+        return self::DIR . '/' . $agreementUid . '/signed.pdf';
     }
 
     private function createSchema(): void

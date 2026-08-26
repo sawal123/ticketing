@@ -59,7 +59,7 @@ class AdminAgreementReviewTest extends TestCase
         $this->eventGateway($event, $gateway, ['is_active' => true]);
 
         $this->actingAs($admin)
-            ->get(route('admin.event.detail', $event->uid).'?activeTab=review-mou')
+            ->get(route('admin.event.detail', $event->uid) . '?activeTab=review-mou')
             ->assertOk()
             ->assertSeeText('Review MOU')
             ->assertSeeText('Readiness Checklist')
@@ -74,7 +74,7 @@ class AdminAgreementReviewTest extends TestCase
         $this->verifiedBankAccount($event);
 
         $this->actingAs($tenant)
-            ->get(route('admin.event.detail', $event->uid).'?activeTab=review-mou')
+            ->get(route('admin.event.detail', $event->uid) . '?activeTab=review-mou')
             ->assertRedirect('/');
 
         $this->actingAs($tenant)
@@ -178,7 +178,7 @@ class AdminAgreementReviewTest extends TestCase
             'bank_name' => 'Bank Missing',
             'account_number' => '99887766',
             'account_holder_name' => 'Missing File',
-            'bank_book_path' => 'private/events/'.$event->uid.'/bank/missing-bank.pdf',
+            'bank_book_path' => 'private/events/' . $event->uid . '/bank/missing-bank.pdf',
             'bank_book_original_name' => 'missing-bank.pdf',
             'bank_book_mime' => 'application/pdf',
             'status' => 'pending',
@@ -285,7 +285,7 @@ class AdminAgreementReviewTest extends TestCase
         $tenant = $this->tenant();
         $event = $this->event($tenant);
         $bankAccount = $this->bankAccount($event, [
-            'bank_book_path' => 'private/events/'.$event->uid.'/bank/review-bank-book.pdf',
+            'bank_book_path' => 'private/events/' . $event->uid . '/bank/review-bank-book.pdf',
             'bank_book_original_name' => 'review-bank-book.pdf',
         ]);
         Storage::disk('local')->put($bankAccount->bank_book_path, 'bank-book-review-content');
@@ -304,7 +304,7 @@ class AdminAgreementReviewTest extends TestCase
         $tenant = $this->tenant();
         $event = $this->event($tenant);
         $document = $this->organizerLetter($event, [
-            'file_path' => 'private/events/'.$event->uid.'/documents/review-letter.pdf',
+            'file_path' => 'private/events/' . $event->uid . '/documents/review-letter.pdf',
             'original_name' => 'review-letter.pdf',
         ]);
         Storage::disk('local')->put($document->file_path, 'organizer-letter-review-content');
@@ -323,7 +323,7 @@ class AdminAgreementReviewTest extends TestCase
         $tenant = $this->tenant();
         $event = $this->event($tenant);
         $this->bankAccount($event, [
-            'bank_book_path' => 'private/events/'.$event->uid.'/bank/missing-review.pdf',
+            'bank_book_path' => 'private/events/' . $event->uid . '/bank/missing-review.pdf',
             'bank_book_original_name' => 'missing-review.pdf',
             'skip_storage' => true,
         ]);
@@ -345,7 +345,7 @@ class AdminAgreementReviewTest extends TestCase
         $this->eventGateway($event, $gateway, ['is_active' => true]);
 
         $this->actingAs($admin)
-            ->get(route('admin.event.detail', $event->uid).'?activeTab=review-mou')
+            ->get(route('admin.event.detail', $event->uid) . '?activeTab=review-mou')
             ->assertOk()
             ->assertDontSeeText($bankAccount->bank_book_path)
             ->assertDontSeeText($document->file_path)
@@ -370,7 +370,7 @@ class AdminAgreementReviewTest extends TestCase
         $this->assertSame('BELUM SIAP FINALISASI', $review['status_label']);
 
         $this->actingAs($admin)
-            ->get(route('admin.event.detail', $event->uid).'?activeTab=review-mou')
+            ->get(route('admin.event.detail', $event->uid) . '?activeTab=review-mou')
             ->assertOk()
             ->assertSeeText('BELUM SIAP FINALISASI')
             ->assertSeeText('Rekening event belum diverifikasi.')
@@ -395,7 +395,7 @@ class AdminAgreementReviewTest extends TestCase
         $this->assertSame('SIAP FINALISASI', $review['status_label']);
 
         $this->actingAs($admin)
-            ->get(route('admin.event.detail', $event->uid).'?activeTab=review-mou')
+            ->get(route('admin.event.detail', $event->uid) . '?activeTab=review-mou')
             ->assertOk()
             ->assertSeeText('SIAP FINALISASI');
 
@@ -446,7 +446,7 @@ class AdminAgreementReviewTest extends TestCase
         $this->eventGateway($event, $gateway, ['is_active' => true]);
 
         $this->actingAs($admin)
-            ->get(route('admin.event.detail', $event->uid).'?activeTab=review-mou')
+            ->get(route('admin.event.detail', $event->uid) . '?activeTab=review-mou')
             ->assertOk()
             ->assertSeeText('MOU belum tersedia untuk event ini.')
             ->assertSeeText('BELUM SIAP FINALISASI');
@@ -700,8 +700,8 @@ class AdminAgreementReviewTest extends TestCase
     private function event(User $tenant, array $overrides = []): Event
     {
         $category = Category::create([
-            'name' => 'Category '.Str::random(6),
-            'slug' => 'category-'.Str::lower(Str::random(8)),
+            'name' => 'Category ' . Str::random(6),
+            'slug' => 'category-' . Str::lower(Str::random(8)),
         ]);
         $uid = (string) Str::uuid();
 
@@ -709,7 +709,7 @@ class AdminAgreementReviewTest extends TestCase
             'uid' => $uid,
             'category_id' => $category->id,
             'user_uid' => $tenant->uid,
-            'event' => 'Admin Review Event '.$uid,
+            'event' => 'Admin Review Event ' . $uid,
             'alamat' => 'Alamat Review Event',
             'tanggal' => '2026-09-10 19:00:00',
             'event_end' => '2026-09-10 22:00:00',
@@ -724,7 +724,7 @@ class AdminAgreementReviewTest extends TestCase
             'deskripsi' => 'Deskripsi review admin',
             'map' => 'https://maps.google.com/?q=review',
             'start_sale' => '2026-09-01 10:00:00',
-            'slug' => 'admin-review-'.Str::lower(Str::random(8)),
+            'slug' => 'admin-review-' . Str::lower(Str::random(8)),
             'konfirmasi' => null,
             'payment_otp_enabled' => false,
         ], $overrides));
@@ -750,7 +750,7 @@ class AdminAgreementReviewTest extends TestCase
             'bank_name' => 'Bank Review',
             'account_number' => '1234567890',
             'account_holder_name' => 'Organizer Review',
-            'bank_book_path' => 'private/events/'.$event->uid.'/bank/book-review.pdf',
+            'bank_book_path' => 'private/events/' . $event->uid . '/bank/book-review.pdf',
             'bank_book_original_name' => 'book-review.pdf',
             'bank_book_mime' => 'application/pdf',
             'status' => 'pending',
@@ -787,7 +787,7 @@ class AdminAgreementReviewTest extends TestCase
             'document_number' => 'DOC-REVIEW-001',
             'document_date' => '2026-08-20',
             'original_name' => 'organizer-review.pdf',
-            'file_path' => 'private/events/'.$event->uid.'/documents/organizer-review.pdf',
+            'file_path' => 'private/events/' . $event->uid . '/documents/organizer-review.pdf',
             'mime_type' => 'application/pdf',
             'status' => 'pending',
             'verified_by' => null,
@@ -845,7 +845,7 @@ class AdminAgreementReviewTest extends TestCase
     private function gateway(array $overrides = []): PaymentGateway
     {
         return PaymentGateway::create(array_merge([
-            'payment' => 'Gateway Review '.Str::random(5),
+            'payment' => 'Gateway Review ' . Str::random(5),
             'category' => 'bank_transfer',
             'biaya' => 0,
             'biaya_type' => 'rupiah',
@@ -854,7 +854,7 @@ class AdminAgreementReviewTest extends TestCase
             'midtrans_code' => null,
             'icon' => null,
             'is_active' => true,
-            'slug' => 'gateway-review-'.Str::lower(Str::random(8)),
+            'slug' => 'gateway-review-' . Str::lower(Str::random(8)),
         ], $overrides));
     }
 
