@@ -135,12 +135,24 @@ class AgreementPreviewService
 
     private function resolveGatewayFee(EventPaymentGateway $config): array
     {
+        return $this->resolveGatewayFeeSnapshot($config);
+    }
+
+    /**
+     * Resolve the effective fee for a single event gateway configuration using
+     * the same semantics as M6 preview and checkout, including the related
+     * payment_gateway_id so the result can be frozen into a commercial
+     * snapshot without needing the global PaymentGateway later.
+     */
+    public function resolveGatewayFeeSnapshot(EventPaymentGateway $config): array
+    {
         $gateway = $config->paymentGateway;
         [$resolvedFixed, $resolvedPercent] = $this->resolveGatewayFeeParts($config, $gateway);
         $eventIsActive = (bool) $config->is_active;
         $globalIsActive = (bool) $gateway->is_active;
 
         return [
+            'payment_gateway_id' => $config->payment_gateway_id,
             'payment' => $gateway->payment,
             'event_is_active' => $eventIsActive,
             'global_is_active' => $globalIsActive,

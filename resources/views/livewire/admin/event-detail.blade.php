@@ -477,6 +477,42 @@
                                 </div>
                             @endforeach
                         </div>
+
+                        @if ($currentMouAgreement)
+                            <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                                <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                                    <div>
+                                        <p class="text-xs font-black uppercase tracking-[0.25em] text-slate-400">Finalisasi MOU</p>
+                                        @if ($finalizeMouAvailable)
+                                            <p class="mt-1 text-sm text-slate-500">
+                                                Seluruh prerequisite M7 terpenuhi. Finalisasi akan membekukan snapshot kontraktual dan membuat PDF unsigned di penyimpanan privat.
+                                            </p>
+                                        @else
+                                            <p class="mt-1 text-sm text-slate-500">
+                                                Finalisasi hanya tersedia setelah seluruh checklist readiness terpenuhi dan Agreement masih berstatus DRAFT.
+                                            </p>
+                                        @endif
+                                    </div>
+                                    <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+                                        @if ($mouUnsignedAvailable)
+                                            <a href="{{ route('admin.event.review.mou.unsigned', $event->uid) }}" target="_blank" rel="noopener" class="inline-flex">
+                                                <x-admin.button variant="secondary" icon="file-text" class="!py-2">
+                                                    Lihat PDF Unsigned
+                                                </x-admin.button>
+                                            </a>
+                                        @endif
+                                        @if ($finalizeMouAvailable)
+                                            <x-admin.button type="button" wire:click="finalizeAgreement"
+                                                wire:loading.attr="disabled" wire:target="finalizeAgreement" icon="check"
+                                                wire:confirm="Yakin ingin memfinalisasi MOU? Snapshot dan PDF unsigned akan dibekukan."
+                                                class="disabled:pointer-events-none disabled:opacity-60">
+                                                Finalisasi MOU
+                                            </x-admin.button>
+                                        @endif
+                                    </div>
+                                </div>
+                            </div>
+                        @endif
                     </div>
                 </x-admin.card>
 

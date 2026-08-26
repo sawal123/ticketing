@@ -9,6 +9,7 @@ use App\Models\Event;
 use App\Models\EventPaymentGateway;
 use App\Models\Harga;
 use App\Models\PaymentGateway;
+use App\Services\Agreements\AgreementFinalizationService;
 use App\Services\Agreements\AgreementPreviewService;
 use App\Services\Agreements\AgreementReviewService;
 use App\Services\Payments\PaymentConfigurationAuditService;
@@ -693,6 +694,32 @@ class EventDetail extends Component
         session()->flash('message', 'Surat penyelenggara ditolak.');
     }
 
+    public function finalizeAgreement(): void
+    {
+        $this->authorizeAgreementReview();
+
+        $actor = Auth::user();
+        abort_unless($actor, 403);
+
+        $event = $this->getCurrentEventModel();
+
+        try {
+            $result = app(AgreementFinalizationService::class)->finalizeForEvent($event, $actor->uid);
+        } catch (\Throwable $e) {
+            session()->flash('error', 'Finalisasi MOU gagal: '.$e->getMessage());
+
+            return;
+        }
+
+        if (! ($result['ok'] ?? false)) {
+            session()->flash('error', $result['message'] ?? 'Finalisasi MOU gagal.');
+
+            return;
+        }
+
+        session()->flash('message', 'MOU berhasil difinalisasi. PDF unsigned telah disimpan.');
+    }
+
     private function eventPaymentGatewayAuditValues(?EventPaymentGateway $eventPaymentGateway): array
     {
         return [
@@ -840,6 +867,9 @@ class EventDetail extends Component
         $mouPreview = null;
         $agreementReview = null;
         $commercialReview = null;
+        $currentMouAgreement = null;
+        $finalizeMouAvailable = false;
+        $mouUnsignedAvailable = false;
 
         if ($this->activeTab === 'pembayaran' && $this->canManagePaymentTab()) {
             if ($this->paymentGatewayConfigs === []) {
@@ -857,6 +887,14 @@ class EventDetail extends Component
             $mouPreview = app(AgreementPreviewService::class)->buildForEvent($event);
             $agreementReview = app(AgreementReviewService::class)->buildForEvent($event);
             $commercialReview = app(AgreementPreviewService::class)->buildCommercialSummaryForEvent($event);
+
+            $currentMouAgreement = $event->currentMouAgreement;
+            $finalizeMouAvailable = $currentMouAgreement !== null
+                && (bool) ($agreementReview['is_ready'] ?? false)
+                && $currentMouAgreement->isDraft();
+            $mouUnsignedAvailable = $currentMouAgreement !== null
+                && $currentMouAgreement->isReady()
+                && filled($currentMouAgreement->unsigned_pdf_path);
         }
 
         $transactions = [];
@@ -898,6 +936,9 @@ class EventDetail extends Component
             'mouPreview' => $mouPreview,
             'agreementReview' => $agreementReview,
             'commercialReview' => $commercialReview,
+            'currentMouAgreement' => $currentMouAgreement,
+            'finalizeMouAvailable' => $finalizeMouAvailable,
+            'mouUnsignedAvailable' => $mouUnsignedAvailable,
             'transactions' => $transactions,
             'selectedTransaction' => $selectedTransaction,
             'discount' => $discount,
