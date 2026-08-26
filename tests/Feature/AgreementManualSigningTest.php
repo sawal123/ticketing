@@ -71,6 +71,24 @@ class AgreementManualSigningTest extends TestCase
         $this->assertSame('%PDF-1.4 unsigned content', $response->streamedContent());
     }
 
+    public function test_draft_agreement_unsigned_pdf_is_not_downloadable(): void
+    {
+        $tenant = $this->tenant();
+        $event = $this->event($tenant);
+        $this->agreement($tenant, $event, [
+            'status' => Agreement::STATUS_DRAFT,
+            'unsigned_pdf_path' => self::DIR.'/'.$event->uid.'/unsigned.pdf',
+        ]);
+
+        // Even when a physical file exists, a DRAFT agreement's unsigned PDF
+        // must not be served — the unsigned route is state-guarded on READY.
+        Storage::disk('local')->put(self::DIR.'/'.$event->uid.'/unsigned.pdf', '%PDF-1.4 unsigned');
+
+        $this->actingAs($tenant)
+            ->get(route('dashboard.event.mou.unsigned', $event->uid))
+            ->assertNotFound();
+    }
+
     public function test_other_tenant_cannot_download_unsigned_pdf(): void
     {
         $tenantA = $this->tenant(['email' => 'owner-a@example.test']);
@@ -158,7 +176,7 @@ class AgreementManualSigningTest extends TestCase
 
         $agreement->refresh();
 
-        $this->assertNotNull($agreement->signed_pdf_path);
+        $this->assertSame($this->signedPath($agreement->uid), $agreement->signed_pdf_path);
         $this->assertTrue(Storage::disk('local')->exists($agreement->signed_pdf_path));
         $this->assertNotNull($agreement->signed_at);
         $this->assertSame(Agreement::STATUS_READY, $agreement->status);
@@ -215,13 +233,15 @@ class AgreementManualSigningTest extends TestCase
         $agreementA = $this->readyAgreement($tenantA, $eventA);
 
         $eventB = $this->event($tenantB, ['event' => 'Event B']);
-        $this->readyAgreement($tenantB, $eventB, [
-            'signed_pdf_path' => self::DIR.'/'.$eventB->uid.'/signed.pdf',
+        $uidB = (string) Str::uuid();
+        $agreementB = $this->readyAgreement($tenantB, $eventB, [
+            'uid' => $uidB,
+            'signed_pdf_path' => $this->signedPath($uidB),
             'signed_at' => now()->subDay(),
         ]);
 
         Storage::disk('local')->put(
-            self::DIR.'/'.$eventB->uid.'/signed.pdf',
+            $this->signedPath($uidB),
             'signed-B-original'
         );
 
@@ -233,10 +253,10 @@ class AgreementManualSigningTest extends TestCase
             ->call('uploadSignedMou')
             ->assertHasNoErrors();
 
-        $agreementB = $eventB->currentMouAgreement->refresh();
+        $agreementB = $agreementB->refresh();
 
         $this->assertSame(
-            self::DIR.'/'.$eventB->uid.'/signed.pdf',
+            $this->signedPath($agreementB->uid),
             $agreementB->signed_pdf_path
         );
         $this->assertSame(
@@ -333,14 +353,16 @@ class AgreementManualSigningTest extends TestCase
     {
         $tenant = $this->tenant();
         $event = $this->event($tenant);
+        $uid = (string) Str::uuid();
         $this->readyAgreement($tenant, $event, [
+            'uid' => $uid,
             'unsigned_pdf_path' => self::DIR.'/'.$event->uid.'/unsigned.pdf',
-            'signed_pdf_path' => self::DIR.'/'.$event->uid.'/signed.pdf',
+            'signed_pdf_path' => $this->signedPath($uid),
             'signed_at' => now(),
         ]);
 
         Storage::disk('local')->put(self::DIR.'/'.$event->uid.'/unsigned.pdf', '%PDF-1.4 unsigned');
-        Storage::disk('local')->put(self::DIR.'/'.$event->uid.'/signed.pdf', '%PDF-1.4 signed');
+        Storage::disk('local')->put($this->signedPath($uid), '%PDF-1.4 signed');
 
         $this->actingAs($tenant)
             ->get(route('dashboard.event.detail', $event->uid).'?activeTab=mou')
@@ -356,13 +378,15 @@ class AgreementManualSigningTest extends TestCase
     {
         $tenant = $this->tenant();
         $event = $this->event($tenant);
+        $uid = (string) Str::uuid();
         $this->readyAgreement($tenant, $event, [
+            'uid' => $uid,
             'unsigned_pdf_path' => self::DIR.'/'.$event->uid.'/unsigned.pdf',
-            'signed_pdf_path' => self::DIR.'/'.$event->uid.'/signed.pdf',
+            'signed_pdf_path' => $this->signedPath($uid),
         ]);
 
         Storage::disk('local')->put(self::DIR.'/'.$event->uid.'/unsigned.pdf', '%PDF-1.4 unsigned');
-        Storage::disk('local')->put(self::DIR.'/'.$event->uid.'/signed.pdf', '%PDF-1.4 signed content');
+        Storage::disk('local')->put($this->signedPath($uid), '%PDF-1.4 signed content');
 
         $response = $this->actingAs($tenant)
             ->get(route('dashboard.event.mou.signed', $event->uid));
@@ -377,8 +401,10 @@ class AgreementManualSigningTest extends TestCase
     {
         $tenant = $this->tenant();
         $event = $this->event($tenant);
+        $uid = (string) Str::uuid();
         $this->readyAgreement($tenant, $event, [
-            'signed_pdf_path' => self::DIR.'/'.$event->uid.'/signed.pdf',
+            'uid' => $uid,
+            'signed_pdf_path' => $this->signedPath($uid),
         ]);
 
         // No physical file written.
@@ -392,13 +418,15 @@ class AgreementManualSigningTest extends TestCase
     {
         $tenant = $this->tenant();
         $event = $this->event($tenant);
+        $uid = (string) Str::uuid();
         $agreement = $this->readyAgreement($tenant, $event, [
+            'uid' => $uid,
             'unsigned_pdf_path' => self::DIR.'/'.$event->uid.'/unsigned.pdf',
-            'signed_pdf_path' => self::DIR.'/'.$event->uid.'/signed.pdf',
+            'signed_pdf_path' => $this->signedPath($uid),
         ]);
 
         Storage::disk('local')->put(self::DIR.'/'.$event->uid.'/unsigned.pdf', '%PDF-1.4 unsigned');
-        Storage::disk('local')->put(self::DIR.'/'.$event->uid.'/signed.pdf', '%PDF-1.4 signed');
+        Storage::disk('local')->put($this->signedPath($uid), '%PDF-1.4 signed');
 
         $this->actingAs($tenant)
             ->get(route('dashboard.event.detail', $event->uid).'?activeTab=mou')
@@ -447,10 +475,10 @@ class AgreementManualSigningTest extends TestCase
         $this->assertSame(Agreement::STATUS_READY, $agreement->status);
 
         // No orphan staged/temporary files remain.
-        $files = Storage::disk('local')->allFiles(self::DIR.'/'.$event->uid);
+        $files = Storage::disk('local')->allFiles(self::DIR.'/'.$agreement->uid);
         foreach ($files as $file) {
             $this->assertStringNotContainsString('staged-', $file);
-            $this->assertStringNotContainsString('.bak', $file);
+            $this->assertStringNotContainsString('signed-backup-', $file);
         }
         $this->assertTrue(Storage::disk('local')->exists($agreement->signed_pdf_path));
     }
@@ -475,6 +503,8 @@ class AgreementManualSigningTest extends TestCase
 
         $realDisk = Storage::disk('local');
         $failing = new class($realDisk) {
+            public bool $alreadyFailed = false;
+
             public function __construct(private $inner)
             {
             }
@@ -491,7 +521,13 @@ class AgreementManualSigningTest extends TestCase
 
             public function put(string $path, $contents, $options = []): bool
             {
-                if (str_ends_with($path, '/signed.pdf')) {
+                if (str_ends_with($path, '/signed.pdf') && ! $this->alreadyFailed) {
+                    // Destructive failure: clobber/truncate the target first,
+                    // then report failure — simulating a partial write that
+                    // already destroyed the previously accepted file.
+                    $this->alreadyFailed = true;
+                    $this->inner->put($path, 'CORRUPTED PARTIAL WRITE');
+
                     return false;
                 }
 
@@ -533,8 +569,19 @@ class AgreementManualSigningTest extends TestCase
 
         $this->assertSame($oldPath, $agreement->signed_pdf_path);
         $this->assertSame($oldSignedAt->format('Y-m-d H:i:s'), $agreement->signed_at->format('Y-m-d H:i:s'));
-        $this->assertSame($oldContent, Storage::disk('local')->get($oldPath));
+        // Even though the target was corrupted before the failure was reported,
+        // the service must restore the previous file from the backup.
+        $this->assertSame($oldContent, $realDisk->get($oldPath));
         $this->assertSame(Agreement::STATUS_READY, $agreement->status);
+
+        // Staging and backup are cleaned up afterwards; only signed.pdf remains.
+        $files = $realDisk->allFiles(self::DIR.'/'.$agreement->uid);
+        $this->assertNotEmpty($files);
+        foreach ($files as $file) {
+            $this->assertStringNotContainsString('staged-', $file);
+            $this->assertStringNotContainsString('signed-backup-', $file);
+        }
+        $this->assertSame($oldContent, $realDisk->get($oldPath));
     }
 
     public function test_db_failure_after_file_staging_keeps_old_state_and_cleans_temp(): void
@@ -575,10 +622,71 @@ class AgreementManualSigningTest extends TestCase
         $this->assertSame(Agreement::STATUS_READY, $agreement->status);
 
         // Temporary files cleaned up.
-        $files = Storage::disk('local')->allFiles(self::DIR.'/'.$event->uid);
+        $files = Storage::disk('local')->allFiles(self::DIR.'/'.$agreement->uid);
         foreach ($files as $file) {
             $this->assertStringNotContainsString('staged-', $file);
-            $this->assertStringNotContainsString('.bak', $file);
+            $this->assertStringNotContainsString('signed-backup-', $file);
+        }
+    }
+
+    public function test_db_failure_after_file_write_restores_previous_signed_pdf(): void
+    {
+        $tenant = $this->tenant();
+        $event = $this->event($tenant);
+        $agreement = $this->readyAgreement($tenant, $event);
+
+        Livewire::actingAs($tenant)
+            ->test(EventDetail::class, ['uid' => $event->uid])
+            ->set('activeTab', 'mou')
+            ->set('signedMou', UploadedFile::fake()->create('first.pdf', 100, 'application/pdf'))
+            ->call('uploadSignedMou')
+            ->assertHasNoErrors();
+
+        $agreement->refresh();
+        try {
+            // Make the stored timestamp older first so the next upload always
+            // produces a dirty Agreement update even if both operations happen
+            // within the same second.
+            Agreement::query()
+                ->whereKey($agreement->getKey())
+                ->update(['signed_at' => now()->subMinute()]);
+
+            $agreement->refresh();
+            $oldPath = $agreement->signed_pdf_path;
+            $oldSignedAt = $agreement->signed_at;
+            $oldContent = Storage::disk('local')->get($oldPath);
+
+            // Let the new authoritative signed.pdf be written, then force the
+            // Agreement update to fail AFTER the file write has succeeded.
+            Agreement::updating(function () {
+                throw new RuntimeException('Simulated DB failure after file write');
+            });
+
+            try {
+                app(AgreementSignedUploadService::class)
+                    ->storeForEvent($event, $tenant->uid, UploadedFile::fake()->create('second.pdf', 100, 'application/pdf'));
+                $this->fail('Expected RuntimeException was not thrown.');
+            } catch (RuntimeException $e) {
+                $this->assertSame('Simulated DB failure after file write', $e->getMessage());
+            }
+
+            $agreement->refresh();
+
+            $this->assertSame(Agreement::STATUS_READY, $agreement->status);
+            $this->assertSame($oldPath, $agreement->signed_pdf_path);
+            $this->assertSame($oldSignedAt->format('Y-m-d H:i:s'), $agreement->signed_at->format('Y-m-d H:i:s'));
+            // The physical signed PDF must still contain the OLD bytes.
+            $this->assertSame($oldContent, Storage::disk('local')->get($oldPath));
+
+            // No staged or backup orphans remain.
+            $files = Storage::disk('local')->allFiles(self::DIR.'/'.$agreement->uid);
+            foreach ($files as $file) {
+                $this->assertStringNotContainsString('staged-', $file);
+                $this->assertStringNotContainsString('signed-backup-', $file);
+            }
+        } finally {
+            Agreement::flushEventListeners();
+            Agreement::clearBootedModels();
         }
     }
 
@@ -586,13 +694,15 @@ class AgreementManualSigningTest extends TestCase
     {
         $tenant = $this->tenant();
         $event = $this->event($tenant);
+        $uid = (string) Str::uuid();
         $this->agreement($tenant, $event, [
+            'uid' => $uid,
             'status' => Agreement::STATUS_COMPLETED,
-            'signed_pdf_path' => self::DIR.'/'.$event->uid.'/signed.pdf',
+            'signed_pdf_path' => $this->signedPath($uid),
             'signed_at' => now()->subDay(),
         ]);
 
-        Storage::disk('local')->put(self::DIR.'/'.$event->uid.'/signed.pdf', '%PDF-1.4 signed');
+        Storage::disk('local')->put($this->signedPath($uid), '%PDF-1.4 signed');
 
         try {
             app(AgreementSignedUploadService::class)
@@ -605,7 +715,7 @@ class AgreementManualSigningTest extends TestCase
         $agreement = $event->currentMouAgreement->refresh();
         $this->assertSame(Agreement::STATUS_COMPLETED, $agreement->status);
         $this->assertSame(
-            self::DIR.'/'.$event->uid.'/signed.pdf',
+            $this->signedPath($agreement->uid),
             $agreement->signed_pdf_path
         );
         $this->assertSame('%PDF-1.4 signed', Storage::disk('local')->get($agreement->signed_pdf_path));
@@ -928,6 +1038,15 @@ class AgreementManualSigningTest extends TestCase
             'signed_at' => null,
             'completed_at' => null,
         ], $overrides));
+    }
+
+    /**
+     * Authoritative signed-PDF path for an Agreement, mirroring M8's
+     * agreement-scoped unsigned.pdf path.
+     */
+    private function signedPath(string $agreementUid): string
+    {
+        return self::DIR.'/'.$agreementUid.'/signed.pdf';
     }
 
     /**

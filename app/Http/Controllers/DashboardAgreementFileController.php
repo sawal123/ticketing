@@ -20,9 +20,19 @@ class DashboardAgreementFileController extends Controller
     {
         $event = $this->authorizedEvent($uid);
 
-        $path = $event->currentMouAgreement?->unsigned_pdf_path;
+        $agreement = $event->currentMouAgreement;
 
-        return $this->stream($path, 'mou-unsigned.pdf');
+        // Unsigned is only served for the current MOU Agreement while it is
+        // READY and actually has a stored unsigned PDF. Everything else is a
+        // safe 404 — no agreement UID or path is ever accepted from request.
+        abort_unless(
+            $agreement !== null
+            && $agreement->isReady()
+            && filled($agreement->unsigned_pdf_path),
+            404
+        );
+
+        return $this->stream($agreement->unsigned_pdf_path, 'mou-unsigned.pdf');
     }
 
     public function signed(string $uid): StreamedResponse

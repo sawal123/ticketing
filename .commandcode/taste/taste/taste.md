@@ -1,0 +1,12 @@
+# Taste
+- Communicates in Indonesian (Bahasa Indonesia) and expects responses in Indonesian. Confidence: 0.9
+- Expects the agent to check for unfinished/pending work (task list, git status, branch state, TODO markers) at the start of a session and continue it rather than starting fresh. Confidence: 0.7
+- Develops features as numbered milestones (M0–M12) on dedicated feature branches (`feature/mX-...`) created from an up-to-date main, then pushes the branch and opens a PR back to main. Confidence: 0.9
+- Requires comprehensive feature tests (happy path, authorization, edge cases, failure/rollback) and a green full test suite plus CI before work is considered done. Confidence: 0.9
+- Prefers not to modify already-working code from earlier milestones unless a regression test proves a bug; prior milestone behavior must be preserved. Confidence: 0.8
+- Expects strict scope discipline: implement exactly what the task spec asks and never expand scope, refactor unrelated code, or add packages without a real need. Confidence: 0.9
+- Expects features to be security-hardened by default: server-side authorization (never trust client-supplied IDs/paths/status), private storage for sensitive files, DB transactions with row locking for critical writes, and no internal filesystem paths exposed in responses. Confidence: 0.9
+- When a full test suite shows many failures, verifies they are pre-existing by running representative failing tests on the baseline (e.g., `git stash` → run test on main → `git stash pop`) before attributing them to the current changes. Confidence: 0.85
+- In Laravel/Livewire tests, uses `UploadedFile::fake()->createWithContent()` with real content when testing file-size limits, because fake `create()` produces 0-byte files that pass `max:` validation. Confidence: 0.9
+- Cleans up temporary debug code (STDERR dumps, logger debug) and unused imports before committing, and keeps local tooling artifacts (e.g., `.commandcode/`) out of commits — stages only milestone-relevant project files. Confidence: 0.8
+- Reports work completion in a fixed 5-section summary: files changed / changes made / specific tests run / remaining blockers / final status (commit hash, branch, PR link). Confidence: 0.8
