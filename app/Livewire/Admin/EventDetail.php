@@ -9,13 +9,17 @@ use App\Models\Event;
 use App\Models\EventPaymentGateway;
 use App\Models\Harga;
 use App\Models\PaymentGateway;
+use App\Services\Agreements\AgreementPreviewService;
+use App\Services\Agreements\AgreementReviewService;
 use App\Services\Payments\PaymentConfigurationAuditService;
 use App\Services\Reports\FinancialSnapshotService;
 use App\Services\Tickets\GateTokenService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -23,6 +27,7 @@ class EventDetail extends Component
 {
     use WithPagination;
 
+    #[Locked]
     public $eventUid;
 
     public $activeTab = 'umum'; // umum, tiket, transaksi
@@ -58,6 +63,10 @@ class EventDetail extends Component
 
     public $paymentOtpEnabled = false;
 
+    public $bankRejectionReason = '';
+
+    public $organizerLetterRejectionReason = '';
+
     protected $queryString = [
         'activeTab' => ['except' => 'umum'],
         'searchTransaction' => ['except' => ''],
@@ -72,7 +81,7 @@ class EventDetail extends Component
 
     private function allowedTabs(): array
     {
-        $tabs = ['umum', 'tiket', 'transaksi'];
+        $tabs = ['umum', 'tiket', 'review-mou', 'transaksi'];
 
         if ($this->canManagePaymentTab()) {
             array_splice($tabs, 2, 0, ['pembayaran']);
@@ -149,6 +158,11 @@ class EventDetail extends Component
         return optional(Auth::user())->role === 'admin';
     }
 
+    private function canManageAgreementReview(): bool
+    {
+        return $this->canManagePaymentTab();
+    }
+
     public function canSeePaymentTab(): bool
     {
         return $this->canManagePaymentTab();
@@ -157,6 +171,11 @@ class EventDetail extends Component
     private function authorizePaymentManagement(): void
     {
         abort_unless($this->canManagePaymentTab(), 403);
+    }
+
+    private function authorizeAgreementReview(): void
+    {
+        abort_unless($this->canManageAgreementReview(), 403);
     }
 
     protected function getEventData()
@@ -486,6 +505,194 @@ class EventDetail extends Component
         session()->flash('message', 'Pengaturan OTP pembayaran event berhasil diperbarui.');
     }
 
+    public function approveBankAccount(): void
+    {
+        $this->authorizeAgreementReview();
+
+        $actor = Auth::user();
+        abort_unless($actor, 403);
+
+        $result = DB::transaction(function () use ($actor) {
+            $event = Event::query()
+                ->where('uid', $this->eventUid)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $bankAccount = $event->bankAccount()
+                ->lockForUpdate()
+                ->first();
+
+            if (! $bankAccount) {
+                return 'missing_record';
+            }
+
+            if (blank($bankAccount->bank_book_path) || ! Storage::disk('local')->exists($bankAccount->bank_book_path)) {
+                return 'missing_file';
+            }
+
+            $bankAccount->status = 'verified';
+            $bankAccount->verified_by = $actor->uid;
+            $bankAccount->verified_at = now();
+            $bankAccount->rejection_reason = null;
+            $bankAccount->save();
+
+            return 'verified';
+        });
+
+        if ($result === 'missing_record') {
+            session()->flash('error', 'Data rekening event belum tersedia.');
+
+            return;
+        }
+
+        if ($result === 'missing_file') {
+            session()->flash('error', 'Buku rekening event tidak tersedia atau file fisik hilang.');
+
+            return;
+        }
+
+        $this->bankRejectionReason = '';
+        session()->flash('message', 'Rekening event berhasil diverifikasi.');
+    }
+
+    public function rejectBankAccount(): void
+    {
+        $this->authorizeAgreementReview();
+
+        $validated = $this->validate([
+            'bankRejectionReason' => 'required|string|max:1000',
+        ]);
+
+        $actor = Auth::user();
+        abort_unless($actor, 403);
+
+        $updated = DB::transaction(function () use ($actor, $validated) {
+            $event = Event::query()
+                ->where('uid', $this->eventUid)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $bankAccount = $event->bankAccount()
+                ->lockForUpdate()
+                ->first();
+
+            if (! $bankAccount) {
+                return false;
+            }
+
+            $bankAccount->status = 'rejected';
+            $bankAccount->verified_by = $actor->uid;
+            $bankAccount->verified_at = null;
+            $bankAccount->rejection_reason = $validated['bankRejectionReason'];
+            $bankAccount->save();
+
+            return true;
+        });
+
+        if (! $updated) {
+            session()->flash('error', 'Data rekening event belum tersedia.');
+
+            return;
+        }
+
+        $this->bankRejectionReason = '';
+        session()->flash('message', 'Rekening event ditolak.');
+    }
+
+    public function approveOrganizerLetter(): void
+    {
+        $this->authorizeAgreementReview();
+
+        $actor = Auth::user();
+        abort_unless($actor, 403);
+
+        $result = DB::transaction(function () use ($actor) {
+            $event = Event::query()
+                ->where('uid', $this->eventUid)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $document = $event->organizerLetter()
+                ->lockForUpdate()
+                ->first();
+
+            if (! $document) {
+                return 'missing_record';
+            }
+
+            if (blank($document->file_path) || ! Storage::disk('local')->exists($document->file_path)) {
+                return 'missing_file';
+            }
+
+            $document->status = 'verified';
+            $document->verified_by = $actor->uid;
+            $document->verified_at = now();
+            $document->rejection_reason = null;
+            $document->save();
+
+            return 'verified';
+        });
+
+        if ($result === 'missing_record') {
+            session()->flash('error', 'Surat penyelenggara belum tersedia.');
+
+            return;
+        }
+
+        if ($result === 'missing_file') {
+            session()->flash('error', 'Surat penyelenggara tidak tersedia atau file fisik hilang.');
+
+            return;
+        }
+
+        $this->organizerLetterRejectionReason = '';
+        session()->flash('message', 'Surat penyelenggara berhasil diverifikasi.');
+    }
+
+    public function rejectOrganizerLetter(): void
+    {
+        $this->authorizeAgreementReview();
+
+        $validated = $this->validate([
+            'organizerLetterRejectionReason' => 'required|string|max:1000',
+        ]);
+
+        $actor = Auth::user();
+        abort_unless($actor, 403);
+
+        $updated = DB::transaction(function () use ($actor, $validated) {
+            $event = Event::query()
+                ->where('uid', $this->eventUid)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $document = $event->organizerLetter()
+                ->lockForUpdate()
+                ->first();
+
+            if (! $document) {
+                return false;
+            }
+
+            $document->status = 'rejected';
+            $document->verified_by = $actor->uid;
+            $document->verified_at = null;
+            $document->rejection_reason = $validated['organizerLetterRejectionReason'];
+            $document->save();
+
+            return true;
+        });
+
+        if (! $updated) {
+            session()->flash('error', 'Surat penyelenggara belum tersedia.');
+
+            return;
+        }
+
+        $this->organizerLetterRejectionReason = '';
+        session()->flash('message', 'Surat penyelenggara ditolak.');
+    }
+
     private function eventPaymentGatewayAuditValues(?EventPaymentGateway $eventPaymentGateway): array
     {
         return [
@@ -630,6 +837,9 @@ class EventDetail extends Component
         $event = $this->getEventData();
         $metrics = $this->getMetricsData();
         $paymentGateways = collect();
+        $mouPreview = null;
+        $agreementReview = null;
+        $commercialReview = null;
 
         if ($this->activeTab === 'pembayaran' && $this->canManagePaymentTab()) {
             if ($this->paymentGatewayConfigs === []) {
@@ -641,6 +851,12 @@ class EventDetail extends Component
             }])->orderBy('payment')->get();
         } else {
             $this->paymentOtpEnabled = (bool) $event->payment_otp_enabled;
+        }
+
+        if ($this->activeTab === 'review-mou' && $this->canManageAgreementReview()) {
+            $mouPreview = app(AgreementPreviewService::class)->buildForEvent($event);
+            $agreementReview = app(AgreementReviewService::class)->buildForEvent($event);
+            $commercialReview = app(AgreementPreviewService::class)->buildCommercialSummaryForEvent($event);
         }
 
         $transactions = [];
@@ -679,6 +895,9 @@ class EventDetail extends Component
             'metrics' => $metrics,
             'canSeePaymentTab' => $this->canSeePaymentTab(),
             'paymentGateways' => $paymentGateways,
+            'mouPreview' => $mouPreview,
+            'agreementReview' => $agreementReview,
+            'commercialReview' => $commercialReview,
             'transactions' => $transactions,
             'selectedTransaction' => $selectedTransaction,
             'discount' => $discount,
