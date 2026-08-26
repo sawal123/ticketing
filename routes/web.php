@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\SlideController;
 use App\Http\Controllers\Auth\GoogleController;
 use App\Http\Controllers\Auth\UserLoginController;
 use App\Http\Controllers\Auth\UserRegisterController;
+use App\Http\Controllers\AdminEventReviewFileController;
 use App\Http\Controllers\BarcodeController;
 use App\Http\Controllers\BuyTicketController;
 use App\Http\Controllers\Controller;
@@ -112,6 +113,12 @@ Route::get('/dashboard/event/{uid}/export-pdf', EventTransactionPdfController::c
 Route::get('/penarikan/{uid}/transfer-proof', PenarikanTransferProofController::class)
     ->middleware('auth')
     ->name('penarikan.transfer-proof.show');
+Route::middleware('auth')->group(function () {
+    Route::get('/admin/event/{uid}/review/bank-book', [AdminEventReviewFileController::class, 'bankBook'])
+        ->name('admin.event.review.bank-book');
+    Route::get('/admin/event/{uid}/review/organizer-letter', [AdminEventReviewFileController::class, 'organizerLetter'])
+        ->name('admin.event.review.organizer-letter');
+});
 
 Route::post('/api/callback', [TransactionController::class, 'callback'])
     ->withoutMiddleware([

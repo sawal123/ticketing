@@ -63,6 +63,11 @@
                 Pembayaran
             </button>
         @endif
+        <button wire:click="setTab('review-mou')" wire:loading.attr="disabled" wire:target="setTab"
+            class="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all disabled:pointer-events-none disabled:opacity-60 {{ $activeTab === 'review-mou' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700' }}">
+            <i data-lucide="file-check-2" class="w-4 h-4"></i>
+            Review MOU
+        </button>
         <button wire:click="setTab('transaksi')" wire:loading.attr="disabled" wire:target="setTab"
             class="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all disabled:pointer-events-none disabled:opacity-60 {{ $activeTab === 'transaksi' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700' }}">
             <i data-lucide="shopping-cart" class="w-4 h-4"></i>
@@ -405,6 +410,287 @@
                     @endforelse
                 </div>
             </x-admin.card>
+            </div>
+
+        @elseif($activeTab === 'review-mou')
+            @php
+                $bankAccount = $event->bankAccount;
+                $organizerLetter = $event->organizerLetter;
+                $bankStatusClass = match (strtolower((string) $bankAccount?->status)) {
+                    'verified' => 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                    'rejected' => 'bg-rose-50 text-rose-700 border-rose-200',
+                    default => 'bg-amber-50 text-amber-700 border-amber-200',
+                };
+                $letterStatusClass = match (strtolower((string) $organizerLetter?->status)) {
+                    'verified' => 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                    'rejected' => 'bg-rose-50 text-rose-700 border-rose-200',
+                    default => 'bg-amber-50 text-amber-700 border-amber-200',
+                };
+                $reviewStatusClass = ($agreementReview['is_ready'] ?? false)
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                    : 'bg-amber-50 text-amber-700 border-amber-200';
+                $commercialGateways = collect($commercialReview['payment_gateways'] ?? []);
+            @endphp
+            <div class="space-y-6">
+                <x-admin.card title="Readiness Checklist">
+                    <div class="space-y-5">
+                        <div class="rounded-2xl border p-5 {{ $reviewStatusClass }}">
+                            <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                                <div>
+                                    <p class="text-xs font-black uppercase tracking-[0.25em]">Status Finalisasi</p>
+                                    <h3 class="mt-2 text-lg font-black">{{ $agreementReview['status_label'] ?? 'BELUM SIAP FINALISASI' }}</h3>
+                                </div>
+                                <div class="text-sm font-semibold">
+                                    {{ collect($agreementReview['items'] ?? [])->where('passed', true)->count() }}/{{ collect($agreementReview['items'] ?? [])->count() }} checklist terpenuhi
+                                </div>
+                            </div>
+
+                            @if (! empty($agreementReview['blocking_reasons']))
+                                <div class="mt-4 rounded-2xl bg-white/70 p-4 text-sm text-current">
+                                    <p class="font-bold">Alasan belum terpenuhi:</p>
+                                    <ul class="mt-2 space-y-1">
+                                        @foreach ($agreementReview['blocking_reasons'] as $reason)
+                                            <li class="flex items-start gap-2">
+                                                <i data-lucide="dot" class="mt-0.5 h-4 w-4 shrink-0"></i>
+                                                <span>{{ $reason }}</span>
+                                            </li>
+                                        @endforeach
+                                    </ul>
+                                </div>
+                            @endif
+                        </div>
+
+                        <div class="grid gap-3 md:grid-cols-2">
+                            @foreach (($agreementReview['items'] ?? []) as $item)
+                                <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/60">
+                                    <div class="flex items-start gap-3">
+                                        <div class="mt-0.5 flex h-9 w-9 items-center justify-center rounded-full {{ $item['passed'] ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600' }}">
+                                            <i data-lucide="{{ $item['passed'] ? 'check' : 'x' }}" class="h-4 w-4"></i>
+                                        </div>
+                                        <div>
+                                            <p class="text-sm font-bold text-slate-800 dark:text-white">{{ $item['label'] }}</p>
+                                            <p class="mt-1 text-xs {{ $item['passed'] ? 'text-emerald-600' : 'text-rose-600' }}">
+                                                {{ $item['passed'] ? 'Terpenuhi' : ($item['reason'] ?? 'Belum terpenuhi') }}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                </x-admin.card>
+
+                <x-admin.card title="Preview MOU M6">
+                    <div class="space-y-4">
+                        <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-300">
+                            Preview MOU tetap read-only dan mereuse tampilan agreement M6 yang membaca data live event terbaru.
+                        </div>
+
+                        @if ($mouPreview)
+                            @include('agreements.mou-preview', ['preview' => $mouPreview])
+                        @else
+                            <div class="rounded-[2rem] border-2 border-dashed border-slate-200 bg-white px-8 py-14 text-center shadow-sm dark:border-slate-700 dark:bg-slate-800/40">
+                                <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-slate-100 text-slate-400 dark:bg-slate-700 dark:text-slate-300">
+                                    <i data-lucide="file-search" class="h-8 w-8"></i>
+                                </div>
+                                <h3 class="mt-5 text-lg font-bold text-slate-900 dark:text-white">MOU belum tersedia untuk event ini.</h3>
+                                <p class="mt-2 text-sm text-slate-500 dark:text-slate-400">
+                                    Event lama tanpa agreement tetap aman dibuka dan tidak akan membuat agreement baru secara otomatis.
+                                </p>
+                            </div>
+                        @endif
+                    </div>
+                </x-admin.card>
+
+                <div class="grid grid-cols-1 gap-6 xl:grid-cols-2">
+                    <x-admin.card title="Review Rekening Event">
+                        <div class="space-y-5">
+                            <div class="flex flex-wrap items-center justify-between gap-3">
+                                <span class="inline-flex items-center rounded-full border px-3 py-1 text-xs font-bold {{ $bankStatusClass }}">
+                                    {{ strtoupper((string) ($bankAccount?->status ?? 'pending')) }}
+                                </span>
+                                @if ($bankAccount && filled($bankAccount->bank_book_path))
+                                    <a href="{{ route('admin.event.review.bank-book', $event->uid) }}" target="_blank" rel="noopener" class="inline-flex">
+                                        <x-admin.button variant="secondary" icon="eye" class="!py-2">
+                                            Lihat Buku Rekening
+                                        </x-admin.button>
+                                    </a>
+                                @endif
+                            </div>
+
+                            <div class="grid gap-3 sm:grid-cols-2">
+                                <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                                    <p class="text-xs font-black uppercase tracking-[0.2em] text-slate-400">Bank</p>
+                                    <p class="mt-2 text-sm font-bold text-slate-800">{{ $bankAccount?->bank_name ?: '-' }}</p>
+                                </div>
+                                <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                                    <p class="text-xs font-black uppercase tracking-[0.2em] text-slate-400">No. Rekening</p>
+                                    <p class="mt-2 text-sm font-bold text-slate-800">{{ $bankAccount?->account_number ?: '-' }}</p>
+                                </div>
+                                <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:col-span-2">
+                                    <p class="text-xs font-black uppercase tracking-[0.2em] text-slate-400">Nama Pemilik</p>
+                                    <p class="mt-2 text-sm font-bold text-slate-800">{{ $bankAccount?->account_holder_name ?: '-' }}</p>
+                                </div>
+                            </div>
+
+                            <div class="rounded-2xl border border-slate-200 bg-white p-4">
+                                <p class="text-xs font-black uppercase tracking-[0.2em] text-slate-400">Catatan Penolakan</p>
+                                <p class="mt-2 text-sm text-slate-600">{{ $bankAccount?->rejection_reason ?: 'Belum ada catatan penolakan.' }}</p>
+                            </div>
+
+                            <div>
+                                <label for="bank-rejection-reason" class="mb-2 block text-xs font-black uppercase tracking-[0.2em] text-slate-400">Alasan Tolak Rekening</label>
+                                <textarea id="bank-rejection-reason" wire:model.defer="bankRejectionReason" rows="4"
+                                    class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"></textarea>
+                                @error('bankRejectionReason')
+                                    <p class="mt-2 text-xs font-semibold text-rose-600">{{ $message }}</p>
+                                @enderror
+                            </div>
+
+                            <div class="flex flex-col gap-3 sm:flex-row sm:justify-end">
+                                <x-admin.button type="button" wire:click="rejectBankAccount" wire:loading.attr="disabled"
+                                    wire:target="rejectBankAccount"
+                                    class="disabled:pointer-events-none disabled:opacity-60 !bg-rose-600 hover:!bg-rose-700">
+                                    Tolak Rekening
+                                </x-admin.button>
+                                <x-admin.button type="button" wire:click="approveBankAccount" wire:loading.attr="disabled"
+                                    wire:target="approveBankAccount" variant="success"
+                                    class="disabled:pointer-events-none disabled:opacity-60">
+                                    Verifikasi Rekening
+                                </x-admin.button>
+                            </div>
+                        </div>
+                    </x-admin.card>
+
+                    <x-admin.card title="Review Surat Penyelenggara">
+                        <div class="space-y-5">
+                            <div class="flex flex-wrap items-center justify-between gap-3">
+                                <span class="inline-flex items-center rounded-full border px-3 py-1 text-xs font-bold {{ $letterStatusClass }}">
+                                    {{ strtoupper((string) ($organizerLetter?->status ?? 'pending')) }}
+                                </span>
+                                @if ($organizerLetter && filled($organizerLetter->file_path))
+                                    <a href="{{ route('admin.event.review.organizer-letter', $event->uid) }}" target="_blank" rel="noopener" class="inline-flex">
+                                        <x-admin.button variant="secondary" icon="eye" class="!py-2">
+                                            Lihat Surat
+                                        </x-admin.button>
+                                    </a>
+                                @endif
+                            </div>
+
+                            <div class="grid gap-3 sm:grid-cols-2">
+                                <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                                    <p class="text-xs font-black uppercase tracking-[0.2em] text-slate-400">Nomor Dokumen</p>
+                                    <p class="mt-2 text-sm font-bold text-slate-800">{{ $organizerLetter?->document_number ?: '-' }}</p>
+                                </div>
+                                <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                                    <p class="text-xs font-black uppercase tracking-[0.2em] text-slate-400">Tanggal Dokumen</p>
+                                    <p class="mt-2 text-sm font-bold text-slate-800">{{ $organizerLetter?->document_date?->format('d-m-Y') ?: '-' }}</p>
+                                </div>
+                                <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:col-span-2">
+                                    <p class="text-xs font-black uppercase tracking-[0.2em] text-slate-400">Nama File</p>
+                                    <p class="mt-2 text-sm font-bold text-slate-800">{{ $organizerLetter?->original_name ?: '-' }}</p>
+                                </div>
+                            </div>
+
+                            <div class="rounded-2xl border border-slate-200 bg-white p-4">
+                                <p class="text-xs font-black uppercase tracking-[0.2em] text-slate-400">Catatan Penolakan</p>
+                                <p class="mt-2 text-sm text-slate-600">{{ $organizerLetter?->rejection_reason ?: 'Belum ada catatan penolakan.' }}</p>
+                            </div>
+
+                            <div>
+                                <label for="organizer-letter-rejection-reason" class="mb-2 block text-xs font-black uppercase tracking-[0.2em] text-slate-400">Alasan Tolak Surat</label>
+                                <textarea id="organizer-letter-rejection-reason" wire:model.defer="organizerLetterRejectionReason" rows="4"
+                                    class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"></textarea>
+                                @error('organizerLetterRejectionReason')
+                                    <p class="mt-2 text-xs font-semibold text-rose-600">{{ $message }}</p>
+                                @enderror
+                            </div>
+
+                            <div class="flex flex-col gap-3 sm:flex-row sm:justify-end">
+                                <x-admin.button type="button" wire:click="rejectOrganizerLetter" wire:loading.attr="disabled"
+                                    wire:target="rejectOrganizerLetter"
+                                    class="disabled:pointer-events-none disabled:opacity-60 !bg-rose-600 hover:!bg-rose-700">
+                                    Tolak Surat
+                                </x-admin.button>
+                                <x-admin.button type="button" wire:click="approveOrganizerLetter" wire:loading.attr="disabled"
+                                    wire:target="approveOrganizerLetter" variant="success"
+                                    class="disabled:pointer-events-none disabled:opacity-60">
+                                    Verifikasi Surat
+                                </x-admin.button>
+                            </div>
+                        </div>
+                    </x-admin.card>
+                </div>
+
+                <x-admin.card title="Ringkasan Konfigurasi Komersial">
+                    <div class="space-y-6">
+                        <div class="grid gap-4 lg:grid-cols-4">
+                            <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                                <p class="text-xs font-black uppercase tracking-[0.2em] text-slate-400">Fee Event</p>
+                                <p class="mt-2 text-lg font-black text-slate-800">{{ is_numeric($event->fee) ? number_format((float) $event->fee, 0, ',', '.') : '-' }}</p>
+                            </div>
+                            <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                                <p class="text-xs font-black uppercase tracking-[0.2em] text-slate-400">Buyer Fee</p>
+                                <p class="mt-2 text-lg font-black text-slate-800">{{ $commercialReview['ticket_tax']['value'] ?? 'Rp 0 / 0%' }}</p>
+                                <p class="mt-1 text-xs text-slate-500">{{ $commercialReview['ticket_tax']['mode_label'] ?? '-' }}</p>
+                            </div>
+                            <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                                <p class="text-xs font-black uppercase tracking-[0.2em] text-slate-400">Payment OTP</p>
+                                <p class="mt-2 text-lg font-black text-slate-800">{{ !empty($commercialReview['payment_otp_enabled']) ? 'Aktif' : 'Nonaktif' }}</p>
+                            </div>
+                            <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                                <p class="text-xs font-black uppercase tracking-[0.2em] text-slate-400">Gateway Efektif Aktif</p>
+                                <p class="mt-2 text-lg font-black text-slate-800">{{ collect($commercialReview['active_payment_methods'] ?? [])->count() }}</p>
+                                <p class="mt-1 text-xs text-slate-500">
+                                    {{ collect($commercialReview['active_payment_methods'] ?? [])->isNotEmpty() ? implode(', ', $commercialReview['active_payment_methods']) : 'Belum ada gateway efektif aktif' }}
+                                </p>
+                            </div>
+                        </div>
+
+                        @if ($commercialGateways->isEmpty())
+                            <div class="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-6 py-10 text-center text-sm text-slate-500">
+                                Belum ada konfigurasi payment gateway event. Untuk mengubahnya, gunakan tab admin pembayaran yang sudah tersedia.
+                            </div>
+                        @else
+                            <div class="space-y-4">
+                                @foreach ($commercialGateways as $gateway)
+                                    <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                                        <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                                            <div>
+                                                <h3 class="text-base font-black text-slate-900">{{ $gateway['payment'] }}</h3>
+                                                <p class="mt-1 text-sm text-slate-500">
+                                                    Mode: <span class="font-semibold uppercase text-slate-700">{{ $gateway['fee_mode'] }}</span>
+                                                </p>
+                                            </div>
+                                            <span class="inline-flex items-center rounded-full border px-3 py-1 text-xs font-bold {{ !empty($gateway['effective_is_active']) ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-600 border-slate-200' }}">
+                                                {{ !empty($gateway['effective_is_active']) ? 'Aktif' : 'Nonaktif' }}
+                                            </span>
+                                        </div>
+
+                                        <div class="mt-4 grid gap-3 md:grid-cols-4">
+                                            <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                                                <p class="text-xs font-black uppercase tracking-[0.2em] text-slate-400">Global Aktif</p>
+                                                <p class="mt-2 text-sm font-bold text-slate-800">{{ !empty($gateway['global_is_active']) ? 'Ya' : 'Tidak' }}</p>
+                                            </div>
+                                            <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                                                <p class="text-xs font-black uppercase tracking-[0.2em] text-slate-400">Event Aktif</p>
+                                                <p class="mt-2 text-sm font-bold text-slate-800">{{ !empty($gateway['event_is_active']) ? 'Ya' : 'Tidak' }}</p>
+                                            </div>
+                                            <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                                                <p class="text-xs font-black uppercase tracking-[0.2em] text-slate-400">Resolved Fixed Fee</p>
+                                                <p class="mt-2 text-sm font-bold text-slate-800">Rp {{ number_format((float) ($gateway['resolved_fee_fixed'] ?? 0), 0, ',', '.') }}</p>
+                                            </div>
+                                            <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                                                <p class="text-xs font-black uppercase tracking-[0.2em] text-slate-400">Resolved Percent Fee</p>
+                                                <p class="mt-2 text-sm font-bold text-slate-800">{{ $gateway['resolved_fee_percent'] ?? '0' }}%</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+                        @endif
+                    </div>
+                </x-admin.card>
             </div>
 
         @elseif($activeTab === 'transaksi')

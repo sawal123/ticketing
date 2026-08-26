@@ -20,6 +20,7 @@ class EventBankAccount extends Model
         'status',
         'verified_at',
         'verified_by',
+        'rejection_reason',
     ];
 
     protected $casts = [

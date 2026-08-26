@@ -13,13 +13,7 @@ class AgreementPreviewService
 {
     public function buildForEvent(Event $event): ?array
     {
-        $event->loadMissing([
-            'currentMouAgreement',
-            'organizer',
-            'bankAccount',
-            'organizerLetter',
-            'eventPaymentGateways.paymentGateway',
-        ]);
+        $this->loadPreviewRelations($event);
 
         $agreement = $event->currentMouAgreement;
 
@@ -30,18 +24,7 @@ class AgreementPreviewService
         $organizer = $event->organizer;
         $bankAccount = $event->bankAccount;
         $organizerLetter = $event->organizerLetter;
-        $paymentConfigs = $event->eventPaymentGateways
-            ->filter(fn (EventPaymentGateway $config) => $config->paymentGateway !== null)
-            ->sortBy(fn (EventPaymentGateway $config) => mb_strtolower((string) $config->paymentGateway->payment))
-            ->values();
-        $buyerFee = $this->resolveBuyerFee($event);
-
-        $activePaymentMethods = $paymentConfigs
-            ->map(fn (EventPaymentGateway $config) => $this->resolveGatewayFee($config))
-            ->filter(fn (array $gateway) => $gateway['effective_is_active'])
-            ->map(fn (array $gateway) => $gateway['payment'])
-            ->values()
-            ->all();
+        $commercial = $this->buildCommercialSummaryForEvent($event);
 
         return [
             'agreement' => [
@@ -60,7 +43,7 @@ class AgreementPreviewService
                 'venue_city' => $event->venue_city ?: '-',
                 'venue_province' => $event->venue_province ?: '-',
                 'legacy_address' => $event->alamat ?: '-',
-                'ticket_tax' => $buyerFee,
+                'ticket_tax' => $commercial['ticket_tax'],
             ],
             'organizer' => [
                 'organizer_name' => $organizer?->organizer_name ?: '-',
@@ -82,12 +65,45 @@ class AgreementPreviewService
                 'original_name' => $organizerLetter?->original_name ?: '-',
                 'verification_status' => $organizerLetter?->status ?: 'Belum dikonfigurasi',
             ],
-            'commercial' => [
-                'payment_otp_enabled' => (bool) $event->payment_otp_enabled,
-                'active_payment_methods' => $activePaymentMethods,
-                'payment_gateways' => $paymentConfigs->map(fn (EventPaymentGateway $config) => $this->resolveGatewayFee($config))->all(),
-            ],
+            'commercial' => $commercial,
         ];
+    }
+
+    public function buildCommercialSummaryForEvent(Event $event): array
+    {
+        $this->loadPreviewRelations($event);
+
+        $paymentConfigs = $event->eventPaymentGateways
+            ->filter(fn (EventPaymentGateway $config) => $config->paymentGateway !== null)
+            ->sortBy(fn (EventPaymentGateway $config) => mb_strtolower((string) $config->paymentGateway->payment))
+            ->values();
+
+        $activePaymentMethods = $paymentConfigs
+            ->map(fn (EventPaymentGateway $config) => $this->resolveGatewayFee($config))
+            ->filter(fn (array $gateway) => $gateway['effective_is_active'])
+            ->map(fn (array $gateway) => $gateway['payment'])
+            ->values()
+            ->all();
+
+        return [
+            'ticket_tax' => $this->resolveBuyerFee($event),
+            'payment_otp_enabled' => (bool) $event->payment_otp_enabled,
+            'active_payment_methods' => $activePaymentMethods,
+            'payment_gateways' => $paymentConfigs
+                ->map(fn (EventPaymentGateway $config) => $this->resolveGatewayFee($config))
+                ->all(),
+        ];
+    }
+
+    private function loadPreviewRelations(Event $event): void
+    {
+        $event->loadMissing([
+            'currentMouAgreement',
+            'organizer',
+            'bankAccount',
+            'organizerLetter',
+            'eventPaymentGateways.paymentGateway',
+        ]);
     }
 
     private function resolveBuyerFee(Event $event): array
