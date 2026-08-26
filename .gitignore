@@ -17,6 +17,7 @@ yarn-error.log
 /.fleet
 /.idea
 /.vscode
+/.commandcode
 /client_secret_*.json
 /git_test.txt
 /bootstrap/cache/*.php

@@ -53,12 +53,14 @@ class AgreementManualSigningTest extends TestCase
     {
         $tenant = $this->tenant();
         $event = $this->event($tenant);
+        $agreementUid = (string) Str::uuid();
         $this->readyAgreement($tenant, $event, [
-            'unsigned_pdf_path' => self::DIR.'/'.$event->uid.'/unsigned.pdf',
+            'uid' => $agreementUid,
+            'unsigned_pdf_path' => $this->unsignedPath($agreementUid),
         ]);
 
         Storage::disk('local')->put(
-            self::DIR.'/'.$event->uid.'/unsigned.pdf',
+            $this->unsignedPath($agreementUid),
             '%PDF-1.4 unsigned content'
         );
 
@@ -75,14 +77,16 @@ class AgreementManualSigningTest extends TestCase
     {
         $tenant = $this->tenant();
         $event = $this->event($tenant);
+        $agreementUid = (string) Str::uuid();
         $this->agreement($tenant, $event, [
+            'uid' => $agreementUid,
             'status' => Agreement::STATUS_DRAFT,
-            'unsigned_pdf_path' => self::DIR.'/'.$event->uid.'/unsigned.pdf',
+            'unsigned_pdf_path' => $this->unsignedPath($agreementUid),
         ]);
 
         // Even when a physical file exists, a DRAFT agreement's unsigned PDF
         // must not be served — the unsigned route is state-guarded on READY.
-        Storage::disk('local')->put(self::DIR.'/'.$event->uid.'/unsigned.pdf', '%PDF-1.4 unsigned');
+        Storage::disk('local')->put($this->unsignedPath($agreementUid), '%PDF-1.4 unsigned');
 
         $this->actingAs($tenant)
             ->get(route('dashboard.event.mou.unsigned', $event->uid))
@@ -94,11 +98,13 @@ class AgreementManualSigningTest extends TestCase
         $tenantA = $this->tenant(['email' => 'owner-a@example.test']);
         $tenantB = $this->tenant(['email' => 'owner-b@example.test']);
         $event = $this->event($tenantA);
+        $agreementUid = (string) Str::uuid();
         $this->readyAgreement($tenantA, $event, [
-            'unsigned_pdf_path' => self::DIR.'/'.$event->uid.'/unsigned.pdf',
+            'uid' => $agreementUid,
+            'unsigned_pdf_path' => $this->unsignedPath($agreementUid),
         ]);
 
-        Storage::disk('local')->put(self::DIR.'/'.$event->uid.'/unsigned.pdf', '%PDF-1.4');
+        Storage::disk('local')->put($this->unsignedPath($agreementUid), '%PDF-1.4');
 
         $this->actingAs($tenantB)
             ->get(route('dashboard.event.mou.unsigned', $event->uid))
@@ -114,11 +120,13 @@ class AgreementManualSigningTest extends TestCase
             'parent_uid' => $tenant->uid,
         ]);
         $event = $this->event($tenant);
+        $agreementUid = (string) Str::uuid();
         $this->readyAgreement($tenant, $event, [
-            'unsigned_pdf_path' => self::DIR.'/'.$event->uid.'/unsigned.pdf',
+            'uid' => $agreementUid,
+            'unsigned_pdf_path' => $this->unsignedPath($agreementUid),
         ]);
 
-        Storage::disk('local')->put(self::DIR.'/'.$event->uid.'/unsigned.pdf', '%PDF-1.4');
+        Storage::disk('local')->put($this->unsignedPath($agreementUid), '%PDF-1.4');
 
         // Routes are penyewa-only; staff gets a 403 from the role middleware.
         $this->actingAs($staff)
@@ -277,14 +285,16 @@ class AgreementManualSigningTest extends TestCase
             'document_snapshot' => ['document_number' => 'DOC-FROZEN'],
             'commercial_snapshot' => ['buyer_fee' => ['mode' => 'percent', 'value' => 10.0]],
         ];
+        $agreementUid = (string) Str::uuid();
         $agreement = $this->readyAgreement($tenant, $event, array_merge($snapshots, [
+            'uid' => $agreementUid,
             'template_version' => 'mou-v1',
-            'unsigned_pdf_path' => self::DIR.'/'.$event->uid.'/unsigned.pdf',
+            'unsigned_pdf_path' => $this->unsignedPath($agreementUid),
             'document_number' => 'MOU-2026-001',
             'version' => 1,
         ]));
 
-        Storage::disk('local')->put(self::DIR.'/'.$event->uid.'/unsigned.pdf', '%PDF-1.4 unsigned');
+        Storage::disk('local')->put($this->unsignedPath($agreementUid), '%PDF-1.4 unsigned');
 
         $before = $agreement->refresh()->toArray();
 
@@ -334,11 +344,13 @@ class AgreementManualSigningTest extends TestCase
     {
         $tenant = $this->tenant();
         $event = $this->event($tenant);
+        $agreementUid = (string) Str::uuid();
         $this->readyAgreement($tenant, $event, [
-            'unsigned_pdf_path' => self::DIR.'/'.$event->uid.'/unsigned.pdf',
+            'uid' => $agreementUid,
+            'unsigned_pdf_path' => $this->unsignedPath($agreementUid),
         ]);
 
-        Storage::disk('local')->put(self::DIR.'/'.$event->uid.'/unsigned.pdf', '%PDF-1.4');
+        Storage::disk('local')->put($this->unsignedPath($agreementUid), '%PDF-1.4');
 
         $this->actingAs($tenant)
             ->get(route('dashboard.event.detail', $event->uid).'?activeTab=mou')
@@ -356,12 +368,12 @@ class AgreementManualSigningTest extends TestCase
         $uid = (string) Str::uuid();
         $this->readyAgreement($tenant, $event, [
             'uid' => $uid,
-            'unsigned_pdf_path' => self::DIR.'/'.$event->uid.'/unsigned.pdf',
+            'unsigned_pdf_path' => $this->unsignedPath($uid),
             'signed_pdf_path' => $this->signedPath($uid),
             'signed_at' => now(),
         ]);
 
-        Storage::disk('local')->put(self::DIR.'/'.$event->uid.'/unsigned.pdf', '%PDF-1.4 unsigned');
+        Storage::disk('local')->put($this->unsignedPath($uid), '%PDF-1.4 unsigned');
         Storage::disk('local')->put($this->signedPath($uid), '%PDF-1.4 signed');
 
         $this->actingAs($tenant)
@@ -381,11 +393,11 @@ class AgreementManualSigningTest extends TestCase
         $uid = (string) Str::uuid();
         $this->readyAgreement($tenant, $event, [
             'uid' => $uid,
-            'unsigned_pdf_path' => self::DIR.'/'.$event->uid.'/unsigned.pdf',
+            'unsigned_pdf_path' => $this->unsignedPath($uid),
             'signed_pdf_path' => $this->signedPath($uid),
         ]);
 
-        Storage::disk('local')->put(self::DIR.'/'.$event->uid.'/unsigned.pdf', '%PDF-1.4 unsigned');
+        Storage::disk('local')->put($this->unsignedPath($uid), '%PDF-1.4 unsigned');
         Storage::disk('local')->put($this->signedPath($uid), '%PDF-1.4 signed content');
 
         $response = $this->actingAs($tenant)
@@ -421,11 +433,11 @@ class AgreementManualSigningTest extends TestCase
         $uid = (string) Str::uuid();
         $agreement = $this->readyAgreement($tenant, $event, [
             'uid' => $uid,
-            'unsigned_pdf_path' => self::DIR.'/'.$event->uid.'/unsigned.pdf',
+            'unsigned_pdf_path' => $this->unsignedPath($uid),
             'signed_pdf_path' => $this->signedPath($uid),
         ]);
 
-        Storage::disk('local')->put(self::DIR.'/'.$event->uid.'/unsigned.pdf', '%PDF-1.4 unsigned');
+        Storage::disk('local')->put($this->unsignedPath($uid), '%PDF-1.4 unsigned');
         Storage::disk('local')->put($this->signedPath($uid), '%PDF-1.4 signed');
 
         $this->actingAs($tenant)
@@ -1041,6 +1053,14 @@ class AgreementManualSigningTest extends TestCase
     }
 
     /**
+     * Authoritative unsigned-PDF path for an Agreement, matching M8.
+     */
+    private function unsignedPath(string $agreementUid): string
+    {
+        return self::DIR.'/'.$agreementUid.'/unsigned.pdf';
+    }
+
+    /**
      * Authoritative signed-PDF path for an Agreement, mirroring M8's
      * agreement-scoped unsigned.pdf path.
      */
@@ -1055,7 +1075,10 @@ class AgreementManualSigningTest extends TestCase
      */
     private function readyAgreement(User $tenant, Event $event, array $overrides = []): Agreement
     {
+        $agreementUid = $overrides['uid'] ?? (string) Str::uuid();
+
         return $this->agreement($tenant, $event, array_merge([
+            'uid' => $agreementUid,
             'status' => Agreement::STATUS_READY,
             'template_version' => 'mou-v1',
             'event_snapshot' => ['event_name' => $event->event],
@@ -1064,7 +1087,7 @@ class AgreementManualSigningTest extends TestCase
             'document_snapshot' => ['document_number' => 'DOC-M9-001'],
             'commercial_snapshot' => ['buyer_fee' => ['mode' => 'percent', 'value' => 10.0]],
             'document_number' => 'MOU-M9-001',
-            'unsigned_pdf_path' => self::DIR.'/'.$event->uid.'/unsigned.pdf',
+            'unsigned_pdf_path' => $this->unsignedPath($agreementUid),
         ], $overrides));
     }
 }
