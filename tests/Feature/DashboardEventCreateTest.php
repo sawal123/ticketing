@@ -1240,6 +1240,7 @@ class DashboardEventCreateTest extends TestCase
             'status' => 'verified',
             'verified_at' => '2026-08-22 08:00:00',
             'verified_by' => 'admin-keep',
+            'rejection_reason' => 'Periksa nomor rekening',
         ]);
         Storage::disk('local')->put('private/events/'.$event->uid.'/bank/keep.pdf', 'keep');
         EventDocument::create([
@@ -1266,6 +1267,7 @@ class DashboardEventCreateTest extends TestCase
         $this->assertSame('verified', $bankAccount->status);
         $this->assertSame('2026-08-22 08:00:00', $bankAccount->verified_at?->format('Y-m-d H:i:s'));
         $this->assertSame('admin-keep', $bankAccount->verified_by);
+        $this->assertSame('Periksa nomor rekening', $bankAccount->rejection_reason);
         $this->assertSame('private/events/'.$event->uid.'/bank/keep.pdf', $bankAccount->bank_book_path);
     }
 

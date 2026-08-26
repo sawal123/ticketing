@@ -91,18 +91,26 @@ class AdminAgreementReviewTest extends TestCase
         $bankA = $this->bankAccount($eventA, ['status' => 'pending']);
         $bankB = $this->bankAccount($eventB, ['status' => 'pending']);
 
-        $this->expectException(CannotUpdateLockedPropertyException::class);
+        try {
+            Livewire::actingAs($admin)
+                ->test(EventDetail::class, ['uid' => $eventA->uid])
+                ->set('eventUid', $eventB->uid)
+                ->call('approveBankAccount');
 
-        Livewire::actingAs($admin)
-            ->test(EventDetail::class, ['uid' => $eventA->uid])
-            ->set('eventUid', $eventB->uid)
-            ->call('approveBankAccount');
+            $this->fail('Expected CannotUpdateLockedPropertyException was not thrown.');
+        } catch (CannotUpdateLockedPropertyException $exception) {
+            $this->assertSame('eventUid', $exception->property);
+        }
 
         $bankA->refresh();
         $bankB->refresh();
 
         $this->assertSame('pending', $bankA->status);
+        $this->assertNull($bankA->verified_at);
+        $this->assertNull($bankA->verified_by);
         $this->assertSame('pending', $bankB->status);
+        $this->assertNull($bankB->verified_at);
+        $this->assertNull($bankB->verified_by);
     }
 
     public function test_approve_bank_account_succeeds(): void
@@ -137,6 +145,27 @@ class AdminAgreementReviewTest extends TestCase
             ->set('activeTab', 'review-mou')
             ->call('rejectBankAccount')
             ->assertHasErrors(['bankRejectionReason' => 'required']);
+    }
+
+    public function test_reject_bank_account_succeeds(): void
+    {
+        $admin = $this->admin();
+        $tenant = $this->tenant();
+        $event = $this->event($tenant);
+        $bankAccount = $this->bankAccount($event, ['status' => 'pending']);
+
+        Livewire::actingAs($admin)
+            ->test(EventDetail::class, ['uid' => $event->uid])
+            ->set('activeTab', 'review-mou')
+            ->set('bankRejectionReason', 'Nomor rekening tidak sesuai buku rekening.')
+            ->call('rejectBankAccount');
+
+        $bankAccount->refresh();
+
+        $this->assertSame('rejected', $bankAccount->status);
+        $this->assertSame('Nomor rekening tidak sesuai buku rekening.', $bankAccount->rejection_reason);
+        $this->assertSame($admin->uid, $bankAccount->verified_by);
+        $this->assertNull($bankAccount->verified_at);
     }
 
     public function test_missing_bank_file_cannot_be_verified(): void
@@ -201,6 +230,27 @@ class AdminAgreementReviewTest extends TestCase
             ->assertHasErrors(['organizerLetterRejectionReason' => 'required']);
     }
 
+    public function test_reject_organizer_letter_succeeds(): void
+    {
+        $admin = $this->admin();
+        $tenant = $this->tenant();
+        $event = $this->event($tenant);
+        $document = $this->organizerLetter($event, ['status' => 'pending']);
+
+        Livewire::actingAs($admin)
+            ->test(EventDetail::class, ['uid' => $event->uid])
+            ->set('activeTab', 'review-mou')
+            ->set('organizerLetterRejectionReason', 'Nomor surat tidak cocok dengan lampiran.')
+            ->call('rejectOrganizerLetter');
+
+        $document->refresh();
+
+        $this->assertSame('rejected', $document->status);
+        $this->assertSame('Nomor surat tidak cocok dengan lampiran.', $document->rejection_reason);
+        $this->assertSame($admin->uid, $document->verified_by);
+        $this->assertNull($document->verified_at);
+    }
+
     public function test_cross_event_isolation_is_enforced_for_review_actions(): void
     {
         $admin = $this->admin();
@@ -208,9 +258,9 @@ class AdminAgreementReviewTest extends TestCase
         $eventA = $this->event($tenant, ['event' => 'Event A Review']);
         $eventB = $this->event($tenant, ['event' => 'Event B Review']);
         $bankA = $this->bankAccount($eventA, ['status' => 'pending']);
-        $bankB = $this->bankAccount($eventB, ['status' => 'pending']);
+        $bankB = $this->bankAccount($eventB, ['status' => 'pending', 'skip_storage' => true]);
         $letterA = $this->organizerLetter($eventA, ['status' => 'pending']);
-        $letterB = $this->organizerLetter($eventB, ['status' => 'pending']);
+        $letterB = $this->organizerLetter($eventB, ['status' => 'pending', 'skip_storage' => true]);
 
         Livewire::actingAs($admin)
             ->test(EventDetail::class, ['uid' => $eventA->uid])
