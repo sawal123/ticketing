@@ -9,6 +9,17 @@ use Illuminate\Support\Facades\Storage;
 
 class AgreementReviewService
 {
+    private const ACTIVATION_REVIEW_KEYS = [
+        'bank_account_available',
+        'physical_bank_book_available',
+        'bank_account_verified',
+        'organizer_letter_available',
+        'physical_organizer_letter_available',
+        'organizer_letter_verified',
+        'payment_configuration_valid',
+        'effective_active_gateway',
+    ];
+
     public function buildForEvent(Event $event): array
     {
         $event->loadMissing([
@@ -138,6 +149,14 @@ class AgreementReviewService
             'items' => $items,
             'blocking_reasons' => $blockingReasons,
         ];
+    }
+
+    public function activationPrerequisiteItemsForEvent(Event $event): array
+    {
+        return collect($this->buildForEvent($event)['items'] ?? [])
+            ->filter(fn (array $item) => in_array($item['key'] ?? null, self::ACTIVATION_REVIEW_KEYS, true))
+            ->values()
+            ->all();
     }
 
     private function paymentConfigIsValid(array $commercial): bool

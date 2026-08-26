@@ -26,8 +26,20 @@ class EventIndex extends Component
     {
         $event = Event::where('uid', $uid)->first();
         if ($event) {
-            $event->status = $event->status === 'active' ? 'close' : 'active';
-            $event->save();
+            if ($event->status === 'active') {
+                $event->status = 'close';
+                $event->save();
+            } else {
+                try {
+                    app(\App\Services\Events\EventActivationGuardService::class)
+                        ->activateForEvent($event, (string) auth()->user()?->uid, true);
+                } catch (\Throwable $e) {
+                    session()->flash('error', $e->getMessage());
+
+                    return;
+                }
+            }
+
             $this->dispatch('event-status-updated');
         }
     }
@@ -42,10 +54,14 @@ class EventIndex extends Component
             return;
         }
 
-        $event->update([
-            'konfirmasi' => '1',
-            'status' => 'active',
-        ]);
+        try {
+            app(\App\Services\Events\EventActivationGuardService::class)
+                ->activateForEvent($event, (string) auth()->user()?->uid, true);
+        } catch (\Throwable $e) {
+            session()->flash('error', $e->getMessage());
+
+            return;
+        }
 
         session()->flash('message', 'Event berhasil dikonfirmasi dan diaktifkan.');
     }

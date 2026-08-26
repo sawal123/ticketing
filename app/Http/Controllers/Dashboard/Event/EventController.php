@@ -97,7 +97,7 @@ class EventController extends Controller
             'event' => $request->event,
             'alamat' => $request->alamat,
             'tanggal' => $request->tanggal,
-            'status' => 'active',
+            'status' => 'inactive',
             'fee' => $request->fee,
             'deskripsi' => $request->deskripsi,
             'map' => $request->map,

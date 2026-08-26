@@ -21,6 +21,7 @@ use App\Models\Talent;
 use App\Models\Term;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Services\Events\EventActivationGuardService;
 use App\Services\SecureImageStorage;
 use App\Services\Tickets\GateTokenService;
 use Illuminate\Http\Request;
@@ -46,13 +47,34 @@ class editController extends Controller
             'cover' => SecureImageStorage::rules(),
         ]);
 
-        $event = Event::where('uid', $request->uid)->first(); // Mengambil instance model yang akan diupdate
+        $event = Event::where('uid', $request->uid)->firstOrFail();
+
+        $requestedStatus = strtolower((string) ($request->status ?? ''));
+        $currentStatus = strtolower((string) $event->status);
+
+        if ($requestedStatus === 'active' && $currentStatus !== 'active') {
+            try {
+                app(EventActivationGuardService::class)->activateForEvent($event, (string) Auth::user()?->uid, true);
+            } catch (\Throwable $e) {
+                return redirect('/admin/event/eventDetail/' . $request->uid)
+                    ->with('error', $e->getMessage());
+            }
+
+            $event->refresh();
+        } else {
+            if ($request->filled('status')) {
+                if ($currentStatus === 'active' && $requestedStatus === 'close') {
+                    $event->status = 'close';
+                } elseif ($requestedStatus !== 'active') {
+                    $event->status = $request->status;
+                }
+            }
+        }
 
         $tanggal = date('Y-m-d H:i', strtotime($request->tanggal));
         $event->event = $request->event;
         $event->alamat = $request->alamat;
         $event->tanggal = $tanggal;
-        $event->status = $request->status;
         $event->fee = $request->fee;
         $event->deskripsi = $request->deskripsi;
         $event->map = $request->map;
@@ -518,9 +540,13 @@ class editController extends Controller
 
     public function setujuiEvent($data)
     {
-        $event = Event::where('uid', $data)->first();
-        $event->konfirmasi = '1';
-        $event->save();
+        $event = Event::where('uid', $data)->firstOrFail();
+
+        try {
+            app(EventActivationGuardService::class)->activateForEvent($event, (string) Auth::user()?->uid, true);
+        } catch (\Throwable $e) {
+            return redirect()->back()->with('error', $e->getMessage());
+        }
 
         return redirect()->back()->with('konfirmasi', 'Event Berhasil di Setujui dan di publish');
     }

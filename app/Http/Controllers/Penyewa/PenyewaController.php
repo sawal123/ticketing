@@ -298,14 +298,18 @@ class PenyewaController extends Controller
         $event = Event::where('uid', $uid)->where('user_uid', Auth::user()->uid)->first();
 
         if ($event) {
-            $event->status = $event->status === 'active' ? 'close' : 'active';
-            $event->save();
+            if ($event->status === 'active') {
+                $event->status = 'close';
+                $event->save();
 
-            return response()->json([
-                'success' => true,
-                'status' => $event->status,
-                'message' => 'Status event berhasil diperbarui',
-            ]);
+                return response()->json([
+                    'success' => true,
+                    'status' => $event->status,
+                    'message' => 'Status event berhasil diperbarui',
+                ]);
+            }
+
+            abort(403, 'Hanya admin yang dapat mengaktifkan event.');
         }
 
         return response()->json(['success' => false, 'message' => 'Event tidak ditemukan'], 404);
