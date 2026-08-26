@@ -12,6 +12,7 @@ use Carbon\Carbon;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use RuntimeException;
 use Throwable;
 
 class AgreementFinalizationService
@@ -44,84 +45,100 @@ class AgreementFinalizationService
      */
     public function finalizeForEvent(Event $event, string $actorUid): array
     {
-        return DB::transaction(function () use ($event, $actorUid) {
-            $agreement = Agreement::query()
-                ->where('event_uid', $event->uid)
-                ->where('type', Agreement::TYPE_MOU)
-                ->where('version', 1)
-                ->lockForUpdate()
-                ->first();
+        $disk = Storage::disk('local');
+        $writtenPath = null;
 
-            if (! $agreement) {
-                return $this->failure('not_found', 'Agreement MOU tidak ditemukan untuk event ini.');
-            }
+        try {
+            return DB::transaction(function () use ($event, $actorUid, $disk, &$writtenPath) {
+                $agreement = Agreement::query()
+                    ->where('event_uid', $event->uid)
+                    ->where('type', Agreement::TYPE_MOU)
+                    ->where('version', 1)
+                    ->lockForUpdate()
+                    ->first();
 
-            if (! $agreement->isDraft()) {
-                return $this->failure(
-                    'not_draft',
-                    'Agreement sudah difinalisasi dan tidak dapat difinalisasi ulang.'
-                );
-            }
+                if (! $agreement) {
+                    return $this->failure('not_found', 'Agreement MOU tidak ditemukan untuk event ini.');
+                }
 
-            $freshEvent = Event::query()
-                ->with([
-                    'organizer',
-                    'bankAccount',
-                    'organizerLetter',
-                    'eventPaymentGateways.paymentGateway',
-                ])
-                ->where('uid', $event->uid)
-                ->lockForUpdate()
-                ->firstOrFail();
+                if (! $agreement->isDraft()) {
+                    return $this->failure(
+                        'not_draft',
+                        'Agreement sudah difinalisasi dan tidak dapat difinalisasi ulang.'
+                    );
+                }
 
-            $review = app(AgreementReviewService::class)->buildForEvent($freshEvent);
+                $freshEvent = Event::query()
+                    ->with([
+                        'organizer',
+                        'bankAccount',
+                        'organizerLetter',
+                        'eventPaymentGateways.paymentGateway',
+                    ])
+                    ->where('uid', $event->uid)
+                    ->lockForUpdate()
+                    ->firstOrFail();
 
-            if (! ($review['is_ready'] ?? false)) {
-                return $this->failure(
-                    'not_ready',
-                    'Event belum memenuhi syarat finalisasi MOU.',
-                    $review['blocking_reasons'] ?? []
-                );
-            }
+                $review = app(AgreementReviewService::class)->buildForEvent($freshEvent);
 
-            $snapshots = [
-                'event_snapshot' => $this->buildEventSnapshot($freshEvent),
-                'party_snapshot' => $this->buildPartySnapshot($freshEvent),
-                'bank_snapshot' => $this->buildBankSnapshot($freshEvent),
-                'document_snapshot' => $this->buildDocumentSnapshot($freshEvent),
-                'commercial_snapshot' => $this->buildCommercialSnapshot($freshEvent),
-            ];
+                if (! ($review['is_ready'] ?? false)) {
+                    return $this->failure(
+                        'not_ready',
+                        'Event belum memenuhi syarat finalisasi MOU.',
+                        $review['blocking_reasons'] ?? []
+                    );
+                }
 
-            $payload = $this->buildPdfPayload($agreement, $snapshots);
-            $pdfContent = $this->renderPdf($payload);
+                $snapshots = [
+                    'event_snapshot' => $this->buildEventSnapshot($freshEvent),
+                    'party_snapshot' => $this->buildPartySnapshot($freshEvent),
+                    'bank_snapshot' => $this->buildBankSnapshot($freshEvent),
+                    'document_snapshot' => $this->buildDocumentSnapshot($freshEvent),
+                    'commercial_snapshot' => $this->buildCommercialSnapshot($freshEvent),
+                ];
 
-            $disk = Storage::disk('local');
-            $path = 'private/agreements/'.$agreement->uid.'/unsigned.pdf';
+                $payload = $this->buildPdfPayload($agreement, $snapshots);
+                $pdfContent = $this->renderPdf($payload);
 
-            // Write the file first; only then flip the DB record. If the DB
-            // save fails afterwards we remove the freshly written file so we
-            // never leave an orphan "authoritative" PDF for a DRAFT agreement.
-            $disk->put($path, $pdfContent);
+                $path = 'private/agreements/'.$agreement->uid.'/unsigned.pdf';
 
-            try {
+                // The local disk uses 'throw' => false, so put() may return
+                // false without throwing. Only treat the write as successful
+                // when the file is actually present; otherwise abort before
+                // the DB record is touched.
+                $stored = $disk->put($path, $pdfContent);
+
+                if ($stored !== true || ! $disk->exists($path)) {
+                    throw new RuntimeException('Unsigned MOU PDF gagal disimpan.');
+                }
+
+                $writtenPath = $path;
+
                 $agreement->fill(array_merge($snapshots, [
                     'template_version' => self::TEMPLATE_VERSION,
                     'unsigned_pdf_path' => $path,
                     'status' => Agreement::STATUS_READY,
                 ]))->save();
-            } catch (Throwable $e) {
-                $this->deleteIfExists($disk, $path);
-                throw $e;
+
+                $agreement->refresh();
+
+                return [
+                    'ok' => true,
+                    'agreement' => $agreement,
+                    'unsigned_pdf_path' => $path,
+                ];
+            });
+        } catch (Throwable $e) {
+            // Any failure after the PDF was successfully written (e.g. during
+            // the DB save, refresh, or transaction commit) leaves a stray file
+            // behind while the DB rolls back. Remove it so no orphan
+            // "authoritative" PDF survives for a DRAFT agreement.
+            if ($writtenPath !== null) {
+                $this->deleteIfExists($disk, $writtenPath);
             }
 
-            $agreement->refresh();
-
-            return [
-                'ok' => true,
-                'agreement' => $agreement,
-                'unsigned_pdf_path' => $path,
-            ];
-        });
+            throw $e;
+        }
     }
 
     /**

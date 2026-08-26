@@ -504,6 +504,84 @@ class AgreementFinalizationTest extends TestCase
         $this->assertFalse($realDisk->exists('private/agreements/'.$agreement->uid.'/unsigned.pdf'));
     }
 
+    public function test_pdf_storage_return_false_keeps_agreement_draft_and_no_orphan_pdf(): void
+    {
+        $admin = $this->admin();
+        $tenant = $this->tenant();
+        $event = $this->event($tenant);
+        $this->organizer($event);
+        $this->verifiedBankAccount($event);
+        $this->verifiedOrganizerLetter($event);
+        $agreement = $this->agreement($tenant, $event);
+        $gateway = $this->gateway();
+        $this->eventGateway($event, $gateway, ['is_active' => true]);
+
+        $realDisk = Storage::disk('local');
+
+        // The local disk is configured with 'throw' => false, so put() may
+        // return false WITHOUT raising an exception. Simulate exactly that.
+        $failing = new class($realDisk) {
+            public function __construct(private $inner)
+            {
+            }
+
+            public function exists(string $path): bool
+            {
+                return $this->inner->exists($path);
+            }
+
+            public function put(string $path, $contents, $options = []): bool
+            {
+                return false;
+            }
+
+            public function delete($paths): bool
+            {
+                return $this->inner->delete($paths);
+            }
+
+            public function get(string $path): ?string
+            {
+                return $this->inner->get($path);
+            }
+
+            public function readStream(string $path)
+            {
+                return $this->inner->readStream($path);
+            }
+
+            public function mimeType(string $path): string
+            {
+                return $this->inner->mimeType($path);
+            }
+
+            public function path(string $path): string
+            {
+                return $this->inner->path($path);
+            }
+        };
+
+        Storage::shouldReceive('disk')->with('local')->andReturn($failing);
+
+        try {
+            app(AgreementFinalizationService::class)->finalizeForEvent($event, $admin->uid);
+            $this->fail('Expected RuntimeException was not thrown.');
+        } catch (RuntimeException $e) {
+            $this->assertSame('Unsigned MOU PDF gagal disimpan.', $e->getMessage());
+        }
+
+        $agreement->refresh();
+
+        $this->assertSame(Agreement::STATUS_DRAFT, $agreement->status);
+        $this->assertNull($agreement->event_snapshot);
+        $this->assertNull($agreement->party_snapshot);
+        $this->assertNull($agreement->bank_snapshot);
+        $this->assertNull($agreement->document_snapshot);
+        $this->assertNull($agreement->commercial_snapshot);
+        $this->assertNull($agreement->unsigned_pdf_path);
+        $this->assertFalse($realDisk->exists('private/agreements/'.$agreement->uid.'/unsigned.pdf'));
+    }
+
     public function test_db_failure_after_pdf_write_cleans_up_new_file(): void
     {
         $admin = $this->admin();
