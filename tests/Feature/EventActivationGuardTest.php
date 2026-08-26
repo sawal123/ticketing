@@ -10,6 +10,7 @@ use App\Models\Agreement;
 use App\Models\Cart;
 use App\Models\Event;
 use App\Models\EventBankAccount;
+use App\Models\EventDate;
 use App\Models\EventDocument;
 use App\Models\EventOrganizer;
 use App\Models\EventPaymentGateway;
@@ -402,6 +403,151 @@ class EventActivationGuardTest extends TestCase
         $this->assertSame($before['sent_to_privy_at'], $after['sent_to_privy_at']);
     }
 
+    public function test_legacy_tenant_edit_event_cannot_activate_inactive_event(): void
+    {
+        $tenant = $this->tenant();
+        $event = $this->event($tenant, ['status' => 'inactive']);
+        $this->eventDate($event);
+
+        $response = $this->actingAs($tenant)
+            ->post('/dashboard/old/editEventPenyewa', [
+                'uid' => $event->uid,
+                'event' => 'Attempted Activation',
+                'alamat' => 'Alamat Event',
+                'tanggal' => '2026-09-10 19:00:00',
+                'fee' => 10,
+                'start' => '2026-09-10 19:00',
+                'end' => '2026-09-10 22:00',
+                'status' => 'active',
+                'deskripsi' => 'Deskripsi',
+                'map' => 'https://map.test',
+            ]);
+
+        $response->assertForbidden();
+        $this->assertSame('inactive', $event->fresh()->status);
+    }
+
+    public function test_legacy_admin_edit_event_cannot_activate_when_prerequisites_fail(): void
+    {
+        $admin = $this->admin();
+        $tenant = $this->tenant();
+        $event = $this->event($tenant, ['status' => 'inactive', 'konfirmasi' => null]);
+
+        $this->seedActivationReadyState($tenant, $event, [
+            'agreement' => ['status' => Agreement::STATUS_DRAFT],
+        ]);
+
+        $response = $this->actingAs($admin)
+            ->post('/admin/old/editEvent', [
+                'uid' => $event->uid,
+                'event' => $event->event,
+                'alamat' => $event->alamat,
+                'tanggal' => $event->tanggal,
+                'fee' => 10,
+                'status' => 'active',
+                'deskripsi' => $event->deskripsi,
+                'map' => $event->map,
+            ]);
+
+        $response->assertRedirect('/admin/event/eventDetail/' . $event->uid);
+        $event->refresh();
+        $this->assertSame('inactive', $event->status);
+        $this->assertNull($event->konfirmasi);
+    }
+
+    public function test_legacy_admin_edit_event_activates_via_guard_when_prerequisites_valid(): void
+    {
+        $admin = $this->admin();
+        $tenant = $this->tenant();
+        $event = $this->event($tenant, ['status' => 'inactive', 'konfirmasi' => null]);
+
+        $this->seedActivationReadyState($tenant, $event);
+
+        $response = $this->actingAs($admin)
+            ->post('/admin/old/editEvent', [
+                'uid' => $event->uid,
+                'event' => $event->event,
+                'alamat' => $event->alamat,
+                'tanggal' => $event->tanggal,
+                'fee' => 10,
+                'status' => 'active',
+                'deskripsi' => $event->deskripsi,
+                'map' => $event->map,
+            ]);
+
+        $response->assertRedirect('/admin/event/eventDetail/' . $event->uid);
+        $event->refresh();
+        $this->assertSame('active', $event->status);
+    }
+
+    public function test_legacy_admin_setujui_event_cannot_bypass_prerequisites(): void
+    {
+        $admin = $this->admin();
+        $tenant = $this->tenant();
+        $event = $this->event($tenant, ['status' => 'inactive', 'konfirmasi' => null]);
+
+        $this->seedActivationReadyState($tenant, $event, [
+            'agreement' => ['status' => Agreement::STATUS_DRAFT],
+        ]);
+
+        $this->actingAs($admin)
+            ->get('/admin/old/setujuiEvent/' . $event->uid);
+
+        $event->refresh();
+        $this->assertSame('inactive', $event->status);
+        $this->assertNull($event->konfirmasi);
+
+        $eventReady = $this->event($tenant, ['status' => 'inactive', 'konfirmasi' => null]);
+        $this->seedActivationReadyState($tenant, $eventReady);
+
+        $this->actingAs($admin)
+            ->get('/admin/old/setujuiEvent/' . $eventReady->uid);
+
+        $eventReady->refresh();
+        $this->assertSame('active', $eventReady->status);
+        $this->assertSame('1', $eventReady->konfirmasi);
+    }
+
+    public function test_legacy_edit_event_active_to_close_behavior_is_preserved(): void
+    {
+        $tenant = $this->tenant();
+        $eventTenant = $this->event($tenant, ['status' => 'active', 'konfirmasi' => '1']);
+        $this->eventDate($eventTenant);
+
+        $this->actingAs($tenant)
+            ->post('/dashboard/old/editEventPenyewa', [
+                'uid' => $eventTenant->uid,
+                'event' => $eventTenant->event,
+                'alamat' => $eventTenant->alamat,
+                'tanggal' => '2026-09-10 19:00:00',
+                'fee' => 10,
+                'start' => '2026-09-10 19:00',
+                'end' => '2026-09-10 22:00',
+                'status' => 'close',
+                'deskripsi' => $eventTenant->deskripsi,
+                'map' => $eventTenant->map,
+            ]);
+
+        $this->assertSame('close', $eventTenant->fresh()->status);
+
+        $admin = $this->admin();
+        $eventAdmin = $this->event($tenant, ['status' => 'active', 'konfirmasi' => '1']);
+
+        $this->actingAs($admin)
+            ->post('/admin/old/editEvent', [
+                'uid' => $eventAdmin->uid,
+                'event' => $eventAdmin->event,
+                'alamat' => $eventAdmin->alamat,
+                'tanggal' => $eventAdmin->tanggal,
+                'fee' => 10,
+                'status' => 'close',
+                'deskripsi' => $eventAdmin->deskripsi,
+                'map' => $eventAdmin->map,
+            ]);
+
+        $this->assertSame('close', $eventAdmin->fresh()->status);
+    }
+
     private function assertActivationFails(Event $event, User $admin, string $message): void
     {
         try {
@@ -474,6 +620,15 @@ class EventActivationGuardTest extends TestCase
             'slug' => 'activation-'.Str::lower(Str::random(8)),
             'konfirmasi' => null,
             'payment_otp_enabled' => false,
+        ], $overrides));
+    }
+
+    private function eventDate(Event $event, array $overrides = []): EventDate
+    {
+        return EventDate::create(array_merge([
+            'uid' => $event->uid,
+            'start' => '2026-09-10 19:00',
+            'end' => '2026-09-10 22:00',
         ], $overrides));
     }
 
@@ -807,6 +962,14 @@ class EventActivationGuardTest extends TestCase
             $table->string('kategori_harga')->nullable();
             $table->timestamps();
             $table->softDeletes();
+        });
+
+        Schema::create('event_dates', function ($table) {
+            $table->id();
+            $table->string('uid');
+            $table->string('start');
+            $table->string('end');
+            $table->timestamps();
         });
     }
 }

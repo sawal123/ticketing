@@ -42,6 +42,13 @@ class EditController extends Controller
         $event = $this->ownedEventQuery($request->uid)->firstOrFail();
         $eventDate = EventDate::where('uid', $event->uid)->firstOrFail();
 
+        $requestedStatus = strtolower((string) ($request->status ?? ''));
+        $currentStatus = strtolower((string) $event->status);
+
+        if ($requestedStatus === 'active' && $currentStatus !== 'active') {
+            abort(403, 'Penyewa tidak diizinkan mengaktifkan event.');
+        }
+
         $tanggal = date('Y-m-d H:i', strtotime($request->tanggal));
         $event->event = $request->event;
         $event->alamat = $request->alamat;
@@ -49,7 +56,19 @@ class EditController extends Controller
         $event->fee = $request->fee; // TAMBAHKAN INI UNTUK MENGUPDATE FEE
         $eventDate->start = $request->start;
         $eventDate->end = $request->end;
-        $event->status = $request->status;
+
+        if ($request->filled('status')) {
+            if ($currentStatus === 'active') {
+                if ($requestedStatus === 'close') {
+                    $event->status = 'close';
+                }
+            } else {
+                if ($requestedStatus !== 'active') {
+                    $event->status = $request->status;
+                }
+            }
+        }
+
         $event->deskripsi = $request->deskripsi;
         $event->map = $request->map;
         $event->slug = Str::slug($request->event);
