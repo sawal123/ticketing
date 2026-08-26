@@ -278,11 +278,80 @@
                 </x-admin.table>
             @elseif($activeTab === 'mou')
                 <div class="space-y-4">
-                    <div class="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm text-slate-500 shadow-sm">
-                        Preview MOU pada tahap ini bersifat read-only dan selalu membaca data live event yang terbaru.
-                    </div>
+                    @if ($mouAgreement?->isReady())
+                        <div class="rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 shadow-sm">
+                            <div class="flex items-center gap-2">
+                                <span class="inline-flex items-center rounded-full bg-{{ $mouSignedAvailable ? 'emerald' : 'amber' }}-100 px-3 py-1 text-xs font-bold uppercase tracking-wide text-{{ $mouSignedAvailable ? 'emerald' : 'amber' }}-800">
+                                    {{ $mouSignedAvailable ? 'Menunggu verifikasi admin' : 'Menunggu tanda tangan' }}
+                                </span>
+                            </div>
+                            <h3 class="mt-2 text-base font-bold text-emerald-800">
+                                {{ $mouSignedAvailable ? 'Dokumen sudah diterima dan sedang menunggu verifikasi admin.' : 'MOU Siap Ditandatangani' }}
+                            </h3>
+                            <p class="mt-1 text-sm text-emerald-700">
+                                {{ $mouSignedAvailable
+                                    ? 'Admin akan memverifikasi dokumen MOU bertanda tangan Anda.'
+                                    : 'Lakukan tanda tangan MOU melalui Privy, lalu unggah kembali hasilnya ke Gotik.' }}
+                            </p>
+                        </div>
 
-                    @if ($mouPreview)
+                        @unless ($mouSignedAvailable)
+                            <div class="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm text-slate-600 shadow-sm">
+                                <ol class="list-decimal list-inside space-y-1.5">
+                                    <li>Download PDF MOU.</li>
+                                    <li>Login ke akun Privy melalui perangkat Anda.</li>
+                                    <li>Tanda tangani dokumen melalui Privy.</li>
+                                    <li>Download hasil PDF yang sudah ditandatangani.</li>
+                                    <li>Upload kembali PDF tersebut ke Gotik.</li>
+                                </ol>
+                            </div>
+                        @endunless
+
+                        <div class="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
+                            <div class="flex flex-wrap items-center gap-3">
+                                @if ($mouUnsignedAvailable)
+                                    <a href="{{ route('dashboard.event.mou.unsigned', $event->uid) }}" target="_blank" rel="noopener"
+                                        class="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700">
+                                        <i data-lucide="download" class="h-4 w-4"></i>
+                                        {{ $mouSignedAvailable ? 'Lihat MOU Unsigned' : 'Download MOU Unsigned' }}
+                                    </a>
+                                @endif
+
+                                @if ($mouSignedAvailable)
+                                    <a href="{{ route('dashboard.event.mou.signed', $event->uid) }}" target="_blank" rel="noopener"
+                                        class="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700">
+                                        <i data-lucide="file-check" class="h-4 w-4"></i>
+                                        Lihat MOU Bertanda Tangan
+                                    </a>
+                                @endif
+                            </div>
+
+                            @if ($mouUploadAvailable)
+                                <form wire:submit="uploadSignedMou" class="mt-4 space-y-3">
+                                    <div>
+                                        <label class="block text-[11px] font-black text-slate-400 uppercase tracking-[0.1em] mb-2">
+                                            {{ $mouSignedAvailable ? 'Upload Ulang MOU Bertanda Tangan' : 'Upload MOU Bertanda Tangan' }}
+                                        </label>
+                                        <input type="file" wire:model="signedMou" accept=".pdf,application/pdf"
+                                            class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-800 dark:text-slate-200 text-sm focus:ring-2 focus:ring-indigo-500 transition-all">
+                                        <div wire:loading wire:target="signedMou" class="text-indigo-600 text-xs font-semibold mt-2">
+                                            Mengunggah dokumen...
+                                        </div>
+                                        <div class="mt-2 text-xs text-slate-500 dark:text-slate-400">Format: PDF. Maksimal 10 MB.</div>
+                                        @error('signedMou') <span class="text-rose-500 text-xs mt-1">{{ $message }}</span> @enderror
+                                    </div>
+                                    <button type="submit"
+                                        class="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-700">
+                                        <i data-lucide="upload" class="h-4 w-4"></i>
+                                        {{ $mouSignedAvailable ? 'Upload Ulang' : 'Upload MOU Bertanda Tangan' }}
+                                    </button>
+                                </form>
+                            @endif
+                        </div>
+                    @elseif ($mouPreview)
+                        <div class="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm text-slate-500 shadow-sm">
+                            Preview MOU pada tahap ini bersifat read-only dan selalu membaca data live event yang terbaru.
+                        </div>
                         @include('agreements.mou-preview', ['preview' => $mouPreview])
                     @else
                         <div class="rounded-[2rem] border-2 border-dashed border-slate-200 bg-white px-8 py-14 text-center shadow-sm">
