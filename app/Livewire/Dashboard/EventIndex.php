@@ -31,9 +31,28 @@ class EventIndex extends Component
 
     public function toggleStatus($uid)
     {
+        $actor = auth()->user();
         $event = $this->ownedEventQuery($uid)->firstOrFail();
-        $event->status = $event->status === 'active' ? 'close' : 'active';
-        $event->save();
+
+        if ($event->status === 'active') {
+            $event->status = 'close';
+            $event->save();
+            $this->dispatch('event-status-updated');
+
+            return;
+        }
+
+        abort_unless(strtolower((string) $actor?->role) === 'admin', 403);
+
+        try {
+            app(\App\Services\Events\EventActivationGuardService::class)
+                ->activateForEvent($event, (string) $actor?->uid, true);
+        } catch (\Throwable $e) {
+            session()->flash('error', $e->getMessage());
+
+            return;
+        }
+
         $this->dispatch('event-status-updated');
     }
 

@@ -802,10 +802,15 @@ class EventDetail extends Component
             return;
         }
 
-        $event->update([
-            'konfirmasi' => '1',
-            'status' => 'active',
-        ]);
+        try {
+            app(\App\Services\Events\EventActivationGuardService::class)
+                ->activateForEvent($event, (string) Auth::user()?->uid, true);
+        } catch (\Throwable $e) {
+            session()->flash('error', $e->getMessage());
+            $this->dispatch('close-modal', name: 'confirm-event-modal');
+
+            return;
+        }
 
         session()->flash('message', 'Event berhasil dikonfirmasi dan diaktifkan.');
         $this->dispatch('close-modal', name: 'confirm-event-modal');
