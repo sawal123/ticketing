@@ -72,6 +72,47 @@ class AgreementSignedVerificationTest extends TestCase
         $this->assertNotNull($agreement->signed_verified_at);
         $this->assertNotNull($agreement->completed_at);
         $this->assertNull($agreement->signed_rejection_reason);
+        $this->assertSame('inactive', $event->fresh()->status);
+    }
+
+    public function test_approve_keeps_event_inactive_and_preserves_frozen_fields(): void
+    {
+        $tenant = $this->tenant();
+        $admin = $this->admin();
+        $event = $this->event($tenant, ['status' => 'inactive']);
+
+        $uid = (string) Str::uuid();
+        $agreement = $this->readyAgreement($tenant, $event, [
+            'uid' => $uid,
+            'signed_pdf_path' => $this->signedPath($uid),
+            'signed_review_status' => Agreement::SIGNED_REVIEW_PENDING,
+            'privy_document_id' => 'privy-doc-m10',
+            'privy_status' => 'signed',
+            'privy_reference' => 'privy-ref-m10',
+            'sent_to_privy_at' => now()->subDay(),
+        ]);
+        Storage::disk('local')->put($this->unsignedPath($uid), '%PDF-1.4 unsigned frozen');
+        Storage::disk('local')->put($this->signedPath($uid), '%PDF-1.4 signed frozen');
+
+        $before = $agreement->refresh()->toArray();
+
+        app(AgreementSignedVerificationService::class)->approveForEvent($event, $admin->uid);
+
+        $after = $agreement->refresh()->toArray();
+
+        $this->assertSame('inactive', $event->fresh()->status);
+        $this->assertSame(Agreement::STATUS_COMPLETED, $after['status']);
+        $this->assertSame($before['event_snapshot'], $after['event_snapshot']);
+        $this->assertSame($before['party_snapshot'], $after['party_snapshot']);
+        $this->assertSame($before['bank_snapshot'], $after['bank_snapshot']);
+        $this->assertSame($before['document_snapshot'], $after['document_snapshot']);
+        $this->assertSame($before['commercial_snapshot'], $after['commercial_snapshot']);
+        $this->assertSame($before['unsigned_pdf_path'], $after['unsigned_pdf_path']);
+        $this->assertSame($before['signed_pdf_path'], $after['signed_pdf_path']);
+        $this->assertSame($before['privy_document_id'], $after['privy_document_id']);
+        $this->assertSame($before['privy_status'], $after['privy_status']);
+        $this->assertSame($before['privy_reference'], $after['privy_reference']);
+        $this->assertSame($before['sent_to_privy_at'], $after['sent_to_privy_at']);
     }
 
     public function test_admin_rejects_signed_mou_and_keeps_ready_state(): void
@@ -232,6 +273,48 @@ class AgreementSignedVerificationTest extends TestCase
         $this->assertSame($this->signedPath($uid), $agreement->signed_pdf_path);
     }
 
+    public function test_cross_event_verification_does_not_affect_other_event_agreement(): void
+    {
+        $tenant = $this->tenant();
+        $admin = $this->admin();
+        $eventA = $this->event($tenant, ['event' => 'Event A']);
+        $eventB = $this->event($tenant, ['event' => 'Event B']);
+
+        $uidA = (string) Str::uuid();
+        $uidB = (string) Str::uuid();
+
+        $agreementA = $this->readyAgreement($tenant, $eventA, [
+            'uid' => $uidA,
+            'signed_pdf_path' => $this->signedPath($uidA),
+            'signed_review_status' => Agreement::SIGNED_REVIEW_PENDING,
+        ]);
+        $agreementB = $this->readyAgreement($tenant, $eventB, [
+            'uid' => $uidB,
+            'signed_pdf_path' => $this->signedPath($uidB),
+            'signed_review_status' => Agreement::SIGNED_REVIEW_PENDING,
+        ]);
+
+        Storage::disk('local')->put($this->signedPath($uidA), '%PDF-1.4 signed A');
+        Storage::disk('local')->put($this->signedPath($uidB), '%PDF-1.4 signed B');
+
+        $beforeB = $agreementB->refresh()->toArray();
+
+        app(AgreementSignedVerificationService::class)->approveForEvent($eventA, $admin->uid);
+
+        $agreementA->refresh();
+        $afterB = $agreementB->refresh()->toArray();
+
+        $this->assertSame(Agreement::STATUS_COMPLETED, $agreementA->status);
+        $this->assertSame(Agreement::SIGNED_REVIEW_VERIFIED, $agreementA->signed_review_status);
+        $this->assertSame($beforeB['status'], $afterB['status']);
+        $this->assertSame($beforeB['signed_review_status'], $afterB['signed_review_status']);
+        $this->assertSame($beforeB['signed_pdf_path'], $afterB['signed_pdf_path']);
+        $this->assertSame($beforeB['unsigned_pdf_path'], $afterB['unsigned_pdf_path']);
+        $this->assertSame($beforeB['completed_at'], $afterB['completed_at']);
+        $this->assertSame($beforeB['signed_verified_by'], $afterB['signed_verified_by']);
+        $this->assertSame($beforeB['signed_verified_at'], $afterB['signed_verified_at']);
+    }
+
     public function test_signed_route_is_admin_only_and_state_guarded(): void
     {
         $tenant = $this->tenant();
@@ -266,6 +349,97 @@ class AgreementSignedVerificationTest extends TestCase
         $this->assertStringContainsString('application/pdf', (string) $response->headers->get('content-type'));
         $this->assertStringContainsString('mou-signed.pdf', (string) $response->headers->get('content-disposition'));
         $this->assertSame('%PDF-1.4 signed', $response->streamedContent());
+    }
+
+    public function test_tenant_ui_shows_rejection_reason_and_reupload_after_signed_mou_rejected(): void
+    {
+        $tenant = $this->tenant();
+        $event = $this->event($tenant);
+        $uid = (string) Str::uuid();
+        $reason = 'Tanda tangan wajib di halaman terakhir.';
+
+        $this->readyAgreement($tenant, $event, [
+            'uid' => $uid,
+            'unsigned_pdf_path' => $this->unsignedPath($uid),
+            'signed_pdf_path' => $this->signedPath($uid),
+            'signed_review_status' => Agreement::SIGNED_REVIEW_REJECTED,
+            'signed_rejection_reason' => $reason,
+            'signed_at' => now(),
+        ]);
+
+        Storage::disk('local')->put($this->unsignedPath($uid), '%PDF-1.4 unsigned');
+        Storage::disk('local')->put($this->signedPath($uid), '%PDF-1.4 signed');
+
+        $this->actingAs($tenant)
+            ->get(route('dashboard.event.detail', $event->uid) . '?activeTab=mou')
+            ->assertOk()
+            ->assertSeeText('MOU ditolak')
+            ->assertSeeText($reason)
+            ->assertSeeText('Lihat MOU Bertanda Tangan')
+            ->assertSeeText('Upload Ulang')
+            ->assertDontSeeText('Menunggu verifikasi admin');
+    }
+
+    public function test_tenant_completed_ui_shows_finished_status_and_signed_pdf(): void
+    {
+        $tenant = $this->tenant();
+        $admin = $this->admin();
+        $event = $this->event($tenant);
+        $uid = (string) Str::uuid();
+        $verifiedAt = now()->subHour();
+
+        $this->readyAgreement($tenant, $event, [
+            'uid' => $uid,
+            'status' => Agreement::STATUS_COMPLETED,
+            'signed_pdf_path' => $this->signedPath($uid),
+            'signed_review_status' => Agreement::SIGNED_REVIEW_VERIFIED,
+            'signed_verified_by' => $admin->uid,
+            'signed_verified_at' => $verifiedAt,
+            'signed_at' => $verifiedAt->copy()->subMinute(),
+            'completed_at' => $verifiedAt,
+        ]);
+
+        Storage::disk('local')->put($this->signedPath($uid), '%PDF-1.4 signed completed');
+
+        $this->actingAs($tenant)
+            ->get(route('dashboard.event.detail', $event->uid) . '?activeTab=mou')
+            ->assertOk()
+            ->assertSeeText('MOU Terverifikasi/Selesai')
+            ->assertSeeText('Lihat MOU Bertanda Tangan')
+            ->assertSeeText($verifiedAt->format('d M Y H:i'));
+
+        $response = $this->actingAs($tenant)
+            ->get(route('dashboard.event.mou.signed', $event->uid));
+
+        $response->assertOk();
+        $this->assertSame('%PDF-1.4 signed completed', $response->streamedContent());
+    }
+
+    public function test_tenant_completed_ui_does_not_show_reupload_form(): void
+    {
+        $tenant = $this->tenant();
+        $admin = $this->admin();
+        $event = $this->event($tenant);
+        $uid = (string) Str::uuid();
+
+        $this->readyAgreement($tenant, $event, [
+            'uid' => $uid,
+            'status' => Agreement::STATUS_COMPLETED,
+            'signed_pdf_path' => $this->signedPath($uid),
+            'signed_review_status' => Agreement::SIGNED_REVIEW_VERIFIED,
+            'signed_verified_by' => $admin->uid,
+            'signed_verified_at' => now(),
+            'signed_at' => now()->subMinute(),
+            'completed_at' => now(),
+        ]);
+
+        Storage::disk('local')->put($this->signedPath($uid), '%PDF-1.4 signed completed');
+
+        $this->actingAs($tenant)
+            ->get(route('dashboard.event.detail', $event->uid) . '?activeTab=mou')
+            ->assertOk()
+            ->assertDontSeeText('Upload Ulang')
+            ->assertDontSeeText('Upload MOU Bertanda Tangan');
     }
 
     private function admin(array $overrides = []): User

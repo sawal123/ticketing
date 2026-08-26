@@ -278,24 +278,46 @@
                 </x-admin.table>
             @elseif($activeTab === 'mou')
                 <div class="space-y-4">
-                    @if ($mouAgreement?->isReady())
-                        <div class="rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 shadow-sm">
+                    @if ($mouAgreement?->isReady() || $mouAgreement?->isCompleted())
+                        <div class="rounded-2xl border px-5 py-4 shadow-sm {{ $mouSignedRejected ? 'border-rose-200 bg-rose-50' : 'border-emerald-200 bg-emerald-50' }}">
                             <div class="flex items-center gap-2">
-                                <span class="inline-flex items-center rounded-full bg-{{ $mouSignedAvailable ? 'emerald' : 'amber' }}-100 px-3 py-1 text-xs font-bold uppercase tracking-wide text-{{ $mouSignedAvailable ? 'emerald' : 'amber' }}-800">
-                                    {{ $mouSignedAvailable ? 'Menunggu verifikasi admin' : 'Menunggu tanda tangan' }}
+                                <span class="inline-flex items-center rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide
+                                    {{ $mouSignedRejected ? 'bg-rose-100 text-rose-800' : ($mouCompleted ? 'bg-emerald-100 text-emerald-800' : ($mouSignedAwaitingReview ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800')) }}">
+                                    {{ $mouCompleted ? 'MOU Terverifikasi/Selesai' : ($mouSignedRejected ? 'MOU ditolak' : ($mouSignedAwaitingReview ? 'Menunggu verifikasi admin' : 'Menunggu tanda tangan')) }}
                                 </span>
                             </div>
-                            <h3 class="mt-2 text-base font-bold text-emerald-800">
-                                {{ $mouSignedAvailable ? 'Dokumen sudah diterima dan sedang menunggu verifikasi admin.' : 'MOU Siap Ditandatangani' }}
+                            <h3 class="mt-2 text-base font-bold {{ $mouSignedRejected ? 'text-rose-800' : 'text-emerald-800' }}">
+                                {{ $mouCompleted
+                                    ? 'MOU Terverifikasi/Selesai'
+                                    : ($mouSignedRejected
+                                        ? 'MOU ditolak'
+                                        : ($mouSignedAwaitingReview
+                                            ? 'Dokumen sudah diterima dan sedang menunggu verifikasi admin.'
+                                            : 'MOU Siap Ditandatangani')) }}
                             </h3>
-                            <p class="mt-1 text-sm text-emerald-700">
-                                {{ $mouSignedAvailable
-                                    ? 'Admin akan memverifikasi dokumen MOU bertanda tangan Anda.'
-                                    : 'Lakukan tanda tangan MOU melalui Privy, lalu unggah kembali hasilnya ke Gotik.' }}
+                            <p class="mt-1 text-sm {{ $mouSignedRejected ? 'text-rose-700' : 'text-emerald-700' }}">
+                                {{ $mouCompleted
+                                    ? 'Dokumen MOU bertanda tangan Anda telah diverifikasi admin.'
+                                    : ($mouSignedRejected
+                                        ? 'Admin menolak dokumen MOU bertanda tangan Anda. Silakan perbaiki dan upload ulang.'
+                                        : ($mouSignedAwaitingReview
+                                            ? 'Admin akan memverifikasi dokumen MOU bertanda tangan Anda.'
+                                            : 'Lakukan tanda tangan MOU melalui Privy, lalu unggah kembali hasilnya ke Gotik.')) }}
                             </p>
+                            @if ($mouSignedRejected && $mouAgreement->signed_rejection_reason)
+                                <div class="mt-3 rounded-xl border border-rose-200 bg-white/70 px-4 py-3 text-sm text-rose-700">
+                                    <p class="text-xs font-black uppercase tracking-[0.1em] text-rose-500">Alasan penolakan</p>
+                                    <p class="mt-1">{{ $mouAgreement->signed_rejection_reason }}</p>
+                                </div>
+                            @endif
+                            @if ($mouCompleted && $mouAgreement->signed_verified_at)
+                                <p class="mt-3 text-sm text-emerald-700">
+                                    Diverifikasi pada {{ $mouAgreement->signed_verified_at->format('d M Y H:i') }}
+                                </p>
+                            @endif
                         </div>
 
-                        @unless ($mouSignedAvailable)
+                        @if ($mouAgreement->isReady() && ! $mouSignedAvailable)
                             <div class="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm text-slate-600 shadow-sm">
                                 <ol class="list-decimal list-inside space-y-1.5">
                                     <li>Download PDF MOU.</li>
@@ -313,7 +335,7 @@
                                     <a href="{{ route('dashboard.event.mou.unsigned', $event->uid) }}" target="_blank" rel="noopener"
                                         class="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700">
                                         <i data-lucide="download" class="h-4 w-4"></i>
-                                        {{ $mouSignedAvailable ? 'Lihat MOU Unsigned' : 'Download MOU Unsigned' }}
+                                    {{ $mouSignedAvailable ? 'Lihat MOU Unsigned' : 'Download MOU Unsigned' }}
                                     </a>
                                 @endif
 

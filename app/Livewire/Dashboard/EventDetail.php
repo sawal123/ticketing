@@ -4,6 +4,7 @@ namespace App\Livewire\Dashboard;
 
 use App\Jobs\sendEmailETransaksi;
 use App\Jobs\sendEmailTrnsaksi;
+use App\Models\Agreement;
 use App\Models\Cart;
 use App\Models\Cash;
 use App\Models\Event;
@@ -681,6 +682,10 @@ class EventDetail extends Component
         $mouUnsignedAvailable = false;
         $mouSignedAvailable = false;
         $mouUploadAvailable = false;
+        $mouSignedReviewStatus = null;
+        $mouSignedAwaitingReview = false;
+        $mouSignedRejected = false;
+        $mouCompleted = false;
 
         if ($this->activeTab === 'mou') {
             $mouPreview = app(AgreementPreviewService::class)->buildForEvent($event);
@@ -688,11 +693,21 @@ class EventDetail extends Component
             $mouUnsignedAvailable = $mouAgreement !== null
                 && $mouAgreement->isReady()
                 && filled($mouAgreement->unsigned_pdf_path);
+            $mouSignedReviewStatus = $mouAgreement?->signed_review_status;
             $mouSignedAvailable = $mouAgreement !== null
-                && $mouAgreement->isReady()
+                && ($mouAgreement->isReady() || $mouAgreement->isCompleted())
                 && filled($mouAgreement->signed_pdf_path);
             $mouUploadAvailable = $mouAgreement !== null
                 && $mouAgreement->isReady();
+            $mouSignedAwaitingReview = $mouAgreement !== null
+                && $mouAgreement->isReady()
+                && $mouSignedAvailable
+                && in_array($mouSignedReviewStatus, [null, Agreement::SIGNED_REVIEW_PENDING], true);
+            $mouSignedRejected = $mouAgreement !== null
+                && $mouAgreement->isReady()
+                && $mouSignedReviewStatus === Agreement::SIGNED_REVIEW_REJECTED;
+            $mouCompleted = $mouAgreement !== null
+                && $mouAgreement->isCompleted();
         }
 
         $selectedTransaction = null;
@@ -727,6 +742,10 @@ class EventDetail extends Component
             'mouUnsignedAvailable' => $mouUnsignedAvailable,
             'mouSignedAvailable' => $mouSignedAvailable,
             'mouUploadAvailable' => $mouUploadAvailable,
+            'mouSignedReviewStatus' => $mouSignedReviewStatus,
+            'mouSignedAwaitingReview' => $mouSignedAwaitingReview,
+            'mouSignedRejected' => $mouSignedRejected,
+            'mouCompleted' => $mouCompleted,
         ]);
     }
 
