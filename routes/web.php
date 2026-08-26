@@ -19,6 +19,7 @@ use App\Http\Controllers\Dashboard\EventTransactionPdfController;
 use App\Http\Controllers\Dashboard\PaymentGatewayController;
 use App\Http\Controllers\Dashboard\TController;
 use App\Http\Controllers\Dashboard\TransaksiController;
+use App\Http\Controllers\DashboardAgreementFileController;
 use App\Http\Controllers\landingController;
 use App\Http\Controllers\PenarikanTransferProofController;
 use App\Http\Controllers\Penyewa\AddController as PenyewaAddController;
@@ -181,6 +182,10 @@ Route::prefix('dashboard')
             Route::get('/staff-index', StaffIndex::class)->name('dashboard.staff');
             Route::get('/partner', PartnerIndex::class)->name('dashboard.partner');
             Route::get('/settings', SettingsIndex::class)->name('dashboard.settings');
+            Route::get('/event/{uid}/mou/unsigned', [DashboardAgreementFileController::class, 'unsigned'])
+                ->name('dashboard.event.mou.unsigned');
+            Route::get('/event/{uid}/mou/signed', [DashboardAgreementFileController::class, 'signed'])
+                ->name('dashboard.event.mou.signed');
         });
 
         Route::middleware(['roles:penyewa,staff'])->group(function () {

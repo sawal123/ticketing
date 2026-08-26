@@ -10,6 +10,7 @@ use App\Models\Event;
 use App\Models\Harga;
 use App\Models\Talent;
 use App\Services\Agreements\AgreementPreviewService;
+use App\Services\Agreements\AgreementSignedUploadService;
 use App\Services\Reports\FinancialSnapshotService;
 use App\Services\SecureImageStorage;
 use App\Services\Tickets\GateTokenService;
@@ -18,6 +19,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Livewire\WithFileUploads;
@@ -45,6 +47,7 @@ class EventDetail extends Component
     ];
 
     #[Layout('layouts.unified')]
+    #[Locked]
     public $eventUid;
 
     public $activeTab = 'umum'; // umum, tiket, mou, transaksi
@@ -54,6 +57,9 @@ class EventDetail extends Component
     public $perPage = 10;
 
     public $showFullDescription = false;
+
+    // Signed MOU upload (M9)
+    public $signedMou;
 
     // Filters for Transactions
     public $filterPayment = 'all'; // all, cash, non-cash
@@ -446,6 +452,46 @@ class EventDetail extends Component
         $this->resetPage();
     }
 
+    /**
+     * Upload / replace the tenant-signed MOU PDF while the Agreement is READY.
+     */
+    public function uploadSignedMou()
+    {
+        $this->getEventData();
+
+        // Staff may view the event but never touch legal MOU documents (M9).
+        if (strtolower((string) auth()->user()->role) !== 'penyewa') {
+            abort(403, 'Hanya pemilik event yang dapat mengunggah dokumen MOU.');
+        }
+
+        $validated = $this->validate([
+            'signedMou' => 'required|file|mimes:pdf|max:10240',
+        ]);
+
+        $event = $this->getEventData();
+        $actor = auth()->user();
+
+        try {
+            $result = app(AgreementSignedUploadService::class)
+                ->storeForEvent($event, $actor->uid, $validated['signedMou']);
+
+            if (! $result['ok']) {
+                session()->flash('error', $result['message'] ?? 'Upload MOU bertanda tangan gagal.');
+                $this->reset('signedMou');
+
+                return;
+            }
+        } catch (\Throwable $e) {
+            session()->flash('error', 'Upload MOU bertanda tangan gagal: '.$e->getMessage());
+            $this->reset('signedMou');
+
+            return;
+        }
+
+        $this->reset('signedMou');
+        session()->flash('message', 'Dokumen MOU bertanda tangan berhasil diunggah dan sedang menunggu verifikasi admin.');
+    }
+
     public function resetFilters()
     {
         $this->filterPayment = 'all';
@@ -631,8 +677,22 @@ class EventDetail extends Component
         }
 
         $mouPreview = null;
+        $mouAgreement = null;
+        $mouUnsignedAvailable = false;
+        $mouSignedAvailable = false;
+        $mouUploadAvailable = false;
+
         if ($this->activeTab === 'mou') {
             $mouPreview = app(AgreementPreviewService::class)->buildForEvent($event);
+            $mouAgreement = $event->currentMouAgreement;
+            $mouUnsignedAvailable = $mouAgreement !== null
+                && $mouAgreement->isReady()
+                && filled($mouAgreement->unsigned_pdf_path);
+            $mouSignedAvailable = $mouAgreement !== null
+                && $mouAgreement->isReady()
+                && filled($mouAgreement->signed_pdf_path);
+            $mouUploadAvailable = $mouAgreement !== null
+                && $mouAgreement->isReady();
         }
 
         $selectedTransaction = null;
@@ -663,6 +723,10 @@ class EventDetail extends Component
             'discount' => $discount,
             'voucherCode' => $voucherCode,
             'mouPreview' => $mouPreview,
+            'mouAgreement' => $mouAgreement,
+            'mouUnsignedAvailable' => $mouUnsignedAvailable,
+            'mouSignedAvailable' => $mouSignedAvailable,
+            'mouUploadAvailable' => $mouUploadAvailable,
         ]);
     }
 
