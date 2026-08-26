@@ -432,6 +432,60 @@
                 $commercialGateways = collect($commercialReview['payment_gateways'] ?? []);
             @endphp
             <div class="space-y-6">
+                {{-- Riwayat Agreement & Addendum --}}
+                @if (!empty($agreementsHistory) && $agreementsHistory->count() > 0)
+                    <x-admin.card title="Riwayat Agreement & Addendum">
+                        <div class="overflow-x-auto rounded-xl border border-slate-200">
+                            <table class="w-full text-left text-sm">
+                                <thead class="bg-slate-50 text-xs uppercase tracking-wider text-slate-500 border-b border-slate-200">
+                                    <tr>
+                                        <th class="px-4 py-3 font-bold">Dokumen</th>
+                                        <th class="px-4 py-3 font-bold">Versi</th>
+                                        <th class="px-4 py-3 font-bold">Status</th>
+                                        <th class="px-4 py-3 font-bold">Tanggal Selesai</th>
+                                        <th class="px-4 py-3 font-bold">File PDF</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100">
+                                    @foreach ($agreementsHistory as $historyItem)
+                                        <tr class="hover:bg-slate-50/50">
+                                            <td class="px-4 py-3 font-bold text-slate-800">
+                                                {{ strtoupper($historyItem->type) }}
+                                            </td>
+                                            <td class="px-4 py-3 text-slate-600">
+                                                v{{ $historyItem->version }}
+                                            </td>
+                                            <td class="px-4 py-3">
+                                                <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold
+                                                    {{ $historyItem->status === \App\Models\Agreement::STATUS_COMPLETED ? 'bg-emerald-100 text-emerald-800' : ($historyItem->status === \App\Models\Agreement::STATUS_READY ? 'bg-sky-100 text-sky-800' : 'bg-slate-100 text-slate-700') }}">
+                                                    {{ $historyItem->status }}
+                                                </span>
+                                            </td>
+                                            <td class="px-4 py-3 text-slate-600">
+                                                {{ $historyItem->completed_at ? $historyItem->completed_at->format('d M Y H:i') : '-' }}
+                                            </td>
+                                            <td class="px-4 py-3 space-x-2">
+                                                @if (filled($historyItem->unsigned_pdf_path))
+                                                    <a href="{{ route('admin.event.review.mou.unsigned', ['uid' => $event->uid, 'agreementUid' => $historyItem->uid]) }}" target="_blank" rel="noopener"
+                                                        class="inline-flex items-center gap-1 text-xs font-semibold text-indigo-600 hover:underline">
+                                                        <i data-lucide="file-text" class="h-3.5 w-3.5"></i> Unsigned
+                                                    </a>
+                                                @endif
+                                                @if (filled($historyItem->signed_pdf_path))
+                                                    <a href="{{ route('admin.event.review.mou.signed', ['uid' => $event->uid, 'agreementUid' => $historyItem->uid]) }}" target="_blank" rel="noopener"
+                                                        class="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600 hover:underline">
+                                                        <i data-lucide="file-check" class="h-3.5 w-3.5"></i> Signed
+                                                    </a>
+                                                @endif
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </x-admin.card>
+                @endif
+
                 <x-admin.card title="Readiness Checklist">
                     <div class="space-y-5">
                         <div class="rounded-2xl border p-5 {{ $reviewStatusClass }}">
@@ -482,7 +536,7 @@
                             <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                                 <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                                     <div>
-                                        <p class="text-xs font-black uppercase tracking-[0.25em] text-slate-400">Finalisasi MOU</p>
+                                        <p class="text-xs font-black uppercase tracking-[0.25em] text-slate-400">Finalisasi {{ $currentMouAgreement->type === \App\Models\Agreement::TYPE_ADDENDUM ? 'Addendum' : 'MOU' }}</p>
                                         @if ($finalizeMouAvailable)
                                             <p class="mt-1 text-sm text-slate-500">
                                                 Seluruh prerequisite M7 terpenuhi. Finalisasi akan membekukan snapshot kontraktual dan membuat PDF unsigned di penyimpanan privat.
@@ -495,7 +549,7 @@
                                     </div>
                                     <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
                                         @if ($mouUnsignedAvailable)
-                                            <a href="{{ route('admin.event.review.mou.unsigned', $event->uid) }}" target="_blank" rel="noopener" class="inline-flex">
+                                            <a href="{{ route('admin.event.review.mou.unsigned', ['uid' => $event->uid, 'agreementUid' => $currentMouAgreement->uid]) }}" target="_blank" rel="noopener" class="inline-flex">
                                                 <x-admin.button variant="secondary" icon="file-text" class="!py-2">
                                                     Lihat PDF Unsigned
                                                 </x-admin.button>
@@ -504,9 +558,9 @@
                                         @if ($finalizeMouAvailable)
                                             <x-admin.button type="button" wire:click="finalizeAgreement"
                                                 wire:loading.attr="disabled" wire:target="finalizeAgreement" icon="check"
-                                                wire:confirm="Yakin ingin memfinalisasi MOU? Snapshot dan PDF unsigned akan dibekukan."
+                                                wire:confirm="Yakin ingin memfinalisasi dokumen? Snapshot dan PDF unsigned akan dibekukan."
                                                 class="disabled:pointer-events-none disabled:opacity-60">
-                                                Finalisasi MOU
+                                                Finalisasi {{ $currentMouAgreement->type === \App\Models\Agreement::TYPE_ADDENDUM ? 'Addendum' : 'MOU' }}
                                             </x-admin.button>
                                         @endif
                                     </div>
@@ -524,17 +578,17 @@
                                         $currentMouAgreement->isCompleted() => [
                                             'bg-emerald-50 text-emerald-700 border-emerald-200',
                                             'VERIFIED / COMPLETED',
-                                            'Signed MOU sudah diverifikasi admin dan agreement telah menjadi COMPLETED.',
+                                            'Signed dokumen sudah diverifikasi admin dan agreement telah menjadi COMPLETED.',
                                         ],
                                         $resolvedSignedReviewStatus === \App\Models\Agreement::SIGNED_REVIEW_REJECTED => [
                                             'bg-rose-50 text-rose-700 border-rose-200',
                                             'REJECTED',
-                                            'Signed MOU ditolak admin. Tenant harus upload ulang file signed yang benar.',
+                                            'Signed dokumen ditolak admin. Tenant harus upload ulang file signed yang benar.',
                                         ],
                                         default => [
                                             'bg-amber-50 text-amber-700 border-amber-200',
                                             'PENDING',
-                                            'Signed MOU sudah masuk dan sedang menunggu keputusan admin.',
+                                            'Signed dokumen sudah masuk dan sedang menunggu keputusan admin.',
                                         ],
                                     };
                                 @endphp
@@ -542,7 +596,7 @@
                                 <div class="rounded-2xl border p-5 {{ $signedReviewClass }}">
                                     <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                                         <div>
-                                            <p class="text-xs font-black uppercase tracking-[0.25em]">Review Signed MOU</p>
+                                            <p class="text-xs font-black uppercase tracking-[0.25em]">Review Signed {{ $currentMouAgreement->type === \App\Models\Agreement::TYPE_ADDENDUM ? 'Addendum' : 'MOU' }}</p>
                                             <h3 class="mt-2 text-lg font-black">{{ $signedReviewLabel }}</h3>
                                             <p class="mt-1 text-sm">{{ $signedReviewDescription }}</p>
 
@@ -554,7 +608,7 @@
                                         </div>
 
                                         <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
-                                            <a href="{{ route('admin.event.review.mou.signed', $event->uid) }}" target="_blank" rel="noopener" class="inline-flex">
+                                            <a href="{{ route('admin.event.review.mou.signed', ['uid' => $event->uid, 'agreementUid' => $currentMouAgreement->uid]) }}" target="_blank" rel="noopener" class="inline-flex">
                                                 <x-admin.button variant="secondary" icon="file-check" class="!py-2">
                                                     Lihat PDF Signed
                                                 </x-admin.button>
@@ -571,22 +625,21 @@
 
                                     @if ($mouSignedReviewActionable)
                                         <div class="mt-5 rounded-2xl bg-white/70 p-4">
-                                            <label for="signed-mou-rejection-reason" class="mb-2 block text-xs font-black uppercase tracking-[0.2em] text-slate-400">Alasan Tolak Signed MOU</label>
+                                            <label for="signed-mou-rejection-reason" class="mb-2 block text-xs font-black uppercase tracking-[0.2em] text-slate-400">Alasan Tolak Signed Dokumen</label>
                                             <textarea id="signed-mou-rejection-reason" wire:model.defer="signedMouRejectionReason" rows="4"
                                                 class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"></textarea>
                                             @error('signedMouRejectionReason') <span class="mt-2 block text-xs text-rose-500">{{ $message }}</span> @enderror
 
                                             <div class="mt-4 flex flex-col gap-2 sm:flex-row">
                                                 <x-admin.button type="button" wire:click="rejectSignedMou" wire:loading.attr="disabled"
-                                                    wire:target="rejectSignedMou" variant="danger" icon="x-circle"
-                                                    class="disabled:pointer-events-none disabled:opacity-60">
-                                                    Tolak Signed MOU
+                                                    wire:target="rejectSignedMou" variant="danger" icon="x" class="disabled:pointer-events-none disabled:opacity-60">
+                                                    Tolak Signed Dokumen
                                                 </x-admin.button>
                                                 <x-admin.button type="button" wire:click="approveSignedMou" wire:loading.attr="disabled"
-                                                    wire:target="approveSignedMou" variant="success" icon="check-circle"
-                                                    wire:confirm="Yakin ingin memverifikasi signed MOU? Agreement akan menjadi COMPLETED."
+                                                    wire:target="approveSignedMou" icon="check"
+                                                    wire:confirm="Yakin ingin menyetujui dokumen bertanda tangan ini? Agreement akan menjadi COMPLETED."
                                                     class="disabled:pointer-events-none disabled:opacity-60">
-                                                    Verifikasi Signed MOU
+                                                    Verifikasi & Setujui Dokumen
                                                 </x-admin.button>
                                             </div>
                                         </div>
@@ -597,15 +650,20 @@
                     </div>
                 </x-admin.card>
 
-                <x-admin.card title="Preview MOU M6">
-                    <div class="space-y-4">
-                        <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-300">
-                            Preview MOU tetap read-only dan mereuse tampilan agreement M6 yang membaca data live event terbaru.
-                        </div>
-
-                        @if ($mouPreview)
+                @if ($addendumPreview)
+                    @include('agreements.addendum-preview', ['preview' => $addendumPreview])
+                @elseif ($mouPreview)
+                    <x-admin.card title="Preview MOU M6">
+                        <div class="space-y-4">
+                            <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-300">
+                                Preview MOU tetap read-only dan mereuse tampilan agreement M6 yang membaca data live event terbaru.
+                            </div>
                             @include('agreements.mou-preview', ['preview' => $mouPreview])
-                        @else
+                        </div>
+                    </x-admin.card>
+                @else
+                    <x-admin.card title="Preview MOU M6">
+                        <div class="space-y-4">
                             <div class="rounded-[2rem] border-2 border-dashed border-slate-200 bg-white px-8 py-14 text-center shadow-sm dark:border-slate-700 dark:bg-slate-800/40">
                                 <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-slate-100 text-slate-400 dark:bg-slate-700 dark:text-slate-300">
                                     <i data-lucide="file-search" class="h-8 w-8"></i>
@@ -615,9 +673,9 @@
                                     Event lama tanpa agreement tetap aman dibuka dan tidak akan membuat agreement baru secara otomatis.
                                 </p>
                             </div>
-                        @endif
-                    </div>
-                </x-admin.card>
+                        </div>
+                    </x-admin.card>
+                @endif
 
                 <div class="grid grid-cols-1 gap-6 xl:grid-cols-2">
                     <x-admin.card title="Review Rekening Event">

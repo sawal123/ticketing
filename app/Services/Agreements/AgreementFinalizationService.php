@@ -43,22 +43,37 @@ class AgreementFinalizationService
      *                   status stay untouched) and any newly written PDF file
      *                   is cleaned up.
      */
-    public function finalizeForEvent(Event $event, string $actorUid): array
+    public function finalizeForEvent(Event $event, string $actorUid, ?string $agreementUid = null): array
     {
         $disk = Storage::disk('local');
         $writtenPath = null;
 
         try {
-            return DB::transaction(function () use ($event, $actorUid, $disk, &$writtenPath) {
-                $agreement = Agreement::query()
+            return DB::transaction(function () use ($event, $actorUid, $disk, &$writtenPath, $agreementUid) {
+                $agreementQuery = Agreement::query()
                     ->where('event_uid', $event->uid)
-                    ->where('type', Agreement::TYPE_MOU)
-                    ->where('version', 1)
-                    ->lockForUpdate()
-                    ->first();
+                    ->lockForUpdate();
+
+                if ($agreementUid) {
+                    $agreementQuery->where('uid', $agreementUid);
+                } else {
+                    // Lock active draft agreement (e.g. Addendum draft if exists, else MOU)
+                    $agreementQuery->where('status', Agreement::STATUS_DRAFT)->latest('id');
+                }
+
+                $agreement = $agreementQuery->first();
+
+                if (! $agreement && ! $agreementUid) {
+                    $agreement = Agreement::query()
+                        ->where('event_uid', $event->uid)
+                        ->where('type', Agreement::TYPE_MOU)
+                        ->where('version', 1)
+                        ->lockForUpdate()
+                        ->first();
+                }
 
                 if (! $agreement) {
-                    return $this->failure('not_found', 'Agreement MOU tidak ditemukan untuk event ini.');
+                    return $this->failure('not_found', 'Agreement tidak ditemukan untuk event ini.');
                 }
 
                 if (! $agreement->isDraft()) {
@@ -97,25 +112,26 @@ class AgreementFinalizationService
                     'commercial_snapshot' => $this->buildCommercialSnapshot($freshEvent),
                 ];
 
+                $isAddendum = $agreement->type === Agreement::TYPE_ADDENDUM;
+                $templateVersion = $isAddendum ? AgreementVersioningService::TEMPLATE_VERSION : self::TEMPLATE_VERSION;
+
                 $payload = $this->buildPdfPayload($agreement, $snapshots);
-                $pdfContent = $this->renderPdf($payload);
+                $pdfContent = $isAddendum
+                    ? $this->renderAddendumPdf($payload, $agreement)
+                    : $this->renderPdf($payload);
 
                 $path = 'private/agreements/'.$agreement->uid.'/unsigned.pdf';
 
-                // The local disk uses 'throw' => false, so put() may return
-                // false without throwing. Only treat the write as successful
-                // when the file is actually present; otherwise abort before
-                // the DB record is touched.
                 $stored = $disk->put($path, $pdfContent);
 
                 if ($stored !== true || ! $disk->exists($path)) {
-                    throw new RuntimeException('Unsigned MOU PDF gagal disimpan.');
+                    throw new RuntimeException($isAddendum ? 'Unsigned Addendum PDF gagal disimpan.' : 'Unsigned MOU PDF gagal disimpan.');
                 }
 
                 $writtenPath = $path;
 
                 $agreement->fill(array_merge($snapshots, [
-                    'template_version' => self::TEMPLATE_VERSION,
+                    'template_version' => $templateVersion,
                     'unsigned_pdf_path' => $path,
                     'status' => Agreement::STATUS_READY,
                 ]))->save();
@@ -129,10 +145,6 @@ class AgreementFinalizationService
                 ];
             });
         } catch (Throwable $e) {
-            // Any failure after the PDF was successfully written (e.g. during
-            // the DB save, refresh, or transaction commit) leaves a stray file
-            // behind while the DB rolls back. Remove it so no orphan
-            // "authoritative" PDF survives for a DRAFT agreement.
             if ($writtenPath !== null) {
                 $this->deleteIfExists($disk, $writtenPath);
             }
@@ -293,6 +305,36 @@ class AgreementFinalizationService
     private function renderPdf(array $payload): string
     {
         return Pdf::loadView('agreements.mou-pdf', ['payload' => $payload])
+            ->setPaper('a4', 'portrait')
+            ->output();
+    }
+
+    private function renderAddendumPdf(array $payload, Agreement $agreement): string
+    {
+        $parent = $agreement->parentAgreement
+            ?? Agreement::where('uid', $agreement->parent_agreement_uid)->first();
+
+        $payload['parent_agreement'] = $parent ? [
+            'uid' => $parent->uid,
+            'type' => $parent->type,
+            'version' => (int) $parent->version,
+            'status' => $parent->status,
+            'document_number' => $parent->document_number,
+            'completed_at' => $parent->completed_at?->format('d-m-Y H:i'),
+        ] : null;
+
+        $versioningService = app(AgreementVersioningService::class);
+        $diffs = $parent ? $versioningService->computeDiffs([
+            'event_snapshot' => $payload['event'],
+            'party_snapshot' => $payload['organizer'],
+            'bank_snapshot' => $payload['bank_account'],
+            'document_snapshot' => $payload['organizer_letter'],
+            'commercial_snapshot' => $payload['commercial'],
+        ], $parent) : [];
+
+        $payload['diffs'] = $diffs;
+
+        return Pdf::loadView('agreements.addendum-pdf', ['payload' => $payload])
             ->setPaper('a4', 'portrait')
             ->output();
     }

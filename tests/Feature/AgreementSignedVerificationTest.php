@@ -726,6 +726,7 @@ class AgreementSignedVerificationTest extends TestCase
             $table->string('event_uid');
             $table->string('tenant_user_uid');
             $table->string('type')->default('mou');
+            $table->string('parent_agreement_uid')->nullable();
             $table->string('document_number')->nullable();
             $table->unsignedInteger('version')->default(1);
             $table->string('status')->default('DRAFT');

@@ -472,6 +472,9 @@ class EventDetail extends Component
             'fee_percent' => $eventPaymentGateway->fee_percent !== null ? (string) $eventPaymentGateway->fee_percent : '0',
         ];
 
+        app(\App\Services\Agreements\AgreementVersioningService::class)
+            ->checkForContractualChanges($this->getCurrentEventModel(), Auth::user()?->uid);
+
         session()->flash('message', 'Konfigurasi pembayaran event berhasil disimpan.');
     }
 
@@ -506,6 +509,9 @@ class EventDetail extends Component
         });
 
         $this->paymentOtpEnabled = (bool) $event->payment_otp_enabled;
+
+        app(\App\Services\Agreements\AgreementVersioningService::class)
+            ->checkForContractualChanges($this->getCurrentEventModel(), Auth::user()?->uid);
 
         session()->flash('message', 'Pengaturan OTP pembayaran event berhasil diperbarui.');
     }
@@ -557,6 +563,10 @@ class EventDetail extends Component
         }
 
         $this->bankRejectionReason = '';
+
+        app(\App\Services\Agreements\AgreementVersioningService::class)
+            ->checkForContractualChanges($this->getCurrentEventModel(), Auth::user()?->uid);
+
         session()->flash('message', 'Rekening event berhasil diverifikasi.');
     }
 
@@ -601,6 +611,10 @@ class EventDetail extends Component
         }
 
         $this->bankRejectionReason = '';
+
+        app(\App\Services\Agreements\AgreementVersioningService::class)
+            ->checkForContractualChanges($this->getCurrentEventModel(), Auth::user()?->uid);
+
         session()->flash('message', 'Rekening event ditolak.');
     }
 
@@ -651,6 +665,10 @@ class EventDetail extends Component
         }
 
         $this->organizerLetterRejectionReason = '';
+
+        app(\App\Services\Agreements\AgreementVersioningService::class)
+            ->checkForContractualChanges($this->getCurrentEventModel(), Auth::user()?->uid);
+
         session()->flash('message', 'Surat penyelenggara berhasil diverifikasi.');
     }
 
@@ -695,6 +713,10 @@ class EventDetail extends Component
         }
 
         $this->organizerLetterRejectionReason = '';
+
+        app(\App\Services\Agreements\AgreementVersioningService::class)
+            ->checkForContractualChanges($this->getCurrentEventModel(), Auth::user()?->uid);
+
         session()->flash('message', 'Surat penyelenggara ditolak.');
     }
 
@@ -706,22 +728,27 @@ class EventDetail extends Component
         abort_unless($actor, 403);
 
         $event = $this->getCurrentEventModel();
+        $activeAgreement = $event->agreements()
+            ->where('status', Agreement::STATUS_DRAFT)
+            ->latest('id')
+            ->first();
 
         try {
-            $result = app(AgreementFinalizationService::class)->finalizeForEvent($event, $actor->uid);
+            $result = app(AgreementFinalizationService::class)->finalizeForEvent($event, $actor->uid, $activeAgreement?->uid);
         } catch (\Throwable $e) {
-            session()->flash('error', 'Finalisasi MOU gagal: '.$e->getMessage());
+            session()->flash('error', 'Finalisasi dokumen gagal: '.$e->getMessage());
 
             return;
         }
 
         if (! ($result['ok'] ?? false)) {
-            session()->flash('error', $result['message'] ?? 'Finalisasi MOU gagal.');
+            session()->flash('error', $result['message'] ?? 'Finalisasi dokumen gagal.');
 
             return;
         }
 
-        session()->flash('message', 'MOU berhasil difinalisasi. PDF unsigned telah disimpan.');
+        $docType = $result['agreement']?->type === Agreement::TYPE_ADDENDUM ? 'Addendum' : 'MOU';
+        session()->flash('message', "{$docType} berhasil difinalisasi. PDF unsigned telah disimpan.");
     }
 
     public function approveSignedMou(): void
@@ -731,17 +758,24 @@ class EventDetail extends Component
         $actor = Auth::user();
         abort_unless($actor, 403);
 
+        $event = $this->getCurrentEventModel();
+        $activeAgreement = $event->agreements()
+            ->where('status', Agreement::STATUS_READY)
+            ->latest('id')
+            ->first();
+
         try {
-            app(AgreementSignedVerificationService::class)
-                ->approveForEvent($this->getCurrentEventModel(), $actor->uid);
+            $result = app(AgreementSignedVerificationService::class)
+                ->approveForEvent($event, $actor->uid, $activeAgreement?->uid);
         } catch (\Throwable $e) {
-            session()->flash('error', 'Verifikasi MOU bertanda tangan gagal: '.$e->getMessage());
+            session()->flash('error', 'Verifikasi dokumen bertanda tangan gagal: '.$e->getMessage());
 
             return;
         }
 
         $this->signedMouRejectionReason = '';
-        session()->flash('message', 'MOU bertanda tangan berhasil diverifikasi.');
+        $docType = $result['agreement']?->type === Agreement::TYPE_ADDENDUM ? 'Addendum' : 'MOU';
+        session()->flash('message', "{$docType} bertanda tangan berhasil diverifikasi.");
     }
 
     public function rejectSignedMou(): void
@@ -755,17 +789,24 @@ class EventDetail extends Component
         $actor = Auth::user();
         abort_unless($actor, 403);
 
+        $event = $this->getCurrentEventModel();
+        $activeAgreement = $event->agreements()
+            ->where('status', Agreement::STATUS_READY)
+            ->latest('id')
+            ->first();
+
         try {
-            app(AgreementSignedVerificationService::class)
-                ->rejectForEvent($this->getCurrentEventModel(), $actor->uid, $validated['signedMouRejectionReason']);
+            $result = app(AgreementSignedVerificationService::class)
+                ->rejectForEvent($event, $actor->uid, $validated['signedMouRejectionReason'], $activeAgreement?->uid);
         } catch (\Throwable $e) {
-            session()->flash('error', 'Penolakan MOU bertanda tangan gagal: '.$e->getMessage());
+            session()->flash('error', 'Penolakan dokumen bertanda tangan gagal: '.$e->getMessage());
 
             return;
         }
 
         $this->signedMouRejectionReason = '';
-        session()->flash('message', 'MOU bertanda tangan ditolak dan menunggu upload ulang tenant.');
+        $docType = $result['agreement']?->type === Agreement::TYPE_ADDENDUM ? 'Addendum' : 'MOU';
+        session()->flash('message', "{$docType} bertanda tangan ditolak dan menunggu upload ulang tenant.");
     }
 
     private function eventPaymentGatewayAuditValues(?EventPaymentGateway $eventPaymentGateway): array
@@ -939,17 +980,42 @@ class EventDetail extends Component
             $this->paymentOtpEnabled = (bool) $event->payment_otp_enabled;
         }
 
+        $agreementsHistory = [];
+        $activeAgreement = null;
+        $addendumPreview = null;
+
         if ($this->activeTab === 'review-mou' && $this->canManageAgreementReview()) {
             $mouPreview = app(AgreementPreviewService::class)->buildForEvent($event);
             $agreementReview = app(AgreementReviewService::class)->buildForEvent($event);
-            $commercialReview = app(AgreementPreviewService::class)->buildCommercialSummaryForEvent($event);
+            $hasAgreementsTable = \Illuminate\Support\Facades\Schema::hasTable('agreements');
 
-            $currentMouAgreement = $event->currentMouAgreement;
+            $agreementsHistory = $hasAgreementsTable
+                ? $event->agreements()
+                    ->orderByRaw("CASE WHEN type = 'mou' THEN 1 ELSE 2 END ASC")
+                    ->orderBy('version', 'asc')
+                    ->get()
+                : collect();
+
+            $activeAgreement = $hasAgreementsTable
+                ? ($event->agreements()
+                    ->whereNotIn('status', [Agreement::STATUS_COMPLETED, Agreement::STATUS_CANCELLED])
+                    ->latest('id')
+                    ->first()
+                    ?? $event->latestCompletedAgreement()
+                    ?? $event->currentMouAgreement)
+                : null;
+
+            if ($activeAgreement?->isAddendum()) {
+                $addendumPreview = app(\App\Services\Agreements\AgreementVersioningService::class)
+                    ->buildAddendumPreview($event, $activeAgreement);
+            }
+
+            $currentMouAgreement = $activeAgreement ?? $event->currentMouAgreement;
             $finalizeMouAvailable = $currentMouAgreement !== null
                 && (bool) ($agreementReview['is_ready'] ?? false)
                 && $currentMouAgreement->isDraft();
             $mouUnsignedAvailable = $currentMouAgreement !== null
-                && $currentMouAgreement->isReady()
+                && ($currentMouAgreement->isReady() || $currentMouAgreement->isCompleted())
                 && filled($currentMouAgreement->unsigned_pdf_path);
             $mouSignedAvailable = $currentMouAgreement !== null
                 && filled($currentMouAgreement->signed_pdf_path);
@@ -997,6 +1063,9 @@ class EventDetail extends Component
             'canSeePaymentTab' => $this->canSeePaymentTab(),
             'paymentGateways' => $paymentGateways,
             'mouPreview' => $mouPreview,
+            'addendumPreview' => $addendumPreview,
+            'agreementsHistory' => $agreementsHistory,
+            'activeAgreement' => $activeAgreement,
             'agreementReview' => $agreementReview,
             'commercialReview' => $commercialReview,
             'currentMouAgreement' => $currentMouAgreement,

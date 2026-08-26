@@ -182,9 +182,9 @@ Route::prefix('dashboard')
             Route::get('/staff-index', StaffIndex::class)->name('dashboard.staff');
             Route::get('/partner', PartnerIndex::class)->name('dashboard.partner');
             Route::get('/settings', SettingsIndex::class)->name('dashboard.settings');
-            Route::get('/event/{uid}/mou/unsigned', [DashboardAgreementFileController::class, 'unsigned'])
+            Route::get('/event/{uid}/mou/unsigned/{agreementUid?}', [DashboardAgreementFileController::class, 'unsigned'])
                 ->name('dashboard.event.mou.unsigned');
-            Route::get('/event/{uid}/mou/signed', [DashboardAgreementFileController::class, 'signed'])
+            Route::get('/event/{uid}/mou/signed/{agreementUid?}', [DashboardAgreementFileController::class, 'signed'])
                 ->name('dashboard.event.mou.signed');
         });
 
@@ -256,9 +256,9 @@ Route::prefix('admin')
             ->name('admin.event.review.bank-book');
         Route::get('/event/{uid}/review/organizer-letter', [AdminEventReviewFileController::class, 'organizerLetter'])
             ->name('admin.event.review.organizer-letter');
-        Route::get('/event/{uid}/review/mou/unsigned', [AdminEventMouPdfController::class, 'unsigned'])
+        Route::get('/event/{uid}/review/mou/unsigned/{agreementUid?}', [AdminEventMouPdfController::class, 'unsigned'])
             ->name('admin.event.review.mou.unsigned');
-        Route::get('/event/{uid}/review/mou/signed', [AdminEventMouPdfController::class, 'signed'])
+        Route::get('/event/{uid}/review/mou/signed/{agreementUid?}', [AdminEventMouPdfController::class, 'signed'])
             ->name('admin.event.review.mou.signed');
         Route::get('/transaksi', TransaksiIndex::class)->name('admin.transaksi');
         Route::get('/penarikan', PenarikanIndex::class)->name('admin.penarikan');

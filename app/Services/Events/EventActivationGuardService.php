@@ -44,6 +44,30 @@ class EventActivationGuardService
             return $this->blocked('Dokumen MOU bertanda tangan belum tersedia.');
         }
 
+        $uncompletedAddendum = Agreement::query()
+            ->where('event_uid', $event->uid)
+            ->where('type', Agreement::TYPE_ADDENDUM)
+            ->where('status', '!=', Agreement::STATUS_COMPLETED)
+            ->first();
+
+        if ($uncompletedAddendum) {
+            return $this->blocked('Terdapat addendum yang belum selesai.');
+        }
+
+        $unverifiedAddendum = Agreement::query()
+            ->where('event_uid', $event->uid)
+            ->where('type', Agreement::TYPE_ADDENDUM)
+            ->where('status', Agreement::STATUS_COMPLETED)
+            ->where(function ($q) {
+                $q->where('signed_review_status', '!=', Agreement::SIGNED_REVIEW_VERIFIED)
+                    ->orWhereNull('signed_review_status');
+            })
+            ->first();
+
+        if ($unverifiedAddendum) {
+            return $this->blocked('Addendum bertanda tangan belum diverifikasi.');
+        }
+
         return [
             'can_activate' => true,
             'message' => 'Event dapat diaktifkan.',

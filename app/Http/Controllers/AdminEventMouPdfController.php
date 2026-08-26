@@ -15,16 +15,23 @@ class AdminEventMouPdfController extends Controller
      * The path is always resolved from the current MOU Agreement's
      * unsigned_pdf_path — never from the request.
      */
-    public function unsigned(string $uid): StreamedResponse
+    public function unsigned(string $uid, ?string $agreementUid = null): StreamedResponse
     {
         $this->authorizeAdmin();
 
         $event = Event::query()
-            ->with('currentMouAgreement')
+            ->with(['currentMouAgreement', 'agreements'])
             ->where('uid', $uid)
             ->firstOrFail();
 
-        return $this->stream($event->currentMouAgreement?->unsigned_pdf_path, 'mou-unsigned.pdf');
+        $agreement = $agreementUid
+            ? $event->agreements->firstWhere('uid', $agreementUid)
+            : ($event->activeAgreement() ?? $event->currentMouAgreement);
+
+        $path = $agreement?->unsigned_pdf_path;
+        $filename = ($agreement?->type === \App\Models\Agreement::TYPE_ADDENDUM ? 'addendum-v' . ($agreement?->version ?? 1) . '-unsigned.pdf' : 'mou-unsigned.pdf');
+
+        return $this->stream($path, $filename);
     }
 
     /**
@@ -33,16 +40,23 @@ class AdminEventMouPdfController extends Controller
      * The signed path is resolved strictly from Event -> current MOU Agreement
      * -> signed_pdf_path. No client path or agreement UID is ever accepted.
      */
-    public function signed(string $uid): StreamedResponse
+    public function signed(string $uid, ?string $agreementUid = null): StreamedResponse
     {
         $this->authorizeAdmin();
 
         $event = Event::query()
-            ->with('currentMouAgreement')
+            ->with(['currentMouAgreement', 'agreements'])
             ->where('uid', $uid)
             ->firstOrFail();
 
-        return $this->stream($event->currentMouAgreement?->signed_pdf_path, 'mou-signed.pdf');
+        $agreement = $agreementUid
+            ? $event->agreements->firstWhere('uid', $agreementUid)
+            : ($event->activeAgreement() ?? $event->currentMouAgreement);
+
+        $path = $agreement?->signed_pdf_path;
+        $filename = ($agreement?->type === \App\Models\Agreement::TYPE_ADDENDUM ? 'addendum-v' . ($agreement?->version ?? 1) . '-signed.pdf' : 'mou-signed.pdf');
+
+        return $this->stream($path, $filename);
     }
 
     private function authorizeAdmin(): void

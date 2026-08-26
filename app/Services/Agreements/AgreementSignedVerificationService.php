@@ -14,11 +14,11 @@ class AgreementSignedVerificationService
     /**
      * @return array{ok: bool, agreement: Agreement}
      */
-    public function approveForEvent(Event $event, string $actorUid): array
+    public function approveForEvent(Event $event, string $actorUid, ?string $agreementUid = null): array
     {
-        return DB::transaction(function () use ($event, $actorUid) {
+        return DB::transaction(function () use ($event, $actorUid, $agreementUid) {
             $admin = $this->resolveAdmin($actorUid);
-            $lockedAgreement = $this->resolveLockedAgreement($event);
+            $lockedAgreement = $this->resolveLockedAgreement($event, $agreementUid);
 
             $this->assertReadySignedAgreement($lockedAgreement);
             $this->assertReviewPending($lockedAgreement);
@@ -42,7 +42,7 @@ class AgreementSignedVerificationService
     /**
      * @return array{ok: bool, agreement: Agreement}
      */
-    public function rejectForEvent(Event $event, string $actorUid, string $reason): array
+    public function rejectForEvent(Event $event, string $actorUid, string $reason, ?string $agreementUid = null): array
     {
         $reason = trim($reason);
 
@@ -54,9 +54,9 @@ class AgreementSignedVerificationService
             throw new LogicException('Alasan penolakan maksimal 1000 karakter.');
         }
 
-        return DB::transaction(function () use ($event, $actorUid, $reason) {
+        return DB::transaction(function () use ($event, $actorUid, $reason, $agreementUid) {
             $admin = $this->resolveAdmin($actorUid);
-            $lockedAgreement = $this->resolveLockedAgreement($event);
+            $lockedAgreement = $this->resolveLockedAgreement($event, $agreementUid);
 
             $this->assertReadySignedAgreement($lockedAgreement);
             $this->assertReviewPending($lockedAgreement);
@@ -90,19 +90,34 @@ class AgreementSignedVerificationService
         return $admin;
     }
 
-    private function resolveLockedAgreement(Event $event): Agreement
+    private function resolveLockedAgreement(Event $event, ?string $agreementUid = null): Agreement
     {
         Event::query()
             ->where('uid', $event->uid)
             ->lockForUpdate()
             ->firstOrFail();
 
-        $agreement = Agreement::query()
+        $agreementQuery = Agreement::query()
             ->where('event_uid', $event->uid)
-            ->where('type', Agreement::TYPE_MOU)
-            ->where('version', 1)
-            ->lockForUpdate()
-            ->first();
+            ->lockForUpdate();
+
+        if ($agreementUid) {
+            $agreementQuery->where('uid', $agreementUid);
+        } else {
+            // Find active READY agreement pending review or ready
+            $agreementQuery->where('status', Agreement::STATUS_READY)->latest('id');
+        }
+
+        $agreement = $agreementQuery->first();
+
+        if (! $agreement && ! $agreementUid) {
+            $agreement = Agreement::query()
+                ->where('event_uid', $event->uid)
+                ->where('type', Agreement::TYPE_MOU)
+                ->where('version', 1)
+                ->lockForUpdate()
+                ->first();
+        }
 
         if (! $agreement) {
             throw new LogicException('Agreement MOU tidak ditemukan untuk event ini.');

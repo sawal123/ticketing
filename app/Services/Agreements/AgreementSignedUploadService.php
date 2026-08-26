@@ -38,7 +38,7 @@ class AgreementSignedUploadService
      *                   backup file is cleaned up (or kept for recovery when
      *                   a restore fails, so the old file is never lost).
      */
-    public function storeForEvent(Event $event, string $actorUid, UploadedFile $upload): array
+    public function storeForEvent(Event $event, string $actorUid, UploadedFile $upload, ?string $agreementUid = null): array
     {
         $disk = Storage::disk('local');
         $stagedPath = null;
@@ -47,25 +47,20 @@ class AgreementSignedUploadService
         $oldPath = null;
 
         try {
-            // Pre-check before staging: reload the Event server-side, resolve
-            // the current MOU Agreement and validate owner + READY. This is
-            // NOT a substitute for the lock/revalidation inside the
-            // transaction below.
-            $agreement = $this->resolveReadyAgreement($event, $actorUid);
+            $agreement = $this->resolveReadyAgreement($event, $actorUid, $agreementUid);
 
             $stagedPath = $this->stage($disk, $agreement, $upload);
 
-            $result = DB::transaction(function () use ($event, $actorUid, $disk, $stagedPath, &$backupPath, &$authoritativePath, &$oldPath) {
+            $result = DB::transaction(function () use ($event, $actorUid, $disk, $stagedPath, &$backupPath, &$authoritativePath, &$oldPath, $agreement) {
                 // Re-query and lock the Agreement inside the transaction.
                 $lockedAgreement = Agreement::query()
+                    ->where('uid', $agreement->uid)
                     ->where('event_uid', $event->uid)
-                    ->where('type', Agreement::TYPE_MOU)
-                    ->where('version', 1)
                     ->lockForUpdate()
                     ->first();
 
                 if (! $lockedAgreement) {
-                    throw new LogicException('Agreement MOU tidak ditemukan untuk event ini.');
+                    throw new LogicException('Agreement tidak ditemukan untuk event ini.');
                 }
 
                 // Reload the Event server-side and re-validate owner + READY.
@@ -207,7 +202,7 @@ class AgreementSignedUploadService
      * Agreement from a freshly reloaded Event and validates the owner and the
      * READY status. The transaction still re-locks and re-validates the row.
      */
-    private function resolveReadyAgreement(Event $event, string $actorUid): Agreement
+    private function resolveReadyAgreement(Event $event, string $actorUid, ?string $agreementUid = null): Agreement
     {
         $freshEvent = Event::query()
             ->where('uid', $event->uid)
@@ -215,11 +210,24 @@ class AgreementSignedUploadService
 
         $this->assertOwner($freshEvent, $actorUid);
 
-        $agreement = Agreement::query()
-            ->where('event_uid', $event->uid)
-            ->where('type', Agreement::TYPE_MOU)
-            ->where('version', 1)
-            ->first();
+        $agreementQuery = Agreement::query()
+            ->where('event_uid', $event->uid);
+
+        if ($agreementUid) {
+            $agreementQuery->where('uid', $agreementUid);
+        } else {
+            $agreementQuery->where('status', Agreement::STATUS_READY)->latest('id');
+        }
+
+        $agreement = $agreementQuery->first();
+
+        if (! $agreement && ! $agreementUid) {
+            $agreement = Agreement::query()
+                ->where('event_uid', $event->uid)
+                ->where('type', Agreement::TYPE_MOU)
+                ->where('version', 1)
+                ->first();
+        }
 
         if (! $agreement) {
             throw new LogicException('Agreement MOU tidak ditemukan untuk event ini.');

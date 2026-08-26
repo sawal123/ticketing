@@ -278,31 +278,89 @@
                 </x-admin.table>
             @elseif($activeTab === 'mou')
                 <div class="space-y-4">
+                    {{-- History Tabel Agreement --}}
+                    @if (!empty($agreementsHistory) && $agreementsHistory->count() > 0)
+                        <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                            <h4 class="text-sm font-black uppercase tracking-[0.2em] text-slate-700 mb-4">Riwayat Agreement & Addendum</h4>
+                            <div class="overflow-x-auto rounded-xl border border-slate-200">
+                                <table class="w-full text-left text-sm">
+                                    <thead class="bg-slate-50 text-xs uppercase tracking-wider text-slate-500 border-b border-slate-200">
+                                        <tr>
+                                            <th class="px-4 py-3 font-bold">Dokumen</th>
+                                            <th class="px-4 py-3 font-bold">Versi</th>
+                                            <th class="px-4 py-3 font-bold">Status</th>
+                                            <th class="px-4 py-3 font-bold">Tanggal Selesai</th>
+                                            <th class="px-4 py-3 font-bold">File PDF</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-slate-100">
+                                        @foreach ($agreementsHistory as $historyItem)
+                                            <tr class="hover:bg-slate-50/50">
+                                                <td class="px-4 py-3 font-bold text-slate-800">
+                                                    {{ strtoupper($historyItem->type) }}
+                                                </td>
+                                                <td class="px-4 py-3 text-slate-600">
+                                                    v{{ $historyItem->version }}
+                                                </td>
+                                                <td class="px-4 py-3">
+                                                    <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold
+                                                        {{ $historyItem->status === \App\Models\Agreement::STATUS_COMPLETED ? 'bg-emerald-100 text-emerald-800' : ($historyItem->status === \App\Models\Agreement::STATUS_READY ? 'bg-sky-100 text-sky-800' : 'bg-slate-100 text-slate-700') }}">
+                                                        {{ $historyItem->status }}
+                                                    </span>
+                                                </td>
+                                                <td class="px-4 py-3 text-slate-600">
+                                                    {{ $historyItem->completed_at ? $historyItem->completed_at->format('d M Y H:i') : '-' }}
+                                                </td>
+                                                <td class="px-4 py-3 space-x-2">
+                                                    @if (filled($historyItem->unsigned_pdf_path))
+                                                        <a href="{{ route('dashboard.event.mou.unsigned', ['uid' => $event->uid, 'agreementUid' => $historyItem->uid]) }}" target="_blank" rel="noopener"
+                                                            class="inline-flex items-center gap-1 text-xs font-semibold text-indigo-600 hover:underline">
+                                                            <i data-lucide="file-text" class="h-3.5 w-3.5"></i> Unsigned
+                                                        </a>
+                                                    @endif
+                                                    @if (filled($historyItem->signed_pdf_path))
+                                                        <a href="{{ route('dashboard.event.mou.signed', ['uid' => $event->uid, 'agreementUid' => $historyItem->uid]) }}" target="_blank" rel="noopener"
+                                                            class="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600 hover:underline">
+                                                            <i data-lucide="file-check" class="h-3.5 w-3.5"></i> Signed
+                                                        </a>
+                                                    @endif
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    @endif
+
                     @if ($mouAgreement?->isReady() || $mouAgreement?->isCompleted())
+                        @php
+                            $docTypeLabel = $mouAgreement->type === \App\Models\Agreement::TYPE_ADDENDUM ? 'Addendum' : 'MOU';
+                        @endphp
                         <div class="rounded-2xl border px-5 py-4 shadow-sm {{ $mouSignedRejected ? 'border-rose-200 bg-rose-50' : 'border-emerald-200 bg-emerald-50' }}">
                             <div class="flex items-center gap-2">
                                 <span class="inline-flex items-center rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide
                                     {{ $mouSignedRejected ? 'bg-rose-100 text-rose-800' : ($mouCompleted ? 'bg-emerald-100 text-emerald-800' : ($mouSignedAwaitingReview ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800')) }}">
-                                    {{ $mouCompleted ? 'MOU Terverifikasi/Selesai' : ($mouSignedRejected ? 'MOU ditolak' : ($mouSignedAwaitingReview ? 'Menunggu verifikasi admin' : 'Menunggu tanda tangan')) }}
+                                    {{ $mouCompleted ? ($docTypeLabel . ' Terverifikasi/Selesai') : ($mouSignedRejected ? ($docTypeLabel . ' ditolak') : ($mouSignedAwaitingReview ? 'Menunggu verifikasi admin' : 'Menunggu tanda tangan')) }}
                                 </span>
                             </div>
                             <h3 class="mt-2 text-base font-bold {{ $mouSignedRejected ? 'text-rose-800' : 'text-emerald-800' }}">
                                 {{ $mouCompleted
-                                    ? 'MOU Terverifikasi/Selesai'
+                                    ? ($docTypeLabel . ' Terverifikasi/Selesai')
                                     : ($mouSignedRejected
-                                        ? 'MOU ditolak'
+                                        ? ($docTypeLabel . ' ditolak')
                                         : ($mouSignedAwaitingReview
                                             ? 'Dokumen sudah diterima dan sedang menunggu verifikasi admin.'
-                                            : 'MOU Siap Ditandatangani')) }}
+                                            : ($docTypeLabel . ' Siap Ditandatangani'))) }}
                             </h3>
                             <p class="mt-1 text-sm {{ $mouSignedRejected ? 'text-rose-700' : 'text-emerald-700' }}">
                                 {{ $mouCompleted
-                                    ? 'Dokumen MOU bertanda tangan Anda telah diverifikasi admin.'
+                                    ? ('Dokumen ' . $docTypeLabel . ' bertanda tangan Anda telah diverifikasi admin.')
                                     : ($mouSignedRejected
-                                        ? 'Admin menolak dokumen MOU bertanda tangan Anda. Silakan perbaiki dan upload ulang.'
+                                        ? ('Admin menolak dokumen ' . $docTypeLabel . ' bertanda tangan Anda. Silakan perbaiki dan upload ulang.')
                                         : ($mouSignedAwaitingReview
-                                            ? 'Admin akan memverifikasi dokumen MOU bertanda tangan Anda.'
-                                            : 'Lakukan tanda tangan MOU melalui Privy, lalu unggah kembali hasilnya ke Gotik.')) }}
+                                            ? ('Admin akan memverifikasi dokumen ' . $docTypeLabel . ' bertanda tangan Anda.')
+                                            : ('Lakukan tanda tangan ' . $docTypeLabel . ', lalu unggah kembali hasilnya ke Gotik.'))) }}
                             </p>
                             @if ($mouSignedRejected && $mouAgreement->signed_rejection_reason)
                                 <div class="mt-3 rounded-xl border border-rose-200 bg-white/70 px-4 py-3 text-sm text-rose-700">
@@ -320,30 +378,28 @@
                         @if ($mouAgreement->isReady() && ! $mouSignedAvailable)
                             <div class="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm text-slate-600 shadow-sm">
                                 <ol class="list-decimal list-inside space-y-1.5">
-                                    <li>Download PDF MOU.</li>
-                                    <li>Login ke akun Privy melalui perangkat Anda.</li>
-                                    <li>Tanda tangani dokumen melalui Privy.</li>
-                                    <li>Download hasil PDF yang sudah ditandatangani.</li>
-                                    <li>Upload kembali PDF tersebut ke Gotik.</li>
+                                    <li>Download PDF {{ $docTypeLabel }}.</li>
+                                    <li>Tanda tangani dokumen (secara manual atau digital).</li>
+                                    <li>Upload kembali PDF bertanda tangan ke Gotik.</li>
                                 </ol>
                             </div>
-                        @endunless
+                        @endif
 
                         <div class="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
                             <div class="flex flex-wrap items-center gap-3">
                                 @if ($mouUnsignedAvailable)
-                                    <a href="{{ route('dashboard.event.mou.unsigned', $event->uid) }}" target="_blank" rel="noopener"
+                                    <a href="{{ route('dashboard.event.mou.unsigned', ['uid' => $event->uid, 'agreementUid' => $mouAgreement->uid]) }}" target="_blank" rel="noopener"
                                         class="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700">
                                         <i data-lucide="download" class="h-4 w-4"></i>
-                                    {{ $mouSignedAvailable ? 'Lihat MOU Unsigned' : 'Download MOU Unsigned' }}
+                                    {{ $mouSignedAvailable ? "Lihat {$docTypeLabel} Unsigned" : "Download {$docTypeLabel} Unsigned" }}
                                     </a>
                                 @endif
 
                                 @if ($mouSignedAvailable)
-                                    <a href="{{ route('dashboard.event.mou.signed', $event->uid) }}" target="_blank" rel="noopener"
+                                    <a href="{{ route('dashboard.event.mou.signed', ['uid' => $event->uid, 'agreementUid' => $mouAgreement->uid]) }}" target="_blank" rel="noopener"
                                         class="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700">
                                         <i data-lucide="file-check" class="h-4 w-4"></i>
-                                        Lihat MOU Bertanda Tangan
+                                        Lihat {{ $docTypeLabel }} Bertanda Tangan
                                     </a>
                                 @endif
                             </div>
@@ -352,7 +408,7 @@
                                 <form wire:submit="uploadSignedMou" class="mt-4 space-y-3">
                                     <div>
                                         <label class="block text-[11px] font-black text-slate-400 uppercase tracking-[0.1em] mb-2">
-                                            {{ $mouSignedAvailable ? 'Upload Ulang MOU Bertanda Tangan' : 'Upload MOU Bertanda Tangan' }}
+                                            {{ $mouSignedAvailable ? "Upload Ulang {$docTypeLabel} Bertanda Tangan" : "Upload {$docTypeLabel} Bertanda Tangan" }}
                                         </label>
                                         <input type="file" wire:model="signedMou" accept=".pdf,application/pdf"
                                             class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-800 dark:text-slate-200 text-sm focus:ring-2 focus:ring-indigo-500 transition-all">
@@ -365,11 +421,13 @@
                                     <button type="submit"
                                         class="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-700">
                                         <i data-lucide="upload" class="h-4 w-4"></i>
-                                        {{ $mouSignedAvailable ? 'Upload Ulang' : 'Upload MOU Bertanda Tangan' }}
+                                        {{ $mouSignedAvailable ? 'Upload Ulang' : "Upload {$docTypeLabel} Bertanda Tangan" }}
                                     </button>
                                 </form>
                             @endif
                         </div>
+                    @elseif ($addendumPreview)
+                        @include('agreements.addendum-preview', ['preview' => $addendumPreview])
                     @elseif ($mouPreview)
                         <div class="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm text-slate-500 shadow-sm">
                             Preview MOU pada tahap ini bersifat read-only dan selalu membaca data live event yang terbaru.

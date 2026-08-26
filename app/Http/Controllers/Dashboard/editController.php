@@ -88,6 +88,9 @@ class editController extends Controller
         $event->save();
         $this->images->delete('cover', $oldCover);
 
+        app(\App\Services\Agreements\AgreementVersioningService::class)
+            ->checkForContractualChanges($event, (string) Auth::user()?->uid);
+
         return redirect('/admin/event/eventDetail/' . $request->uid)->with('success', 'Berhasil di Update');
     }
 

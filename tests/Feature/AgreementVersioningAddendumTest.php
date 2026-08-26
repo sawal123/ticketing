@@ -1,0 +1,699 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Http\Middleware\GlobalDataMiddleware;
+use App\Http\Middleware\LogActivityMiddleware;
+use App\Models\Agreement;
+use App\Models\Category;
+use App\Models\Event;
+use App\Models\EventBankAccount;
+use App\Models\EventDocument;
+use App\Models\EventOrganizer;
+use App\Models\EventPaymentGateway;
+use App\Models\PaymentGateway;
+use App\Models\User;
+use App\Services\Agreements\AgreementFinalizationService;
+use App\Services\Agreements\AgreementSignedUploadService;
+use App\Services\Agreements\AgreementSignedVerificationService;
+use App\Services\Agreements\AgreementVersioningService;
+use App\Services\Events\EventActivationGuardService;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\View;
+use Illuminate\Support\Str;
+use Tests\TestCase;
+
+class AgreementVersioningAddendumTest extends TestCase
+{
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        Config::set('database.default', 'sqlite');
+        Config::set('database.connections.sqlite.database', ':memory:');
+        Config::set('cache.default', 'array');
+        Config::set('queue.default', 'sync');
+
+        DB::purge('sqlite');
+        DB::reconnect('sqlite');
+
+        $this->createSchema();
+        Storage::fake('local');
+        $this->withoutMiddleware([GlobalDataMiddleware::class, LogActivityMiddleware::class]);
+        View::share('logo', [(object) ['logo' => '', 'icon' => '']]);
+    }
+
+    private function createSchema(): void
+    {
+        Schema::create('users', function ($table) {
+            $table->id();
+            $table->string('uid');
+            $table->string('user_uid')->nullable();
+            $table->string('name');
+            $table->string('email');
+            $table->timestamp('email_verified_at')->nullable();
+            $table->string('nomor')->nullable();
+            $table->string('birthday')->nullable();
+            $table->string('gender')->nullable();
+            $table->string('kota')->nullable();
+            $table->string('alamat')->nullable();
+            $table->string('gambar')->nullable();
+            $table->string('role')->nullable();
+            $table->string('parent_uid')->nullable();
+            $table->string('password');
+            $table->rememberToken();
+            $table->timestamps();
+            $table->softDeletes();
+        });
+
+        Schema::create('categories', function ($table) {
+            $table->id();
+            $table->string('name');
+            $table->string('slug');
+            $table->timestamps();
+        });
+
+        Schema::create('events', function ($table) {
+            $table->id();
+            $table->unsignedBigInteger('category_id')->nullable();
+            $table->string('uid');
+            $table->string('user_uid')->nullable();
+            $table->string('event');
+            $table->string('alamat');
+            $table->string('tanggal');
+            $table->string('event_end')->nullable();
+            $table->string('venue_name')->nullable();
+            $table->string('venue_address')->nullable();
+            $table->string('venue_city')->nullable();
+            $table->string('venue_province')->nullable();
+            $table->string('status');
+            $table->string('cover')->nullable();
+            $table->unsignedBigInteger('fee')->default(0);
+            $table->text('deskripsi')->nullable();
+            $table->text('map')->nullable();
+            $table->unsignedBigInteger('pajak')->default(0);
+            $table->string('ticket_tax_mode')->default('fixed');
+            $table->unsignedBigInteger('ticket_tax_fixed')->default(0);
+            $table->decimal('ticket_tax_percent', 8, 4)->default(0);
+            $table->string('start_sale')->nullable();
+            $table->string('slug')->nullable();
+            $table->string('konfirmasi')->nullable();
+            $table->boolean('payment_otp_enabled')->default(false);
+            $table->timestamps();
+            $table->softDeletes();
+        });
+
+        Schema::create('event_organizers', function ($table) {
+            $table->id();
+            $table->string('event_uid')->unique();
+            $table->string('organizer_name');
+            $table->string('responsible_name');
+            $table->string('responsible_position');
+            $table->string('phone');
+            $table->string('email');
+            $table->text('address');
+            $table->timestamps();
+        });
+
+        Schema::create('event_bank_accounts', function ($table) {
+            $table->id();
+            $table->string('event_uid')->unique();
+            $table->string('bank_name');
+            $table->string('account_number');
+            $table->string('account_holder_name');
+            $table->string('bank_book_path')->nullable();
+            $table->string('bank_book_original_name')->nullable();
+            $table->string('bank_book_mime')->nullable();
+            $table->string('status')->default('pending');
+            $table->timestamp('verified_at')->nullable();
+            $table->string('verified_by')->nullable();
+            $table->text('rejection_reason')->nullable();
+            $table->timestamps();
+        });
+
+        Schema::create('event_documents', function ($table) {
+            $table->id();
+            $table->string('uid');
+            $table->string('event_uid');
+            $table->string('document_type');
+            $table->string('document_number');
+            $table->date('document_date');
+            $table->string('original_name');
+            $table->string('file_path')->nullable();
+            $table->string('mime_type')->nullable();
+            $table->string('status')->default('pending');
+            $table->string('verified_by')->nullable();
+            $table->timestamp('verified_at')->nullable();
+            $table->text('rejection_reason')->nullable();
+            $table->timestamps();
+        });
+
+        Schema::create('agreements', function ($table) {
+            $table->id();
+            $table->string('uid');
+            $table->string('event_uid');
+            $table->string('tenant_user_uid');
+            $table->string('type')->default('mou');
+            $table->string('parent_agreement_uid')->nullable();
+            $table->string('document_number')->nullable();
+            $table->unsignedInteger('version')->default(1);
+            $table->string('status')->default('DRAFT');
+            $table->string('template_version')->nullable();
+            $table->text('event_snapshot')->nullable();
+            $table->text('party_snapshot')->nullable();
+            $table->text('bank_snapshot')->nullable();
+            $table->text('document_snapshot')->nullable();
+            $table->text('commercial_snapshot')->nullable();
+            $table->string('privy_document_id')->nullable();
+            $table->string('privy_status')->nullable();
+            $table->string('privy_reference')->nullable();
+            $table->string('unsigned_pdf_path')->nullable();
+            $table->string('signed_pdf_path')->nullable();
+            $table->string('signed_review_status')->nullable();
+            $table->string('signed_verified_by')->nullable();
+            $table->timestamp('signed_verified_at')->nullable();
+            $table->text('signed_rejection_reason')->nullable();
+            $table->timestamp('sent_to_privy_at')->nullable();
+            $table->timestamp('signed_at')->nullable();
+            $table->timestamp('completed_at')->nullable();
+            $table->string('created_by')->nullable();
+            $table->timestamps();
+        });
+
+        Schema::create('payment_gateways', function ($table) {
+            $table->id();
+            $table->string('payment');
+            $table->string('category');
+            $table->decimal('biaya', 15, 2)->default(0);
+            $table->string('biaya_type')->default('fixed');
+            $table->decimal('default_fee_fixed', 15, 2)->nullable();
+            $table->decimal('default_fee_percent', 8, 4)->nullable();
+            $table->string('midtrans_code')->nullable();
+            $table->string('icon')->nullable();
+            $table->boolean('is_active')->default(true);
+            $table->string('slug');
+            $table->timestamps();
+        });
+
+        Schema::create('event_payment_gateways', function ($table) {
+            $table->id();
+            $table->unsignedBigInteger('event_id');
+            $table->unsignedBigInteger('payment_gateway_id');
+            $table->boolean('is_active')->default(false);
+            $table->string('fee_mode')->default('global');
+            $table->decimal('fee_fixed', 15, 2)->nullable();
+            $table->decimal('fee_percent', 8, 4)->nullable();
+            $table->timestamps();
+        });
+    }
+
+    private function user(array $overrides = []): User
+    {
+        return User::create(array_merge([
+            'uid' => (string) Str::uuid(),
+            'name' => 'Test User',
+            'email' => fake()->unique()->safeEmail(),
+            'role' => 'penyewa',
+            'gambar' => '-',
+            'nomor' => '08123456789',
+            'birthday' => '2000-01-01',
+            'alamat' => 'Alamat User',
+            'kota' => 'Jakarta',
+            'gender' => 'pria',
+            'password' => Hash::make('Password123'),
+        ], $overrides));
+    }
+
+    private function admin(array $overrides = []): User
+    {
+        return $this->user(array_merge([
+            'name' => 'Admin User',
+            'email' => 'admin-' . Str::random(6) . '@example.test',
+            'role' => 'admin',
+        ], $overrides));
+    }
+
+    private function tenant(array $overrides = []): User
+    {
+        return $this->user(array_merge([
+            'name' => 'Tenant User',
+            'email' => 'tenant-' . Str::random(6) . '@example.test',
+            'role' => 'penyewa',
+        ], $overrides));
+    }
+
+    private function event(User $tenant, array $overrides = []): Event
+    {
+        $category = Category::create([
+            'name' => 'Category ' . Str::random(6),
+            'slug' => 'category-' . Str::lower(Str::random(8)),
+        ]);
+        $uid = (string) Str::uuid();
+
+        return Event::create(array_merge([
+            'uid' => $uid,
+            'category_id' => $category->id,
+            'user_uid' => $tenant->uid,
+            'event' => 'Konser Rock Merdeka ' . $uid,
+            'alamat' => 'Jl. Pemuda No. 10',
+            'tanggal' => '2026-09-10 19:00:00',
+            'event_end' => '2026-09-10 22:00:00',
+            'venue_name' => 'Stadion Utama',
+            'venue_address' => 'Jl. Stadion',
+            'venue_city' => 'Jakarta',
+            'venue_province' => 'DKI Jakarta',
+            'status' => 'inactive',
+            'cover' => 'cover.jpg',
+            'fee' => 5000,
+            'pajak' => 0,
+            'ticket_tax_mode' => 'fixed',
+            'ticket_tax_fixed' => 2000,
+            'ticket_tax_percent' => 0,
+            'deskripsi' => 'Deskripsi event',
+            'map' => 'https://maps.google.com/?q=venue',
+            'start_sale' => '2026-09-01 10:00:00',
+            'slug' => 'event-' . Str::lower(Str::random(8)),
+            'konfirmasi' => null,
+            'payment_otp_enabled' => false,
+        ], $overrides));
+    }
+
+    private function createCompletedMouEvent(User $tenant, User $admin): array
+    {
+        $event = $this->event($tenant);
+
+        EventOrganizer::create([
+            'event_uid' => $event->uid,
+            'organizer_name' => 'PT Musik Indonesia',
+            'responsible_name' => 'Budi Santoso',
+            'responsible_position' => 'Direktur',
+            'phone' => '081234567890',
+            'email' => 'organizer@example.test',
+            'address' => 'Jl. Bisnis No. 1',
+        ]);
+
+        EventBankAccount::create([
+            'event_uid' => $event->uid,
+            'bank_name' => 'BCA',
+            'account_number' => '1234567890',
+            'account_holder_name' => 'PT Musik Indonesia',
+            'bank_book_path' => 'private/events/' . $event->uid . '/bank/book.pdf',
+            'status' => 'verified',
+            'verified_by' => $admin->uid,
+            'verified_at' => now(),
+        ]);
+        Storage::disk('local')->put('private/events/' . $event->uid . '/bank/book.pdf', 'dummy-bank-book');
+
+        EventDocument::create([
+            'uid' => (string) Str::uuid(),
+            'event_uid' => $event->uid,
+            'document_type' => EventDocument::TYPE_ORGANIZER_LETTER,
+            'document_number' => 'DOC/2026/001',
+            'document_date' => now()->toDateString(),
+            'original_name' => 'surat.pdf',
+            'file_path' => 'private/events/' . $event->uid . '/documents/surat.pdf',
+            'status' => 'verified',
+            'verified_by' => $admin->uid,
+            'verified_at' => now(),
+        ]);
+        Storage::disk('local')->put('private/events/' . $event->uid . '/documents/surat.pdf', 'dummy-letter');
+
+        $gateway = PaymentGateway::create([
+            'payment' => 'BCA Virtual Account',
+            'category' => 'bank_transfer',
+            'biaya' => 2000,
+            'biaya_type' => 'fixed',
+            'is_active' => true,
+            'slug' => 'bca-va',
+        ]);
+
+        EventPaymentGateway::create([
+            'event_id' => $event->id,
+            'payment_gateway_id' => $gateway->id,
+            'is_active' => true,
+            'fee_mode' => 'global',
+        ]);
+
+        $mou = Agreement::create([
+            'uid' => (string) Str::uuid(),
+            'event_uid' => $event->uid,
+            'tenant_user_uid' => $tenant->uid,
+            'created_by' => $admin->uid,
+            'status' => Agreement::STATUS_DRAFT,
+            'type' => Agreement::TYPE_MOU,
+            'version' => 1,
+            'document_number' => 'MOU/001',
+        ]);
+
+        // Finalize MOU
+        $finResult = app(AgreementFinalizationService::class)->finalizeForEvent($event, $admin->uid, $mou->uid);
+        $this->assertTrue($finResult['ok']);
+        $mou->refresh();
+
+        // Upload signed MOU
+        $dummyPdf = UploadedFile::fake()->create('signed-mou.pdf', 100, 'application/pdf');
+        $upResult = app(AgreementSignedUploadService::class)->storeForEvent($event, $tenant->uid, $dummyPdf, $mou->uid);
+        $this->assertTrue($upResult['ok']);
+        $mou->refresh();
+
+        // Admin approve signed MOU
+        $appResult = app(AgreementSignedVerificationService::class)->approveForEvent($event, $admin->uid, $mou->uid);
+        $this->assertTrue($appResult['ok']);
+        $mou->refresh();
+
+        $this->assertTrue($mou->isCompleted());
+        $this->assertEquals(Agreement::SIGNED_REVIEW_VERIFIED, $mou->signed_review_status);
+
+        return [$event, $mou];
+    }
+
+    public function test_new_event_starts_with_mou_v1_and_no_addendum(): void
+    {
+        $tenant = $this->tenant();
+        $admin = $this->admin();
+
+        $event = $this->event($tenant);
+
+        $mou = Agreement::create([
+            'uid' => (string) Str::uuid(),
+            'event_uid' => $event->uid,
+            'tenant_user_uid' => $tenant->uid,
+            'created_by' => $admin->uid,
+            'status' => Agreement::STATUS_DRAFT,
+            'type' => Agreement::TYPE_MOU,
+            'version' => 1,
+            'document_number' => 'MOU/001',
+        ]);
+
+        $this->assertEquals(1, $mou->version);
+        $this->assertEquals(Agreement::TYPE_MOU, $mou->type);
+        $this->assertFalse($mou->isAddendum());
+        $this->assertNull($mou->parent_agreement_uid);
+        $this->assertCount(1, $event->agreements);
+    }
+
+    public function test_editing_event_with_completed_mou_creates_draft_addendum_v1(): void
+    {
+        $tenant = $this->tenant();
+        $admin = $this->admin();
+
+        [$event, $mou] = $this->createCompletedMouEvent($tenant, $admin);
+
+        // Modify contractual field (e.g. event name)
+        $event->event = 'Konser Rock Merdeka Revised';
+        $event->save();
+
+        $addendum = app(AgreementVersioningService::class)->checkForContractualChanges($event, $tenant->uid);
+
+        $this->assertNotNull($addendum);
+        $this->assertEquals(Agreement::TYPE_ADDENDUM, $addendum->type);
+        $this->assertEquals(1, $addendum->version);
+        $this->assertEquals(Agreement::STATUS_DRAFT, $addendum->status);
+        $this->assertEquals($mou->uid, $addendum->parent_agreement_uid);
+
+        // Assert completed MOU remains untouched (immutable)
+        $mou->refresh();
+        $this->assertEquals(Agreement::STATUS_COMPLETED, $mou->status);
+    }
+
+    public function test_no_changes_does_not_create_new_addendum(): void
+    {
+        $tenant = $this->tenant();
+        $admin = $this->admin();
+
+        [$event, $mou] = $this->createCompletedMouEvent($tenant, $admin);
+
+        $addendum = app(AgreementVersioningService::class)->checkForContractualChanges($event, $tenant->uid);
+        $this->assertNull($addendum);
+        $this->assertEquals(1, Agreement::where('event_uid', $event->uid)->count());
+    }
+
+    public function test_subsequent_changes_update_existing_draft_addendum_without_duplicate(): void
+    {
+        $tenant = $this->tenant();
+        $admin = $this->admin();
+
+        [$event, $mou] = $this->createCompletedMouEvent($tenant, $admin);
+
+        $event->event = 'Perubahan Pertama';
+        $event->save();
+        $addendum1 = app(AgreementVersioningService::class)->checkForContractualChanges($event, $tenant->uid);
+
+        $event->venue_name = 'Venue Baru Lapangan Merdeka';
+        $event->save();
+        $addendum2 = app(AgreementVersioningService::class)->checkForContractualChanges($event, $tenant->uid);
+
+        $this->assertEquals($addendum1->id, $addendum2->id);
+        $this->assertEquals(1, $addendum2->version);
+        $this->assertEquals(2, Agreement::where('event_uid', $event->uid)->count());
+    }
+
+    public function test_addendum_finalization_generates_unsigned_pdf_and_readies_it(): void
+    {
+        $tenant = $this->tenant();
+        $admin = $this->admin();
+
+        [$event, $mou] = $this->createCompletedMouEvent($tenant, $admin);
+
+        $event->event = 'Konser Finalisasi Addendum';
+        $event->save();
+        $addendum = app(AgreementVersioningService::class)->checkForContractualChanges($event, $tenant->uid);
+
+        $finResult = app(AgreementFinalizationService::class)->finalizeForEvent($event, $admin->uid, $addendum->uid);
+
+        $this->assertTrue($finResult['ok']);
+        $addendum->refresh();
+        $this->assertTrue($addendum->isReady());
+        $this->assertNotNull($addendum->unsigned_pdf_path);
+        Storage::disk('local')->assertExists($addendum->unsigned_pdf_path);
+    }
+
+    public function test_tenant_upload_signed_addendum_sets_pending_review(): void
+    {
+        $tenant = $this->tenant();
+        $admin = $this->admin();
+
+        [$event, $mou] = $this->createCompletedMouEvent($tenant, $admin);
+
+        $event->event = 'Konser Signed Addendum';
+        $event->save();
+        $addendum = app(AgreementVersioningService::class)->checkForContractualChanges($event, $tenant->uid);
+
+        app(AgreementFinalizationService::class)->finalizeForEvent($event, $admin->uid, $addendum->uid);
+        $addendum->refresh();
+
+        $dummyPdf = UploadedFile::fake()->create('signed-addendum.pdf', 150, 'application/pdf');
+        $upResult = app(AgreementSignedUploadService::class)->storeForEvent($event, $tenant->uid, $dummyPdf, $addendum->uid);
+
+        $this->assertTrue($upResult['ok']);
+        $addendum->refresh();
+        $this->assertTrue($addendum->isReady());
+        $this->assertEquals(Agreement::SIGNED_REVIEW_PENDING, $addendum->signed_review_status);
+        $this->assertNotNull($addendum->signed_pdf_path);
+        Storage::disk('local')->assertExists($addendum->signed_pdf_path);
+    }
+
+    public function test_admin_approve_signed_addendum_completes_it(): void
+    {
+        $tenant = $this->tenant();
+        $admin = $this->admin();
+
+        [$event, $mou] = $this->createCompletedMouEvent($tenant, $admin);
+
+        $event->event = 'Konser Approved Addendum';
+        $event->save();
+        $addendum = app(AgreementVersioningService::class)->checkForContractualChanges($event, $tenant->uid);
+
+        app(AgreementFinalizationService::class)->finalizeForEvent($event, $admin->uid, $addendum->uid);
+        $dummyPdf = UploadedFile::fake()->create('signed-addendum.pdf', 150, 'application/pdf');
+        app(AgreementSignedUploadService::class)->storeForEvent($event, $tenant->uid, $dummyPdf, $addendum->uid);
+
+        $appResult = app(AgreementSignedVerificationService::class)->approveForEvent($event, $admin->uid, $addendum->uid);
+
+        $this->assertTrue($appResult['ok']);
+        $addendum->refresh();
+        $this->assertTrue($addendum->isCompleted());
+        $this->assertEquals(Agreement::SIGNED_REVIEW_VERIFIED, $addendum->signed_review_status);
+        $this->assertNotNull($addendum->completed_at);
+        $this->assertEquals($admin->uid, $addendum->signed_verified_by);
+    }
+
+    public function test_new_contractual_change_after_completed_addendum_v1_creates_addendum_v2(): void
+    {
+        $tenant = $this->tenant();
+        $admin = $this->admin();
+
+        [$event, $mou] = $this->createCompletedMouEvent($tenant, $admin);
+
+        // Addendum v1
+        $event->event = 'Konser V1';
+        $event->save();
+        $addendum1 = app(AgreementVersioningService::class)->checkForContractualChanges($event, $tenant->uid);
+        app(AgreementFinalizationService::class)->finalizeForEvent($event, $admin->uid, $addendum1->uid);
+        $dummyPdf = UploadedFile::fake()->create('signed-addendum1.pdf', 150, 'application/pdf');
+        app(AgreementSignedUploadService::class)->storeForEvent($event, $tenant->uid, $dummyPdf, $addendum1->uid);
+        app(AgreementSignedVerificationService::class)->approveForEvent($event, $admin->uid, $addendum1->uid);
+        $addendum1->refresh();
+        $this->assertTrue($addendum1->isCompleted());
+
+        // Now modify again -> Addendum v2
+        $event->event = 'Konser V2 Super';
+        $event->save();
+        $addendum2 = app(AgreementVersioningService::class)->checkForContractualChanges($event, $tenant->uid);
+
+        $this->assertNotNull($addendum2);
+        $this->assertEquals(Agreement::TYPE_ADDENDUM, $addendum2->type);
+        $this->assertEquals(2, $addendum2->version);
+        $this->assertEquals(Agreement::STATUS_DRAFT, $addendum2->status);
+        $this->assertEquals($addendum1->uid, $addendum2->parent_agreement_uid);
+        $this->assertEquals(3, Agreement::where('event_uid', $event->uid)->count());
+    }
+
+    public function test_admin_reject_signed_addendum_allows_reupload(): void
+    {
+        $tenant = $this->tenant();
+        $admin = $this->admin();
+
+        [$event, $mou] = $this->createCompletedMouEvent($tenant, $admin);
+
+        $event->event = 'Konser Rejected Addendum';
+        $event->save();
+        $addendum = app(AgreementVersioningService::class)->checkForContractualChanges($event, $tenant->uid);
+
+        app(AgreementFinalizationService::class)->finalizeForEvent($event, $admin->uid, $addendum->uid);
+        $dummyPdf = UploadedFile::fake()->create('signed-bad.pdf', 150, 'application/pdf');
+        app(AgreementSignedUploadService::class)->storeForEvent($event, $tenant->uid, $dummyPdf, $addendum->uid);
+
+        $rejResult = app(AgreementSignedVerificationService::class)->rejectForEvent($event, $admin->uid, 'Tanda tangan tidak cocok', $addendum->uid);
+
+        $this->assertTrue($rejResult['ok']);
+        $addendum->refresh();
+        $this->assertTrue($addendum->isReady());
+        $this->assertEquals(Agreement::SIGNED_REVIEW_REJECTED, $addendum->signed_review_status);
+        $this->assertEquals('Tanda tangan tidak cocok', $addendum->signed_rejection_reason);
+
+        // Tenant re-uploads
+        $fixedPdf = UploadedFile::fake()->create('signed-fixed.pdf', 150, 'application/pdf');
+        $reupResult = app(AgreementSignedUploadService::class)->storeForEvent($event, $tenant->uid, $fixedPdf, $addendum->uid);
+        $this->assertTrue($reupResult['ok']);
+        $addendum->refresh();
+        $this->assertEquals(Agreement::SIGNED_REVIEW_PENDING, $addendum->signed_review_status);
+    }
+
+    public function test_event_activation_guard_blocks_activation_if_uncompleted_addendum_exists(): void
+    {
+        $tenant = $this->tenant();
+        $admin = $this->admin();
+
+        [$event, $mou] = $this->createCompletedMouEvent($tenant, $admin);
+
+        $event->event = 'Konser Blocked Activation';
+        $event->save();
+        $addendum = app(AgreementVersioningService::class)->checkForContractualChanges($event, $tenant->uid);
+
+        // Addendum is DRAFT -> Activation MUST fail
+        $guardResult = app(EventActivationGuardService::class)->evaluateForEvent($event);
+        $this->assertFalse($guardResult['can_activate']);
+        $this->assertContains('Terdapat addendum yang belum selesai.', $guardResult['blocking_reasons']);
+
+        // Finalize -> READY (still uncompleted) -> Activation MUST fail
+        app(AgreementFinalizationService::class)->finalizeForEvent($event, $admin->uid, $addendum->uid);
+        $event->refresh();
+        $guardResult = app(EventActivationGuardService::class)->evaluateForEvent($event);
+        $this->assertFalse($guardResult['can_activate']);
+
+        // Complete addendum -> Activation allowed
+        $dummyPdf = UploadedFile::fake()->create('signed-addendum.pdf', 150, 'application/pdf');
+        app(AgreementSignedUploadService::class)->storeForEvent($event, $tenant->uid, $dummyPdf, $addendum->uid);
+        app(AgreementSignedVerificationService::class)->approveForEvent($event, $admin->uid, $addendum->uid);
+        $event->refresh();
+
+        $guardResult = app(EventActivationGuardService::class)->evaluateForEvent($event);
+        $this->assertTrue($guardResult['can_activate']);
+    }
+
+    public function test_active_event_is_not_deactivated_when_draft_addendum_is_created(): void
+    {
+        $tenant = $this->tenant();
+        $admin = $this->admin();
+
+        [$event, $mou] = $this->createCompletedMouEvent($tenant, $admin);
+
+        // Activate event
+        $event->status = 'active';
+        $event->konfirmasi = '1';
+        $event->save();
+
+        // Edit event -> creates DRAFT addendum
+        $event->event = 'Konser Aktif Diedit';
+        $event->save();
+        $addendum = app(AgreementVersioningService::class)->checkForContractualChanges($event, $tenant->uid);
+
+        $event->refresh();
+        $this->assertEquals('active', $event->status);
+        $this->assertEquals('1', (string) $event->konfirmasi);
+        $this->assertNotNull($addendum);
+    }
+
+    public function test_addendum_preview_and_diff_calculation(): void
+    {
+        $tenant = $this->tenant();
+        $admin = $this->admin();
+
+        [$event, $mou] = $this->createCompletedMouEvent($tenant, $admin);
+
+        $event->event = 'Konser Nama Baru';
+        $event->venue_name = 'Venue Baru';
+        $event->save();
+        $addendum = app(AgreementVersioningService::class)->checkForContractualChanges($event, $tenant->uid);
+
+        $preview = app(AgreementVersioningService::class)->buildAddendumPreview($event, $addendum);
+
+        $this->assertEquals('addendum', $preview['agreement']['type']);
+        $this->assertEquals(1, $preview['agreement']['version']);
+        $this->assertCount(2, $preview['diffs']);
+
+        $diffKeys = collect($preview['diffs'])->pluck('field')->all();
+        $this->assertContains('event_name', $diffKeys);
+        $this->assertContains('venue_name', $diffKeys);
+    }
+
+    public function test_file_download_routes_stream_correct_addendum_pdf(): void
+    {
+        $tenant = $this->tenant();
+        $admin = $this->admin();
+
+        [$event, $mou] = $this->createCompletedMouEvent($tenant, $admin);
+
+        $event->event = 'Konser Streaming Test';
+        $event->save();
+        $addendum = app(AgreementVersioningService::class)->checkForContractualChanges($event, $tenant->uid);
+
+        app(AgreementFinalizationService::class)->finalizeForEvent($event, $admin->uid, $addendum->uid);
+        $dummyPdf = UploadedFile::fake()->create('signed-addendum.pdf', 150, 'application/pdf');
+        app(AgreementSignedUploadService::class)->storeForEvent($event, $tenant->uid, $dummyPdf, $addendum->uid);
+
+        // Tenant can download unsigned & signed
+        $this->actingAs($tenant)
+            ->get(route('dashboard.event.mou.unsigned', ['uid' => $event->uid, 'agreementUid' => $addendum->uid]))
+            ->assertOk();
+
+        $this->actingAs($tenant)
+            ->get(route('dashboard.event.mou.signed', ['uid' => $event->uid, 'agreementUid' => $addendum->uid]))
+            ->assertOk();
+
+        // Admin can review unsigned & signed
+        $this->actingAs($admin)
+            ->get(route('admin.event.review.mou.unsigned', ['uid' => $event->uid, 'agreementUid' => $addendum->uid]))
+            ->assertOk();
+
+        $this->actingAs($admin)
+            ->get(route('admin.event.review.mou.signed', ['uid' => $event->uid, 'agreementUid' => $addendum->uid]))
+            ->assertOk();
+    }
+}
