@@ -49,6 +49,28 @@ class editController extends Controller
 
         $event = Event::where('uid', $request->uid)->firstOrFail();
 
+        $requestedStatus = strtolower((string) ($request->status ?? ''));
+        $currentStatus = strtolower((string) $event->status);
+
+        if ($requestedStatus === 'active' && $currentStatus !== 'active') {
+            try {
+                app(EventActivationGuardService::class)->activateForEvent($event, (string) Auth::user()?->uid, true);
+            } catch (\Throwable $e) {
+                return redirect('/admin/event/eventDetail/' . $request->uid)
+                    ->with('error', $e->getMessage());
+            }
+
+            $event->refresh();
+        } else {
+            if ($request->filled('status')) {
+                if ($currentStatus === 'active' && $requestedStatus === 'close') {
+                    $event->status = 'close';
+                } elseif ($requestedStatus !== 'active') {
+                    $event->status = $request->status;
+                }
+            }
+        }
+
         $tanggal = date('Y-m-d H:i', strtotime($request->tanggal));
         $event->event = $request->event;
         $event->alamat = $request->alamat;
@@ -61,25 +83,6 @@ class editController extends Controller
         if ($request->hasFile('cover')) {
             $oldCover = $event->cover;
             $event->cover = $this->images->storeBasename($request->file('cover'), 'cover');
-        }
-
-        $requestedStatus = strtolower((string) ($request->status ?? ''));
-        $currentStatus = strtolower((string) $event->status);
-
-        if ($requestedStatus === 'active' && $currentStatus !== 'active') {
-            try {
-                $guard = app(EventActivationGuardService::class);
-                $guard->activateForEvent($event, (string) Auth::user()?->uid, false);
-                $event->status = 'active';
-            } catch (\Throwable $e) {
-                // Prerequisite gagal: status tetap sebelumnya dan konfirmasi tidak berubah
-            }
-        } elseif ($request->filled('status')) {
-            if ($currentStatus === 'active' && $requestedStatus === 'close') {
-                $event->status = 'close';
-            } elseif ($requestedStatus !== 'active') {
-                $event->status = $request->status;
-            }
         }
 
         $event->save();

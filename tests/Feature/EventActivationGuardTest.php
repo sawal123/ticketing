@@ -453,6 +453,10 @@ class EventActivationGuardTest extends TestCase
         $event->refresh();
         $this->assertSame('inactive', $event->status);
         $this->assertNull($event->konfirmasi);
+        $this->assertTrue(
+            $response->getSession()->has('error'),
+            'Expected error flash when activation prerequisites fail'
+        );
     }
 
     public function test_legacy_admin_edit_event_activates_via_guard_when_prerequisites_valid(): void
@@ -478,6 +482,7 @@ class EventActivationGuardTest extends TestCase
         $response->assertRedirect('/admin/event/eventDetail/' . $event->uid);
         $event->refresh();
         $this->assertSame('active', $event->status);
+        $this->assertSame('1', $event->konfirmasi);
     }
 
     public function test_legacy_admin_setujui_event_cannot_bypass_prerequisites(): void
