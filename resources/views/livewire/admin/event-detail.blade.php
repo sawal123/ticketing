@@ -512,6 +512,87 @@
                                     </div>
                                 </div>
                             </div>
+
+                            @if ($mouSignedAvailable)
+                                @php
+                                    $resolvedSignedReviewStatus = $mouSignedReviewStatus;
+                                    if ($resolvedSignedReviewStatus === null && $currentMouAgreement->isReady()) {
+                                        $resolvedSignedReviewStatus = \App\Models\Agreement::SIGNED_REVIEW_PENDING;
+                                    }
+
+                                    [$signedReviewClass, $signedReviewLabel, $signedReviewDescription] = match (true) {
+                                        $currentMouAgreement->isCompleted() => [
+                                            'bg-emerald-50 text-emerald-700 border-emerald-200',
+                                            'VERIFIED / COMPLETED',
+                                            'Signed MOU sudah diverifikasi admin dan agreement telah menjadi COMPLETED.',
+                                        ],
+                                        $resolvedSignedReviewStatus === \App\Models\Agreement::SIGNED_REVIEW_REJECTED => [
+                                            'bg-rose-50 text-rose-700 border-rose-200',
+                                            'REJECTED',
+                                            'Signed MOU ditolak admin. Tenant harus upload ulang file signed yang benar.',
+                                        ],
+                                        default => [
+                                            'bg-amber-50 text-amber-700 border-amber-200',
+                                            'PENDING',
+                                            'Signed MOU sudah masuk dan sedang menunggu keputusan admin.',
+                                        ],
+                                    };
+                                @endphp
+
+                                <div class="rounded-2xl border p-5 {{ $signedReviewClass }}">
+                                    <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                                        <div>
+                                            <p class="text-xs font-black uppercase tracking-[0.25em]">Review Signed MOU</p>
+                                            <h3 class="mt-2 text-lg font-black">{{ $signedReviewLabel }}</h3>
+                                            <p class="mt-1 text-sm">{{ $signedReviewDescription }}</p>
+
+                                            <div class="mt-4 space-y-1 text-sm">
+                                                <p>Signed at: {{ optional($currentMouAgreement->signed_at)->format('d M Y H:i') ?? '-' }}</p>
+                                                <p>Verified at: {{ optional($currentMouAgreement->signed_verified_at)->format('d M Y H:i') ?? '-' }}</p>
+                                                <p>Verifier UID: {{ $currentMouAgreement->signed_verified_by ?: '-' }}</p>
+                                            </div>
+                                        </div>
+
+                                        <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+                                            <a href="{{ route('admin.event.review.mou.signed', $event->uid) }}" target="_blank" rel="noopener" class="inline-flex">
+                                                <x-admin.button variant="secondary" icon="file-check" class="!py-2">
+                                                    Lihat PDF Signed
+                                                </x-admin.button>
+                                            </a>
+                                        </div>
+                                    </div>
+
+                                    @if ($currentMouAgreement->signed_rejection_reason)
+                                        <div class="mt-4 rounded-2xl bg-white/70 p-4 text-sm text-current">
+                                            <p class="font-bold">Alasan penolakan terakhir</p>
+                                            <p class="mt-1">{{ $currentMouAgreement->signed_rejection_reason }}</p>
+                                        </div>
+                                    @endif
+
+                                    @if ($mouSignedReviewActionable)
+                                        <div class="mt-5 rounded-2xl bg-white/70 p-4">
+                                            <label for="signed-mou-rejection-reason" class="mb-2 block text-xs font-black uppercase tracking-[0.2em] text-slate-400">Alasan Tolak Signed MOU</label>
+                                            <textarea id="signed-mou-rejection-reason" wire:model.defer="signedMouRejectionReason" rows="4"
+                                                class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"></textarea>
+                                            @error('signedMouRejectionReason') <span class="mt-2 block text-xs text-rose-500">{{ $message }}</span> @enderror
+
+                                            <div class="mt-4 flex flex-col gap-2 sm:flex-row">
+                                                <x-admin.button type="button" wire:click="rejectSignedMou" wire:loading.attr="disabled"
+                                                    wire:target="rejectSignedMou" variant="danger" icon="x-circle"
+                                                    class="disabled:pointer-events-none disabled:opacity-60">
+                                                    Tolak Signed MOU
+                                                </x-admin.button>
+                                                <x-admin.button type="button" wire:click="approveSignedMou" wire:loading.attr="disabled"
+                                                    wire:target="approveSignedMou" variant="success" icon="check-circle"
+                                                    wire:confirm="Yakin ingin memverifikasi signed MOU? Agreement akan menjadi COMPLETED."
+                                                    class="disabled:pointer-events-none disabled:opacity-60">
+                                                    Verifikasi Signed MOU
+                                                </x-admin.button>
+                                            </div>
+                                        </div>
+                                    @endif
+                                </div>
+                            @endif
                         @endif
                     </div>
                 </x-admin.card>

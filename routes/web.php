@@ -258,6 +258,8 @@ Route::prefix('admin')
             ->name('admin.event.review.organizer-letter');
         Route::get('/event/{uid}/review/mou/unsigned', [AdminEventMouPdfController::class, 'unsigned'])
             ->name('admin.event.review.mou.unsigned');
+        Route::get('/event/{uid}/review/mou/signed', [AdminEventMouPdfController::class, 'signed'])
+            ->name('admin.event.review.mou.signed');
         Route::get('/transaksi', TransaksiIndex::class)->name('admin.transaksi');
         Route::get('/penarikan', PenarikanIndex::class)->name('admin.penarikan');
         Route::get('/payment-gateway', PaymentGatewayIndex::class)->name('admin.payments');

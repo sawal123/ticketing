@@ -194,7 +194,7 @@ class AgreementPreviewTest extends TestCase
             ->get(route('dashboard.event.detail', $event->uid).'?activeTab=mou');
 
         $response->assertOk()
-            ->assertSeeText(Agreement::STATUS_COMPLETED)
+            ->assertSeeText('MOU Terverifikasi/Selesai')
             ->assertDontSeeText('private/agreements/unsigned-secret.pdf')
             ->assertDontSeeText('private/agreements/signed-secret.pdf')
             ->assertDontSeeText('PRIVY-SECRET-REF')

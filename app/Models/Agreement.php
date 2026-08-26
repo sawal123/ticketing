@@ -31,6 +31,15 @@ class Agreement extends Model
         self::STATUS_CANCELLED,
     ];
 
+    public const SIGNED_REVIEW_PENDING = 'PENDING';
+    public const SIGNED_REVIEW_VERIFIED = 'VERIFIED';
+    public const SIGNED_REVIEW_REJECTED = 'REJECTED';
+    public const SIGNED_REVIEW_STATUSES = [
+        self::SIGNED_REVIEW_PENDING,
+        self::SIGNED_REVIEW_VERIFIED,
+        self::SIGNED_REVIEW_REJECTED,
+    ];
+
     protected $fillable = [
         'uid',
         'event_uid',
@@ -50,6 +59,10 @@ class Agreement extends Model
         'privy_reference',
         'unsigned_pdf_path',
         'signed_pdf_path',
+        'signed_review_status',
+        'signed_verified_by',
+        'signed_verified_at',
+        'signed_rejection_reason',
         'sent_to_privy_at',
         'signed_at',
         'completed_at',
@@ -68,6 +81,7 @@ class Agreement extends Model
         'bank_snapshot' => 'array',
         'document_snapshot' => 'array',
         'commercial_snapshot' => 'array',
+        'signed_verified_at' => 'datetime',
         'sent_to_privy_at' => 'datetime',
         'signed_at' => 'datetime',
         'completed_at' => 'datetime',

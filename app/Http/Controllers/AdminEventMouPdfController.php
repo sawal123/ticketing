@@ -24,8 +24,37 @@ class AdminEventMouPdfController extends Controller
             ->where('uid', $uid)
             ->firstOrFail();
 
-        $path = $event->currentMouAgreement?->unsigned_pdf_path;
+        return $this->stream($event->currentMouAgreement?->unsigned_pdf_path, 'mou-unsigned.pdf');
+    }
 
+    /**
+     * Stream the tenant-uploaded signed MOU PDF from private storage.
+     *
+     * The signed path is resolved strictly from Event -> current MOU Agreement
+     * -> signed_pdf_path. No client path or agreement UID is ever accepted.
+     */
+    public function signed(string $uid): StreamedResponse
+    {
+        $this->authorizeAdmin();
+
+        $event = Event::query()
+            ->with('currentMouAgreement')
+            ->where('uid', $uid)
+            ->firstOrFail();
+
+        return $this->stream($event->currentMouAgreement?->signed_pdf_path, 'mou-signed.pdf');
+    }
+
+    private function authorizeAdmin(): void
+    {
+        $user = Auth::user();
+
+        abort_unless($user !== null, 403);
+        abort_unless(strtolower((string) $user->role) === 'admin', 403);
+    }
+
+    private function stream(?string $path, string $filename): StreamedResponse
+    {
         $disk = Storage::disk('local');
 
         abort_unless(filled($path) && $disk->exists($path), 404);
@@ -41,18 +70,10 @@ class AdminEventMouPdfController extends Controller
             }
         }, 200, [
             'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'inline; filename="mou-unsigned.pdf"',
+            'Content-Disposition' => 'inline; filename="'.$filename.'"',
             'Cache-Control' => 'private, no-store, max-age=0',
             'Pragma' => 'no-cache',
             'X-Content-Type-Options' => 'nosniff',
         ]);
-    }
-
-    private function authorizeAdmin(): void
-    {
-        $user = Auth::user();
-
-        abort_unless($user !== null, 403);
-        abort_unless(strtolower((string) $user->role) === 'admin', 403);
     }
 }

@@ -353,7 +353,7 @@ class AgreementManualSigningTest extends TestCase
         Storage::disk('local')->put($this->unsignedPath($agreementUid), '%PDF-1.4');
 
         $this->actingAs($tenant)
-            ->get(route('dashboard.event.detail', $event->uid).'?activeTab=mou')
+            ->get(route('dashboard.event.detail', $event->uid) . '?activeTab=mou')
             ->assertOk()
             ->assertSeeText('MOU Siap Ditandatangani')
             ->assertSeeText('Menunggu tanda tangan')
@@ -377,7 +377,7 @@ class AgreementManualSigningTest extends TestCase
         Storage::disk('local')->put($this->signedPath($uid), '%PDF-1.4 signed');
 
         $this->actingAs($tenant)
-            ->get(route('dashboard.event.detail', $event->uid).'?activeTab=mou')
+            ->get(route('dashboard.event.detail', $event->uid) . '?activeTab=mou')
             ->assertOk()
             ->assertSeeText('Dokumen sudah diterima dan sedang menunggu verifikasi admin.')
             ->assertSeeText('Lihat MOU Unsigned')
@@ -441,7 +441,7 @@ class AgreementManualSigningTest extends TestCase
         Storage::disk('local')->put($this->signedPath($uid), '%PDF-1.4 signed');
 
         $this->actingAs($tenant)
-            ->get(route('dashboard.event.detail', $event->uid).'?activeTab=mou')
+            ->get(route('dashboard.event.detail', $event->uid) . '?activeTab=mou')
             ->assertOk()
             ->assertDontSeeText($agreement->unsigned_pdf_path)
             ->assertDontSeeText($agreement->signed_pdf_path)
@@ -487,7 +487,7 @@ class AgreementManualSigningTest extends TestCase
         $this->assertSame(Agreement::STATUS_READY, $agreement->status);
 
         // No orphan staged/temporary files remain.
-        $files = Storage::disk('local')->allFiles(self::DIR.'/'.$agreement->uid);
+        $files = Storage::disk('local')->allFiles(self::DIR . '/' . $agreement->uid);
         foreach ($files as $file) {
             $this->assertStringNotContainsString('staged-', $file);
             $this->assertStringNotContainsString('signed-backup-', $file);
@@ -517,9 +517,7 @@ class AgreementManualSigningTest extends TestCase
         $failing = new class($realDisk) {
             public bool $alreadyFailed = false;
 
-            public function __construct(private $inner)
-            {
-            }
+            public function __construct(private $inner) {}
 
             public function exists(string $path): bool
             {
@@ -587,7 +585,7 @@ class AgreementManualSigningTest extends TestCase
         $this->assertSame(Agreement::STATUS_READY, $agreement->status);
 
         // Staging and backup are cleaned up afterwards; only signed.pdf remains.
-        $files = $realDisk->allFiles(self::DIR.'/'.$agreement->uid);
+        $files = $realDisk->allFiles(self::DIR . '/' . $agreement->uid);
         $this->assertNotEmpty($files);
         foreach ($files as $file) {
             $this->assertStringNotContainsString('staged-', $file);
@@ -634,7 +632,7 @@ class AgreementManualSigningTest extends TestCase
         $this->assertSame(Agreement::STATUS_READY, $agreement->status);
 
         // Temporary files cleaned up.
-        $files = Storage::disk('local')->allFiles(self::DIR.'/'.$agreement->uid);
+        $files = Storage::disk('local')->allFiles(self::DIR . '/' . $agreement->uid);
         foreach ($files as $file) {
             $this->assertStringNotContainsString('staged-', $file);
             $this->assertStringNotContainsString('signed-backup-', $file);
@@ -691,7 +689,7 @@ class AgreementManualSigningTest extends TestCase
             $this->assertSame($oldContent, Storage::disk('local')->get($oldPath));
 
             // No staged or backup orphans remain.
-            $files = Storage::disk('local')->allFiles(self::DIR.'/'.$agreement->uid);
+            $files = Storage::disk('local')->allFiles(self::DIR . '/' . $agreement->uid);
             foreach ($files as $file) {
                 $this->assertStringNotContainsString('staged-', $file);
                 $this->assertStringNotContainsString('signed-backup-', $file);
@@ -957,6 +955,10 @@ class AgreementManualSigningTest extends TestCase
             $table->string('privy_reference')->nullable();
             $table->string('unsigned_pdf_path')->nullable();
             $table->string('signed_pdf_path')->nullable();
+            $table->string('signed_review_status')->nullable();
+            $table->string('signed_verified_by')->nullable();
+            $table->timestamp('signed_verified_at')->nullable();
+            $table->text('signed_rejection_reason')->nullable();
             $table->timestamp('sent_to_privy_at')->nullable();
             $table->timestamp('signed_at')->nullable();
             $table->timestamp('completed_at')->nullable();
@@ -994,8 +996,8 @@ class AgreementManualSigningTest extends TestCase
     private function event(User $tenant, array $overrides = []): Event
     {
         $category = Category::create([
-            'name' => 'Category '.Str::random(6),
-            'slug' => 'category-'.Str::lower(Str::random(8)),
+            'name' => 'Category ' . Str::random(6),
+            'slug' => 'category-' . Str::lower(Str::random(8)),
         ]);
         $uid = (string) Str::uuid();
 
@@ -1003,7 +1005,7 @@ class AgreementManualSigningTest extends TestCase
             'uid' => $uid,
             'category_id' => $category->id,
             'user_uid' => $tenant->uid,
-            'event' => 'M9 Event '.$uid,
+            'event' => 'M9 Event ' . $uid,
             'alamat' => 'Alamat M9 Event',
             'tanggal' => '2026-09-10 19:00:00',
             'event_end' => '2026-09-10 22:00:00',
@@ -1018,7 +1020,7 @@ class AgreementManualSigningTest extends TestCase
             'deskripsi' => 'Deskripsi M9',
             'map' => 'https://maps.google.com/?q=m9',
             'start_sale' => '2026-09-01 10:00:00',
-            'slug' => 'm9-'.Str::lower(Str::random(8)),
+            'slug' => 'm9-' . Str::lower(Str::random(8)),
             'konfirmasi' => null,
             'payment_otp_enabled' => false,
         ], $overrides));
@@ -1057,7 +1059,7 @@ class AgreementManualSigningTest extends TestCase
      */
     private function unsignedPath(string $agreementUid): string
     {
-        return self::DIR.'/'.$agreementUid.'/unsigned.pdf';
+        return self::DIR . '/' . $agreementUid . '/unsigned.pdf';
     }
 
     /**
@@ -1066,7 +1068,7 @@ class AgreementManualSigningTest extends TestCase
      */
     private function signedPath(string $agreementUid): string
     {
-        return self::DIR.'/'.$agreementUid.'/signed.pdf';
+        return self::DIR . '/' . $agreementUid . '/signed.pdf';
     }
 
     /**
