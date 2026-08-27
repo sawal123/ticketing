@@ -435,9 +435,9 @@
                 {{-- Riwayat Agreement & Addendum --}}
                 @if (!empty($agreementsHistory) && $agreementsHistory->count() > 0)
                     <x-admin.card title="Riwayat Agreement & Addendum">
-                        <div class="overflow-x-auto rounded-xl border border-slate-200">
+                        <div class="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700">
                             <table class="w-full text-left text-sm">
-                                <thead class="bg-slate-50 text-xs uppercase tracking-wider text-slate-500 border-b border-slate-200">
+                                <thead class="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wider text-slate-500 dark:border-slate-700 dark:bg-slate-700/50 dark:text-slate-300">
                                     <tr>
                                         <th class="px-4 py-3 font-bold">Dokumen</th>
                                         <th class="px-4 py-3 font-bold">Versi</th>
@@ -446,13 +446,13 @@
                                         <th class="px-4 py-3 font-bold">File PDF</th>
                                     </tr>
                                 </thead>
-                                <tbody class="divide-y divide-slate-100">
+                                <tbody class="divide-y divide-slate-100 dark:divide-slate-700/80">
                                     @foreach ($agreementsHistory as $historyItem)
-                                        <tr class="hover:bg-slate-50/50">
-                                            <td class="px-4 py-3 font-bold text-slate-800">
+                                        <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-700/30">
+                                            <td class="px-4 py-3 font-bold text-slate-800 dark:text-white">
                                                 {{ strtoupper($historyItem->type) }}
                                             </td>
-                                            <td class="px-4 py-3 text-slate-600">
+                                            <td class="px-4 py-3 text-slate-600 dark:text-slate-300">
                                                 v{{ $historyItem->version }}
                                             </td>
                                             <td class="px-4 py-3">
@@ -461,7 +461,7 @@
                                                     {{ $historyItem->status }}
                                                 </span>
                                             </td>
-                                            <td class="px-4 py-3 text-slate-600">
+                                            <td class="px-4 py-3 text-slate-600 dark:text-slate-300">
                                                 {{ $historyItem->completed_at ? $historyItem->completed_at->format('d M Y H:i') : '-' }}
                                             </td>
                                             <td class="px-4 py-3 space-x-2">
@@ -500,7 +500,7 @@
                             </div>
 
                             @if (! empty($agreementReview['blocking_reasons']))
-                                <div class="mt-4 rounded-2xl bg-white/70 p-4 text-sm text-current">
+                                <div class="mt-4 rounded-2xl bg-white/70 p-4 text-sm text-current dark:bg-slate-800">
                                     <p class="font-bold">Alasan belum terpenuhi:</p>
                                     <ul class="mt-2 space-y-1">
                                         @foreach ($agreementReview['blocking_reasons'] as $reason)
@@ -516,7 +516,7 @@
 
                         <div class="grid gap-3 md:grid-cols-2">
                             @foreach (($agreementReview['items'] ?? []) as $item)
-                                <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/60">
+                            <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800">
                                     <div class="flex items-start gap-3">
                                         <div class="mt-0.5 flex h-9 w-9 items-center justify-center rounded-full {{ $item['passed'] ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600' }}">
                                             <i data-lucide="{{ $item['passed'] ? 'check' : 'x' }}" class="h-4 w-4"></i>
@@ -533,16 +533,16 @@
                         </div>
 
                         @if ($currentMouAgreement)
-                            <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                            <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
                                 <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                                     <div>
                                         <p class="text-xs font-black uppercase tracking-[0.25em] text-slate-400">Finalisasi {{ $currentMouAgreement->type === \App\Models\Agreement::TYPE_ADDENDUM ? 'Addendum' : 'MOU' }}</p>
                                         @if ($finalizeMouAvailable)
-                                            <p class="mt-1 text-sm text-slate-500">
+                                            <p class="mt-1 text-sm text-slate-500 dark:text-slate-300">
                                                 Seluruh prerequisite M7 terpenuhi. Finalisasi akan membekukan snapshot kontraktual dan membuat PDF unsigned di penyimpanan privat.
                                             </p>
                                         @else
-                                            <p class="mt-1 text-sm text-slate-500">
+                                            <p class="mt-1 text-sm text-slate-500 dark:text-slate-300">
                                                 Finalisasi hanya tersedia setelah seluruh checklist readiness terpenuhi dan Agreement masih berstatus DRAFT.
                                             </p>
                                         @endif
@@ -617,17 +617,17 @@
                                     </div>
 
                                     @if ($currentMouAgreement->signed_rejection_reason)
-                                        <div class="mt-4 rounded-2xl bg-white/70 p-4 text-sm text-current">
+                                        <div class="mt-4 rounded-2xl bg-white/70 p-4 text-sm text-current dark:bg-slate-800">
                                             <p class="font-bold">Alasan penolakan terakhir</p>
                                             <p class="mt-1">{{ $currentMouAgreement->signed_rejection_reason }}</p>
                                         </div>
                                     @endif
 
                                     @if ($mouSignedReviewActionable)
-                                        <div class="mt-5 rounded-2xl bg-white/70 p-4">
-                                            <label for="signed-mou-rejection-reason" class="mb-2 block text-xs font-black uppercase tracking-[0.2em] text-slate-400">Alasan Tolak Signed Dokumen</label>
+                                        <div class="mt-5 rounded-2xl bg-white/70 p-4 dark:bg-slate-800">
+                                            <label for="signed-mou-rejection-reason" class="mb-2 block text-xs font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-300">Alasan Tolak Signed Dokumen</label>
                                             <textarea id="signed-mou-rejection-reason" wire:model.defer="signedMouRejectionReason" rows="4"
-                                                class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"></textarea>
+                                                class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"></textarea>
                                             @error('signedMouRejectionReason') <span class="mt-2 block text-xs text-rose-500">{{ $message }}</span> @enderror
 
                                             <div class="mt-4 flex flex-col gap-2 sm:flex-row">
@@ -655,7 +655,7 @@
                 @elseif ($mouPreview)
                     <x-admin.card title="Preview MOU M6">
                         <div class="space-y-4">
-                            <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-300">
+                            <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
                                 Preview MOU tetap read-only dan mereuse tampilan agreement M6 yang membaca data live event terbaru.
                             </div>
                             @include('agreements.mou-preview', ['preview' => $mouPreview])
@@ -708,15 +708,15 @@
                                 </div>
                             </div>
 
-                            <div class="rounded-2xl border border-slate-200 bg-white p-4">
-                                <p class="text-xs font-black uppercase tracking-[0.2em] text-slate-400">Catatan Penolakan</p>
-                                <p class="mt-2 text-sm text-slate-600">{{ $bankAccount?->rejection_reason ?: 'Belum ada catatan penolakan.' }}</p>
+                            <div class="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800">
+                                <p class="text-xs font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-300">Catatan Penolakan</p>
+                                <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">{{ $bankAccount?->rejection_reason ?: 'Belum ada catatan penolakan.' }}</p>
                             </div>
 
                             <div>
-                                <label for="bank-rejection-reason" class="mb-2 block text-xs font-black uppercase tracking-[0.2em] text-slate-400">Alasan Tolak Rekening</label>
+                                <label for="bank-rejection-reason" class="mb-2 block text-xs font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-300">Alasan Tolak Rekening</label>
                                 <textarea id="bank-rejection-reason" wire:model.defer="bankRejectionReason" rows="4"
-                                    class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"></textarea>
+                                    class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"></textarea>
                                 @error('bankRejectionReason')
                                     <p class="mt-2 text-xs font-semibold text-rose-600">{{ $message }}</p>
                                 @enderror
@@ -767,15 +767,15 @@
                                 </div>
                             </div>
 
-                            <div class="rounded-2xl border border-slate-200 bg-white p-4">
-                                <p class="text-xs font-black uppercase tracking-[0.2em] text-slate-400">Catatan Penolakan</p>
-                                <p class="mt-2 text-sm text-slate-600">{{ $organizerLetter?->rejection_reason ?: 'Belum ada catatan penolakan.' }}</p>
+                            <div class="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800">
+                                <p class="text-xs font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-300">Catatan Penolakan</p>
+                                <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">{{ $organizerLetter?->rejection_reason ?: 'Belum ada catatan penolakan.' }}</p>
                             </div>
 
                             <div>
-                                <label for="organizer-letter-rejection-reason" class="mb-2 block text-xs font-black uppercase tracking-[0.2em] text-slate-400">Alasan Tolak Surat</label>
+                                <label for="organizer-letter-rejection-reason" class="mb-2 block text-xs font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-300">Alasan Tolak Surat</label>
                                 <textarea id="organizer-letter-rejection-reason" wire:model.defer="organizerLetterRejectionReason" rows="4"
-                                    class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"></textarea>
+                                    class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"></textarea>
                                 @error('organizerLetterRejectionReason')
                                     <p class="mt-2 text-xs font-semibold text-rose-600">{{ $message }}</p>
                                 @enderror
@@ -829,12 +829,12 @@
                         @else
                             <div class="space-y-4">
                                 @foreach ($commercialGateways as $gateway)
-                                    <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                                    <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
                                         <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                                             <div>
-                                                <h3 class="text-base font-black text-slate-900">{{ $gateway['payment'] }}</h3>
-                                                <p class="mt-1 text-sm text-slate-500">
-                                                    Mode: <span class="font-semibold uppercase text-slate-700">{{ $gateway['fee_mode'] }}</span>
+                                                <h3 class="text-base font-black text-slate-900 dark:text-white">{{ $gateway['payment'] }}</h3>
+                                                <p class="mt-1 text-sm text-slate-500 dark:text-slate-300">
+                                                    Mode: <span class="font-semibold uppercase text-slate-700 dark:text-slate-100">{{ $gateway['fee_mode'] }}</span>
                                                 </p>
                                             </div>
                                             <span class="inline-flex items-center rounded-full border px-3 py-1 text-xs font-bold {{ !empty($gateway['effective_is_active']) ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-600 border-slate-200' }}">
