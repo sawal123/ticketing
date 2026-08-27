@@ -3,7 +3,9 @@
 namespace App\Livewire\Admin;
 
 use App\Models\Landing;
+use App\Models\PlatformLegalProfile;
 use App\Services\SecureImageStorage;
+use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 
@@ -22,6 +24,24 @@ class SettingIndex extends Component
 
     public $icon;
 
+    public $legalProfileId;
+
+    public $company_name;
+
+    public $legal_id;
+
+    public $address;
+
+    public $representative_name;
+
+    public $representative_position;
+
+    public $email;
+
+    public $phone;
+
+    public $website;
+
     // File fields
     public $new_logo;
 
@@ -29,6 +49,8 @@ class SettingIndex extends Component
 
     public function mount()
     {
+        $this->ensureAdmin();
+
         $setting = Landing::first();
         if ($setting) {
             $this->description = $setting->description;
@@ -36,6 +58,8 @@ class SettingIndex extends Component
             $this->logo = $setting->logo;
             $this->icon = $setting->icon;
         }
+
+        $this->fillLegalProfileFields(PlatformLegalProfile::query()->first());
     }
 
     public function setTab($tab)
@@ -45,6 +69,8 @@ class SettingIndex extends Component
 
     public function updateSEO()
     {
+        $this->ensureAdmin();
+
         $this->validate([
             'description' => 'required|string|max:500',
             'keyword' => 'required|string|max:255',
@@ -60,6 +86,8 @@ class SettingIndex extends Component
 
     public function updateLogo()
     {
+        $this->ensureAdmin();
+
         $this->validate([
             'new_logo' => SecureImageStorage::rules(true),
         ]);
@@ -80,6 +108,8 @@ class SettingIndex extends Component
 
     public function updateIcon()
     {
+        $this->ensureAdmin();
+
         $this->validate([
             'new_icon' => SecureImageStorage::rules(true),
         ]);
@@ -98,9 +128,86 @@ class SettingIndex extends Component
         session()->flash('success', 'Icon berhasil diperbarui.');
     }
 
+    public function updateLegalProfile()
+    {
+        $this->ensureAdmin();
+        $this->normalizeLegalProfileInput();
+
+        $this->validate([
+            'company_name' => 'nullable|string|max:255',
+            'legal_id' => 'nullable|string|max:100',
+            'address' => 'nullable|string|max:1000',
+            'representative_name' => 'nullable|string|max:255',
+            'representative_position' => 'nullable|string|max:255',
+            'email' => 'nullable|email|max:255',
+            'phone' => 'nullable|string|max:50',
+            'website' => 'nullable|url|max:255',
+        ]);
+
+        $profile = PlatformLegalProfile::query()->find($this->legalProfileId) ?? new PlatformLegalProfile();
+        $profile->fill([
+            'company_name' => $this->company_name,
+            'legal_id' => $this->legal_id,
+            'address' => $this->address,
+            'representative_name' => $this->representative_name,
+            'representative_position' => $this->representative_position,
+            'email' => $this->email,
+            'phone' => $this->phone,
+            'website' => $this->website,
+        ]);
+        $profile->save();
+
+        $this->fillLegalProfileFields($profile->fresh());
+
+        session()->flash('success', 'Identitas legal berhasil diperbarui.');
+    }
+
     public function render()
     {
+        $this->ensureAdmin();
+
         return view('livewire.admin.setting-index')
             ->layout('admin.layout', ['title' => 'Pengaturan Sistem']);
+    }
+
+    private function ensureAdmin(): void
+    {
+        abort_unless(strtolower((string) Auth::user()?->role) === 'admin', 403);
+    }
+
+    private function fillLegalProfileFields(?PlatformLegalProfile $profile): void
+    {
+        $this->legalProfileId = $profile?->id;
+        $this->company_name = $profile?->company_name;
+        $this->legal_id = $profile?->legal_id;
+        $this->address = $profile?->address;
+        $this->representative_name = $profile?->representative_name;
+        $this->representative_position = $profile?->representative_position;
+        $this->email = $profile?->email;
+        $this->phone = $profile?->phone;
+        $this->website = $profile?->website;
+    }
+
+    private function normalizeLegalProfileInput(): void
+    {
+        foreach ([
+            'company_name',
+            'legal_id',
+            'address',
+            'representative_name',
+            'representative_position',
+            'email',
+            'phone',
+            'website',
+        ] as $field) {
+            $value = $this->{$field};
+
+            if (! is_string($value)) {
+                continue;
+            }
+
+            $value = trim($value);
+            $this->{$field} = $value === '' ? null : $value;
+        }
     }
 }

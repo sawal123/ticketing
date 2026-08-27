@@ -3,7 +3,7 @@
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
             <h1 class="text-2xl font-bold text-slate-800 dark:text-white">Pengaturan Sistem</h1>
-            <p class="text-slate-500 dark:text-slate-400 text-sm">Kelola identitas visual dan optimasi mesin pencari (SEO).</p>
+            <p class="text-slate-500 dark:text-slate-400 text-sm">Kelola identitas visual, identitas legal, dan optimasi mesin pencari (SEO).</p>
         </div>
     </div>
 
@@ -28,6 +28,11 @@
                 class="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 {{ $activeTab === 'seo' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200 dark:shadow-none' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800' }}">
                 <i data-lucide="search" class="w-5 h-5"></i>
                 <span class="font-medium text-sm">SEO Meta</span>
+            </button>
+            <button wire:click="setTab('legal')"
+                class="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 {{ $activeTab === 'legal' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200 dark:shadow-none' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800' }}">
+                <i data-lucide="file-badge" class="w-5 h-5"></i>
+                <span class="font-medium text-sm">Identitas Legal</span>
             </button>
         </div>
 
@@ -177,6 +182,72 @@
                         </p>
                     </div>
                 </div>
+            @endif
+
+            @if ($activeTab === 'legal')
+                <x-admin.card title="Identitas Legal" icon="file-badge">
+                    <form wire:submit.prevent="updateLegalProfile" class="space-y-6">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                            <div class="md:col-span-2">
+                                <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-2 uppercase tracking-wider">Nama Badan Usaha / Pengelola</label>
+                                <input type="text" wire:model.defer="company_name" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-700/50 border-0 ring-1 ring-slate-200 dark:ring-slate-600 focus:ring-2 focus:ring-indigo-600 rounded-2xl text-slate-900 dark:text-white placeholder-slate-400 transition-all duration-200" placeholder="Contoh: PT Gotik Indonesia">
+                                @error('company_name') <p class="mt-1 text-xs text-rose-500">{{ $message }}</p> @enderror
+                            </div>
+
+                            <div class="md:col-span-2">
+                                <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-2 uppercase tracking-wider">Legalitas / NIB</label>
+                                <input type="text" wire:model.defer="legal_id" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-700/50 border-0 ring-1 ring-slate-200 dark:ring-slate-600 focus:ring-2 focus:ring-indigo-600 rounded-2xl text-slate-900 dark:text-white placeholder-slate-400 transition-all duration-200" placeholder="Masukkan legalitas atau NIB resmi">
+                                @error('legal_id') <p class="mt-1 text-xs text-rose-500">{{ $message }}</p> @enderror
+                            </div>
+
+                            <div class="md:col-span-2">
+                                <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-2 uppercase tracking-wider">Alamat</label>
+                                <textarea wire:model.defer="address" rows="4" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-700/50 border-0 ring-1 ring-slate-200 dark:ring-slate-600 focus:ring-2 focus:ring-indigo-600 rounded-2xl text-slate-900 dark:text-white placeholder-slate-400 transition-all duration-200" placeholder="Alamat lengkap badan usaha atau pengelola"></textarea>
+                                @error('address') <p class="mt-1 text-xs text-rose-500">{{ $message }}</p> @enderror
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-2 uppercase tracking-wider">Nama Pemilik / Wakil / Penanggung Jawab</label>
+                                <input type="text" wire:model.defer="representative_name" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-700/50 border-0 ring-1 ring-slate-200 dark:ring-slate-600 focus:ring-2 focus:ring-indigo-600 rounded-2xl text-slate-900 dark:text-white placeholder-slate-400 transition-all duration-200" placeholder="Nama wakil resmi">
+                                @error('representative_name') <p class="mt-1 text-xs text-rose-500">{{ $message }}</p> @enderror
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-2 uppercase tracking-wider">Jabatan</label>
+                                <input type="text" wire:model.defer="representative_position" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-700/50 border-0 ring-1 ring-slate-200 dark:ring-slate-600 focus:ring-2 focus:ring-indigo-600 rounded-2xl text-slate-900 dark:text-white placeholder-slate-400 transition-all duration-200" placeholder="Contoh: Direktur Utama">
+                                @error('representative_position') <p class="mt-1 text-xs text-rose-500">{{ $message }}</p> @enderror
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-2 uppercase tracking-wider">Email Resmi</label>
+                                <input type="email" wire:model.defer="email" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-700/50 border-0 ring-1 ring-slate-200 dark:ring-slate-600 focus:ring-2 focus:ring-indigo-600 rounded-2xl text-slate-900 dark:text-white placeholder-slate-400 transition-all duration-200" placeholder="legal@example.com">
+                                @error('email') <p class="mt-1 text-xs text-rose-500">{{ $message }}</p> @enderror
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-2 uppercase tracking-wider">WhatsApp / Telepon</label>
+                                <input type="text" wire:model.defer="phone" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-700/50 border-0 ring-1 ring-slate-200 dark:ring-slate-600 focus:ring-2 focus:ring-indigo-600 rounded-2xl text-slate-900 dark:text-white placeholder-slate-400 transition-all duration-200" placeholder="08xxxxxxxxxx">
+                                @error('phone') <p class="mt-1 text-xs text-rose-500">{{ $message }}</p> @enderror
+                            </div>
+
+                            <div class="md:col-span-2">
+                                <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-2 uppercase tracking-wider">Website / Platform</label>
+                                <input type="url" wire:model.defer="website" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-700/50 border-0 ring-1 ring-slate-200 dark:ring-slate-600 focus:ring-2 focus:ring-indigo-600 rounded-2xl text-slate-900 dark:text-white placeholder-slate-400 transition-all duration-200" placeholder="https://go-tik.com">
+                                @error('website') <p class="mt-1 text-xs text-rose-500">{{ $message }}</p> @enderror
+                            </div>
+                        </div>
+
+                        <div class="flex justify-end pt-2">
+                            <x-admin.button type="submit" variant="primary" wire:loading.attr="disabled">
+                                <span wire:loading.remove>Simpan Identitas Legal</span>
+                                <span wire:loading.flex class="items-center gap-2">
+                                    <i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i>
+                                    Memproses...
+                                </span>
+                            </x-admin.button>
+                        </div>
+                    </form>
+                </x-admin.card>
             @endif
         </div>
     </div>
