@@ -10,6 +10,7 @@ return new class extends Migration
     {
         Schema::create('platform_legal_profiles', function (Blueprint $table) {
             $table->id();
+            $table->string('profile_key')->default('default')->unique();
             $table->string('company_name')->nullable();
             $table->string('legal_id', 100)->nullable();
             $table->text('address')->nullable();

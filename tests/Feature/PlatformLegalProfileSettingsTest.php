@@ -59,6 +59,7 @@ class PlatformLegalProfileSettingsTest extends TestCase
             ->assertSee('Identitas legal berhasil diperbarui.');
 
         $this->assertDatabaseHas('platform_legal_profiles', [
+            'profile_key' => PlatformLegalProfile::DEFAULT_KEY,
             'company_name' => 'PT Gotik Indonesia',
             'legal_id' => 'NIB-001',
             'address' => 'Jl. Sudirman No. 1, Jakarta',
@@ -81,7 +82,8 @@ class PlatformLegalProfileSettingsTest extends TestCase
             ->call('updateLegalProfile')
             ->assertHasNoErrors();
 
-        $profileId = PlatformLegalProfile::query()->sole()->id;
+        $profile = PlatformLegalProfile::query()->sole();
+        $profileId = $profile->id;
 
         Livewire::actingAs($admin)
             ->test(SettingIndex::class)
@@ -94,8 +96,39 @@ class PlatformLegalProfileSettingsTest extends TestCase
         $this->assertDatabaseCount('platform_legal_profiles', 1);
         $this->assertDatabaseHas('platform_legal_profiles', [
             'id' => $profileId,
+            'profile_key' => PlatformLegalProfile::DEFAULT_KEY,
             'company_name' => 'PT Gotik Baru',
             'email' => 'second@gotik.test',
+        ]);
+    }
+
+    public function test_tampered_livewire_state_cannot_create_second_profile(): void
+    {
+        $admin = $this->user(['role' => User::ADMIN_ROLE, 'email' => 'admin-tamper@example.test']);
+
+        Livewire::actingAs($admin)
+            ->test(SettingIndex::class)
+            ->set('company_name', 'PT Gotik Indonesia')
+            ->set('email', 'first@gotik.test')
+            ->call('updateLegalProfile')
+            ->assertHasNoErrors();
+
+        $profileId = PlatformLegalProfile::query()->sole()->id;
+
+        Livewire::actingAs($admin)
+            ->test(SettingIndex::class)
+            ->set('legalProfileId', 999999)
+            ->set('company_name', 'PT Gotik Aman')
+            ->set('email', 'safe@gotik.test')
+            ->call('updateLegalProfile')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseCount('platform_legal_profiles', 1);
+        $this->assertDatabaseHas('platform_legal_profiles', [
+            'id' => $profileId,
+            'profile_key' => PlatformLegalProfile::DEFAULT_KEY,
+            'company_name' => 'PT Gotik Aman',
+            'email' => 'safe@gotik.test',
         ]);
     }
 

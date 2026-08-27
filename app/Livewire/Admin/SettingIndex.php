@@ -59,7 +59,7 @@ class SettingIndex extends Component
             $this->icon = $setting->icon;
         }
 
-        $this->fillLegalProfileFields(PlatformLegalProfile::query()->first());
+        $this->fillLegalProfileFields($this->resolveLegalProfile());
     }
 
     public function setTab($tab)
@@ -144,20 +144,21 @@ class SettingIndex extends Component
             'website' => 'nullable|url|max:255',
         ]);
 
-        $profile = PlatformLegalProfile::query()->find($this->legalProfileId) ?? new PlatformLegalProfile();
-        $profile->fill([
-            'company_name' => $this->company_name,
-            'legal_id' => $this->legal_id,
-            'address' => $this->address,
-            'representative_name' => $this->representative_name,
-            'representative_position' => $this->representative_position,
-            'email' => $this->email,
-            'phone' => $this->phone,
-            'website' => $this->website,
-        ]);
-        $profile->save();
+        $profile = PlatformLegalProfile::query()->updateOrCreate(
+            ['profile_key' => PlatformLegalProfile::DEFAULT_KEY],
+            [
+                'company_name' => $this->company_name,
+                'legal_id' => $this->legal_id,
+                'address' => $this->address,
+                'representative_name' => $this->representative_name,
+                'representative_position' => $this->representative_position,
+                'email' => $this->email,
+                'phone' => $this->phone,
+                'website' => $this->website,
+            ]
+        );
 
-        $this->fillLegalProfileFields($profile->fresh());
+        $this->fillLegalProfileFields($profile);
 
         session()->flash('success', 'Identitas legal berhasil diperbarui.');
     }
@@ -177,7 +178,6 @@ class SettingIndex extends Component
 
     private function fillLegalProfileFields(?PlatformLegalProfile $profile): void
     {
-        $this->legalProfileId = $profile?->id;
         $this->company_name = $profile?->company_name;
         $this->legal_id = $profile?->legal_id;
         $this->address = $profile?->address;
@@ -186,6 +186,13 @@ class SettingIndex extends Component
         $this->email = $profile?->email;
         $this->phone = $profile?->phone;
         $this->website = $profile?->website;
+    }
+
+    private function resolveLegalProfile(): ?PlatformLegalProfile
+    {
+        return PlatformLegalProfile::query()
+            ->where('profile_key', PlatformLegalProfile::DEFAULT_KEY)
+            ->first();
     }
 
     private function normalizeLegalProfileInput(): void

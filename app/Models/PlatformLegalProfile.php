@@ -9,7 +9,10 @@ class PlatformLegalProfile extends Model
 {
     use HasFactory;
 
+    public const DEFAULT_KEY = 'default';
+
     protected $fillable = [
+        'profile_key',
         'company_name',
         'legal_id',
         'address',
