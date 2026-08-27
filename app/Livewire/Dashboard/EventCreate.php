@@ -369,6 +369,9 @@ class EventCreate extends Component
 
                 if (! $this->editingEventUid) {
                     Agreement::createDraftForEvent($event, $actorUid);
+                } else {
+                    app(\App\Services\Agreements\AgreementVersioningService::class)
+                        ->checkForContractualChanges($event, $actorUid);
                 }
             });
         } catch (\Throwable $exception) {

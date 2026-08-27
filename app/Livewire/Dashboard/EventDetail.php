@@ -473,24 +473,32 @@ class EventDetail extends Component
         $actor = auth()->user();
 
         try {
+            $activeAgreement = $event->agreements()
+                ->where('status', Agreement::STATUS_READY)
+                ->orderByRaw("CASE WHEN type = 'addendum' THEN 2 ELSE 1 END DESC")
+                ->orderByDesc('version')
+                ->latest('id')
+                ->first();
+
             $result = app(AgreementSignedUploadService::class)
-                ->storeForEvent($event, $actor->uid, $validated['signedMou']);
+                ->storeForEvent($event, $actor->uid, $validated['signedMou'], $activeAgreement?->uid);
 
             if (! $result['ok']) {
-                session()->flash('error', $result['message'] ?? 'Upload MOU bertanda tangan gagal.');
+                session()->flash('error', $result['message'] ?? 'Upload dokumen bertanda tangan gagal.');
                 $this->reset('signedMou');
 
                 return;
             }
         } catch (\Throwable $e) {
-            session()->flash('error', 'Upload MOU bertanda tangan gagal: '.$e->getMessage());
+            session()->flash('error', 'Upload dokumen bertanda tangan gagal: '.$e->getMessage());
             $this->reset('signedMou');
 
             return;
         }
 
         $this->reset('signedMou');
-        session()->flash('message', 'Dokumen MOU bertanda tangan berhasil diunggah dan sedang menunggu verifikasi admin.');
+        $docType = $result['agreement']?->type === Agreement::TYPE_ADDENDUM ? 'Addendum' : 'MOU';
+        session()->flash('message', "Dokumen {$docType} bertanda tangan berhasil diunggah dan sedang menunggu verifikasi admin.");
     }
 
     public function resetFilters()
@@ -678,7 +686,10 @@ class EventDetail extends Component
         }
 
         $mouPreview = null;
+        $addendumPreview = null;
         $mouAgreement = null;
+        $activeAgreement = null;
+        $agreementsHistory = [];
         $mouUnsignedAvailable = false;
         $mouSignedAvailable = false;
         $mouUploadAvailable = false;
@@ -688,10 +699,35 @@ class EventDetail extends Component
         $mouCompleted = false;
 
         if ($this->activeTab === 'mou') {
-            $mouPreview = app(AgreementPreviewService::class)->buildForEvent($event);
-            $mouAgreement = $event->currentMouAgreement;
+            $hasAgreementsTable = \Illuminate\Support\Facades\Schema::hasTable('agreements');
+
+            $agreementsHistory = $hasAgreementsTable
+                ? $event->agreements()
+                    ->orderByRaw("CASE WHEN type = 'mou' THEN 1 ELSE 2 END ASC")
+                    ->orderBy('version', 'asc')
+                    ->get()
+                : collect();
+
+            $activeAgreement = $hasAgreementsTable
+                ? ($event->agreements()
+                    ->whereNotIn('status', [Agreement::STATUS_COMPLETED, Agreement::STATUS_CANCELLED])
+                    ->latest('id')
+                    ->first()
+                    ?? $event->latestCompletedAgreement()
+                    ?? $event->currentMouAgreement)
+                : null;
+
+            $mouAgreement = $activeAgreement ?? $event->currentMouAgreement;
+
+            if ($activeAgreement?->isAddendum()) {
+                $addendumPreview = app(\App\Services\Agreements\AgreementVersioningService::class)
+                    ->buildAddendumPreview($event, $activeAgreement);
+            } else {
+                $mouPreview = app(AgreementPreviewService::class)->buildForEvent($event);
+            }
+
             $mouUnsignedAvailable = $mouAgreement !== null
-                && $mouAgreement->isReady()
+                && ($mouAgreement->isReady() || $mouAgreement->isCompleted())
                 && filled($mouAgreement->unsigned_pdf_path);
             $mouSignedReviewStatus = $mouAgreement?->signed_review_status;
             $mouSignedAvailable = $mouAgreement !== null
@@ -738,6 +774,9 @@ class EventDetail extends Component
             'discount' => $discount,
             'voucherCode' => $voucherCode,
             'mouPreview' => $mouPreview,
+            'addendumPreview' => $addendumPreview,
+            'agreementsHistory' => $agreementsHistory,
+            'activeAgreement' => $activeAgreement,
             'mouAgreement' => $mouAgreement,
             'mouUnsignedAvailable' => $mouUnsignedAvailable,
             'mouSignedAvailable' => $mouSignedAvailable,

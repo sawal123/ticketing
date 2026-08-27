@@ -13,6 +13,7 @@ class Agreement extends Model
     use HasFactory;
 
     public const TYPE_MOU = 'mou';
+    public const TYPE_ADDENDUM = 'addendum';
 
     public const STATUS_DRAFT = 'DRAFT';
     public const STATUS_READY = 'READY';
@@ -45,6 +46,7 @@ class Agreement extends Model
         'event_uid',
         'tenant_user_uid',
         'type',
+        'parent_agreement_uid',
         'document_number',
         'version',
         'status',
@@ -106,6 +108,21 @@ class Agreement extends Model
     public function tenant()
     {
         return $this->belongsTo(User::class, 'tenant_user_uid', 'uid');
+    }
+
+    public function parentAgreement()
+    {
+        return $this->belongsTo(Agreement::class, 'parent_agreement_uid', 'uid');
+    }
+
+    public function childAgreements()
+    {
+        return $this->hasMany(Agreement::class, 'parent_agreement_uid', 'uid');
+    }
+
+    public function isAddendum(): bool
+    {
+        return $this->type === self::TYPE_ADDENDUM;
     }
 
     public function isDraft(): bool

@@ -81,6 +81,24 @@ class Event extends Model
             ->where('version', 1);
     }
 
+    public function latestCompletedAgreement(): ?Agreement
+    {
+        return $this->agreements()
+            ->where('status', Agreement::STATUS_COMPLETED)
+            ->orderByRaw("CASE WHEN type = 'addendum' THEN 2 ELSE 1 END DESC")
+            ->orderByDesc('version')
+            ->first();
+    }
+
+    public function activeAgreement(): ?Agreement
+    {
+        return $this->agreements()
+            ->whereNotIn('status', [Agreement::STATUS_COMPLETED, Agreement::STATUS_CANCELLED, Agreement::STATUS_REJECTED])
+            ->latest('id')
+            ->first()
+            ?? $this->latestCompletedAgreement();
+    }
+
 
     public function harga()
     {

@@ -16,32 +16,58 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  */
 class DashboardAgreementFileController extends Controller
 {
-    public function unsigned(string $uid): StreamedResponse
+    public function unsigned(string $uid, ?string $agreementUid = null): StreamedResponse
     {
         $event = $this->authorizedEvent($uid);
 
-        $agreement = $event->currentMouAgreement;
+        $agreement = $agreementUid
+            ? Agreement::where('uid', $agreementUid)->where('event_uid', $event->uid)->first()
+            : Agreement::query()
+                ->where('event_uid', $event->uid)
+                ->where(function ($query) {
+                    $query->where('status', Agreement::STATUS_READY)
+                        ->orWhere('status', Agreement::STATUS_COMPLETED);
+                })
+                ->whereNotNull('unsigned_pdf_path')
+                ->orderByRaw("CASE WHEN type = 'addendum' THEN 2 ELSE 1 END DESC")
+                ->orderByDesc('version')
+                ->latest('id')
+                ->first();
 
-        // Unsigned is only served for the current MOU Agreement while it is
-        // READY and actually has a stored unsigned PDF. Everything else is a
-        // safe 404 — no agreement UID or path is ever accepted from request.
         abort_unless(
             $agreement !== null
-            && $agreement->isReady()
+            && ($agreement->isReady() || $agreement->isCompleted())
             && filled($agreement->unsigned_pdf_path),
             404
         );
 
-        return $this->stream($agreement->unsigned_pdf_path, 'mou-unsigned.pdf');
+        $filename = ($agreement->type === Agreement::TYPE_ADDENDUM ? 'addendum-v' . $agreement->version . '-unsigned.pdf' : 'mou-unsigned.pdf');
+
+        return $this->stream($agreement->unsigned_pdf_path, $filename);
     }
 
-    public function signed(string $uid): StreamedResponse
+    public function signed(string $uid, ?string $agreementUid = null): StreamedResponse
     {
         $event = $this->authorizedEvent($uid);
 
-        $path = $event->currentMouAgreement?->signed_pdf_path;
+        $agreement = $agreementUid
+            ? Agreement::where('uid', $agreementUid)->where('event_uid', $event->uid)->first()
+            : Agreement::query()
+                ->where('event_uid', $event->uid)
+                ->where(function ($query) {
+                    $query->where('status', Agreement::STATUS_READY)
+                        ->orWhere('status', Agreement::STATUS_COMPLETED);
+                })
+                ->whereNotNull('signed_pdf_path')
+                ->orderByRaw("CASE WHEN type = 'addendum' THEN 2 ELSE 1 END DESC")
+                ->orderByDesc('version')
+                ->latest('id')
+                ->first();
 
-        return $this->stream($path, 'mou-signed.pdf');
+        $path = $agreement?->signed_pdf_path;
+        $filename = ($agreement?->type === Agreement::TYPE_ADDENDUM ? 'addendum-v' . ($agreement?->version ?? 1) . '-signed.pdf' : 'mou-signed.pdf');
+
+        return $this->stream($path, $filename);
     }
 
     /**

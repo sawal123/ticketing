@@ -17,8 +17,6 @@ class EventActivationGuardService
      */
     public function evaluateForEvent(Event $event): array
     {
-        $event->loadMissing('currentMouAgreement');
-
         $review = app(AgreementReviewService::class)->activationPrerequisiteItemsForEvent($event);
         $failedReviewReason = collect($review)
             ->firstWhere('passed', false)['reason'] ?? null;
@@ -27,21 +25,38 @@ class EventActivationGuardService
             return $this->blocked($failedReviewReason);
         }
 
-        $agreement = $event->currentMouAgreement;
+        $pendingAddendum = Agreement::query()
+            ->where('event_uid', $event->uid)
+            ->where('type', Agreement::TYPE_ADDENDUM)
+            ->whereNotIn('status', [Agreement::STATUS_COMPLETED, Agreement::STATUS_CANCELLED])
+            ->first();
 
-        if (! $agreement || ! $agreement->isCompleted()) {
+        if ($pendingAddendum) {
+            return $this->blocked('Terdapat addendum yang belum selesai.');
+        }
+
+        $agreement = Agreement::query()
+            ->where('event_uid', $event->uid)
+            ->where('status', Agreement::STATUS_COMPLETED)
+            ->orderByRaw("CASE WHEN type = 'addendum' THEN 2 ELSE 1 END DESC")
+            ->orderByDesc('version')
+            ->first();
+
+        if (! $agreement) {
             return $this->blocked('MOU belum selesai.');
         }
 
+        $documentLabel = $agreement->isAddendum() ? 'Addendum' : 'MOU';
+
         if ($agreement->signed_review_status !== Agreement::SIGNED_REVIEW_VERIFIED) {
-            return $this->blocked('MOU bertanda tangan belum diverifikasi.');
+            return $this->blocked($documentLabel.' bertanda tangan belum diverifikasi.');
         }
 
         $path = $agreement->signed_pdf_path;
         $disk = Storage::disk('local');
 
         if (! filled($path) || ! $disk->exists($path)) {
-            return $this->blocked('Dokumen MOU bertanda tangan belum tersedia.');
+            return $this->blocked('Dokumen '.$documentLabel.' bertanda tangan belum tersedia.');
         }
 
         return [
