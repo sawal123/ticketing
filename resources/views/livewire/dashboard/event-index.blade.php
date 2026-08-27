@@ -86,13 +86,22 @@
                             <div class="grid grid-cols-5 gap-3">
                                 <a href="{{ route('dashboard.event.detail', $event->uid) }}" wire:navigate class="col-span-4">
                                     <x-admin.button variant="secondary"
-                                        class="w-full uppercase text-[11px] font-black tracking-widest border-slate-200 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-600 hover:text-indigo-600 transition-colors">
-                                        Detail Event
+                                        class="w-full !justify-between border-slate-200 bg-slate-50/90 px-4 py-3 text-slate-700 shadow-sm hover:-translate-y-0.5 hover:border-indigo-300 hover:bg-white hover:text-indigo-700 dark:border-slate-700 dark:bg-slate-800/70 dark:hover:border-indigo-500 dark:hover:bg-slate-800">
+                                        <span class="flex min-w-0 items-center gap-3 text-left">
+                                            <span class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-300">
+                                                <i data-lucide="eye" class="h-4 w-4"></i>
+                                            </span>
+                                            <span class="min-w-0">
+                                                <span class="block truncate text-sm font-bold">Detail Event</span>
+                                                <span class="block truncate text-[11px] font-medium text-slate-500 dark:text-slate-400">Lihat status, MOU, dan transaksi</span>
+                                            </span>
+                                        </span>
+                                        <i data-lucide="arrow-up-right" class="h-4 w-4 flex-shrink-0 opacity-70"></i>
                                     </x-admin.button>
                                 </a>
                                 <a href="{{ route('dashboard.event.edit', $event->uid) }}" wire:navigate class="col-span-1">
                                     <x-admin.button variant="secondary"
-                                        class="w-full !px-0 flex items-center justify-center border-slate-200 dark:border-slate-700 hover:border-amber-300 dark:hover:border-amber-600 hover:text-amber-600 transition-colors"
+                                        class="w-full !px-0 border-slate-200 bg-white shadow-sm hover:-translate-y-0.5 hover:border-amber-300 hover:text-amber-600 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-amber-500"
                                         title="Edit Event">
                                         <i data-lucide="pencil" class="w-4 h-4"></i>
                                     </x-admin.button>
@@ -115,20 +124,40 @@
                                 </a>
                             </div>
                         @else
-                            <div class="grid grid-cols-5 gap-3">
-                                <a href="{{ route('dashboard.event.edit', $event->uid) }}" wire:navigate class="col-span-4">
+                            <div class="space-y-3">
+                                <a href="{{ route('dashboard.event.detail', $event->uid) }}" wire:navigate class="block">
                                     <x-admin.button variant="secondary"
-                                        class="w-full uppercase text-[11px] font-black tracking-widest border-slate-200 dark:border-slate-700 hover:border-amber-300 dark:hover:border-amber-600 hover:text-amber-600 transition-colors">
-                                        Edit Event
+                                        class="w-full !justify-between border-slate-200 bg-slate-50/90 px-4 py-3 text-slate-700 shadow-sm hover:-translate-y-0.5 hover:border-indigo-300 hover:bg-white hover:text-indigo-700 dark:border-slate-700 dark:bg-slate-800/70 dark:hover:border-indigo-500 dark:hover:bg-slate-800">
+                                        <span class="flex min-w-0 items-center gap-3 text-left">
+                                            <span class="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-300">
+                                                <i data-lucide="eye" class="h-4 w-4"></i>
+                                            </span>
+                                            <span class="min-w-0">
+                                                <span class="block truncate text-sm font-bold">Detail Event</span>
+                                                <span class="block truncate text-[11px] font-medium text-slate-500 dark:text-slate-400">Pantau status pengajuan dan MOU</span>
+                                            </span>
+                                        </span>
+                                        <i data-lucide="arrow-up-right" class="h-4 w-4 flex-shrink-0 opacity-70"></i>
                                     </x-admin.button>
                                 </a>
-                                <x-admin.button type="button" variant="danger" loadingTarget="deletePendingEvent"
-                                    wire:click="deletePendingEvent('{{ $event->uid }}')"
-                                    wire:confirm="Yakin ingin menghapus event yang masih menunggu persetujuan ini?"
-                                    class="w-full !px-0 flex items-center justify-center"
-                                    title="Hapus Event">
-                                    <i data-lucide="trash-2" class="w-4 h-4"></i>
-                                </x-admin.button>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <a href="{{ route('dashboard.event.edit', $event->uid) }}" wire:navigate class="block">
+                                        <x-admin.button variant="secondary"
+                                            class="w-full border-slate-200 bg-white shadow-sm hover:-translate-y-0.5 hover:border-amber-300 hover:text-amber-600 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-amber-500"
+                                            title="Edit Event">
+                                            <i data-lucide="pencil" class="w-4 h-4"></i>
+                                            Edit Event
+                                        </x-admin.button>
+                                    </a>
+                                    <x-admin.button type="button" variant="danger" loadingTarget="deletePendingEvent"
+                                        wire:click="deletePendingEvent('{{ $event->uid }}')"
+                                        wire:confirm="Yakin ingin menghapus event yang masih menunggu persetujuan ini?"
+                                        class="w-full shadow-lg shadow-rose-200/70 hover:-translate-y-0.5 dark:shadow-none"
+                                        title="Hapus Event">
+                                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                        Hapus Event
+                                    </x-admin.button>
+                                </div>
                             </div>
                         @endif
                     </div>

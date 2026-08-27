@@ -280,11 +280,11 @@
                 <div class="space-y-4">
                     {{-- History Tabel Agreement --}}
                     @if (!empty($agreementsHistory) && $agreementsHistory->count() > 0)
-                        <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                            <h4 class="text-sm font-black uppercase tracking-[0.2em] text-slate-700 mb-4">Riwayat Agreement & Addendum</h4>
-                            <div class="overflow-x-auto rounded-xl border border-slate-200">
+                        <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+                            <h4 class="mb-4 text-sm font-black uppercase tracking-[0.2em] text-slate-700 dark:text-white">Riwayat Agreement & Addendum</h4>
+                            <div class="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700">
                                 <table class="w-full text-left text-sm">
-                                    <thead class="bg-slate-50 text-xs uppercase tracking-wider text-slate-500 border-b border-slate-200">
+                                    <thead class="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wider text-slate-500 dark:border-slate-700 dark:bg-slate-700/50 dark:text-slate-300">
                                         <tr>
                                             <th class="px-4 py-3 font-bold">Dokumen</th>
                                             <th class="px-4 py-3 font-bold">Versi</th>
@@ -293,13 +293,13 @@
                                             <th class="px-4 py-3 font-bold">File PDF</th>
                                         </tr>
                                     </thead>
-                                    <tbody class="divide-y divide-slate-100">
+                                    <tbody class="divide-y divide-slate-100 dark:divide-slate-700/80">
                                         @foreach ($agreementsHistory as $historyItem)
-                                            <tr class="hover:bg-slate-50/50">
-                                                <td class="px-4 py-3 font-bold text-slate-800">
+                                            <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-700/30">
+                                                <td class="px-4 py-3 font-bold text-slate-800 dark:text-white">
                                                     {{ strtoupper($historyItem->type) }}
                                                 </td>
-                                                <td class="px-4 py-3 text-slate-600">
+                                                <td class="px-4 py-3 text-slate-600 dark:text-slate-300">
                                                     v{{ $historyItem->version }}
                                                 </td>
                                                 <td class="px-4 py-3">
@@ -308,7 +308,7 @@
                                                         {{ $historyItem->status }}
                                                     </span>
                                                 </td>
-                                                <td class="px-4 py-3 text-slate-600">
+                                                <td class="px-4 py-3 text-slate-600 dark:text-slate-300">
                                                     {{ $historyItem->completed_at ? $historyItem->completed_at->format('d M Y H:i') : '-' }}
                                                 </td>
                                                 <td class="px-4 py-3 space-x-2">
@@ -363,7 +363,7 @@
                                             : ('Lakukan tanda tangan ' . $docTypeLabel . ', lalu unggah kembali hasilnya ke Gotik.'))) }}
                             </p>
                             @if ($mouSignedRejected && $mouAgreement->signed_rejection_reason)
-                                <div class="mt-3 rounded-xl border border-rose-200 bg-white/70 px-4 py-3 text-sm text-rose-700">
+                                <div class="mt-3 rounded-xl border border-rose-200 bg-white/70 px-4 py-3 text-sm text-rose-700 dark:bg-slate-800 dark:text-rose-200">
                                     <p class="text-xs font-black uppercase tracking-[0.1em] text-rose-500">Alasan penolakan</p>
                                     <p class="mt-1">{{ $mouAgreement->signed_rejection_reason }}</p>
                                 </div>
@@ -376,7 +376,7 @@
                         </div>
 
                         @if ($mouAgreement->isReady() && ! $mouSignedAvailable)
-                            <div class="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm text-slate-600 shadow-sm">
+                            <div class="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm text-slate-600 shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
                                 <ol class="list-decimal list-inside space-y-1.5">
                                     <li>Download PDF {{ $docTypeLabel }}.</li>
                                     <li>Login Privy Anda sendiri.</li>
@@ -387,7 +387,7 @@
                             </div>
                         @endif
 
-                        <div class="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
+                        <div class="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm dark:border-slate-700 dark:bg-slate-800">
                             <div class="flex flex-wrap items-center gap-3">
                                 @if ($mouUnsignedAvailable)
                                     <a href="{{ route('dashboard.event.mou.unsigned', ['uid' => $event->uid, 'agreementUid' => $mouAgreement->uid]) }}" target="_blank" rel="noopener"
@@ -409,7 +409,7 @@
                             @if ($mouUploadAvailable)
                                 <form wire:submit="uploadSignedMou" class="mt-4 space-y-3">
                                     <div>
-                                        <label class="block text-[11px] font-black text-slate-400 uppercase tracking-[0.1em] mb-2">
+                                        <label class="mb-2 block text-[11px] font-black uppercase tracking-[0.1em] text-slate-400 dark:text-slate-300">
                                             {{ $mouSignedAvailable ? "Upload Ulang {$docTypeLabel} Bertanda Tangan" : "Upload {$docTypeLabel} Bertanda Tangan" }}
                                         </label>
                                         <input type="file" wire:model="signedMou" accept=".pdf,application/pdf"
@@ -420,28 +420,27 @@
                                         <div class="mt-2 text-xs text-slate-500 dark:text-slate-400">Format: PDF. Maksimal 10 MB.</div>
                                         @error('signedMou') <span class="text-rose-500 text-xs mt-1">{{ $message }}</span> @enderror
                                     </div>
-                                    <button type="submit"
-                                        class="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-700">
-                                        <i data-lucide="upload" class="h-4 w-4"></i>
-                                        {{ $mouSignedAvailable ? 'Upload Ulang' : "Upload {$docTypeLabel} Bertanda Tangan" }}
-                                    </button>
+                                    <x-admin.button type="submit" variant="primary" icon="upload" loadingTarget="uploadSignedMou"
+                                        class="inline-flex min-w-[15rem] bg-indigo-600 text-white shadow-indigo-200 hover:bg-indigo-700 dark:shadow-none">
+                                        {{ $mouSignedAvailable ? 'Upload Ulang Dokumen Signed' : "Upload {$docTypeLabel} Bertanda Tangan" }}
+                                    </x-admin.button>
                                 </form>
                             @endif
                         </div>
                     @elseif ($addendumPreview)
                         @include('agreements.addendum-preview', ['preview' => $addendumPreview])
                     @elseif ($mouPreview)
-                        <div class="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm text-slate-500 shadow-sm">
+                        <div class="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm text-slate-500 shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
                             Preview MOU pada tahap ini bersifat read-only dan selalu membaca data live event yang terbaru.
                         </div>
                         @include('agreements.mou-preview', ['preview' => $mouPreview])
                     @else
-                        <div class="rounded-[2rem] border-2 border-dashed border-slate-200 bg-white px-8 py-14 text-center shadow-sm">
-                            <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-slate-100 text-slate-400">
+                        <div class="rounded-[2rem] border-2 border-dashed border-slate-200 bg-white px-8 py-14 text-center shadow-sm dark:border-slate-700 dark:bg-slate-800">
+                            <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-slate-100 text-slate-400 dark:bg-slate-700 dark:text-slate-300">
                                 <i data-lucide="file-search" class="h-8 w-8"></i>
                             </div>
-                            <h3 class="mt-5 text-lg font-bold text-slate-900">MOU belum tersedia untuk event ini.</h3>
-                            <p class="mt-2 text-sm text-slate-500">
+                            <h3 class="mt-5 text-lg font-bold text-slate-900 dark:text-white">MOU belum tersedia untuk event ini.</h3>
+                            <p class="mt-2 text-sm text-slate-500 dark:text-slate-400">
                                 Event lama tanpa agreement tetap aman dibuka, tetapi belum memiliki preview MOU.
                             </p>
                         </div>
