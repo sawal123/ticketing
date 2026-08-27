@@ -108,7 +108,7 @@ class AgreementSignedUploadService
                     'signed_rejection_reason' => null,
                     'signed_at' => now(),
                     'completed_at' => null,
-                ])->save();
+                ])->saveOrFail();
 
                 $lockedAgreement->refresh();
 
@@ -216,7 +216,11 @@ class AgreementSignedUploadService
         if ($agreementUid) {
             $agreementQuery->where('uid', $agreementUid);
         } else {
-            $agreementQuery->where('status', Agreement::STATUS_READY)->latest('id');
+            $agreementQuery
+                ->where('status', Agreement::STATUS_READY)
+                ->orderByRaw("CASE WHEN type = 'addendum' THEN 2 ELSE 1 END DESC")
+                ->orderByDesc('version')
+                ->latest('id');
         }
 
         $agreement = $agreementQuery->first();

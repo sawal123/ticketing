@@ -379,8 +379,10 @@
                             <div class="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm text-slate-600 shadow-sm">
                                 <ol class="list-decimal list-inside space-y-1.5">
                                     <li>Download PDF {{ $docTypeLabel }}.</li>
-                                    <li>Tanda tangani dokumen (secara manual atau digital).</li>
-                                    <li>Upload kembali PDF bertanda tangan ke Gotik.</li>
+                                    <li>Login Privy Anda sendiri.</li>
+                                    <li>Tanda tangani {{ $docTypeLabel }} di Privy.</li>
+                                    <li>Download hasil signed dari Privy.</li>
+                                    <li>Upload kembali PDF signed ke Gotik.</li>
                                 </ol>
                             </div>
                         @endif

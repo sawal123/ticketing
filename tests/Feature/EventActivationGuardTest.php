@@ -123,6 +123,116 @@ class EventActivationGuardTest extends TestCase
         $this->assertActivationFails($event, $admin, 'Dokumen MOU bertanda tangan belum tersedia.');
     }
 
+    public function test_pending_ready_addendum_blocks_activation(): void
+    {
+        $admin = $this->admin();
+        $tenant = $this->tenant();
+        $event = $this->event($tenant);
+        $mou = $this->seedActivationReadyState($tenant, $event);
+
+        Agreement::create([
+            'uid' => (string) Str::uuid(),
+            'event_uid' => $event->uid,
+            'tenant_user_uid' => $tenant->uid,
+            'type' => Agreement::TYPE_ADDENDUM,
+            'parent_agreement_uid' => $mou->uid,
+            'version' => 1,
+            'status' => Agreement::STATUS_READY,
+            'document_number' => 'ADD-ACT-001',
+            'unsigned_pdf_path' => self::DIR.'/'.$event->uid.'/addendum-ready-unsigned.pdf',
+            'created_by' => $tenant->uid,
+        ]);
+
+        Storage::disk('local')->put(self::DIR.'/'.$event->uid.'/addendum-ready-unsigned.pdf', '%PDF-1.4 ready');
+
+        $this->assertActivationFails($event, $admin, 'Terdapat addendum yang belum selesai.');
+    }
+
+    public function test_cancelled_addendum_does_not_block_activation(): void
+    {
+        $admin = $this->admin();
+        $tenant = $this->tenant();
+        $event = $this->event($tenant);
+        $mou = $this->seedActivationReadyState($tenant, $event);
+
+        Agreement::create([
+            'uid' => (string) Str::uuid(),
+            'event_uid' => $event->uid,
+            'tenant_user_uid' => $tenant->uid,
+            'type' => Agreement::TYPE_ADDENDUM,
+            'parent_agreement_uid' => $mou->uid,
+            'version' => 1,
+            'status' => Agreement::STATUS_CANCELLED,
+            'document_number' => 'ADD-ACT-CANCELLED',
+            'created_by' => $tenant->uid,
+        ]);
+
+        $result = app(EventActivationGuardService::class)->evaluateForEvent($event);
+
+        $this->assertTrue($result['can_activate']);
+    }
+
+    public function test_latest_completed_addendum_must_be_verified_for_activation(): void
+    {
+        $admin = $this->admin();
+        $tenant = $this->tenant();
+        $event = $this->event($tenant);
+        $mou = $this->seedActivationReadyState($tenant, $event);
+        $signedPath = self::DIR.'/'.$event->uid.'/addendum-completed-signed.pdf';
+
+        Agreement::create([
+            'uid' => (string) Str::uuid(),
+            'event_uid' => $event->uid,
+            'tenant_user_uid' => $tenant->uid,
+            'type' => Agreement::TYPE_ADDENDUM,
+            'parent_agreement_uid' => $mou->uid,
+            'version' => 1,
+            'status' => Agreement::STATUS_COMPLETED,
+            'document_number' => 'ADD-ACT-VERIFICATION',
+            'unsigned_pdf_path' => self::DIR.'/'.$event->uid.'/addendum-completed-unsigned.pdf',
+            'signed_pdf_path' => $signedPath,
+            'signed_review_status' => Agreement::SIGNED_REVIEW_PENDING,
+            'completed_at' => now()->subMinutes(10),
+            'created_by' => $tenant->uid,
+        ]);
+
+        Storage::disk('local')->put($signedPath, '%PDF-1.4 addendum');
+        Storage::disk('local')->put(self::DIR.'/'.$event->uid.'/addendum-completed-unsigned.pdf', '%PDF-1.4 addendum unsigned');
+
+        $this->assertActivationFails($event, $admin, 'Addendum bertanda tangan belum diverifikasi.');
+    }
+
+    public function test_missing_physical_signed_completed_addendum_blocks_activation(): void
+    {
+        $admin = $this->admin();
+        $tenant = $this->tenant();
+        $event = $this->event($tenant);
+        $mou = $this->seedActivationReadyState($tenant, $event);
+        $signedPath = self::DIR.'/'.$event->uid.'/addendum-missing-signed.pdf';
+
+        Agreement::create([
+            'uid' => (string) Str::uuid(),
+            'event_uid' => $event->uid,
+            'tenant_user_uid' => $tenant->uid,
+            'type' => Agreement::TYPE_ADDENDUM,
+            'parent_agreement_uid' => $mou->uid,
+            'version' => 1,
+            'status' => Agreement::STATUS_COMPLETED,
+            'document_number' => 'ADD-ACT-MISSING-FILE',
+            'unsigned_pdf_path' => self::DIR.'/'.$event->uid.'/addendum-missing-unsigned.pdf',
+            'signed_pdf_path' => $signedPath,
+            'signed_review_status' => Agreement::SIGNED_REVIEW_VERIFIED,
+            'signed_verified_by' => $admin->uid,
+            'signed_verified_at' => now()->subMinutes(5),
+            'completed_at' => now()->subMinutes(3),
+            'created_by' => $tenant->uid,
+        ]);
+
+        Storage::disk('local')->put(self::DIR.'/'.$event->uid.'/addendum-missing-unsigned.pdf', '%PDF-1.4 addendum unsigned');
+
+        $this->assertActivationFails($event, $admin, 'Dokumen Addendum bertanda tangan belum tersedia.');
+    }
+
     public function test_unverified_bank_account_blocks_activation(): void
     {
         $admin = $this->admin();

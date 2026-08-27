@@ -475,6 +475,8 @@ class EventDetail extends Component
         try {
             $activeAgreement = $event->agreements()
                 ->where('status', Agreement::STATUS_READY)
+                ->orderByRaw("CASE WHEN type = 'addendum' THEN 2 ELSE 1 END DESC")
+                ->orderByDesc('version')
                 ->latest('id')
                 ->first();
 

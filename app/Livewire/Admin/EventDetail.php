@@ -730,6 +730,8 @@ class EventDetail extends Component
         $event = $this->getCurrentEventModel();
         $activeAgreement = $event->agreements()
             ->where('status', Agreement::STATUS_DRAFT)
+            ->orderByRaw("CASE WHEN type = 'addendum' THEN 2 ELSE 1 END DESC")
+            ->orderByDesc('version')
             ->latest('id')
             ->first();
 
@@ -761,6 +763,8 @@ class EventDetail extends Component
         $event = $this->getCurrentEventModel();
         $activeAgreement = $event->agreements()
             ->where('status', Agreement::STATUS_READY)
+            ->orderByRaw("CASE WHEN type = 'addendum' THEN 2 ELSE 1 END DESC")
+            ->orderByDesc('version')
             ->latest('id')
             ->first();
 
@@ -792,6 +796,8 @@ class EventDetail extends Component
         $event = $this->getCurrentEventModel();
         $activeAgreement = $event->agreements()
             ->where('status', Agreement::STATUS_READY)
+            ->orderByRaw("CASE WHEN type = 'addendum' THEN 2 ELSE 1 END DESC")
+            ->orderByDesc('version')
             ->latest('id')
             ->first();
 
@@ -987,6 +993,7 @@ class EventDetail extends Component
         if ($this->activeTab === 'review-mou' && $this->canManageAgreementReview()) {
             $mouPreview = app(AgreementPreviewService::class)->buildForEvent($event);
             $agreementReview = app(AgreementReviewService::class)->buildForEvent($event);
+            $commercialReview = app(AgreementPreviewService::class)->buildCommercialSummaryForEvent($event);
             $hasAgreementsTable = \Illuminate\Support\Facades\Schema::hasTable('agreements');
 
             $agreementsHistory = $hasAgreementsTable

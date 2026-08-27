@@ -32,6 +32,30 @@ class AgreementVersioningService
                 return null;
             }
 
+            $existingDraft = Agreement::query()
+                ->where('event_uid', $event->uid)
+                ->where('type', Agreement::TYPE_ADDENDUM)
+                ->where('status', Agreement::STATUS_DRAFT)
+                ->latest('version')
+                ->lockForUpdate()
+                ->first();
+
+            if ($existingDraft && $existingDraft->parent_agreement_uid !== $latestCompleted->uid) {
+                if (! $this->deleteDraftAddendumIfSafe($existingDraft)) {
+                    return null;
+                }
+
+                $existingDraft = null;
+            }
+
+            $pendingAddendum = Agreement::query()
+                ->where('event_uid', $event->uid)
+                ->where('type', Agreement::TYPE_ADDENDUM)
+                ->whereNotIn('status', [Agreement::STATUS_COMPLETED, Agreement::STATUS_CANCELLED, Agreement::STATUS_DRAFT])
+                ->latest('version')
+                ->lockForUpdate()
+                ->first();
+
             $freshEvent = Event::query()
                 ->with([
                     'organizer',
@@ -49,19 +73,19 @@ class AgreementVersioningService
             $liveSnapshots = $this->buildLiveSnapshots($freshEvent);
 
             if (! $this->hasContractualDiff($liveSnapshots, $latestCompleted)) {
+                if ($existingDraft) {
+                    $this->deleteDraftAddendumIfSafe($existingDraft);
+                }
+
                 return null;
             }
 
-            // If an open (non-completed) Addendum exists, reuse it without duplicating
-            $existingDraft = Agreement::query()
-                ->where('event_uid', $freshEvent->uid)
-                ->where('type', Agreement::TYPE_ADDENDUM)
-                ->whereNotIn('status', [Agreement::STATUS_COMPLETED, Agreement::STATUS_CANCELLED])
-                ->latest('version')
-                ->first();
-
             if ($existingDraft) {
                 return $existingDraft;
+            }
+
+            if ($pendingAddendum) {
+                return null;
             }
 
             $lastAddendumVersion = Agreement::query()
@@ -206,7 +230,6 @@ class AgreementVersioningService
             'bank_name' => 'Nama Bank',
             'account_number' => 'Nomor Rekening',
             'account_holder_name' => 'Nama Pemilik Rekening',
-            'verification_status' => 'Status Verifikasi Rekening',
         ];
 
         foreach ($bankFields as $field => $label) {
@@ -233,7 +256,6 @@ class AgreementVersioningService
             'document_number' => 'Nomor Surat',
             'document_date' => 'Tanggal Surat',
             'original_name' => 'Nama File Surat',
-            'verification_status' => 'Status Verifikasi Surat',
         ];
 
         foreach ($docFields as $field => $label) {
@@ -269,9 +291,9 @@ class AgreementVersioningService
         }
 
         $beforeGateways = collect($beforeComm['payment_gateways'] ?? [])
-            ->keyBy(fn ($g) => (string) ($g['payment_gateway_id'] ?? $g['gateway_name'] ?? ''));
+            ->keyBy(fn ($g) => $this->gatewaySnapshotKey((array) $g));
         $afterGateways = collect($afterComm['payment_gateways'] ?? [])
-            ->keyBy(fn ($g) => (string) ($g['payment_gateway_id'] ?? $g['gateway_name'] ?? ''));
+            ->keyBy(fn ($g) => $this->gatewaySnapshotKey((array) $g));
 
         $allGatewayKeys = $beforeGateways->keys()->merge($afterGateways->keys())->unique();
 
@@ -279,10 +301,14 @@ class AgreementVersioningService
             $bg = $beforeGateways->get($key);
             $ag = $afterGateways->get($key);
 
-            $gName = $ag['gateway_name'] ?? $bg['gateway_name'] ?? $key;
+            $gName = $ag['payment'] ?? $bg['payment'] ?? $key;
 
-            $bActive = (bool) ($bg['is_active'] ?? false);
-            $aActive = (bool) ($ag['is_active'] ?? false);
+            $bEventActive = (bool) ($bg['event_is_active'] ?? false);
+            $aEventActive = (bool) ($ag['event_is_active'] ?? false);
+            $bGlobalActive = (bool) ($bg['global_is_active'] ?? false);
+            $aGlobalActive = (bool) ($ag['global_is_active'] ?? false);
+            $bEffectiveActive = (bool) ($bg['effective_is_active'] ?? false);
+            $aEffectiveActive = (bool) ($ag['effective_is_active'] ?? false);
             $bMode = (string) ($bg['fee_mode'] ?? 'global');
             $aMode = (string) ($ag['fee_mode'] ?? 'global');
             $bFixed = (string) ($bg['resolved_fee_fixed'] ?? '0.00');
@@ -290,9 +316,16 @@ class AgreementVersioningService
             $bPercent = (string) ($bg['resolved_fee_percent'] ?? '0');
             $aPercent = (string) ($ag['resolved_fee_percent'] ?? '0');
 
-            if ($bActive !== $aActive || $bMode !== $aMode || $bFixed !== $aFixed || $bPercent !== $aPercent) {
-                $bDesc = $bActive ? "Aktif [{$bMode}] Fixed: Rp {$bFixed}, {$bPercent}%" : 'Nonaktif';
-                $aDesc = $aActive ? "Aktif [{$aMode}] Fixed: Rp {$aFixed}, {$aPercent}%" : 'Nonaktif';
+            if (
+                $bEventActive !== $aEventActive
+                || $bGlobalActive !== $aGlobalActive
+                || $bEffectiveActive !== $aEffectiveActive
+                || $bMode !== $aMode
+                || $bFixed !== $aFixed
+                || $bPercent !== $aPercent
+            ) {
+                $bDesc = $this->formatGatewaySnapshotDisplay($bEventActive, $bGlobalActive, $bEffectiveActive, $bMode, $bFixed, $bPercent);
+                $aDesc = $this->formatGatewaySnapshotDisplay($aEventActive, $aGlobalActive, $aEffectiveActive, $aMode, $aFixed, $aPercent);
 
                 $diffs[] = [
                     'section' => 'Payment Gateway',
@@ -459,6 +492,45 @@ class AgreementVersioningService
             'fixed' => 'Rp '.number_format($value, 0, ',', '.'),
             default => 'None / Rp 0',
         };
+    }
+
+    private function gatewaySnapshotKey(array $gateway): string
+    {
+        return (string) ($gateway['payment_gateway_id'] ?? $gateway['payment'] ?? '');
+    }
+
+    private function formatGatewaySnapshotDisplay(
+        bool $eventIsActive,
+        bool $globalIsActive,
+        bool $effectiveIsActive,
+        string $mode,
+        string $fixed,
+        string $percent
+    ): string {
+        return sprintf(
+            'Event: %s | Global: %s | Effective: %s | Mode: %s | Fixed: Rp %s | Percent: %s%%',
+            $eventIsActive ? 'Aktif' : 'Nonaktif',
+            $globalIsActive ? 'Aktif' : 'Nonaktif',
+            $effectiveIsActive ? 'Aktif' : 'Nonaktif',
+            $mode,
+            $fixed,
+            $percent
+        );
+    }
+
+    private function deleteDraftAddendumIfSafe(Agreement $agreement): bool
+    {
+        if (! $agreement->isAddendum() || ! $agreement->isDraft()) {
+            return false;
+        }
+
+        if (filled($agreement->unsigned_pdf_path) || filled($agreement->signed_pdf_path)) {
+            return false;
+        }
+
+        $agreement->delete();
+
+        return true;
     }
 
     private function formatDateTime($value): ?string

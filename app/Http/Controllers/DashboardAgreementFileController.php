@@ -22,7 +22,17 @@ class DashboardAgreementFileController extends Controller
 
         $agreement = $agreementUid
             ? Agreement::where('uid', $agreementUid)->where('event_uid', $event->uid)->first()
-            : ($event->activeAgreement() ?? $event->currentMouAgreement);
+            : Agreement::query()
+                ->where('event_uid', $event->uid)
+                ->where(function ($query) {
+                    $query->where('status', Agreement::STATUS_READY)
+                        ->orWhere('status', Agreement::STATUS_COMPLETED);
+                })
+                ->whereNotNull('unsigned_pdf_path')
+                ->orderByRaw("CASE WHEN type = 'addendum' THEN 2 ELSE 1 END DESC")
+                ->orderByDesc('version')
+                ->latest('id')
+                ->first();
 
         abort_unless(
             $agreement !== null
@@ -42,7 +52,17 @@ class DashboardAgreementFileController extends Controller
 
         $agreement = $agreementUid
             ? Agreement::where('uid', $agreementUid)->where('event_uid', $event->uid)->first()
-            : ($event->activeAgreement() ?? $event->currentMouAgreement);
+            : Agreement::query()
+                ->where('event_uid', $event->uid)
+                ->where(function ($query) {
+                    $query->where('status', Agreement::STATUS_READY)
+                        ->orWhere('status', Agreement::STATUS_COMPLETED);
+                })
+                ->whereNotNull('signed_pdf_path')
+                ->orderByRaw("CASE WHEN type = 'addendum' THEN 2 ELSE 1 END DESC")
+                ->orderByDesc('version')
+                ->latest('id')
+                ->first();
 
         $path = $agreement?->signed_pdf_path;
         $filename = ($agreement?->type === Agreement::TYPE_ADDENDUM ? 'addendum-v' . ($agreement?->version ?? 1) . '-signed.pdf' : 'mou-signed.pdf');

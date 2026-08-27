@@ -57,8 +57,11 @@ class AgreementFinalizationService
                 if ($agreementUid) {
                     $agreementQuery->where('uid', $agreementUid);
                 } else {
-                    // Lock active draft agreement (e.g. Addendum draft if exists, else MOU)
-                    $agreementQuery->where('status', Agreement::STATUS_DRAFT)->latest('id');
+                    $agreementQuery
+                        ->where('status', Agreement::STATUS_DRAFT)
+                        ->orderByRaw("CASE WHEN type = 'addendum' THEN 2 ELSE 1 END DESC")
+                        ->orderByDesc('version')
+                        ->latest('id');
                 }
 
                 $agreement = $agreementQuery->first();
@@ -115,6 +118,25 @@ class AgreementFinalizationService
                 $isAddendum = $agreement->type === Agreement::TYPE_ADDENDUM;
                 $templateVersion = $isAddendum ? AgreementVersioningService::TEMPLATE_VERSION : self::TEMPLATE_VERSION;
 
+                if ($isAddendum) {
+                    $parentAgreement = $agreement->parentAgreement
+                        ?? Agreement::query()
+                            ->where('uid', $agreement->parent_agreement_uid)
+                            ->lockForUpdate()
+                            ->first();
+
+                    $diffs = $parentAgreement
+                        ? app(AgreementVersioningService::class)->computeDiffs($snapshots, $parentAgreement)
+                        : [];
+
+                    if (count($diffs) === 0) {
+                        return $this->failure(
+                            'no_contractual_diff',
+                            'Addendum tidak dapat difinalisasi tanpa perubahan kontraktual.'
+                        );
+                    }
+                }
+
                 $payload = $this->buildPdfPayload($agreement, $snapshots);
                 $pdfContent = $isAddendum
                     ? $this->renderAddendumPdf($payload, $agreement)
@@ -134,7 +156,7 @@ class AgreementFinalizationService
                     'template_version' => $templateVersion,
                     'unsigned_pdf_path' => $path,
                     'status' => Agreement::STATUS_READY,
-                ]))->save();
+                ]))->saveOrFail();
 
                 $agreement->refresh();
 

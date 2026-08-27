@@ -16,7 +16,7 @@ class AgreementSignedVerificationService
      */
     public function approveForEvent(Event $event, string $actorUid, ?string $agreementUid = null): array
     {
-        return DB::transaction(function () use ($event, $actorUid, $agreementUid) {
+        $result = DB::transaction(function () use ($event, $actorUid, $agreementUid) {
             $admin = $this->resolveAdmin($actorUid);
             $lockedAgreement = $this->resolveLockedAgreement($event, $agreementUid);
 
@@ -30,13 +30,20 @@ class AgreementSignedVerificationService
                 'signed_rejection_reason' => null,
                 'status' => Agreement::STATUS_COMPLETED,
                 'completed_at' => now(),
-            ])->save();
+            ])->saveOrFail();
 
             return [
                 'ok' => true,
                 'agreement' => $lockedAgreement->fresh(),
             ];
         });
+
+        app(AgreementVersioningService::class)->checkForContractualChanges(
+            Event::query()->where('uid', $event->uid)->firstOrFail(),
+            $actorUid
+        );
+
+        return $result;
     }
 
     /**
@@ -68,7 +75,7 @@ class AgreementSignedVerificationService
                 'signed_rejection_reason' => $reason,
                 'status' => Agreement::STATUS_READY,
                 'completed_at' => null,
-            ])->save();
+            ])->saveOrFail();
 
             return [
                 'ok' => true,
@@ -104,8 +111,11 @@ class AgreementSignedVerificationService
         if ($agreementUid) {
             $agreementQuery->where('uid', $agreementUid);
         } else {
-            // Find active READY agreement pending review or ready
-            $agreementQuery->where('status', Agreement::STATUS_READY)->latest('id');
+            $agreementQuery
+                ->where('status', Agreement::STATUS_READY)
+                ->orderByRaw("CASE WHEN type = 'addendum' THEN 2 ELSE 1 END DESC")
+                ->orderByDesc('version')
+                ->latest('id');
         }
 
         $agreement = $agreementQuery->first();

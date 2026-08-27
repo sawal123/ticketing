@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Http\Middleware\GlobalDataMiddleware;
 use App\Http\Middleware\LogActivityMiddleware;
+use App\Livewire\Admin\EventDetail as AdminEventDetail;
 use App\Models\Agreement;
 use App\Models\Category;
 use App\Models\Event;
@@ -26,6 +27,7 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\Str;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class AgreementVersioningAddendumTest extends TestCase
@@ -210,6 +212,57 @@ class AgreementVersioningAddendumTest extends TestCase
             $table->decimal('fee_percent', 8, 4)->nullable();
             $table->timestamps();
         });
+
+        Schema::create('talent', function ($table) {
+            $table->id();
+            $table->string('uid');
+            $table->string('talent')->nullable();
+            $table->string('gambar')->nullable();
+            $table->string('link')->nullable();
+            $table->timestamps();
+        });
+
+        Schema::create('hargas', function ($table) {
+            $table->id();
+            $table->string('uid');
+            $table->string('kategori');
+            $table->unsignedInteger('qty')->default(0);
+            $table->unsignedInteger('sold_qty')->default(0);
+            $table->unsignedInteger('reserved_qty')->default(0);
+            $table->unsignedBigInteger('harga')->default(0);
+            $table->string('status')->default('active');
+            $table->timestamps();
+        });
+
+        Schema::create('carts', function ($table) {
+            $table->id();
+            $table->string('uid');
+            $table->string('user_uid')->nullable();
+            $table->string('event_uid');
+            $table->string('invoice')->nullable();
+            $table->string('status')->nullable();
+            $table->string('payment_type')->nullable();
+            $table->unsignedBigInteger('internet_fee')->default(0);
+            $table->unsignedBigInteger('pajak')->default(0);
+            $table->unsignedBigInteger('total')->default(0);
+            $table->timestamps();
+            $table->softDeletes();
+        });
+
+        Schema::create('harga_carts', function ($table) {
+            $table->id();
+            $table->string('uid');
+            $table->unsignedBigInteger('harga_id')->nullable();
+            $table->unsignedInteger('orderBy')->nullable();
+            $table->string('event_uid')->nullable();
+            $table->unsignedInteger('quantity')->default(0);
+            $table->unsignedBigInteger('harga_ticket')->default(0);
+            $table->string('voucher')->nullable();
+            $table->unsignedBigInteger('disc')->default(0);
+            $table->string('kategori_harga')->nullable();
+            $table->timestamps();
+            $table->softDeletes();
+        });
     }
 
     private function user(array $overrides = []): User
@@ -283,7 +336,7 @@ class AgreementVersioningAddendumTest extends TestCase
         ], $overrides));
     }
 
-    private function createCompletedMouEvent(User $tenant, User $admin): array
+    private function createDraftMouEvent(User $tenant, User $admin): array
     {
         $event = $this->event($tenant);
 
@@ -350,6 +403,13 @@ class AgreementVersioningAddendumTest extends TestCase
             'document_number' => 'MOU/001',
         ]);
 
+        return [$event, $mou];
+    }
+
+    private function createCompletedMouEvent(User $tenant, User $admin): array
+    {
+        [$event, $mou] = $this->createDraftMouEvent($tenant, $admin);
+
         // Finalize MOU
         $finResult = app(AgreementFinalizationService::class)->finalizeForEvent($event, $admin->uid, $mou->uid);
         $this->assertTrue($finResult['ok']);
@@ -370,6 +430,27 @@ class AgreementVersioningAddendumTest extends TestCase
         $this->assertEquals(Agreement::SIGNED_REVIEW_VERIFIED, $mou->signed_review_status);
 
         return [$event, $mou];
+    }
+
+    private function completeAddendum(Event $event, User $tenant, User $admin, Agreement $addendum, ?string $filename = null): Agreement
+    {
+        $filename ??= 'signed-addendum-v'.$addendum->version.'.pdf';
+
+        $this->assertTrue(
+            app(AgreementFinalizationService::class)->finalizeForEvent($event, $admin->uid, $addendum->uid)['ok']
+        );
+
+        $dummyPdf = UploadedFile::fake()->create($filename, 150, 'application/pdf');
+
+        $this->assertTrue(
+            app(AgreementSignedUploadService::class)->storeForEvent($event, $tenant->uid, $dummyPdf, $addendum->uid)['ok']
+        );
+
+        $this->assertTrue(
+            app(AgreementSignedVerificationService::class)->approveForEvent($event, $admin->uid, $addendum->uid)['ok']
+        );
+
+        return $addendum->fresh();
     }
 
     public function test_new_event_starts_with_mou_v1_and_no_addendum(): void
@@ -453,6 +534,152 @@ class AgreementVersioningAddendumTest extends TestCase
         $this->assertEquals(2, Agreement::where('event_uid', $event->uid)->count());
     }
 
+    public function test_event_gateway_active_to_inactive_creates_draft_addendum(): void
+    {
+        $tenant = $this->tenant();
+        $admin = $this->admin();
+
+        [$event, $mou] = $this->createCompletedMouEvent($tenant, $admin);
+
+        $gatewayConfig = EventPaymentGateway::query()->where('event_id', $event->id)->firstOrFail();
+        $gatewayConfig->update(['is_active' => false]);
+
+        $addendum = app(AgreementVersioningService::class)->checkForContractualChanges($event, $tenant->uid);
+        $preview = app(AgreementVersioningService::class)->buildAddendumPreview($event->fresh(), $addendum);
+
+        $this->assertNotNull($addendum);
+        $this->assertSame(Agreement::STATUS_DRAFT, $addendum->status);
+        $this->assertSame($mou->uid, $addendum->parent_agreement_uid);
+        $this->assertTrue(collect($preview['diffs'])->contains(function (array $diff) {
+            return $diff['section'] === 'Payment Gateway'
+                && $diff['label'] === 'Gateway: BCA Virtual Account'
+                && str_contains($diff['before'], 'Event: Aktif')
+                && str_contains($diff['after'], 'Event: Nonaktif');
+        }));
+    }
+
+    public function test_reverting_live_data_removes_stale_draft_addendum(): void
+    {
+        $tenant = $this->tenant();
+        $admin = $this->admin();
+
+        [$event, $mou] = $this->createCompletedMouEvent($tenant, $admin);
+
+        $originalName = $event->event;
+        $event->update(['event' => 'Perubahan Draft Addendum']);
+
+        $draftAddendum = app(AgreementVersioningService::class)->checkForContractualChanges($event, $tenant->uid);
+
+        $this->assertNotNull($draftAddendum);
+        $this->assertDatabaseHas('agreements', ['uid' => $draftAddendum->uid, 'status' => Agreement::STATUS_DRAFT]);
+
+        $event->update(['event' => $originalName]);
+
+        $result = app(AgreementVersioningService::class)->checkForContractualChanges($event->fresh(), $tenant->uid);
+
+        $this->assertNull($result);
+        $this->assertDatabaseMissing('agreements', ['uid' => $draftAddendum->uid]);
+        $this->assertSame(1, Agreement::where('event_uid', $event->uid)->count());
+        $this->assertSame($mou->uid, Agreement::where('event_uid', $event->uid)->sole()->uid);
+    }
+
+    public function test_ready_addendum_does_not_create_parallel_until_parent_completes_then_auto_creates_next_version(): void
+    {
+        $tenant = $this->tenant();
+        $admin = $this->admin();
+
+        [$event, $mou] = $this->createCompletedMouEvent($tenant, $admin);
+
+        $event->update(['event' => 'Konser Addendum V1']);
+        $addendumV1 = app(AgreementVersioningService::class)->checkForContractualChanges($event, $tenant->uid);
+
+        $this->assertTrue(
+            app(AgreementFinalizationService::class)->finalizeForEvent($event, $admin->uid, $addendumV1->uid)['ok']
+        );
+
+        $event->update(['venue_name' => 'Venue Berubah Saat READY']);
+
+        $parallelAttempt = app(AgreementVersioningService::class)->checkForContractualChanges($event->fresh(), $tenant->uid);
+
+        $this->assertNull($parallelAttempt);
+        $this->assertSame(1, Agreement::where('event_uid', $event->uid)->where('type', Agreement::TYPE_ADDENDUM)->count());
+
+        $dummyPdf = UploadedFile::fake()->create('signed-ready-v1.pdf', 150, 'application/pdf');
+        $this->assertTrue(
+            app(AgreementSignedUploadService::class)->storeForEvent($event, $tenant->uid, $dummyPdf, $addendumV1->uid)['ok']
+        );
+
+        $approval = app(AgreementSignedVerificationService::class)->approveForEvent($event->fresh(), $admin->uid, $addendumV1->uid);
+
+        $this->assertTrue($approval['ok']);
+
+        $addendumV2 = Agreement::query()
+            ->where('event_uid', $event->uid)
+            ->where('type', Agreement::TYPE_ADDENDUM)
+            ->where('version', 2)
+            ->first();
+
+        $this->assertNotNull($addendumV2);
+        $this->assertSame(Agreement::STATUS_DRAFT, $addendumV2->status);
+        $this->assertSame($addendumV1->uid, $addendumV2->parent_agreement_uid);
+        $this->assertTrue($addendumV1->fresh()->isCompleted());
+        $this->assertSame($mou->uid, $addendumV1->parent_agreement_uid);
+    }
+
+    public function test_changes_before_completed_mou_do_not_create_addendum_but_post_completion_diff_does(): void
+    {
+        $tenant = $this->tenant();
+        $admin = $this->admin();
+
+        [$event, $mou] = $this->createDraftMouEvent($tenant, $admin);
+
+        $event->update(['event' => 'Perubahan Sebelum MOU Completed']);
+
+        $beforeCompletion = app(AgreementVersioningService::class)->checkForContractualChanges($event->fresh(), $tenant->uid);
+
+        $this->assertNull($beforeCompletion);
+        $this->assertSame(1, Agreement::where('event_uid', $event->uid)->count());
+
+        $this->assertTrue(app(AgreementFinalizationService::class)->finalizeForEvent($event, $admin->uid, $mou->uid)['ok']);
+        $signedMou = UploadedFile::fake()->create('signed-mou-prechange.pdf', 150, 'application/pdf');
+        $this->assertTrue(app(AgreementSignedUploadService::class)->storeForEvent($event, $tenant->uid, $signedMou, $mou->uid)['ok']);
+        $this->assertTrue(app(AgreementSignedVerificationService::class)->approveForEvent($event->fresh(), $admin->uid, $mou->uid)['ok']);
+
+        $event->update(['venue_name' => 'Perubahan Setelah MOU Completed']);
+
+        $afterCompletion = app(AgreementVersioningService::class)->checkForContractualChanges($event->fresh(), $tenant->uid);
+
+        $this->assertNotNull($afterCompletion);
+        $this->assertSame(Agreement::TYPE_ADDENDUM, $afterCompletion->type);
+        $this->assertSame(1, $afterCompletion->version);
+        $this->assertSame($mou->uid, $afterCompletion->parent_agreement_uid);
+    }
+
+    public function test_review_metadata_changes_only_do_not_create_addendum(): void
+    {
+        $tenant = $this->tenant();
+        $admin = $this->admin();
+
+        [$event] = $this->createCompletedMouEvent($tenant, $admin);
+
+        $event->bankAccount()->firstOrFail()->update([
+            'status' => 'rejected',
+            'verified_by' => $tenant->uid,
+            'verified_at' => null,
+        ]);
+
+        $event->organizerLetter()->firstOrFail()->update([
+            'status' => 'pending',
+            'verified_by' => $tenant->uid,
+            'verified_at' => null,
+        ]);
+
+        $addendum = app(AgreementVersioningService::class)->checkForContractualChanges($event->fresh(), $tenant->uid);
+
+        $this->assertNull($addendum);
+        $this->assertSame(1, Agreement::where('event_uid', $event->uid)->count());
+    }
+
     public function test_addendum_finalization_generates_unsigned_pdf_and_readies_it(): void
     {
         $tenant = $this->tenant();
@@ -534,11 +761,7 @@ class AgreementVersioningAddendumTest extends TestCase
         $event->event = 'Konser V1';
         $event->save();
         $addendum1 = app(AgreementVersioningService::class)->checkForContractualChanges($event, $tenant->uid);
-        app(AgreementFinalizationService::class)->finalizeForEvent($event, $admin->uid, $addendum1->uid);
-        $dummyPdf = UploadedFile::fake()->create('signed-addendum1.pdf', 150, 'application/pdf');
-        app(AgreementSignedUploadService::class)->storeForEvent($event, $tenant->uid, $dummyPdf, $addendum1->uid);
-        app(AgreementSignedVerificationService::class)->approveForEvent($event, $admin->uid, $addendum1->uid);
-        $addendum1->refresh();
+        $addendum1 = $this->completeAddendum($event, $tenant, $admin, $addendum1, 'signed-addendum1.pdf');
         $this->assertTrue($addendum1->isCompleted());
 
         // Now modify again -> Addendum v2
@@ -552,6 +775,23 @@ class AgreementVersioningAddendumTest extends TestCase
         $this->assertEquals(Agreement::STATUS_DRAFT, $addendum2->status);
         $this->assertEquals($addendum1->uid, $addendum2->parent_agreement_uid);
         $this->assertEquals(3, Agreement::where('event_uid', $event->uid)->count());
+    }
+
+    public function test_cross_event_addendum_changes_remain_isolated(): void
+    {
+        $tenant = $this->tenant();
+        $admin = $this->admin();
+
+        [$eventA] = $this->createCompletedMouEvent($tenant, $admin);
+        [$eventB] = $this->createCompletedMouEvent($tenant, $admin);
+
+        $eventA->update(['event' => 'Perubahan Event A']);
+
+        $addendumA = app(AgreementVersioningService::class)->checkForContractualChanges($eventA->fresh(), $tenant->uid);
+
+        $this->assertNotNull($addendumA);
+        $this->assertSame(1, Agreement::where('event_uid', $eventA->uid)->where('type', Agreement::TYPE_ADDENDUM)->count());
+        $this->assertSame(0, Agreement::where('event_uid', $eventB->uid)->where('type', Agreement::TYPE_ADDENDUM)->count());
     }
 
     public function test_admin_reject_signed_addendum_allows_reupload(): void
@@ -695,5 +935,109 @@ class AgreementVersioningAddendumTest extends TestCase
         $this->actingAs($admin)
             ->get(route('admin.event.review.mou.signed', ['uid' => $event->uid, 'agreementUid' => $addendum->uid]))
             ->assertOk();
+    }
+
+    public function test_other_tenant_cannot_download_addendum_files(): void
+    {
+        $tenant = $this->tenant();
+        $otherTenant = $this->tenant(['email' => 'other-tenant@example.test']);
+        $admin = $this->admin();
+
+        [$event] = $this->createCompletedMouEvent($tenant, $admin);
+
+        $event->update(['event' => 'Konser Private Addendum']);
+        $addendum = app(AgreementVersioningService::class)->checkForContractualChanges($event->fresh(), $tenant->uid);
+
+        $this->assertTrue(app(AgreementFinalizationService::class)->finalizeForEvent($event, $admin->uid, $addendum->uid)['ok']);
+
+        $dummyPdf = UploadedFile::fake()->create('private-signed-addendum.pdf', 150, 'application/pdf');
+        $this->assertTrue(app(AgreementSignedUploadService::class)->storeForEvent($event, $tenant->uid, $dummyPdf, $addendum->uid)['ok']);
+
+        $this->actingAs($otherTenant)
+            ->get(route('dashboard.event.mou.unsigned', ['uid' => $event->uid, 'agreementUid' => $addendum->uid]))
+            ->assertNotFound();
+
+        $this->actingAs($otherTenant)
+            ->get(route('dashboard.event.mou.signed', ['uid' => $event->uid, 'agreementUid' => $addendum->uid]))
+            ->assertNotFound();
+    }
+
+    public function test_completed_addendum_is_immutable_including_parent_snapshot_and_pdf_fields(): void
+    {
+        $tenant = $this->tenant();
+        $admin = $this->admin();
+
+        [$event] = $this->createCompletedMouEvent($tenant, $admin);
+
+        $event->update(['event' => 'Konser Immutable Addendum']);
+        $addendum = app(AgreementVersioningService::class)->checkForContractualChanges($event->fresh(), $tenant->uid);
+        $addendum = $this->completeAddendum($event, $tenant, $admin, $addendum);
+
+        $originalParent = $addendum->parent_agreement_uid;
+        $originalSnapshot = $addendum->event_snapshot;
+        $originalSignedPdf = $addendum->signed_pdf_path;
+
+        try {
+            $addendum->forceFill([
+                'parent_agreement_uid' => (string) Str::uuid(),
+                'event_snapshot' => ['event_name' => 'Mutated Snapshot'],
+                'signed_pdf_path' => 'private/agreements/mutated/signed.pdf',
+            ])->save();
+            $this->fail('Expected completed addendum immutability exception was not thrown.');
+        } catch (\LogicException $e) {
+            $this->assertSame('Completed agreement is immutable.', $e->getMessage());
+        }
+
+        $addendum->refresh();
+
+        $this->assertSame($originalParent, $addendum->parent_agreement_uid);
+        $this->assertSame($originalSnapshot, $addendum->event_snapshot);
+        $this->assertSame($originalSignedPdf, $addendum->signed_pdf_path);
+    }
+
+    public function test_addendum_history_orders_mou_then_v1_then_v2(): void
+    {
+        $tenant = $this->tenant();
+        $admin = $this->admin();
+
+        [$event] = $this->createCompletedMouEvent($tenant, $admin);
+
+        $event->update(['event' => 'Konser History V1']);
+        $addendumV1 = app(AgreementVersioningService::class)->checkForContractualChanges($event->fresh(), $tenant->uid);
+        $this->completeAddendum($event, $tenant, $admin, $addendumV1, 'history-v1.pdf');
+
+        $event->update(['event' => 'Konser History V2']);
+        $addendumV2 = app(AgreementVersioningService::class)->checkForContractualChanges($event->fresh(), $tenant->uid);
+        $this->completeAddendum($event, $tenant, $admin, $addendumV2, 'history-v2.pdf');
+
+        $history = Agreement::query()
+            ->where('event_uid', $event->uid)
+            ->orderByRaw("CASE WHEN type = 'mou' THEN 1 ELSE 2 END ASC")
+            ->orderBy('version')
+            ->get()
+            ->map(fn (Agreement $agreement) => $agreement->type.':'.$agreement->version)
+            ->all();
+
+        $this->assertSame(['mou:1', 'addendum:1', 'addendum:2'], $history);
+    }
+
+    public function test_admin_review_mou_tab_still_receives_commercial_review_summary(): void
+    {
+        $tenant = $this->tenant();
+        $admin = $this->admin();
+
+        [$event] = $this->createCompletedMouEvent($tenant, $admin);
+
+        Livewire::actingAs($admin)
+            ->test(AdminEventDetail::class, ['uid' => $event->uid])
+            ->set('activeTab', 'review-mou')
+            ->assertViewHas('commercialReview', function ($commercialReview) {
+                return is_array($commercialReview)
+                    && is_array($commercialReview['ticket_tax'] ?? null)
+                    && collect($commercialReview['payment_gateways'] ?? [])->isNotEmpty()
+                    && collect($commercialReview['payment_gateways'] ?? [])->contains(
+                        fn (array $gateway) => ($gateway['payment'] ?? null) === 'BCA Virtual Account'
+                    );
+            });
     }
 }
