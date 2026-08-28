@@ -15,6 +15,6 @@ Checklist ini disiapkan sebagai panduan review counsel sebelum template `mou-v2`
 - Review jangka waktu, pengakhiran, dan efek setelah pengakhiran agar selaras dengan lifecycle Event dan penyelesaian transaksi.
 - Tinjau mekanisme hukum yang berlaku dan penyelesaian sengketa sebelum menetapkan forum atau mekanisme final.
 - Pastikan klausul IP, merek, dan materi promosi cukup untuk kebutuhan listing, publikasi, dan pelaksanaan kerja sama.
-- Verifikasi kebutuhan legal terkait halaman tanda tangan, validitas e-sign, dan wording unsigned template sebelum integrasi penandatanganan digital.
+- Verifikasi kebutuhan legal terkait halaman tanda tangan, validitas tanda tangan elektronik, workflow download unsigned, penandatanganan independen, upload signed PDF, verifikasi admin, dan wording unsigned template.
 - Cek konsistensi istilah dan data antara body utama dengan Lampiran I-II saat lampiran diimplementasikan.
 - Identifikasi regulasi, standar kepatuhan, atau referensi hukum spesifik yang baru boleh dicantumkan setelah review counsel selesai.

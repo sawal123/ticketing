@@ -48,7 +48,12 @@
                 'Penyelenggara adalah PIHAK KEDUA yang bertanggung jawab atas perizinan, pelaksanaan, materi promosi, dan seluruh keputusan operasional Event.',
                 'Pembeli adalah setiap pihak yang memperoleh tiket melalui Platform sesuai syarat transaksi yang berlaku.',
                 'Tiket adalah bukti hak akses ke Event yang diterbitkan dan/atau divalidasi melalui Platform.',
-                'Payment Gateway, Biaya Pembeli / Event Fee, Biaya Kanal Pembayaran, Rekonsiliasi, Refund, dan Gate System dimaknai sebagai komponen operasional layanan penjualan tiket sesuai fungsi masing-masing dalam pelaksanaan kerja sama ini.',
+                'Payment Gateway adalah kanal atau metode pembayaran yang diaktifkan pada sistem untuk memproses transaksi pembelian tiket oleh Pembeli.',
+                'Biaya Pembeli / Event Fee adalah komponen biaya transaksi yang dapat dibebankan kepada Pembeli sesuai konfigurasi Event dan ketentuan komersial yang disepakati PARA PIHAK.',
+                'Biaya Kanal Pembayaran adalah biaya yang timbul dari penggunaan kanal pembayaran tertentu, termasuk biaya tetap dan/atau persentase sesuai metode pembayaran yang digunakan.',
+                'Rekonsiliasi adalah proses pencocokan, pemeriksaan, dan penetapan data transaksi penjualan tiket berdasarkan catatan pada Platform dan/atau kanal pembayaran terkait.',
+                'Refund adalah pengembalian dana kepada Pembeli atas transaksi tiket sesuai kebijakan Event, hasil koordinasi PARA PIHAK, dan ketentuan kanal pembayaran yang relevan.',
+                'Gate System adalah sistem validasi dan pencatatan akses masuk Event yang digunakan untuk memeriksa keabsahan tiket pada saat pelaksanaan Event.',
             ],
         ],
         2 => [
@@ -217,7 +222,7 @@
             'clauses' => [
                 'PARA PIHAK menyatakan telah membaca, memahami, dan menyetujui seluruh isi perjanjian ini tanpa adanya paksaan dari pihak mana pun.',
                 'Perjanjian ini dibuat sebagai dokumen kerja sama yang menjadi dasar pelaksanaan layanan penjualan dan pengelolaan tiket Event melalui Platform Gotik.',
-                'Naskah perjanjian ini berlaku sebagai template unsigned sampai ditandatangani secara sah oleh PARA PIHAK sesuai mekanisme yang ditetapkan kemudian.',
+                'Naskah perjanjian ini berlaku sebagai template unsigned sampai ditandatangani secara sah oleh PARA PIHAK sesuai mekanisme penandatanganan yang berlaku dan disepakati PARA PIHAK.',
             ],
         ],
     ];

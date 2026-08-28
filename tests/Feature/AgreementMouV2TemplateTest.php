@@ -44,6 +44,24 @@ class AgreementMouV2TemplateTest extends TestCase
             $this->assertStringContainsString($text, $previewHtml);
         }
 
+        foreach ([
+            'Platform adalah',
+            'Event adalah',
+            'Penyelenggara adalah',
+            'Pembeli adalah',
+            'Tiket adalah',
+            'Payment Gateway adalah',
+            'Biaya Pembeli / Event Fee adalah',
+            'Biaya Kanal Pembayaran adalah',
+            'Rekonsiliasi adalah',
+            'Refund adalah',
+            'Gate System adalah',
+            'sesuai mekanisme penandatanganan yang berlaku dan disepakati PARA PIHAK.',
+        ] as $text) {
+            $this->assertStringContainsString($text, $pdfHtml);
+            $this->assertStringContainsString($text, $previewHtml);
+        }
+
         for ($article = 1; $article <= 21; $article++) {
             $this->assertStringContainsString('PASAL '.$article, $pdfHtml);
             $this->assertStringContainsString('PASAL '.$article, $previewHtml);
@@ -58,6 +76,18 @@ class AgreementMouV2TemplateTest extends TestCase
         $this->assertStringNotContainsString('999000', $previewHtml);
         $this->assertStringNotContainsString('777', $pdfHtml);
         $this->assertStringNotContainsString('777', $previewHtml);
+        $this->assertStringNotContainsString('mekanisme yang ditetapkan kemudian', $pdfHtml);
+        $this->assertStringNotContainsString('mekanisme yang ditetapkan kemudian', $previewHtml);
+        $this->assertStringNotContainsString('Privy', $pdfHtml);
+        $this->assertStringNotContainsString('Privy', $previewHtml);
+        $this->assertStringNotContainsString('OAuth', $pdfHtml);
+        $this->assertStringNotContainsString('OAuth', $previewHtml);
+        $this->assertStringNotContainsString('webhook', $pdfHtml);
+        $this->assertStringNotContainsString('webhook', $previewHtml);
+        $this->assertStringNotContainsString('callback', $pdfHtml);
+        $this->assertStringNotContainsString('callback', $previewHtml);
+        $this->assertStringNotContainsString('API', $pdfHtml);
+        $this->assertStringNotContainsString('API', $previewHtml);
 
         $this->assertGreaterThan(
             strpos($pdfHtml, 'PASAL 21'),
@@ -107,6 +137,24 @@ class AgreementMouV2TemplateTest extends TestCase
         $this->assertStringContainsString('Festival Nada Nusantara', $previewHtml);
         $this->assertStringContainsString('<td>-</td>', $pdfHtml);
         $this->assertStringContainsString('<td>-</td>', $previewHtml);
+    }
+
+    public function test_legal_review_checklist_avoids_privy_api_integration_wording(): void
+    {
+        $checklist = file_get_contents(base_path('docs/mou-v2-legal-review-checklist.md'));
+
+        $this->assertIsString($checklist);
+        $this->assertStringContainsString('validitas tanda tangan elektronik', $checklist);
+        $this->assertStringContainsString('workflow download unsigned', $checklist);
+        $this->assertStringContainsString('penandatanganan independen', $checklist);
+        $this->assertStringContainsString('upload signed PDF', $checklist);
+        $this->assertStringContainsString('verifikasi admin', $checklist);
+        $this->assertStringNotContainsString('Privy', $checklist);
+        $this->assertStringNotContainsString('API', $checklist);
+        $this->assertStringNotContainsString('OAuth', $checklist);
+        $this->assertStringNotContainsString('webhook', $checklist);
+        $this->assertStringNotContainsString('callback', $checklist);
+        $this->assertStringNotContainsString('integrasi penandatanganan digital', $checklist);
     }
 
     private function fixturePayload(array $overrides = []): array
