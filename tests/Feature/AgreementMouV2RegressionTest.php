@@ -70,7 +70,7 @@ class AgreementMouV2RegressionTest extends TestCase
 
         // Cover, PARA PIHAK, Pasal 1-21, signature page, LAMPIRAN I & II.
         foreach (range(1, 21) as $number) {
-            $this->assertStringContainsString('PASAL '.$number, $html);
+            $this->assertStringContainsString('PASAL ' . $number, $html);
         }
         $this->assertStringContainsString('Pembukaan dan Para Pihak', $html);
         $this->assertStringContainsString('Halaman Tanda Tangan', $html);
@@ -132,7 +132,7 @@ class AgreementMouV2RegressionTest extends TestCase
         $event = $this->readyEvent($tenant);
         $agreement = $this->mouAgreement($event);
 
-        $path = 'private/agreements/'.$agreement->uid.'/unsigned.pdf';
+        $path = 'private/agreements/' . $agreement->uid . '/unsigned.pdf';
         Storage::disk('local')->put($path, 'HISTORICAL-UNSIGNED');
         $agreement->forceFill(['unsigned_pdf_path' => $path])->save();
 
@@ -148,7 +148,7 @@ class AgreementMouV2RegressionTest extends TestCase
         $event2 = $this->readyEvent($tenant);
         $agreement2 = $this->mouAgreement($event2);
         $agreement2->forceFill([
-            'signed_pdf_path' => 'private/agreements/'.$agreement2->uid.'/signed.pdf',
+            'signed_pdf_path' => 'private/agreements/' . $agreement2->uid . '/signed.pdf',
         ])->save();
 
         $result2 = app(AgreementFinalizationService::class)->finalizeForEvent($event2, $admin->uid, $agreement2->uid);
@@ -187,7 +187,7 @@ class AgreementMouV2RegressionTest extends TestCase
         $this->assertNull(app(AgreementPreviewService::class)->buildForEvent($event->fresh()));
 
         $this->actingAs($tenant)
-            ->get(route('dashboard.event.detail', $event->uid).'?activeTab=mou')
+            ->get(route('dashboard.event.detail', $event->uid) . '?activeTab=mou')
             ->assertOk()
             ->assertDontSee('Comprehensive MOU Body');
 
@@ -248,7 +248,7 @@ class AgreementMouV2RegressionTest extends TestCase
 
         $this->assertStringStartsWith('private/', $ready->unsigned_pdf_path);
 
-        $signedPath = 'private/agreements/'.$ready->uid.'/signed.pdf';
+        $signedPath = 'private/agreements/' . $ready->uid . '/signed.pdf';
         Storage::disk('local')->put($signedPath, 'SIGNED-PDF');
         $ready->forceFill(['signed_pdf_path' => $signedPath])->save();
 
@@ -270,7 +270,7 @@ class AgreementMouV2RegressionTest extends TestCase
 
         // The private storage path is not rendered on the owner dashboard page.
         $this->actingAs($tenant)
-            ->get(route('dashboard.event.detail', $event->uid).'?activeTab=mou')
+            ->get(route('dashboard.event.detail', $event->uid) . '?activeTab=mou')
             ->assertOk()
             ->assertDontSee($ready->unsigned_pdf_path);
     }
@@ -472,7 +472,14 @@ class AgreementMouV2RegressionTest extends TestCase
         $this->assertStringContainsString('Rp 0 + 3%', $html);
         $this->assertStringContainsString('Rp 4.000 + 0%', $html);
         $this->assertStringContainsString('Biaya Pembeli / Event Fee', $html);
-        $this->assertStringNotContainsString('Platform Fee', $html);
+        // "Platform Fee" dilarang hanya sebagai LABEL/ISTILAH biaya (sel berdiri
+        // sendiri dalam markup), bukan sebagai substring dalam nama badan usaha
+        // yang sah seperti "PT Platform Fee".
+        $this->assertSame(
+            0,
+            preg_match('/>\s*Platform Fee\s*</', $html),
+            'Label biaya "Platform Fee" tidak boleh digunakan.'
+        );
 
         // Frozen gateways only: live gateway toggled off after finalization is ignored.
         $event->eventPaymentGateways()->whereHas('paymentGateway', function ($q) {
@@ -495,7 +502,7 @@ class AgreementMouV2RegressionTest extends TestCase
 
         $names = [];
         for ($i = 1; $i <= 30; $i++) {
-            $name = 'Gateway Multi '.$i;
+            $name = 'Gateway Multi ' . $i;
             $names[] = $name;
             $this->attachGateway($event, [
                 'payment' => $name,
@@ -523,7 +530,7 @@ class AgreementMouV2RegressionTest extends TestCase
 
     public function test_annex_ii_readiness_marks_missing_data_belum_lengkap_without_private_paths(): void
     {
-        $render = static fn (array $payload) => view('agreements.partials.mou-v2-annex-ii', ['payload' => $payload])->render();
+        $render = static fn(array $payload) => view('agreements.partials.mou-v2-annex-ii', ['payload' => $payload])->render();
 
         // Missing organizer / bank / letter data -> BELUM LENGKAP.
         $missing = $render([
@@ -600,7 +607,7 @@ class AgreementMouV2RegressionTest extends TestCase
     {
         return $this->user(array_merge([
             'name' => 'Admin Regression',
-            'email' => 'admin-regression-'.Str::random(6).'@example.test',
+            'email' => 'admin-regression-' . Str::random(6) . '@example.test',
             'role' => 'admin',
         ], $overrides));
     }
@@ -609,7 +616,7 @@ class AgreementMouV2RegressionTest extends TestCase
     {
         return $this->user(array_merge([
             'name' => 'Tenant Regression',
-            'email' => 'tenant-regression-'.Str::random(6).'@example.test',
+            'email' => 'tenant-regression-' . Str::random(6) . '@example.test',
             'role' => 'penyewa',
         ], $overrides));
     }
@@ -651,15 +658,15 @@ class AgreementMouV2RegressionTest extends TestCase
     private function event(User $tenant, array $overrides = []): Event
     {
         $category = Category::create([
-            'name' => 'Category '.Str::random(6),
-            'slug' => 'category-'.Str::lower(Str::random(8)),
+            'name' => 'Category ' . Str::random(6),
+            'slug' => 'category-' . Str::lower(Str::random(8)),
         ]);
 
         return Event::create(array_merge([
             'uid' => (string) Str::uuid(),
             'category_id' => $category->id,
             'user_uid' => $tenant->uid,
-            'event' => 'Konser '.Str::random(6),
+            'event' => 'Konser ' . Str::random(6),
             'alamat' => 'Jl. Pemuda No. 10',
             'tanggal' => '2026-09-10 19:00:00',
             'event_end' => '2026-09-10 22:00:00',
@@ -674,7 +681,7 @@ class AgreementMouV2RegressionTest extends TestCase
             'deskripsi' => 'Deskripsi event',
             'map' => 'https://maps.google.com/?q=venue',
             'start_sale' => '2026-09-01 10:00:00',
-            'slug' => 'event-'.Str::lower(Str::random(8)),
+            'slug' => 'event-' . Str::lower(Str::random(8)),
             'konfirmasi' => null,
             'payment_otp_enabled' => false,
         ], $overrides));
@@ -700,7 +707,7 @@ class AgreementMouV2RegressionTest extends TestCase
             'bank_name' => 'BCA',
             'account_number' => '1234567890',
             'account_holder_name' => 'PT Organizer Regression',
-            'bank_book_path' => 'private/events/'.$event->uid.'/bank/book.pdf',
+            'bank_book_path' => 'private/events/' . $event->uid . '/bank/book.pdf',
             'bank_book_original_name' => 'book.pdf',
             'bank_book_mime' => 'application/pdf',
             'status' => 'verified',
@@ -723,7 +730,7 @@ class AgreementMouV2RegressionTest extends TestCase
             'document_number' => 'DOC/2026/001',
             'document_date' => '2026-08-20',
             'original_name' => 'surat.pdf',
-            'file_path' => 'private/events/'.$event->uid.'/documents/surat.pdf',
+            'file_path' => 'private/events/' . $event->uid . '/documents/surat.pdf',
             'mime_type' => 'application/pdf',
             'status' => 'verified',
             'verified_by' => 'admin-existing',
@@ -777,7 +784,7 @@ class AgreementMouV2RegressionTest extends TestCase
             'midtrans_code' => null,
             'icon' => null,
             'is_active' => true,
-            'slug' => 'gateway-'.Str::lower(Str::random(8)),
+            'slug' => 'gateway-' . Str::lower(Str::random(8)),
         ], $overrides));
     }
 
