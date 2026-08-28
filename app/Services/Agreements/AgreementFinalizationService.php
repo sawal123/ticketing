@@ -6,11 +6,13 @@ use App\Models\Agreement;
 use App\Models\Event;
 use App\Models\EventDocument;
 use App\Models\EventPaymentGateway;
+use App\Models\PlatformLegalProfile;
 use App\Services\Tickets\TicketPricingService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
 use Throwable;
@@ -107,6 +109,17 @@ class AgreementFinalizationService
                     );
                 }
 
+                $isAddendum = $agreement->type === Agreement::TYPE_ADDENDUM;
+                $parentAgreement = null;
+
+                if ($isAddendum) {
+                    $parentAgreement = $agreement->parentAgreement
+                        ?? Agreement::query()
+                            ->where('uid', $agreement->parent_agreement_uid)
+                            ->lockForUpdate()
+                            ->first();
+                }
+
                 $snapshots = [
                     'event_snapshot' => $this->buildEventSnapshot($freshEvent),
                     'party_snapshot' => $this->buildPartySnapshot($freshEvent),
@@ -115,16 +128,13 @@ class AgreementFinalizationService
                     'commercial_snapshot' => $this->buildCommercialSnapshot($freshEvent),
                 ];
 
-                $isAddendum = $agreement->type === Agreement::TYPE_ADDENDUM;
+                if ($this->supportsPlatformPartySnapshot()) {
+                    $snapshots['platform_party_snapshot'] = $this->buildPlatformPartySnapshot($parentAgreement);
+                }
+
                 $templateVersion = $isAddendum ? AgreementVersioningService::TEMPLATE_VERSION : self::TEMPLATE_VERSION;
 
                 if ($isAddendum) {
-                    $parentAgreement = $agreement->parentAgreement
-                        ?? Agreement::query()
-                            ->where('uid', $agreement->parent_agreement_uid)
-                            ->lockForUpdate()
-                            ->first();
-
                     $diffs = $parentAgreement
                         ? app(AgreementVersioningService::class)->computeDiffs($snapshots, $parentAgreement)
                         : [];
@@ -183,6 +193,7 @@ class AgreementFinalizationService
     {
         return $this->buildPdfPayload($agreement, [
             'event_snapshot' => $agreement->event_snapshot ?? [],
+            'platform_party_snapshot' => $agreement->platform_party_snapshot,
             'party_snapshot' => $agreement->party_snapshot ?? [],
             'bank_snapshot' => $agreement->bank_snapshot ?? [],
             'document_snapshot' => $agreement->document_snapshot ?? [],
@@ -305,6 +316,31 @@ class AgreementFinalizationService
         return ['none', 0.0];
     }
 
+    private function buildPlatformPartySnapshot(?Agreement $parentAgreement = null): ?array
+    {
+        if (! $this->supportsPlatformPartySnapshot()) {
+            return null;
+        }
+
+        if ($parentAgreement !== null) {
+            return $this->normalizePlatformPartySnapshot($parentAgreement->platform_party_snapshot);
+        }
+
+        if (! Schema::hasTable('platform_legal_profiles')) {
+            return null;
+        }
+
+        $profile = PlatformLegalProfile::query()
+            ->where('profile_key', PlatformLegalProfile::DEFAULT_KEY)
+            ->first();
+
+        if (! $profile) {
+            return null;
+        }
+
+        return $this->normalizePlatformPartySnapshot($profile->toArray());
+    }
+
     private function buildPdfPayload(Agreement $agreement, array $snapshots): array
     {
         return [
@@ -317,6 +353,7 @@ class AgreementFinalizationService
                 'document_number' => $agreement->document_number,
             ],
             'event' => $snapshots['event_snapshot'],
+            'platform_party' => $snapshots['platform_party_snapshot'] ?? null,
             'organizer' => $snapshots['party_snapshot'],
             'bank_account' => $snapshots['bank_snapshot'],
             'organizer_letter' => $snapshots['document_snapshot'],
@@ -348,6 +385,7 @@ class AgreementFinalizationService
         $versioningService = app(AgreementVersioningService::class);
         $diffs = $parent ? $versioningService->computeDiffs([
             'event_snapshot' => $payload['event'],
+            'platform_party_snapshot' => $payload['platform_party'] ?? null,
             'party_snapshot' => $payload['organizer'],
             'bank_snapshot' => $payload['bank_account'],
             'document_snapshot' => $payload['organizer_letter'],
@@ -380,6 +418,38 @@ class AgreementFinalizationService
             'message' => $message,
             'blocking_reasons' => $blockingReasons,
         ];
+    }
+
+    private function supportsPlatformPartySnapshot(): bool
+    {
+        return Schema::hasTable('agreements')
+            && Schema::hasColumn('agreements', 'platform_party_snapshot');
+    }
+
+    private function normalizePlatformPartySnapshot($source): ?array
+    {
+        if (! is_array($source)) {
+            return null;
+        }
+
+        $snapshot = [
+            'company_name' => $source['company_name'] ?? null,
+            'legal_id' => $source['legal_id'] ?? null,
+            'address' => $source['address'] ?? null,
+            'representative_name' => $source['representative_name'] ?? null,
+            'representative_position' => $source['representative_position'] ?? null,
+            'email' => $source['email'] ?? null,
+            'phone' => $source['phone'] ?? null,
+            'website' => $source['website'] ?? null,
+        ];
+
+        foreach ($snapshot as $value) {
+            if ($value !== null && $value !== '') {
+                return $snapshot;
+            }
+        }
+
+        return null;
     }
 
     private function formatDateTime($value): ?string

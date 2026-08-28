@@ -14,6 +14,16 @@ use Illuminate\Support\Str;
 class AgreementVersioningService
 {
     public const TEMPLATE_VERSION = 'addendum-v1';
+    private const PLATFORM_PARTY_FIELDS = [
+        'company_name' => 'Nama Badan Usaha / Pengelola',
+        'legal_id' => 'Legalitas / NIB',
+        'address' => 'Alamat',
+        'representative_name' => 'Nama Wakil / Penanggung Jawab',
+        'representative_position' => 'Jabatan Wakil / Penanggung Jawab',
+        'email' => 'Email Resmi',
+        'phone' => 'WhatsApp / Telepon',
+        'website' => 'Website / Platform',
+    ];
 
     /**
      * Check if contractual changes occurred on an event that has a completed agreement.
@@ -70,7 +80,7 @@ class AgreementVersioningService
                 return null;
             }
 
-            $liveSnapshots = $this->buildLiveSnapshots($freshEvent);
+            $liveSnapshots = $this->buildLiveSnapshots($freshEvent, $latestCompleted);
 
             if (! $this->hasContractualDiff($liveSnapshots, $latestCompleted)) {
                 if ($existingDraft) {
@@ -81,6 +91,8 @@ class AgreementVersioningService
             }
 
             if ($existingDraft) {
+                $this->syncDraftPlatformPartySnapshot($existingDraft, $latestCompleted);
+
                 return $existingDraft;
             }
 
@@ -96,7 +108,7 @@ class AgreementVersioningService
             $nextVersion = ($lastAddendumVersion ?? 0) + 1;
 
             $addendum = new Agreement();
-            $addendum->forceFill([
+            $attributes = [
                 'uid' => (string) Str::uuid(),
                 'event_uid' => $freshEvent->uid,
                 'tenant_user_uid' => $freshEvent->user_uid,
@@ -105,7 +117,15 @@ class AgreementVersioningService
                 'version' => $nextVersion,
                 'status' => Agreement::STATUS_DRAFT,
                 'created_by' => $actorUid ?? $freshEvent->user_uid,
-            ]);
+            ];
+
+            if ($this->supportsPlatformPartySnapshot()) {
+                $attributes['platform_party_snapshot'] = $this->normalizePlatformPartySnapshot(
+                    $latestCompleted->platform_party_snapshot
+                );
+            }
+
+            $addendum->forceFill($attributes);
             $addendum->save();
 
             return $addendum->fresh();
@@ -126,15 +146,23 @@ class AgreementVersioningService
             ->first();
     }
 
-    public function buildLiveSnapshots(Event $event): array
+    public function buildLiveSnapshots(Event $event, ?Agreement $parentAgreement = null): array
     {
-        return [
+        $snapshots = [
             'event_snapshot' => $this->buildEventSnapshot($event),
             'party_snapshot' => $this->buildPartySnapshot($event),
             'bank_snapshot' => $this->buildBankSnapshot($event),
             'document_snapshot' => $this->buildDocumentSnapshot($event),
             'commercial_snapshot' => $this->buildCommercialSnapshot($event),
         ];
+
+        if ($this->supportsPlatformPartySnapshot()) {
+            $snapshots['platform_party_snapshot'] = $this->normalizePlatformPartySnapshot(
+                $parentAgreement?->platform_party_snapshot
+            );
+        }
+
+        return $snapshots;
     }
 
     public function hasContractualDiff(array $liveSnapshots, Agreement $parentAgreement): bool
@@ -188,13 +216,34 @@ class AgreementVersioningService
             $diffs[] = [
                 'section' => 'Event',
                 'field' => 'buyer_fee',
-                'label' => 'Biaya Pembeli (Platform Fee)',
+                'label' => 'Biaya Pembeli / Event Fee',
                 'before' => $this->formatFeeDisplay($beforeFeeMode, $beforeFeeVal),
                 'after' => $this->formatFeeDisplay($afterFeeMode, $afterFeeVal),
             ];
         }
 
-        // 2. Organizer
+        // 2. Platform / PIHAK PERTAMA
+        if (array_key_exists('platform_party_snapshot', $afterSnapshots)) {
+            $beforePlatformParty = $this->normalizePlatformPartySnapshot($parentAgreement->platform_party_snapshot);
+            $afterPlatformParty = $this->normalizePlatformPartySnapshot($afterSnapshots['platform_party_snapshot']);
+
+            foreach (self::PLATFORM_PARTY_FIELDS as $field => $label) {
+                $beforeVal = (string) ($beforePlatformParty[$field] ?? '');
+                $afterVal = (string) ($afterPlatformParty[$field] ?? '');
+
+                if ($beforeVal !== $afterVal) {
+                    $diffs[] = [
+                        'section' => 'PIHAK PERTAMA',
+                        'field' => 'platform_'.$field,
+                        'label' => $label,
+                        'before' => $beforeVal ?: '-',
+                        'after' => $afterVal ?: '-',
+                    ];
+                }
+            }
+        }
+
+        // 3. Organizer
         $beforeParty = $parentAgreement->party_snapshot ?? [];
         $afterParty = $afterSnapshots['party_snapshot'] ?? [];
 
@@ -222,7 +271,7 @@ class AgreementVersioningService
             }
         }
 
-        // 3. Bank Account
+        // 4. Bank Account
         $beforeBank = $parentAgreement->bank_snapshot ?? [];
         $afterBank = $afterSnapshots['bank_snapshot'] ?? [];
 
@@ -247,7 +296,7 @@ class AgreementVersioningService
             }
         }
 
-        // 4. Organizer Letter
+        // 5. Organizer Letter
         $beforeDoc = $parentAgreement->document_snapshot ?? [];
         $afterDoc = $afterSnapshots['document_snapshot'] ?? [];
 
@@ -273,7 +322,7 @@ class AgreementVersioningService
             }
         }
 
-        // 5. Commercial / Payment Gateways
+        // 6. Commercial / Payment Gateways
         $beforeComm = $parentAgreement->commercial_snapshot ?? [];
         $afterComm = $afterSnapshots['commercial_snapshot'] ?? [];
 
@@ -349,12 +398,13 @@ class AgreementVersioningService
         $afterSnapshots = ($addendum->isCompleted() || $addendum->isReady())
             ? [
                 'event_snapshot' => $addendum->event_snapshot ?? [],
+                'platform_party_snapshot' => $addendum->platform_party_snapshot,
                 'party_snapshot' => $addendum->party_snapshot ?? [],
                 'bank_snapshot' => $addendum->bank_snapshot ?? [],
                 'document_snapshot' => $addendum->document_snapshot ?? [],
                 'commercial_snapshot' => $addendum->commercial_snapshot ?? [],
             ]
-            : $this->buildLiveSnapshots($event);
+            : $this->buildLiveSnapshots($event, $parent);
 
         $diffs = $parent ? $this->computeDiffs($afterSnapshots, $parent) : [];
 
@@ -531,6 +581,50 @@ class AgreementVersioningService
         $agreement->delete();
 
         return true;
+    }
+
+    private function syncDraftPlatformPartySnapshot(Agreement $draft, Agreement $parentAgreement): void
+    {
+        if (! $this->supportsPlatformPartySnapshot()) {
+            return;
+        }
+
+        $inherited = $this->normalizePlatformPartySnapshot($parentAgreement->platform_party_snapshot);
+        $current = $this->normalizePlatformPartySnapshot($draft->platform_party_snapshot);
+
+        if ($current === $inherited) {
+            return;
+        }
+
+        $draft->forceFill(['platform_party_snapshot' => $inherited]);
+        $draft->save();
+    }
+
+    private function supportsPlatformPartySnapshot(): bool
+    {
+        return \Illuminate\Support\Facades\Schema::hasTable('agreements')
+            && \Illuminate\Support\Facades\Schema::hasColumn('agreements', 'platform_party_snapshot');
+    }
+
+    private function normalizePlatformPartySnapshot($source): ?array
+    {
+        if (! is_array($source)) {
+            return null;
+        }
+
+        $snapshot = [];
+
+        foreach (array_keys(self::PLATFORM_PARTY_FIELDS) as $field) {
+            $snapshot[$field] = $source[$field] ?? null;
+        }
+
+        foreach ($snapshot as $value) {
+            if ($value !== null && $value !== '') {
+                return $snapshot;
+            }
+        }
+
+        return null;
     }
 
     private function formatDateTime($value): ?string
