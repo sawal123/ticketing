@@ -29,8 +29,7 @@
 
         .mou-v2-cover,
         .mou-v2-section,
-        .signature-page,
-        .mou-v2-annex {
+        .signature-page {
             page-break-inside: avoid;
         }
 
@@ -274,6 +273,7 @@
             padding: 14px 0 12px;
             border-top: 2px solid #163b68;
             border-bottom: 1px solid #cbd5e1;
+            page-break-after: avoid;
         }
 
         .annex-kicker,
@@ -309,13 +309,13 @@
 
         .annex-section {
             margin-bottom: 18px;
-            page-break-inside: avoid;
         }
 
         .annex-section-header {
             margin-bottom: 10px;
             padding-bottom: 6px;
             border-bottom: 1px solid #dbe3ee;
+            page-break-after: avoid;
         }
 
         .annex-table,
@@ -341,6 +341,23 @@
             background: #eef4fb;
             color: #1e3a5f;
             font-size: 9pt;
+        }
+
+        .gateway-fee-table {
+            page-break-inside: auto;
+        }
+
+        .gateway-fee-table thead {
+            display: table-header-group;
+        }
+
+        .gateway-fee-table tbody {
+            display: table-row-group;
+        }
+
+        .gateway-fee-table tr {
+            page-break-inside: avoid;
+            page-break-after: auto;
         }
 
         .annex-table th {

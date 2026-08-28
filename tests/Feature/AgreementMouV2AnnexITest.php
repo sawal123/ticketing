@@ -119,6 +119,35 @@ class AgreementMouV2AnnexITest extends TestCase
         $this->assertStringContainsString('<td>-</td>', $previewHtml);
     }
 
+    public function test_annex_pdf_handles_thirty_payment_gateways_for_pagination_regression(): void
+    {
+        $payload = $this->fixturePayload();
+        $payload['commercial']['payment_gateways'] = collect(range(1, 30))
+            ->map(function (int $index): array {
+                return [
+                    'payment' => 'Gateway Pagination Marker '.$index,
+                    'effective_is_active' => $index % 2 === 1,
+                    'resolved_fee_fixed' => (string) (($index % 5) * 1000).'.00',
+                    'resolved_fee_percent' => (string) (($index + 1) % 4),
+                ];
+            })
+            ->all();
+
+        $html = view('agreements.mou-v2-pdf', ['payload' => $payload])->render();
+
+        foreach (range(1, 30) as $index) {
+            $this->assertStringContainsString('Gateway Pagination Marker '.$index, $html);
+        }
+
+        $pdfBinary = Pdf::loadView('agreements.mou-v2-pdf', ['payload' => $payload])
+            ->setPaper('a4', 'portrait')
+            ->output();
+
+        $this->assertNotEmpty($html);
+        $this->assertNotEmpty($pdfBinary);
+        $this->assertStringStartsWith('%PDF', $pdfBinary);
+    }
+
     private function fixturePayload(array $overrides = []): array
     {
         $payload = [
