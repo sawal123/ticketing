@@ -195,7 +195,7 @@ Pendekatan implementasi yang diharapkan:
 
 ## Revisi Scope V2-R0 (Post-UAT)
 
-Revisi ini ditetapkan setelah UAT dan menjadi acuan corrective phase. Revisi hanya berlaku untuk dokumen baru yang difinalisasi setelah implementasi corrective phase; MOU/Addendum yang sudah `READY`/`COMPLETED` tetap immutable, tidak diregenerate, tidak dimigrasikan massal, dan tetap memakai file historical existing.
+Revisi ini ditetapkan setelah UAT dan menjadi acuan corrective phase. Revisi hanya berlaku untuk dokumen baru yang difinalisasi setelah implementasi corrective phase; seluruh Agreement non-DRAFT tidak boleh diregenerate dan tetap memakai file/history existing bila tersedia.
 
 ### 1. Buyer/Event Fee — Konfigurasi Operasional, Bukan Kontraktual
 
