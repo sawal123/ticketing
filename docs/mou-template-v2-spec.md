@@ -88,7 +88,7 @@ Perubahan data di atas tidak boleh menjadi trigger addendum.
 | 15 | PASAL 11 - Publikasi dan Merek | STATIC + SNAPSHOT | Menetapkan penggunaan nama, logo, dan materi promosi. | Nama event dan nama para pihak. | `agreements.event_snapshot.event_name`, `agreements.party_snapshot.organizer_name`, `platform_party_snapshot.*` target V2-1/V2-2 | Merek/logotype actual tidak perlu jadi field kontraktual baru pada V2-0. |
 | 16 | PASAL 12 - Data Pribadi, Keamanan dan Kerahasiaan | STATIC | Menetapkan kewajiban perlindungan data dan kerahasiaan. | Tidak ada. | Teks hukum statis. | Tidak memerlukan source runtime. |
 | 17 | PASAL 13 - Kekayaan Intelektual | STATIC | Menetapkan kepemilikan dan lisensi kekayaan intelektual. | Tidak ada. | Teks hukum statis. | Tidak memerlukan source runtime. |
-| 18 | PASAL 14 - Fraud, Chargeback dan Penahanan Dana | STATIC + SNAPSHOT | Menjelaskan risiko transaksi dan hak platform menahan dana. | Payment methods dan fee context bila dirujuk. | `agreements.commercial_snapshot.payment_gateways` | Payment semantics tidak diubah; pasal hanya mendeskripsikan. |
+| 18 | PASAL 14 - Fraud, Chargeback dan Penahanan Dana | STATIC | Menjelaskan risiko transaksi dan hak platform menahan dana, termasuk payment provider secara umum. | Tidak ada / teks hukum statis. | Tidak ada | V2-R0: pasal tidak memakai daftar payment gateway maupun fee live/frozen sebagai isi kontraktual; hanya menjelaskan secara umum. |
 | 19 | PASAL 15 - Ketersediaan Layanan | STATIC | Menjelaskan best effort / availability layanan. | Tidak ada. | Teks hukum statis. | Tidak memerlukan source runtime. |
 | 20 | PASAL 16 - Jangka Waktu dan Pengakhiran | STATIC + SNAPSHOT | Menentukan masa berlaku kerja sama dan pengakhiran. | Tanggal event atau periode event bila dijadikan batas. | `agreements.event_snapshot.start`, `end` | Tanggal efektif perjanjian tetap perlu formula legal yang konsisten. |
 | 21 | PASAL 17 - Keadaan Kahar | STATIC | Menetapkan force majeure. | Tidak ada. | Teks hukum statis. | Tidak memerlukan source runtime. |
@@ -166,7 +166,7 @@ Perubahan data di atas tidak boleh menjadi trigger addendum.
 | OUT OF CONTRACT | kuota | DATABASE | `hargas` / data tiket lain | Ya | Tidak | Tidak boleh masuk template `mou-v2` dan tidak boleh trigger addendum. |
 | OUT OF CONTRACT | benefit tiket | DATABASE | Tidak dipetakan untuk kontrak | Tidak diketahui | Tidak | Eksplisit di luar kontrak. |
 | OUT OF CONTRACT | syarat per kategori tiket | DATABASE | Tidak dipetakan untuk kontrak | Tidak diketahui | Tidak | Eksplisit di luar kontrak. |
-| KTP PENANGGUNG JAWAB | dokumen identitas penanggung jawab | DATABASE (target) | Upload penyewa per Event; file private; admin approve/reject; status VERIFIED wajib sebelum finalisasi | Target | Status: Ya, file: Tidak | V2-R0: MOU/Lampiran hanya menampilkan status TERVERIFIKASI / MENUNGGU VERIFIKASI / DITOLAK; jangan tampilkan foto KTP, NIK, private/signed/storage path. Fase awal tanpa field DB khusus NIK. |
+| KTP PENANGGUNG JAWAB | dokumen identitas penanggung jawab | DATABASE (target) | Upload penyewa per Event; file private; admin approve/reject; status VERIFIED wajib sebelum finalisasi | Target | Tidak | V2-R0: KTP adalah prerequisite/readiness finalisasi dan bukti administratif, BUKAN contractual diff; perubahan status/verifikasi KTP TIDAK membuat Addendum; boleh dibekukan metadata/status aman untuk audit; MOU/Lampiran hanya menampilkan status TERVERIFIKASI / MENUNGGU VERIFIKASI / DITOLAK; jangan tampilkan foto KTP, NIK, private/signed/storage path. Fase awal tanpa field DB khusus NIK. |
 
 ## Bagian yang Bersifat Teks Hukum Tetap
 
@@ -268,6 +268,8 @@ MOU/Lampiran hanya boleh menampilkan status:
 
 - Identitas Penanggung Jawab: `TERVERIFIKASI` / `MENUNGGU VERIFIKASI` / `DITOLAK`
 
+KTP adalah prerequisite/readiness finalisasi dan bukti administratif, BUKAN contractual diff. Perubahan status/verifikasi KTP TIDAK membuat Addendum; metadata/status aman boleh dibekukan untuk audit.
+
 JANGAN tampilkan:
 
 - foto KTP
@@ -306,11 +308,11 @@ Perubahan contractual Event/Organizer/Bank existing tetap mengikuti versioning e
 
 ### 7. Historical — Immutable
 
-MOU/Addendum yang sudah `READY`/`COMPLETED`:
+Aturan immutability berlaku untuk seluruh agreement non-DRAFT, tidak terbatas pada `READY`/`COMPLETED`:
 
-- immutable
-- tidak diregenerate
-- tidak dimigrasikan massal
-- tetap download file historical existing
+- Hanya Agreement `DRAFT` yang belum memiliki file historical yang boleh menghasilkan preview/final PDF baru sesuai lifecycle existing.
+- Agreement non-DRAFT (`READY`, `SENT_TO_PRIVY`, `SIGNING`, `COMPLETED`, `REJECTED`, `CANCELLED`) tidak boleh diregenerate.
+- File `unsigned`/`signed` existing tidak boleh dioverwrite.
+- Agreement non-DRAFT tetap mengikuti file/history existing bila tersedia.
 
-Revisi hanya berlaku untuk dokumen baru setelah implementasi corrective phase.
+Tidak ada backfill, regenerate, atau migrasi historical. Revisi hanya berlaku untuk dokumen baru setelah implementasi corrective phase.
