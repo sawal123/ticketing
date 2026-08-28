@@ -91,14 +91,14 @@ class AgreementPreviewService
         $buyerFee = $this->resolveBuyerFeeSnapshot($event);
 
         $paymentConfigs = $event->eventPaymentGateways
-            ->filter(fn (EventPaymentGateway $config) => $config->paymentGateway !== null)
-            ->sortBy(fn (EventPaymentGateway $config) => mb_strtolower((string) $config->paymentGateway->payment))
+            ->filter(fn(EventPaymentGateway $config) => $config->paymentGateway !== null)
+            ->sortBy(fn(EventPaymentGateway $config) => mb_strtolower((string) $config->paymentGateway->payment))
             ->values();
 
         $activePaymentMethods = $paymentConfigs
-            ->map(fn (EventPaymentGateway $config) => $this->resolveGatewayFee($config))
-            ->filter(fn (array $gateway) => $gateway['effective_is_active'])
-            ->map(fn (array $gateway) => $gateway['payment'])
+            ->map(fn(EventPaymentGateway $config) => $this->resolveGatewayFee($config))
+            ->filter(fn(array $gateway) => $gateway['effective_is_active'])
+            ->map(fn(array $gateway) => $gateway['payment'])
             ->values()
             ->all();
 
@@ -108,7 +108,7 @@ class AgreementPreviewService
             'payment_otp_enabled' => (bool) $event->payment_otp_enabled,
             'active_payment_methods' => $activePaymentMethods,
             'payment_gateways' => $paymentConfigs
-                ->map(fn (EventPaymentGateway $config) => $this->resolveGatewayFee($config))
+                ->map(fn(EventPaymentGateway $config) => $this->resolveGatewayFee($config))
                 ->all(),
         ];
     }
@@ -188,7 +188,7 @@ class AgreementPreviewService
             return [
                 'mode' => 'percent',
                 'mode_label' => 'Persentase',
-                'value' => $this->formatPercent($buyerFee['value'] ?? 0).'%',
+                'value' => $this->formatPercent($buyerFee['value'] ?? 0) . '%',
             ];
         }
 
@@ -196,7 +196,7 @@ class AgreementPreviewService
             return [
                 'mode' => 'fixed',
                 'mode_label' => 'Nominal Tetap',
-                'value' => 'Rp '.$this->formatCurrencyForDisplay($buyerFee['value'] ?? 0),
+                'value' => 'Rp ' . $this->formatCurrencyForDisplay($buyerFee['value'] ?? 0),
             ];
         }
 
@@ -272,10 +272,10 @@ class AgreementPreviewService
         return Carbon::parse($value)->format('d-m-Y H:i');
     }
 
-    private function formatDate($value): string
+    private function formatDate($value): ?string
     {
         if (blank($value)) {
-            return '-';
+            return null;
         }
 
         return Carbon::parse($value)->format('d-m-Y');
