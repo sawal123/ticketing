@@ -653,12 +653,19 @@
                 @if ($addendumPreview)
                     @include('agreements.addendum-preview', ['preview' => $addendumPreview])
                 @elseif ($mouPreview)
-                    <x-admin.card title="Preview MOU M6">
+                    @php
+                        $usesMouV2Preview = ($mouPreview['agreement']['template_version'] ?? null) === \App\Services\Agreements\AgreementFinalizationService::TEMPLATE_VERSION;
+                    @endphp
+                    <x-admin.card :title="$usesMouV2Preview ? 'Preview MOU V2' : 'Preview MOU'">
                         <div class="space-y-4">
                             <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
-                                Preview MOU tetap read-only dan mereuse tampilan agreement M6 yang membaca data live event terbaru.
+                                Preview MOU tetap read-only, mengikuti template agreement aktif, dan tidak mengubah file PDF historis.
                             </div>
-                            @include('agreements.mou-preview', ['preview' => $mouPreview])
+                            @if ($usesMouV2Preview)
+                                @include('agreements.mou-v2-preview', ['payload' => $mouPreview])
+                            @else
+                                @include('agreements.mou-preview', ['preview' => $mouPreview])
+                            @endif
                         </div>
                     </x-admin.card>
                 @else

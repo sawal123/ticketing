@@ -19,12 +19,14 @@ use Throwable;
 
 class AgreementFinalizationService
 {
+    public const LEGACY_TEMPLATE_VERSION = 'mou-v1';
+
     /**
      * Template version recorded on the finalized agreement / PDF.
      *
      * Kept as a simple explicit constant; no template builder is introduced.
      */
-    public const TEMPLATE_VERSION = 'mou-v1';
+    public const TEMPLATE_VERSION = 'mou-v2';
 
     /**
      * Finalize the MOU for an event:
@@ -132,7 +134,10 @@ class AgreementFinalizationService
                     $snapshots['platform_party_snapshot'] = $this->buildPlatformPartySnapshot($parentAgreement);
                 }
 
-                $templateVersion = $isAddendum ? AgreementVersioningService::TEMPLATE_VERSION : self::TEMPLATE_VERSION;
+                $versioningService = app(AgreementVersioningService::class);
+                $templateVersion = $isAddendum
+                    ? $versioningService->resolveTemplateVersionForLineage($parentAgreement)
+                    : self::TEMPLATE_VERSION;
 
                 if ($isAddendum) {
                     $diffs = $parentAgreement
@@ -147,7 +152,7 @@ class AgreementFinalizationService
                     }
                 }
 
-                $payload = $this->buildPdfPayload($agreement, $snapshots);
+                $payload = $this->buildPdfPayload($agreement, $snapshots, $templateVersion);
                 $pdfContent = $isAddendum
                     ? $this->renderAddendumPdf($payload, $agreement)
                     : $this->renderPdf($payload);
@@ -198,7 +203,7 @@ class AgreementFinalizationService
             'bank_snapshot' => $agreement->bank_snapshot ?? [],
             'document_snapshot' => $agreement->document_snapshot ?? [],
             'commercial_snapshot' => $agreement->commercial_snapshot ?? [],
-        ]);
+        ], $this->resolveTemplateVersionForAgreement($agreement));
     }
 
     private function buildEventSnapshot(Event $event): array
@@ -341,7 +346,7 @@ class AgreementFinalizationService
         return $this->normalizePlatformPartySnapshot($profile->toArray());
     }
 
-    private function buildPdfPayload(Agreement $agreement, array $snapshots): array
+    private function buildPdfPayload(Agreement $agreement, array $snapshots, string $templateVersion): array
     {
         return [
             'agreement' => [
@@ -349,7 +354,7 @@ class AgreementFinalizationService
                 'type' => $agreement->type,
                 'version' => (int) $agreement->version,
                 'status' => Agreement::STATUS_READY,
-                'template_version' => $agreement->template_version ?: self::TEMPLATE_VERSION,
+                'template_version' => $templateVersion,
                 'document_number' => $agreement->document_number,
             ],
             'event' => $snapshots['event_snapshot'],
@@ -363,7 +368,11 @@ class AgreementFinalizationService
 
     private function renderPdf(array $payload): string
     {
-        return Pdf::loadView('agreements.mou-pdf', ['payload' => $payload])
+        $view = ($payload['agreement']['template_version'] ?? null) === self::TEMPLATE_VERSION
+            ? 'agreements.mou-v2-pdf'
+            : 'agreements.mou-pdf';
+
+        return Pdf::loadView($view, ['payload' => $payload])
             ->setPaper('a4', 'portrait')
             ->output();
     }
@@ -378,6 +387,7 @@ class AgreementFinalizationService
             'type' => $parent->type,
             'version' => (int) $parent->version,
             'status' => $parent->status,
+            'template_version' => $this->resolveTemplateVersionForAgreement($parent),
             'document_number' => $parent->document_number,
             'completed_at' => $parent->completed_at?->format('d-m-Y H:i'),
         ] : null;
@@ -394,9 +404,26 @@ class AgreementFinalizationService
 
         $payload['diffs'] = $diffs;
 
-        return Pdf::loadView('agreements.addendum-pdf', ['payload' => $payload])
+        $view = ($payload['agreement']['template_version'] ?? null) === AgreementVersioningService::TEMPLATE_VERSION
+            ? 'agreements.addendum-v2-pdf'
+            : 'agreements.addendum-pdf';
+
+        return Pdf::loadView($view, ['payload' => $payload])
             ->setPaper('a4', 'portrait')
             ->output();
+    }
+
+    private function resolveTemplateVersionForAgreement(Agreement $agreement): string
+    {
+        if (filled($agreement->template_version)) {
+            return (string) $agreement->template_version;
+        }
+
+        if ($agreement->type === Agreement::TYPE_ADDENDUM) {
+            return AgreementVersioningService::LEGACY_TEMPLATE_VERSION;
+        }
+
+        return self::LEGACY_TEMPLATE_VERSION;
     }
 
     private function deleteIfExists(Filesystem $disk, string $path): void

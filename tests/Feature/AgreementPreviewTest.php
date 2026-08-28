@@ -62,7 +62,8 @@ class AgreementPreviewTest extends TestCase
             ->get(route('dashboard.event.detail', $event->uid).'?activeTab=mou');
 
         $response->assertOk()
-            ->assertSeeText('MOU Event')
+            ->assertSeeText('Preview MOU V2')
+            ->assertSeeText('Comprehensive MOU Body')
             ->assertSeeText('Konser Preview Tenant')
             ->assertSeeText('PT Preview Tenant')
             ->assertSeeText('Sawal Preview')
@@ -243,12 +244,9 @@ class AgreementPreviewTest extends TestCase
         $this->actingAs($tenant)
             ->get(route('dashboard.event.detail', $event->uid).'?activeTab=mou')
             ->assertOk()
-            ->assertSeeText('Jenis Biaya Pembeli')
-            ->assertSeeText('Persentase')
-            ->assertSeeText('Biaya Pembeli')
+            ->assertSeeText('Biaya Pembeli / Event Fee')
             ->assertSeeText('11%')
             ->assertSeeText('Gateway Manual Preview')
-            ->assertSeeText('MANUAL')
             ->assertSeeText('Rp 4.500')
             ->assertSeeText('1.5%')
             ->assertSeeText('Aktif');
@@ -266,9 +264,7 @@ class AgreementPreviewTest extends TestCase
         $this->actingAs($tenant)
             ->get(route('dashboard.event.detail', $event->uid).'?activeTab=mou')
             ->assertOk()
-            ->assertSeeText('Jenis Biaya Pembeli')
-            ->assertSeeText('Persentase')
-            ->assertSeeText('Biaya Pembeli')
+            ->assertSeeText('Biaya Pembeli / Event Fee')
             ->assertSeeText('10%')
             ->assertDontSeeText('Rp 10');
     }
@@ -285,9 +281,7 @@ class AgreementPreviewTest extends TestCase
         $this->actingAs($tenant)
             ->get(route('dashboard.event.detail', $event->uid).'?activeTab=mou')
             ->assertOk()
-            ->assertSeeText('Jenis Biaya Pembeli')
-            ->assertSeeText('Nominal Tetap')
-            ->assertSeeText('Biaya Pembeli')
+            ->assertSeeText('Biaya Pembeli / Event Fee')
             ->assertSeeText('Rp 5.000')
             ->assertDontSeeText('5000%');
     }
@@ -311,7 +305,7 @@ class AgreementPreviewTest extends TestCase
             ->get(route('dashboard.event.detail', $event->uid).'?activeTab=mou')
             ->assertOk()
             ->assertSeeText('Gateway Global New')
-            ->assertSeeText('GLOBAL')
+            ->assertSeeText('Biaya Kanal Pembayaran')
             ->assertSeeText('Rp 2.000')
             ->assertSeeText('3%');
     }
