@@ -18,3 +18,27 @@ Checklist ini disiapkan sebagai panduan review counsel sebelum template `mou-v2`
 - Verifikasi kebutuhan legal terkait halaman tanda tangan, validitas tanda tangan elektronik, workflow download unsigned, penandatanganan independen, upload signed PDF, verifikasi admin, dan wording unsigned template.
 - Cek konsistensi istilah dan data antara body utama dengan Lampiran I-II saat lampiran diimplementasikan.
 - Identifikasi regulasi, standar kepatuhan, atau referensi hukum spesifik yang baru boleh dicantumkan setelah review counsel selesai.
+
+## Legal Sign-off
+
+Status:
+NOT REVIEWED / PENDING COUNSEL REVIEW
+
+Reviewer:
+-
+
+Tanggal:
+-
+
+Hasil:
+-
+
+Catatan:
+-
+
+> **Rule eksplisit:** Template `mou-v2` belum dinyatakan legal-approved hanya karena
+> automated test dan UAT lulus. Production legal gate hanya dianggap selesai jika
+> reviewer hukum/counsel mengisi sign-off di atas secara eksplisit.
+>
+> Sign-off ini sengaja tidak diisi otomatis: tidak ada nama lawyer, tanggal approval,
+> atau regulasi yang dikarang, dan tidak ada pernyataan legal compliant pada dokumen ini.
