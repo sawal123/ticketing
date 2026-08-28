@@ -490,7 +490,7 @@ class EventDetail extends Component
                 return;
             }
         } catch (\Throwable $e) {
-            session()->flash('error', 'Upload dokumen bertanda tangan gagal: '.$e->getMessage());
+            session()->flash('error', 'Upload dokumen bertanda tangan gagal: ' . $e->getMessage());
             $this->reset('signedMou');
 
             return;
@@ -703,9 +703,9 @@ class EventDetail extends Component
 
             $agreementsHistory = $hasAgreementsTable
                 ? $event->agreements()
-                    ->orderByRaw("CASE WHEN type = 'mou' THEN 1 ELSE 2 END ASC")
-                    ->orderBy('version', 'asc')
-                    ->get()
+                ->orderByRaw("CASE WHEN type = 'mou' THEN 1 ELSE 2 END ASC")
+                ->orderBy('version', 'asc')
+                ->get()
                 : collect();
 
             $activeAgreement = $hasAgreementsTable

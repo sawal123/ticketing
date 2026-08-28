@@ -95,7 +95,7 @@ class AgreementFinalizationService
                 // file, or delete the historical file for a MOU / Addendum that
                 // was previously finalized. The agreement stays DRAFT and the
                 // template_version stays untouched.
-                $targetPath = 'private/agreements/'.$agreement->uid.'/unsigned.pdf';
+                $targetPath = 'private/agreements/' . $agreement->uid . '/unsigned.pdf';
 
                 if (
                     filled($agreement->unsigned_pdf_path)
@@ -135,9 +135,9 @@ class AgreementFinalizationService
                 if ($isAddendum) {
                     $parentAgreement = $agreement->parentAgreement
                         ?? Agreement::query()
-                            ->where('uid', $agreement->parent_agreement_uid)
-                            ->lockForUpdate()
-                            ->first();
+                        ->where('uid', $agreement->parent_agreement_uid)
+                        ->lockForUpdate()
+                        ->first();
                 }
 
                 $snapshots = [
@@ -299,9 +299,9 @@ class AgreementFinalizationService
         $previewService = app(AgreementPreviewService::class);
 
         $gateways = $event->eventPaymentGateways
-            ->filter(fn (EventPaymentGateway $config) => $config->paymentGateway !== null)
-            ->sortBy(fn (EventPaymentGateway $config) => mb_strtolower((string) $config->paymentGateway->payment))
-            ->map(fn (EventPaymentGateway $config) => $previewService->resolveGatewayFeeSnapshot($config))
+            ->filter(fn(EventPaymentGateway $config) => $config->paymentGateway !== null)
+            ->sortBy(fn(EventPaymentGateway $config) => mb_strtolower((string) $config->paymentGateway->payment))
+            ->map(fn(EventPaymentGateway $config) => $previewService->resolveGatewayFeeSnapshot($config))
             ->values()
             ->all();
 
