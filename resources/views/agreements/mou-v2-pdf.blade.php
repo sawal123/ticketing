@@ -388,10 +388,23 @@
             display: inline-block;
             margin-right: 14px;
         }
+
+        .readiness-table th,
+        .readiness-table td {
+            width: auto;
+        }
+
+        .readiness-status {
+            width: 24%;
+            font-weight: bold;
+            letter-spacing: 0.02em;
+            color: #163b68;
+        }
     </style>
 </head>
 <body>
     @include('agreements.partials.mou-v2-contract', ['payload' => $payload])
     @include('agreements.partials.mou-v2-annex-i', ['payload' => $payload])
+    @include('agreements.partials.mou-v2-annex-ii', ['payload' => $payload])
 </body>
 </html>

@@ -394,6 +394,18 @@
         color: #64748b;
     }
 
+    .mou-v2-preview-body .readiness-table th,
+    .mou-v2-preview-body .readiness-table td {
+        width: auto;
+    }
+
+    .mou-v2-preview-body .readiness-status {
+        width: 24%;
+        font-weight: 800;
+        letter-spacing: 0.02em;
+        color: #163b68;
+    }
+
     @media (max-width: 900px) {
         .mou-v2-preview-header,
         .mou-v2-preview-body {
@@ -433,5 +445,6 @@
     <div class="mou-v2-preview-body">
         @include('agreements.partials.mou-v2-contract', ['payload' => $payload])
         @include('agreements.partials.mou-v2-annex-i', ['payload' => $payload])
+        @include('agreements.partials.mou-v2-annex-ii', ['payload' => $payload])
     </div>
 </div>
