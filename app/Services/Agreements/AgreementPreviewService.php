@@ -23,6 +23,13 @@ class AgreementPreviewService
             return null;
         }
 
+        // Live preview is only meaningful while the agreement is still DRAFT.
+        // READY / SENT_TO_PRIVY / SIGNING / COMPLETED / REJECTED / CANCELLED
+        // must rely on the existing file / history instead of live event data.
+        if (! $agreement->isDraft()) {
+            return null;
+        }
+
         $organizer = $event->organizer;
         $bankAccount = $event->bankAccount;
         $organizerLetter = $event->organizerLetter;
@@ -54,25 +61,25 @@ class AgreementPreviewService
             ],
             'platform_party' => $this->buildPlatformPartyPreview(),
             'organizer' => [
-                'organizer_name' => $organizer?->organizer_name ?: '-',
-                'responsible_name' => $organizer?->responsible_name ?: '-',
-                'responsible_position' => $organizer?->responsible_position ?: '-',
-                'phone' => $organizer?->phone ?: '-',
-                'email' => $organizer?->email ?: '-',
-                'address' => $organizer?->address ?: '-',
+                'organizer_name' => $organizer?->organizer_name,
+                'responsible_name' => $organizer?->responsible_name,
+                'responsible_position' => $organizer?->responsible_position,
+                'phone' => $organizer?->phone,
+                'email' => $organizer?->email,
+                'address' => $organizer?->address,
             ],
             'bank_account' => [
-                'bank_name' => $bankAccount?->bank_name ?: '-',
-                'account_number' => $bankAccount?->account_number ?: '-',
-                'account_holder_name' => $bankAccount?->account_holder_name ?: '-',
-                'verification_status' => $bankAccount?->status ?: 'Belum dikonfigurasi',
+                'bank_name' => $bankAccount?->bank_name,
+                'account_number' => $bankAccount?->account_number,
+                'account_holder_name' => $bankAccount?->account_holder_name,
+                'verification_status' => $bankAccount?->status,
             ],
             'organizer_letter' => [
-                'document_type' => $organizerLetter?->document_type ?: '-',
-                'document_number' => $organizerLetter?->document_number ?: '-',
+                'document_type' => $organizerLetter?->document_type,
+                'document_number' => $organizerLetter?->document_number,
                 'document_date' => $this->formatDate($organizerLetter?->document_date),
-                'original_name' => $organizerLetter?->original_name ?: '-',
-                'verification_status' => $organizerLetter?->status ?: 'Belum dikonfigurasi',
+                'original_name' => $organizerLetter?->original_name,
+                'verification_status' => $organizerLetter?->status,
             ],
             'commercial' => $commercial,
         ];

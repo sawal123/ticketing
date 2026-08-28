@@ -1012,7 +1012,7 @@ class EventDetail extends Component
                     ?? $event->currentMouAgreement)
                 : null;
 
-            if ($activeAgreement?->isAddendum()) {
+            if ($activeAgreement?->isAddendum() && $activeAgreement->isDraft()) {
                 $addendumPreview = app(\App\Services\Agreements\AgreementVersioningService::class)
                     ->buildAddendumPreview($event, $activeAgreement);
             }

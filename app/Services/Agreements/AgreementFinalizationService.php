@@ -90,6 +90,24 @@ class AgreementFinalizationService
                     );
                 }
 
+                // Refuse to re-finalize a DRAFT agreement that already carries a
+                // historical file. Never render a new PDF, overwrite an existing
+                // file, or delete the historical file for a MOU / Addendum that
+                // was previously finalized. The agreement stays DRAFT and the
+                // template_version stays untouched.
+                $targetPath = 'private/agreements/'.$agreement->uid.'/unsigned.pdf';
+
+                if (
+                    filled($agreement->unsigned_pdf_path)
+                    || filled($agreement->signed_pdf_path)
+                    || $disk->exists($targetPath)
+                ) {
+                    return $this->failure(
+                        'historical_file_exists',
+                        'Agreement DRAFT sudah memiliki file historical dan tidak dapat difinalisasi ulang.'
+                    );
+                }
+
                 $freshEvent = Event::query()
                     ->with([
                         'organizer',
@@ -157,7 +175,7 @@ class AgreementFinalizationService
                     ? $this->renderAddendumPdf($payload, $agreement)
                     : $this->renderPdf($payload);
 
-                $path = 'private/agreements/'.$agreement->uid.'/unsigned.pdf';
+                $path = $targetPath;
 
                 $stored = $disk->put($path, $pdfContent);
 
