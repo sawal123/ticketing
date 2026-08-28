@@ -6,8 +6,10 @@ use App\Models\Agreement;
 use App\Models\Event;
 use App\Models\EventPaymentGateway;
 use App\Models\PaymentGateway;
+use App\Models\PlatformLegalProfile;
 use App\Services\Tickets\TicketPricingService;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Schema;
 
 class AgreementPreviewService
 {
@@ -21,10 +23,18 @@ class AgreementPreviewService
             return null;
         }
 
+        // Live preview is only meaningful while the agreement is still DRAFT.
+        // READY / SENT_TO_PRIVY / SIGNING / COMPLETED / REJECTED / CANCELLED
+        // must rely on the existing file / history instead of live event data.
+        if (! $agreement->isDraft()) {
+            return null;
+        }
+
         $organizer = $event->organizer;
         $bankAccount = $event->bankAccount;
         $organizerLetter = $event->organizerLetter;
         $commercial = $this->buildCommercialSummaryForEvent($event);
+        $templateVersion = $this->resolveTemplateVersionForAgreement($agreement);
 
         return [
             'agreement' => [
@@ -32,8 +42,11 @@ class AgreementPreviewService
                 'type' => $agreement->type,
                 'version' => (int) $agreement->version,
                 'status' => $agreement->status,
+                'template_version' => $templateVersion,
+                'document_number' => $agreement->document_number,
             ],
             'event' => [
+                'event_name' => $event->event,
                 'name' => $event->event,
                 'start_sale' => $this->formatDateTime($event->start_sale),
                 'start' => $this->formatDateTime($event->tanggal),
@@ -43,27 +56,30 @@ class AgreementPreviewService
                 'venue_city' => $event->venue_city ?: '-',
                 'venue_province' => $event->venue_province ?: '-',
                 'legacy_address' => $event->alamat ?: '-',
+                'buyer_fee' => $commercial['buyer_fee'],
                 'ticket_tax' => $commercial['ticket_tax'],
             ],
+            'platform_party' => $this->buildPlatformPartyPreview(),
             'organizer' => [
-                'organizer_name' => $organizer?->organizer_name ?: '-',
-                'responsible_name' => $organizer?->responsible_name ?: '-',
-                'responsible_position' => $organizer?->responsible_position ?: '-',
-                'phone' => $organizer?->phone ?: '-',
-                'email' => $organizer?->email ?: '-',
-                'address' => $organizer?->address ?: '-',
+                'organizer_name' => $organizer?->organizer_name,
+                'responsible_name' => $organizer?->responsible_name,
+                'responsible_position' => $organizer?->responsible_position,
+                'phone' => $organizer?->phone,
+                'email' => $organizer?->email,
+                'address' => $organizer?->address,
             ],
             'bank_account' => [
-                'bank_name' => $bankAccount?->bank_name ?: '-',
-                'account_number' => $bankAccount?->account_number ?: '-',
-                'account_holder_name' => $bankAccount?->account_holder_name ?: '-',
-                'verification_status' => $bankAccount?->status ?: 'Belum dikonfigurasi',
+                'bank_name' => $bankAccount?->bank_name,
+                'account_number' => $bankAccount?->account_number,
+                'account_holder_name' => $bankAccount?->account_holder_name,
+                'verification_status' => $bankAccount?->status,
             ],
             'organizer_letter' => [
-                'document_number' => $organizerLetter?->document_number ?: '-',
+                'document_type' => $organizerLetter?->document_type,
+                'document_number' => $organizerLetter?->document_number,
                 'document_date' => $this->formatDate($organizerLetter?->document_date),
-                'original_name' => $organizerLetter?->original_name ?: '-',
-                'verification_status' => $organizerLetter?->status ?: 'Belum dikonfigurasi',
+                'original_name' => $organizerLetter?->original_name,
+                'verification_status' => $organizerLetter?->status,
             ],
             'commercial' => $commercial,
         ];
@@ -72,27 +88,63 @@ class AgreementPreviewService
     public function buildCommercialSummaryForEvent(Event $event): array
     {
         $this->loadPreviewRelations($event);
+        $buyerFee = $this->resolveBuyerFeeSnapshot($event);
 
         $paymentConfigs = $event->eventPaymentGateways
-            ->filter(fn (EventPaymentGateway $config) => $config->paymentGateway !== null)
-            ->sortBy(fn (EventPaymentGateway $config) => mb_strtolower((string) $config->paymentGateway->payment))
+            ->filter(fn(EventPaymentGateway $config) => $config->paymentGateway !== null)
+            ->sortBy(fn(EventPaymentGateway $config) => mb_strtolower((string) $config->paymentGateway->payment))
             ->values();
 
         $activePaymentMethods = $paymentConfigs
-            ->map(fn (EventPaymentGateway $config) => $this->resolveGatewayFee($config))
-            ->filter(fn (array $gateway) => $gateway['effective_is_active'])
-            ->map(fn (array $gateway) => $gateway['payment'])
+            ->map(fn(EventPaymentGateway $config) => $this->resolveGatewayFee($config))
+            ->filter(fn(array $gateway) => $gateway['effective_is_active'])
+            ->map(fn(array $gateway) => $gateway['payment'])
             ->values()
             ->all();
 
         return [
-            'ticket_tax' => $this->resolveBuyerFee($event),
+            'buyer_fee' => $buyerFee,
+            'ticket_tax' => $this->resolveBuyerFeeDisplay($buyerFee),
             'payment_otp_enabled' => (bool) $event->payment_otp_enabled,
             'active_payment_methods' => $activePaymentMethods,
             'payment_gateways' => $paymentConfigs
-                ->map(fn (EventPaymentGateway $config) => $this->resolveGatewayFee($config))
+                ->map(fn(EventPaymentGateway $config) => $this->resolveGatewayFee($config))
                 ->all(),
         ];
+    }
+
+    private function buildPlatformPartyPreview(): ?array
+    {
+        if (! Schema::hasTable('platform_legal_profiles')) {
+            return null;
+        }
+
+        $profile = PlatformLegalProfile::query()
+            ->where('profile_key', PlatformLegalProfile::DEFAULT_KEY)
+            ->first();
+
+        if (! $profile) {
+            return null;
+        }
+
+        $snapshot = [
+            'company_name' => $profile->company_name,
+            'legal_id' => $profile->legal_id,
+            'address' => $profile->address,
+            'representative_name' => $profile->representative_name,
+            'representative_position' => $profile->representative_position,
+            'email' => $profile->email,
+            'phone' => $profile->phone,
+            'website' => $profile->website,
+        ];
+
+        foreach ($snapshot as $value) {
+            if ($value !== null && $value !== '') {
+                return $snapshot;
+            }
+        }
+
+        return null;
     }
 
     private function loadPreviewRelations(Event $event): void
@@ -106,23 +158,45 @@ class AgreementPreviewService
         ]);
     }
 
-    private function resolveBuyerFee(Event $event): array
+    private function resolveBuyerFeeSnapshot(Event $event): array
     {
         [$taxPercent, $taxAmount] = app(TicketPricingService::class)->tax($event, 0);
 
         if ($taxPercent > 0) {
             return [
                 'mode' => 'percent',
-                'mode_label' => 'Persentase',
-                'value' => $this->formatPercent($taxPercent).'%',
+                'value' => (float) $taxPercent,
             ];
         }
 
         if ($taxAmount > 0) {
             return [
                 'mode' => 'fixed',
+                'value' => (float) $taxAmount,
+            ];
+        }
+
+        return [
+            'mode' => 'none',
+            'value' => 0.0,
+        ];
+    }
+
+    private function resolveBuyerFeeDisplay(array $buyerFee): array
+    {
+        if (($buyerFee['mode'] ?? 'none') === 'percent') {
+            return [
+                'mode' => 'percent',
+                'mode_label' => 'Persentase',
+                'value' => $this->formatPercent($buyerFee['value'] ?? 0) . '%',
+            ];
+        }
+
+        if (($buyerFee['mode'] ?? 'none') === 'fixed') {
+            return [
+                'mode' => 'fixed',
                 'mode_label' => 'Nominal Tetap',
-                'value' => 'Rp '.$this->formatCurrencyForDisplay($taxAmount),
+                'value' => 'Rp ' . $this->formatCurrencyForDisplay($buyerFee['value'] ?? 0),
             ];
         }
 
@@ -198,10 +272,10 @@ class AgreementPreviewService
         return Carbon::parse($value)->format('d-m-Y H:i');
     }
 
-    private function formatDate($value): string
+    private function formatDate($value): ?string
     {
         if (blank($value)) {
-            return '-';
+            return null;
         }
 
         return Carbon::parse($value)->format('d-m-Y');
@@ -233,5 +307,18 @@ class AgreementPreviewService
     private function normalizeFeeValue($value): float
     {
         return max(0, (float) $value);
+    }
+
+    private function resolveTemplateVersionForAgreement(Agreement $agreement): string
+    {
+        if ($agreement->isDraft()) {
+            return AgreementFinalizationService::TEMPLATE_VERSION;
+        }
+
+        if (filled($agreement->template_version)) {
+            return (string) $agreement->template_version;
+        }
+
+        return AgreementFinalizationService::LEGACY_TEMPLATE_VERSION;
     }
 }

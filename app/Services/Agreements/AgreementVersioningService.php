@@ -13,7 +13,8 @@ use Illuminate\Support\Str;
 
 class AgreementVersioningService
 {
-    public const TEMPLATE_VERSION = 'addendum-v1';
+    public const LEGACY_TEMPLATE_VERSION = 'addendum-v1';
+    public const TEMPLATE_VERSION = 'addendum-v2';
     private const PLATFORM_PARTY_FIELDS = [
         'company_name' => 'Nama Badan Usaha / Pengelola',
         'legal_id' => 'Legalitas / NIB',
@@ -37,6 +38,7 @@ class AgreementVersioningService
 
         return DB::transaction(function () use ($event, $actorUid) {
             $latestCompleted = $this->getLatestCompletedAgreement($event);
+            $templateVersion = $this->resolveTemplateVersionForLineage($latestCompleted);
 
             if (! $latestCompleted) {
                 return null;
@@ -91,9 +93,10 @@ class AgreementVersioningService
             }
 
             if ($existingDraft) {
+                $this->syncDraftTemplateVersion($existingDraft, $templateVersion);
                 $this->syncDraftPlatformPartySnapshot($existingDraft, $latestCompleted);
 
-                return $existingDraft;
+                return $existingDraft->fresh();
             }
 
             if ($pendingAddendum) {
@@ -116,6 +119,7 @@ class AgreementVersioningService
                 'parent_agreement_uid' => $latestCompleted->uid,
                 'version' => $nextVersion,
                 'status' => Agreement::STATUS_DRAFT,
+                'template_version' => $templateVersion,
                 'created_by' => $actorUid ?? $freshEvent->user_uid,
             ];
 
@@ -414,6 +418,9 @@ class AgreementVersioningService
                 'type' => $addendum->type,
                 'version' => (int) $addendum->version,
                 'status' => $addendum->status,
+                'template_version' => filled($addendum->template_version)
+                    ? $addendum->template_version
+                    : $this->resolveTemplateVersionForLineage($parent),
                 'document_number' => $addendum->document_number,
                 'parent_agreement_uid' => $parent?->uid,
                 'parent_type' => $parent?->type,
@@ -425,6 +432,7 @@ class AgreementVersioningService
                 'type' => $parent->type,
                 'version' => (int) $parent->version,
                 'status' => $parent->status,
+                'template_version' => $this->resolveStoredTemplateVersion($parent),
                 'document_number' => $parent->document_number,
                 'completed_at' => $parent->completed_at?->format('d-m-Y H:i'),
             ] : null,
@@ -600,10 +608,34 @@ class AgreementVersioningService
         $draft->save();
     }
 
+    public function resolveTemplateVersionForLineage(?Agreement $parentAgreement): string
+    {
+        $parentTemplateVersion = $this->resolveStoredTemplateVersion($parentAgreement);
+
+        if (in_array($parentTemplateVersion, [
+            AgreementFinalizationService::TEMPLATE_VERSION,
+            self::TEMPLATE_VERSION,
+        ], true)) {
+            return self::TEMPLATE_VERSION;
+        }
+
+        return self::LEGACY_TEMPLATE_VERSION;
+    }
+
     private function supportsPlatformPartySnapshot(): bool
     {
         return \Illuminate\Support\Facades\Schema::hasTable('agreements')
             && \Illuminate\Support\Facades\Schema::hasColumn('agreements', 'platform_party_snapshot');
+    }
+
+    private function syncDraftTemplateVersion(Agreement $draft, string $templateVersion): void
+    {
+        if ($draft->template_version === $templateVersion) {
+            return;
+        }
+
+        $draft->forceFill(['template_version' => $templateVersion]);
+        $draft->save();
     }
 
     private function normalizePlatformPartySnapshot($source): ?array
@@ -625,6 +657,23 @@ class AgreementVersioningService
         }
 
         return null;
+    }
+
+    private function resolveStoredTemplateVersion(?Agreement $agreement): ?string
+    {
+        if (! $agreement) {
+            return null;
+        }
+
+        if (filled($agreement->template_version)) {
+            return (string) $agreement->template_version;
+        }
+
+        if ($agreement->type === Agreement::TYPE_ADDENDUM) {
+            return self::LEGACY_TEMPLATE_VERSION;
+        }
+
+        return AgreementFinalizationService::LEGACY_TEMPLATE_VERSION;
     }
 
     private function formatDateTime($value): ?string

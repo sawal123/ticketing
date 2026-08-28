@@ -63,7 +63,7 @@ class AdminAgreementReviewTest extends TestCase
             ->assertOk()
             ->assertSeeText('Review MOU')
             ->assertSeeText('Readiness Checklist')
-            ->assertSeeText('Preview MOU M6')
+            ->assertSeeText('Preview MOU V2')
             ->assertSeeText('Ringkasan Konfigurasi Komersial');
     }
 
@@ -119,6 +119,7 @@ class AdminAgreementReviewTest extends TestCase
         $tenant = $this->tenant();
         $event = $this->event($tenant);
         $bankAccount = $this->bankAccount($event, ['status' => 'pending']);
+        Storage::disk('local')->put($bankAccount->bank_book_path, 'bank-review-file');
 
         Livewire::actingAs($admin)
             ->test(EventDetail::class, ['uid' => $event->uid])
@@ -202,6 +203,7 @@ class AdminAgreementReviewTest extends TestCase
         $tenant = $this->tenant();
         $event = $this->event($tenant);
         $document = $this->organizerLetter($event, ['status' => 'pending']);
+        Storage::disk('local')->put($document->file_path, 'organizer-review-file');
 
         Livewire::actingAs($admin)
             ->test(EventDetail::class, ['uid' => $event->uid])
@@ -261,6 +263,8 @@ class AdminAgreementReviewTest extends TestCase
         $bankB = $this->bankAccount($eventB, ['status' => 'pending', 'skip_storage' => true]);
         $letterA = $this->organizerLetter($eventA, ['status' => 'pending']);
         $letterB = $this->organizerLetter($eventB, ['status' => 'pending', 'skip_storage' => true]);
+        Storage::disk('local')->put($bankA->bank_book_path, 'bank-review-file');
+        Storage::disk('local')->put($letterA->file_path, 'organizer-review-file');
 
         Livewire::actingAs($admin)
             ->test(EventDetail::class, ['uid' => $eventA->uid])

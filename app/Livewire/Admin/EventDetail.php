@@ -246,13 +246,13 @@ class EventDetail extends Component
             })
             ->when($this->searchTransaction, function ($q) {
                 $q->where(function ($sub) {
-                    $sub->where('carts.invoice', 'like', '%'.$this->searchTransaction.'%')
+                    $sub->where('carts.invoice', 'like', '%' . $this->searchTransaction . '%')
                         ->orWhere(function ($online) {
                             $online->where('carts.payment_type', '!=', 'cash')
                                 ->whereHas('users', function ($u) {
                                     $u->where(function ($userQuery) {
-                                        $userQuery->where('name', 'like', '%'.$this->searchTransaction.'%')
-                                            ->orWhere('email', 'like', '%'.$this->searchTransaction.'%');
+                                        $userQuery->where('name', 'like', '%' . $this->searchTransaction . '%')
+                                            ->orWhere('email', 'like', '%' . $this->searchTransaction . '%');
                                     });
                                 });
                         })
@@ -260,8 +260,8 @@ class EventDetail extends Component
                             $cashCart->where('carts.payment_type', 'cash')
                                 ->whereHas('cashBuyer', function ($cash) {
                                     $cash->where(function ($cashQuery) {
-                                        $cashQuery->where('name', 'like', '%'.$this->searchTransaction.'%')
-                                            ->orWhere('email', 'like', '%'.$this->searchTransaction.'%');
+                                        $cashQuery->where('name', 'like', '%' . $this->searchTransaction . '%')
+                                            ->orWhere('email', 'like', '%' . $this->searchTransaction . '%');
                                     });
                                 });
                         });
@@ -319,18 +319,18 @@ class EventDetail extends Component
     {
         PaymentGateway::findOrFail($gatewayId);
 
-        $mode = data_get($this->paymentGatewayConfigs, $gatewayId.'.fee_mode', EventPaymentGateway::FEE_MODE_GLOBAL);
+        $mode = data_get($this->paymentGatewayConfigs, $gatewayId . '.fee_mode', EventPaymentGateway::FEE_MODE_GLOBAL);
         $rules = [
-            'paymentGatewayConfigs.'.$gatewayId.'.fee_mode' => 'required|in:global,manual',
-            'paymentGatewayConfigs.'.$gatewayId.'.is_active' => 'required|boolean',
+            'paymentGatewayConfigs.' . $gatewayId . '.fee_mode' => 'required|in:global,manual',
+            'paymentGatewayConfigs.' . $gatewayId . '.is_active' => 'required|boolean',
         ];
 
         if ($mode === EventPaymentGateway::FEE_MODE_MANUAL) {
-            $rules['paymentGatewayConfigs.'.$gatewayId.'.fee_fixed'] = [
+            $rules['paymentGatewayConfigs.' . $gatewayId . '.fee_fixed'] = [
                 'required',
                 'regex:/^\d{1,13}(\.\d{1,2})?$/',
             ];
-            $rules['paymentGatewayConfigs.'.$gatewayId.'.fee_percent'] = [
+            $rules['paymentGatewayConfigs.' . $gatewayId . '.fee_percent'] = [
                 'required',
                 'regex:/^\d{1,4}(\.\d{1,4})?$/',
             ];
@@ -738,7 +738,7 @@ class EventDetail extends Component
         try {
             $result = app(AgreementFinalizationService::class)->finalizeForEvent($event, $actor->uid, $activeAgreement?->uid);
         } catch (\Throwable $e) {
-            session()->flash('error', 'Finalisasi dokumen gagal: '.$e->getMessage());
+            session()->flash('error', 'Finalisasi dokumen gagal: ' . $e->getMessage());
 
             return;
         }
@@ -772,7 +772,7 @@ class EventDetail extends Component
             $result = app(AgreementSignedVerificationService::class)
                 ->approveForEvent($event, $actor->uid, $activeAgreement?->uid);
         } catch (\Throwable $e) {
-            session()->flash('error', 'Verifikasi dokumen bertanda tangan gagal: '.$e->getMessage());
+            session()->flash('error', 'Verifikasi dokumen bertanda tangan gagal: ' . $e->getMessage());
 
             return;
         }
@@ -805,7 +805,7 @@ class EventDetail extends Component
             $result = app(AgreementSignedVerificationService::class)
                 ->rejectForEvent($event, $actor->uid, $validated['signedMouRejectionReason'], $activeAgreement?->uid);
         } catch (\Throwable $e) {
-            session()->flash('error', 'Penolakan dokumen bertanda tangan gagal: '.$e->getMessage());
+            session()->flash('error', 'Penolakan dokumen bertanda tangan gagal: ' . $e->getMessage());
 
             return;
         }
@@ -998,9 +998,9 @@ class EventDetail extends Component
 
             $agreementsHistory = $hasAgreementsTable
                 ? $event->agreements()
-                    ->orderByRaw("CASE WHEN type = 'mou' THEN 1 ELSE 2 END ASC")
-                    ->orderBy('version', 'asc')
-                    ->get()
+                ->orderByRaw("CASE WHEN type = 'mou' THEN 1 ELSE 2 END ASC")
+                ->orderBy('version', 'asc')
+                ->get()
                 : collect();
 
             $activeAgreement = $hasAgreementsTable
@@ -1012,7 +1012,7 @@ class EventDetail extends Component
                     ?? $event->currentMouAgreement)
                 : null;
 
-            if ($activeAgreement?->isAddendum()) {
+            if ($activeAgreement?->isAddendum() && $activeAgreement->isDraft()) {
                 $addendumPreview = app(\App\Services\Agreements\AgreementVersioningService::class)
                     ->buildAddendumPreview($event, $activeAgreement);
             }
@@ -1060,7 +1060,7 @@ class EventDetail extends Component
                 if ($hargaCartWithVoucher) {
                     $voucherCode = $hargaCartWithVoucher->voucher;
                 }
-                $discount = $selectedTransaction->hargaCarts->sum(fn ($i) => (int) ($i->disc ?? 0));
+                $discount = $selectedTransaction->hargaCarts->sum(fn($i) => (int) ($i->disc ?? 0));
             }
         }
 
@@ -1085,7 +1085,7 @@ class EventDetail extends Component
             'selectedTransaction' => $selectedTransaction,
             'discount' => $discount,
             'voucherCode' => $voucherCode,
-        ])->layout('admin.layout', ['title' => 'Detail Event: '.$event->event]);
+        ])->layout('admin.layout', ['title' => 'Detail Event: ' . $event->event]);
     }
 
     public function confirmResendEmail($uid)
@@ -1165,7 +1165,7 @@ class EventDetail extends Component
             $this->resendEmailUid = null;
             session()->flash('message', 'Email barcode telah dijadwalkan untuk dikirim.');
         } catch (\Exception $e) {
-            session()->flash('error', 'Gagal mengirim email: '.$e->getMessage());
+            session()->flash('error', 'Gagal mengirim email: ' . $e->getMessage());
         }
     }
 }

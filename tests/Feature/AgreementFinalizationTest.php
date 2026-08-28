@@ -742,13 +742,15 @@ class AgreementFinalizationTest extends TestCase
         $tenant = $this->tenant();
         $event = $this->event($tenant);
         $this->organizer($event);
-        $this->verifiedBankAccount($event);
-        $this->verifiedOrganizerLetter($event);
+        $bankAccount = $this->verifiedBankAccount($event);
+        $document = $this->verifiedOrganizerLetter($event);
         $this->agreement($tenant, $event);
         $gateway = $this->gateway();
         $this->eventGateway($event, $gateway, ['is_active' => true]);
 
         app(AgreementFinalizationService::class)->finalizeForEvent($event, $admin->uid);
+        Storage::disk('local')->put($bankAccount->bank_book_path, 'bank-finalization-file');
+        Storage::disk('local')->put($document->file_path, 'organizer-finalization-file');
 
         $review = app(AgreementReviewService::class)->buildForEvent($event->fresh());
 

@@ -430,10 +430,17 @@
                     @elseif ($addendumPreview)
                         @include('agreements.addendum-preview', ['preview' => $addendumPreview])
                     @elseif ($mouPreview)
+                        @php
+                            $usesMouV2Preview = ($mouPreview['agreement']['template_version'] ?? null) === \App\Services\Agreements\AgreementFinalizationService::TEMPLATE_VERSION;
+                        @endphp
                         <div class="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm text-slate-500 shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
-                            Preview MOU pada tahap ini bersifat read-only dan selalu membaca data live event yang terbaru.
+                            Preview MOU pada tahap ini bersifat read-only, mengikuti template agreement aktif, dan tidak mengubah file PDF historis.
                         </div>
-                        @include('agreements.mou-preview', ['preview' => $mouPreview])
+                        @if ($usesMouV2Preview)
+                            @include('agreements.mou-v2-preview', ['payload' => $mouPreview])
+                        @else
+                            @include('agreements.mou-preview', ['preview' => $mouPreview])
+                        @endif
                     @else
                         <div class="rounded-[2rem] border-2 border-dashed border-slate-200 bg-white px-8 py-14 text-center shadow-sm dark:border-slate-700 dark:bg-slate-800">
                             <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-slate-100 text-slate-400 dark:bg-slate-700 dark:text-slate-300">
