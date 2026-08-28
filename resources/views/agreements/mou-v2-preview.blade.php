@@ -288,6 +288,112 @@
         color: #64748b;
     }
 
+    .mou-v2-preview-body .mou-v2-annex {
+        margin-top: 42px;
+        padding-top: 12px;
+        border-top: 1px dashed #cbd5e1;
+    }
+
+    .mou-v2-preview-body .annex-heading {
+        margin-bottom: 18px;
+        padding: 14px 0 12px;
+        border-top: 2px solid #163b68;
+        border-bottom: 1px solid #dbe3ee;
+    }
+
+    .mou-v2-preview-body .annex-kicker,
+    .mou-v2-preview-body .annex-section-badge {
+        margin: 0;
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.24em;
+        text-transform: uppercase;
+        color: #36567e;
+    }
+
+    .mou-v2-preview-body .annex-heading h3 {
+        margin-top: 8px;
+        font-size: 24px;
+        letter-spacing: 0.06em;
+    }
+
+    .mou-v2-preview-body .annex-heading h4,
+    .mou-v2-preview-body .annex-section-header h5 {
+        margin-top: 8px;
+        font-size: 18px;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        color: #163b68;
+    }
+
+    .mou-v2-preview-body .annex-subtitle,
+    .mou-v2-preview-body .annex-doc-number {
+        margin: 10px 0 0;
+        color: #475569;
+    }
+
+    .mou-v2-preview-body .annex-section {
+        margin-bottom: 22px;
+    }
+
+    .mou-v2-preview-body .annex-section-header {
+        margin-bottom: 12px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid #dbe3ee;
+    }
+
+    .mou-v2-preview-body .annex-table,
+    .mou-v2-preview-body .gateway-fee-table {
+        width: 100%;
+        border-collapse: collapse;
+        table-layout: fixed;
+    }
+
+    .mou-v2-preview-body .annex-table th,
+    .mou-v2-preview-body .annex-table td,
+    .mou-v2-preview-body .gateway-fee-table th,
+    .mou-v2-preview-body .gateway-fee-table td {
+        padding: 10px 11px;
+        border: 1px solid #dbe3ee;
+        text-align: left;
+        vertical-align: top;
+        word-break: break-word;
+    }
+
+    .mou-v2-preview-body .annex-table th,
+    .mou-v2-preview-body .gateway-fee-table th {
+        background: #eef4fb;
+        color: #1e3a5f;
+        font-size: 13px;
+    }
+
+    .mou-v2-preview-body .annex-table th {
+        width: 34%;
+    }
+
+    .mou-v2-preview-body .annex-empty-state,
+    .mou-v2-preview-body .annex-note,
+    .mou-v2-preview-body .annex-audit {
+        padding: 12px 14px;
+        border: 1px solid #dbe3ee;
+        border-radius: 14px;
+        background: #f8fbff;
+        color: #475569;
+    }
+
+    .mou-v2-preview-body .annex-note {
+        margin-top: 10px;
+    }
+
+    .mou-v2-preview-body .annex-audit {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 16px;
+        margin-top: 12px;
+        font-size: 12px;
+        color: #64748b;
+    }
+
     @media (max-width: 900px) {
         .mou-v2-preview-header,
         .mou-v2-preview-body {
@@ -326,7 +432,6 @@
 
     <div class="mou-v2-preview-body">
         @include('agreements.partials.mou-v2-contract', ['payload' => $payload])
-
-        {{-- Lampiran V2 extension point intentionally kept empty in V2-3. --}}
+        @include('agreements.partials.mou-v2-annex-i', ['payload' => $payload])
     </div>
 </div>
