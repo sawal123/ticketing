@@ -262,11 +262,136 @@
             display: inline-block;
             margin-right: 14px;
         }
+
+        .mou-v2-annex {
+            page-break-before: always;
+            margin-bottom: 18px;
+        }
+
+        .annex-heading {
+            margin-bottom: 16px;
+            padding: 14px 0 12px;
+            border-top: 2px solid #163b68;
+            border-bottom: 1px solid #cbd5e1;
+            page-break-after: avoid;
+        }
+
+        .annex-kicker,
+        .annex-section-badge {
+            margin: 0;
+            font-size: 8pt;
+            font-weight: bold;
+            letter-spacing: 0.22em;
+            text-transform: uppercase;
+            color: #36567e;
+        }
+
+        .annex-heading h3 {
+            margin-top: 6px;
+            font-size: 16pt;
+            letter-spacing: 0.06em;
+        }
+
+        .annex-heading h4,
+        .annex-section-header h5 {
+            margin-top: 6px;
+            font-size: 11pt;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            color: #163b68;
+        }
+
+        .annex-subtitle,
+        .annex-doc-number {
+            margin: 8px 0 0;
+            color: #475569;
+        }
+
+        .annex-section {
+            margin-bottom: 18px;
+        }
+
+        .annex-section-header {
+            margin-bottom: 10px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid #dbe3ee;
+            page-break-after: avoid;
+        }
+
+        .annex-table,
+        .gateway-fee-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+
+        .annex-table th,
+        .annex-table td,
+        .gateway-fee-table th,
+        .gateway-fee-table td {
+            border: 1px solid #d5deea;
+            padding: 8px 9px;
+            text-align: left;
+            vertical-align: top;
+            word-break: break-word;
+        }
+
+        .annex-table th,
+        .gateway-fee-table th {
+            background: #eef4fb;
+            color: #1e3a5f;
+            font-size: 9pt;
+        }
+
+        .gateway-fee-table {
+            page-break-inside: auto;
+        }
+
+        .gateway-fee-table thead {
+            display: table-header-group;
+        }
+
+        .gateway-fee-table tbody {
+            display: table-row-group;
+        }
+
+        .gateway-fee-table tr {
+            page-break-inside: avoid;
+            page-break-after: auto;
+        }
+
+        .annex-table th {
+            width: 34%;
+        }
+
+        .annex-empty-state,
+        .annex-note,
+        .annex-audit {
+            padding: 10px 12px;
+            border: 1px solid #dbe3ee;
+            border-radius: 8px;
+            background: #f8fbff;
+            color: #475569;
+        }
+
+        .annex-note {
+            margin-top: 10px;
+        }
+
+        .annex-audit {
+            margin-top: 12px;
+            font-size: 8pt;
+            color: #64748b;
+        }
+
+        .annex-audit span {
+            display: inline-block;
+            margin-right: 14px;
+        }
     </style>
 </head>
 <body>
     @include('agreements.partials.mou-v2-contract', ['payload' => $payload])
-
-    {{-- Lampiran V2 extension point intentionally kept empty in V2-3. --}}
+    @include('agreements.partials.mou-v2-annex-i', ['payload' => $payload])
 </body>
 </html>
