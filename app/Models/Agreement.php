@@ -52,6 +52,7 @@ class Agreement extends Model
         'status',
         'template_version',
         'event_snapshot',
+        'platform_party_snapshot',
         'party_snapshot',
         'bank_snapshot',
         'document_snapshot',
@@ -79,6 +80,7 @@ class Agreement extends Model
 
     protected $casts = [
         'event_snapshot' => 'array',
+        'platform_party_snapshot' => 'array',
         'party_snapshot' => 'array',
         'bank_snapshot' => 'array',
         'document_snapshot' => 'array',
