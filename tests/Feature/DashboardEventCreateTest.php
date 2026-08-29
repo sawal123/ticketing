@@ -75,6 +75,7 @@ class DashboardEventCreateTest extends TestCase
             ->set('document_number', '001/SP-EVENT/VIII/2026')
             ->set('document_date', '2026-08-20')
             ->set('organizer_letter', $organizerLetter)
+            ->set('responsible_identity', UploadedFile::fake()->create('responsible-identity.pdf', 128, 'application/pdf'))
             ->call('save');
 
         $event = Event::where('event', 'Festival Nusantara')->firstOrFail();
@@ -187,6 +188,7 @@ class DashboardEventCreateTest extends TestCase
             ->set('document_number', 'STF-001')
             ->set('document_date', '2026-08-20')
             ->set('organizer_letter', UploadedFile::fake()->create('staff-letter.pdf', 128, 'application/pdf'))
+            ->set('responsible_identity', UploadedFile::fake()->create('responsible-identity.pdf', 128, 'application/pdf'))
             ->call('save');
 
         $event = Event::where('event', 'Festival Staff')->firstOrFail();
@@ -1565,6 +1567,7 @@ class DashboardEventCreateTest extends TestCase
                 ->set('document_number', 'AT-001')
                 ->set('document_date', '2026-08-20')
                 ->set('organizer_letter', UploadedFile::fake()->create('atomic-organizer-letter.pdf', 128, 'application/pdf'))
+                ->set('responsible_identity', UploadedFile::fake()->create('responsible-identity.pdf', 128, 'application/pdf'))
                 ->call('save');
 
             $this->fail('Expected organizer letter creation to fail.');
@@ -1625,6 +1628,7 @@ class DashboardEventCreateTest extends TestCase
                 ->set('document_number', 'AT-AGR-001')
                 ->set('document_date', '2026-08-20')
                 ->set('organizer_letter', UploadedFile::fake()->create('agreement-atomic-letter.pdf', 128, 'application/pdf'))
+                ->set('responsible_identity', UploadedFile::fake()->create('responsible-identity.pdf', 128, 'application/pdf'))
                 ->call('save');
 
             $this->fail('Expected agreement creation to fail.');

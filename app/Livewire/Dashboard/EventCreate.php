@@ -372,7 +372,7 @@ class EventCreate extends Component
             ];
             $responsibleIdentityState = $this->resolveResponsibleIdentityState($existingResponsibleIdentity, $newResponsibleIdentityStored);
 
-            DB::transaction(function () use (&$event, $uid, $slug, $eventData, $organizerData, $bankAccountData, $bankAccountState, $documentData, $documentState, $responsibleIdentityData, $responsibleIdentityState, $existingOrganizerLetter, $existingResponsibleIdentity) {
+            DB::transaction(function () use (&$event, $uid, $slug, $eventData, $organizerData, $bankAccountData, $bankAccountState, $documentData, $documentState, $responsibleIdentityData, $responsibleIdentityState, $existingOrganizerLetter, $existingResponsibleIdentity, $newResponsibleIdentityStored) {
                 $actorUid = (string) auth()->user()->uid;
 
                 if (! $this->editingEventUid) {
@@ -410,15 +410,17 @@ class EventCreate extends Component
                     ]
                 );
 
-                EventDocument::updateOrCreate(
-                    [
-                        'event_uid' => $event->uid,
-                        'document_type' => EventDocument::TYPE_RESPONSIBLE_IDENTITY,
-                    ],
-                    $responsibleIdentityData + $responsibleIdentityState + [
-                        'uid' => $existingResponsibleIdentity?->uid ?? (string) Str::uuid(),
-                    ]
-                );
+                if ($newResponsibleIdentityStored || $existingResponsibleIdentity) {
+                    EventDocument::updateOrCreate(
+                        [
+                            'event_uid' => $event->uid,
+                            'document_type' => EventDocument::TYPE_RESPONSIBLE_IDENTITY,
+                        ],
+                        $responsibleIdentityData + $responsibleIdentityState + [
+                            'uid' => $existingResponsibleIdentity?->uid ?? (string) Str::uuid(),
+                        ]
+                    );
+                }
 
                 if (! $this->editingEventUid) {
                     Agreement::createDraftForEvent($event, $actorUid);
@@ -524,7 +526,7 @@ class EventCreate extends Component
 
     private function responsibleIdentityRules(?EventDocument $existingResponsibleIdentity): array
     {
-        $required = blank($this->editingEventUid) || ! $this->responsibleIdentityFileExists($existingResponsibleIdentity);
+        $required = blank($this->editingEventUid);
 
         return [
             $required ? 'required' : 'nullable',

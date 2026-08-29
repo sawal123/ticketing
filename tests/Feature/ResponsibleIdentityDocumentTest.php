@@ -13,6 +13,7 @@ use App\Models\EventOrganizer;
 use App\Models\User;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\UploadedFile;
+use Illuminate\View\ViewException;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -131,6 +132,32 @@ class ResponsibleIdentityDocumentTest extends TestCase
         Storage::disk('local')->assertExists($document->file_path);
         $this->assertSame(
             1,
+            EventDocument::query()
+                ->where('event_uid', $event->uid)
+                ->where('document_type', EventDocument::TYPE_RESPONSIBLE_IDENTITY)
+                ->count()
+        );
+    }
+
+    public function test_legacy_edit_without_responsible_identity_still_saves_other_event_changes(): void
+    {
+        $tenant = $this->tenant(['email' => 'legacy-no-identity@example.test']);
+        $category = Category::create(['name' => 'Legacy No Identity', 'slug' => 'legacy-no-identity']);
+        $event = $this->event($tenant, $category, ['event' => 'Legacy Event Without Identity']);
+
+        $this->assertNull($event->responsibleIdentityDocument);
+
+        Livewire::actingAs($tenant)
+            ->test(EventCreate::class, ['uid' => $event->uid])
+            ->set('event', 'Legacy Event Updated')
+            ->call('save');
+
+        $event->refresh();
+
+        $this->assertSame('Legacy Event Updated', $event->event);
+        $this->assertNull($event->responsibleIdentityDocument()->first());
+        $this->assertSame(
+            0,
             EventDocument::query()
                 ->where('event_uid', $event->uid)
                 ->where('document_type', EventDocument::TYPE_RESPONSIBLE_IDENTITY)
@@ -318,10 +345,14 @@ class ResponsibleIdentityDocumentTest extends TestCase
         $event = $this->event($owner, $category, ['event' => 'Cross Tenant Event']);
         $this->seedResponsibleIdentity($event);
 
-        $this->expectException(ModelNotFoundException::class);
+        try {
+            Livewire::actingAs($otherTenant)
+                ->test(EventCreate::class, ['uid' => $event->uid]);
 
-        Livewire::actingAs($otherTenant)
-            ->test(EventCreate::class, ['uid' => $event->uid]);
+            $this->fail('Expected cross-tenant edit to be denied.');
+        } catch (ViewException $exception) {
+            $this->assertInstanceOf(ModelNotFoundException::class, $exception->getPrevious());
+        }
     }
 
     private function tenant(array $overrides = []): User
