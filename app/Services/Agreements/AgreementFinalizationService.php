@@ -113,6 +113,7 @@ class AgreementFinalizationService
                         'organizer',
                         'bankAccount',
                         'organizerLetter',
+                        'responsibleIdentityDocument',
                         'eventPaymentGateways.paymentGateway',
                     ])
                     ->where('uid', $event->uid)
@@ -276,6 +277,7 @@ class AgreementFinalizationService
     private function buildDocumentSnapshot(Event $event): array
     {
         $document = $event->organizerLetter;
+        $responsibleIdentity = $event->responsibleIdentityDocument;
 
         return [
             'document_type' => $document?->document_type ?? EventDocument::TYPE_ORGANIZER_LETTER,
@@ -285,6 +287,12 @@ class AgreementFinalizationService
             'verification_status' => $document?->status,
             'verified_by' => $document?->verified_by,
             'verified_at' => $this->formatDateTime($document?->verified_at),
+            'responsible_identity' => [
+                'document_type' => $responsibleIdentity?->document_type ?? EventDocument::TYPE_RESPONSIBLE_IDENTITY,
+                'original_name' => $responsibleIdentity?->original_name,
+                'verification_status' => $responsibleIdentity?->status,
+                'verified_at' => $this->formatDateTime($responsibleIdentity?->verified_at),
+            ],
         ];
     }
 
@@ -366,6 +374,13 @@ class AgreementFinalizationService
 
     private function buildPdfPayload(Agreement $agreement, array $snapshots, string $templateVersion): array
     {
+        $documentSnapshot = is_array($snapshots['document_snapshot'] ?? null)
+            ? $snapshots['document_snapshot']
+            : [];
+        $responsibleIdentity = is_array($documentSnapshot['responsible_identity'] ?? null)
+            ? $documentSnapshot['responsible_identity']
+            : [];
+
         return [
             'agreement' => [
                 'uid' => $agreement->uid,
@@ -379,7 +394,8 @@ class AgreementFinalizationService
             'platform_party' => $snapshots['platform_party_snapshot'] ?? null,
             'organizer' => $snapshots['party_snapshot'],
             'bank_account' => $snapshots['bank_snapshot'],
-            'organizer_letter' => $snapshots['document_snapshot'],
+            'organizer_letter' => $documentSnapshot,
+            'responsible_identity' => $responsibleIdentity,
             'commercial' => $snapshots['commercial_snapshot'],
         ];
     }

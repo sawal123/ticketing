@@ -56,6 +56,11 @@ class AgreementPreviewTest extends TestCase
             'document_date' => '2026-08-20',
             'file_path' => 'private/events/'.$event->uid.'/documents/internal-letter.pdf',
         ]);
+        $this->responsibleIdentity($event, [
+            'original_name' => 'responsible-identity-preview.pdf',
+            'status' => 'verified',
+            'verified_at' => '2026-08-22 10:00:00',
+        ]);
         $this->agreement($tenant, $event);
 
         $response = $this->actingAs($tenant)
@@ -71,6 +76,8 @@ class AgreementPreviewTest extends TestCase
             ->assertSeeText('Bank Preview')
             ->assertSeeText('MOU-PREV-001')
             ->assertSeeText('20-08-2026')
+            ->assertSeeText('Identitas Penanggung Jawab')
+            ->assertSeeText('TERVERIFIKASI')
             ->assertSeeText(Agreement::STATUS_DRAFT)
             ->assertDontSeeText($bankAccount->bank_book_path)
             ->assertDontSeeText($document->file_path)
@@ -365,6 +372,26 @@ class AgreementPreviewTest extends TestCase
         $this->assertStringContainsString('0%', $html);
     }
 
+    public function test_draft_preview_includes_safe_responsible_identity_metadata(): void
+    {
+        $tenant = $this->tenant(['email' => 'preview-identity@example.test']);
+        $event = $this->event($tenant, ['event' => 'Konser Preview Identity']);
+        $this->agreement($tenant, $event);
+        $this->responsibleIdentity($event, [
+            'original_name' => 'preview-identity.pdf',
+            'status' => 'pending',
+            'verified_at' => null,
+        ]);
+
+        $preview = app(AgreementPreviewService::class)->buildForEvent($event);
+
+        $this->assertSame(EventDocument::TYPE_RESPONSIBLE_IDENTITY, $preview['responsible_identity']['document_type']);
+        $this->assertSame('preview-identity.pdf', $preview['responsible_identity']['original_name']);
+        $this->assertSame('pending', $preview['responsible_identity']['verification_status']);
+        $this->assertArrayNotHasKey('file_path', $preview['responsible_identity']);
+        $this->assertArrayNotHasKey('nik', $preview['responsible_identity']);
+    }
+
     public function test_preview_uses_legacy_gateway_percent_fallback_when_new_defaults_are_null(): void
     {
         $tenant = $this->tenant(['email' => 'gateway-legacy-percent@example.test']);
@@ -544,6 +571,23 @@ class AgreementPreviewTest extends TestCase
             'file_path' => 'private/events/'.$event->uid.'/documents/organizer-letter.pdf',
             'mime_type' => 'application/pdf',
             'status' => 'verified',
+        ], $overrides));
+    }
+
+    private function responsibleIdentity(Event $event, array $overrides = []): EventDocument
+    {
+        return EventDocument::create(array_merge([
+            'uid' => (string) Str::uuid(),
+            'event_uid' => $event->uid,
+            'document_type' => EventDocument::TYPE_RESPONSIBLE_IDENTITY,
+            'document_number' => null,
+            'document_date' => null,
+            'original_name' => 'responsible-identity-preview.pdf',
+            'file_path' => 'private/events/'.$event->uid.'/responsible-identity/responsible-identity-preview.pdf',
+            'mime_type' => 'application/pdf',
+            'status' => 'verified',
+            'verified_at' => '2026-08-22 10:00:00',
+            'verified_by' => 'admin-preview',
         ], $overrides));
     }
 

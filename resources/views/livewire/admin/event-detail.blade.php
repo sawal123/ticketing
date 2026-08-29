@@ -416,12 +416,18 @@
             @php
                 $bankAccount = $event->bankAccount;
                 $organizerLetter = $event->organizerLetter;
+                $responsibleIdentity = $event->responsibleIdentityDocument;
                 $bankStatusClass = match (strtolower((string) $bankAccount?->status)) {
                     'verified' => 'bg-emerald-50 text-emerald-700 border-emerald-200',
                     'rejected' => 'bg-rose-50 text-rose-700 border-rose-200',
                     default => 'bg-amber-50 text-amber-700 border-amber-200',
                 };
                 $letterStatusClass = match (strtolower((string) $organizerLetter?->status)) {
+                    'verified' => 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                    'rejected' => 'bg-rose-50 text-rose-700 border-rose-200',
+                    default => 'bg-amber-50 text-amber-700 border-amber-200',
+                };
+                $responsibleIdentityStatusClass = match (strtolower((string) $responsibleIdentity?->status)) {
                     'verified' => 'bg-emerald-50 text-emerald-700 border-emerald-200',
                     'rejected' => 'bg-rose-50 text-rose-700 border-rose-200',
                     default => 'bg-amber-50 text-amber-700 border-amber-200',
@@ -798,6 +804,57 @@
                                     wire:target="approveOrganizerLetter" variant="success"
                                     class="disabled:pointer-events-none disabled:opacity-60">
                                     Verifikasi Surat
+                                </x-admin.button>
+                            </div>
+                        </div>
+                    </x-admin.card>
+
+                    <x-admin.card title="Review Identitas Penanggung Jawab">
+                        <div class="space-y-5">
+                            <div class="flex flex-wrap items-center justify-between gap-3">
+                                <span class="inline-flex items-center rounded-full border px-3 py-1 text-xs font-bold {{ $responsibleIdentityStatusClass }}">
+                                    {{ strtoupper((string) ($responsibleIdentity?->status ?? 'pending')) }}
+                                </span>
+                                @if ($responsibleIdentity && filled($responsibleIdentity->file_path))
+                                    <a href="{{ route('admin.event.review.responsible-identity', $event->uid) }}" target="_blank" rel="noopener" class="inline-flex">
+                                        <x-admin.button variant="secondary" icon="eye" class="!py-2">
+                                            Lihat Identitas
+                                        </x-admin.button>
+                                    </a>
+                                @endif
+                            </div>
+
+                            <div class="grid gap-3">
+                                <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                                    <p class="text-xs font-black uppercase tracking-[0.2em] text-slate-400">Nama File</p>
+                                    <p class="mt-2 text-sm font-bold text-slate-800">{{ $responsibleIdentity?->original_name ?: '-' }}</p>
+                                </div>
+                            </div>
+
+                            <div class="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800">
+                                <p class="text-xs font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-300">Catatan Penolakan</p>
+                                <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">{{ $responsibleIdentity?->rejection_reason ?: 'Belum ada catatan penolakan.' }}</p>
+                            </div>
+
+                            <div>
+                                <label for="responsible-identity-rejection-reason" class="mb-2 block text-xs font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-300">Alasan Tolak Identitas</label>
+                                <textarea id="responsible-identity-rejection-reason" wire:model.defer="responsibleIdentityRejectionReason" rows="4"
+                                    class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"></textarea>
+                                @error('responsibleIdentityRejectionReason')
+                                    <p class="mt-2 text-xs font-semibold text-rose-600">{{ $message }}</p>
+                                @enderror
+                            </div>
+
+                            <div class="flex flex-col gap-3 sm:flex-row sm:justify-end">
+                                <x-admin.button type="button" wire:click="rejectResponsibleIdentity" wire:loading.attr="disabled"
+                                    wire:target="rejectResponsibleIdentity"
+                                    class="disabled:pointer-events-none disabled:opacity-60 !bg-rose-600 hover:!bg-rose-700">
+                                    Tolak Identitas
+                                </x-admin.button>
+                                <x-admin.button type="button" wire:click="approveResponsibleIdentity" wire:loading.attr="disabled"
+                                    wire:target="approveResponsibleIdentity" variant="success"
+                                    class="disabled:pointer-events-none disabled:opacity-60">
+                                    Verifikasi Identitas
                                 </x-admin.button>
                             </div>
                         </div>

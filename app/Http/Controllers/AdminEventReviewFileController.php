@@ -35,6 +35,19 @@ class AdminEventReviewFileController extends Controller
         return $this->streamPrivateFile($path, $downloadName, $event->organizerLetter?->mime_type);
     }
 
+    public function responsibleIdentity(string $uid): StreamedResponse
+    {
+        $event = Event::query()
+            ->with('responsibleIdentityDocument')
+            ->where('uid', $uid)
+            ->firstOrFail();
+
+        $path = $event->responsibleIdentityDocument?->file_path;
+        $downloadName = $event->responsibleIdentityDocument?->original_name ?: 'responsible-identity';
+
+        return $this->streamPrivateFile($path, $downloadName, $event->responsibleIdentityDocument?->mime_type);
+    }
+
     private function streamPrivateFile(?string $path, string $downloadName, ?string $mimeType): StreamedResponse
     {
         $this->authorizeAdmin();

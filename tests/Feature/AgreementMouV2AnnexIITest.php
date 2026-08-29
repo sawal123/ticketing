@@ -34,6 +34,7 @@ class AgreementMouV2AnnexIITest extends TestCase
             $this->assertStringContainsString('BELUM TERSEDIA', $html);
             $this->assertStringContainsString('Status keberadaan file buku rekening tidak tersedia pada frozen snapshot.', $html);
             $this->assertStringContainsString('ORGANIZER_LETTER', $html);
+            $this->assertStringContainsString('Identitas Penanggung Jawab', $html);
             $this->assertStringContainsString('SURAT/ORG/2026/001', $html);
             $this->assertStringContainsString('15-08-2026', $html);
             $this->assertStringContainsString('surat-organizer.pdf', $html);
@@ -60,6 +61,7 @@ class AgreementMouV2AnnexIITest extends TestCase
             $this->assertStringNotContainsString('777111', $html);
             $this->assertStringNotContainsString('888222', $html);
             $this->assertStringNotContainsString('payment_otp_enabled', $html);
+            $this->assertStringNotContainsString('ktp-responsible.pdf', $html);
 
             $this->assertTrue(
                 strpos($html, 'mou-v2-contract-shared-body') < strpos($html, 'mou-v2-annex-i-shared-body')
@@ -100,6 +102,10 @@ class AgreementMouV2AnnexIITest extends TestCase
                 'document_date' => null,
                 'verification_status' => 'rejected',
             ],
+            'responsible_identity' => [
+                'verification_status' => 'rejected',
+                'original_name' => 'ktp-rejected.pdf',
+            ],
         ]);
         $payload['commercial']['payment_gateways'] = [
             ['payment' => 'Gateway Snapshot A', 'effective_is_active' => false],
@@ -126,6 +132,9 @@ class AgreementMouV2AnnexIITest extends TestCase
             'organizer_letter' => [
                 'verification_status' => 'arsip-lama',
             ],
+            'responsible_identity' => [
+                'verification_status' => 'pending',
+            ],
         ]);
         $payload['commercial']['payment_gateways'] = [];
 
@@ -137,6 +146,21 @@ class AgreementMouV2AnnexIITest extends TestCase
             $this->assertStringContainsString('arsip-lama', $html);
             $this->assertStringContainsString('TIDAK TERSEDIA', $html);
             $this->assertStringContainsString('BELUM TERSEDIA', $html);
+        }
+    }
+
+    public function test_annex_ii_handles_historical_payload_without_responsible_identity_safely(): void
+    {
+        $payload = $this->fixturePayload();
+        unset($payload['responsible_identity']);
+
+        $pdfHtml = view('agreements.mou-v2-pdf', ['payload' => $payload])->render();
+        $previewHtml = view('agreements.mou-v2-preview', ['payload' => $payload])->render();
+
+        foreach ([$pdfHtml, $previewHtml] as $html) {
+            $this->assertStringContainsString('Identitas Penanggung Jawab', $html);
+            $this->assertStringContainsString('BELUM TERSEDIA', $html);
+            $this->assertStringNotContainsString('ktp-responsible.pdf', $html);
         }
     }
 
@@ -195,6 +219,15 @@ class AgreementMouV2AnnexIITest extends TestCase
                 'document_date' => '15-08-2026',
                 'original_name' => 'surat-organizer.pdf',
                 'verification_status' => 'verified',
+                'file_path' => 'PRIVATE-FILE-PATH-MARKER',
+                'verified_by' => 'PRIVATE-VERIFIED-BY-MARKER',
+                'private_path' => 'PRIVATE-PATH-MARKER',
+            ],
+            'responsible_identity' => [
+                'document_type' => 'RESPONSIBLE_IDENTITY',
+                'original_name' => 'ktp-responsible.pdf',
+                'verification_status' => 'verified',
+                'verified_at' => '16-08-2026 10:30',
                 'file_path' => 'PRIVATE-FILE-PATH-MARKER',
                 'verified_by' => 'PRIVATE-VERIFIED-BY-MARKER',
                 'private_path' => 'PRIVATE-PATH-MARKER',

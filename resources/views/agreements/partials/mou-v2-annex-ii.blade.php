@@ -4,6 +4,7 @@
     $organizer = is_array($payload['organizer'] ?? null) ? $payload['organizer'] : [];
     $bankAccount = is_array($payload['bank_account'] ?? null) ? $payload['bank_account'] : [];
     $organizerLetter = is_array($payload['organizer_letter'] ?? null) ? $payload['organizer_letter'] : [];
+    $responsibleIdentity = is_array($payload['responsible_identity'] ?? null) ? $payload['responsible_identity'] : [];
     $commercial = is_array($payload['commercial'] ?? null) ? $payload['commercial'] : [];
 
     $display = static fn ($value, $fallback = '-') => filled($value) ? $value : $fallback;
@@ -16,6 +17,7 @@
             'verified' => 'TERVERIFIKASI',
             'rejected' => 'DITOLAK',
             'pending' => 'MENUNGGU VERIFIKASI',
+            'missing' => 'BELUM TERSEDIA',
             default => $display($value),
         };
     };
@@ -75,6 +77,11 @@
             'item' => 'Verifikasi Surat Penyelenggara',
             'status' => $mapVerificationStatus($organizerLetter['verification_status'] ?? null),
             'note' => 'Status mengikuti nilai verifikasi surat pada frozen snapshot.',
+        ],
+        [
+            'item' => 'Identitas Penanggung Jawab',
+            'status' => $mapVerificationStatus($responsibleIdentity['verification_status'] ?? 'missing'),
+            'note' => 'Status mengikuti nilai verifikasi identitas penanggung jawab pada frozen snapshot.',
         ],
         [
             'item' => 'Kanal Pembayaran Efektif',

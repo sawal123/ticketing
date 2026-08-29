@@ -70,6 +70,8 @@ class EventDetail extends Component
 
     public $organizerLetterRejectionReason = '';
 
+    public $responsibleIdentityRejectionReason = '';
+
     public $signedMouRejectionReason = '';
 
     protected $queryString = [
@@ -718,6 +720,102 @@ class EventDetail extends Component
             ->checkForContractualChanges($this->getCurrentEventModel(), Auth::user()?->uid);
 
         session()->flash('message', 'Surat penyelenggara ditolak.');
+    }
+
+    public function approveResponsibleIdentity(): void
+    {
+        $this->authorizeAgreementReview();
+
+        $actor = Auth::user();
+        abort_unless($actor, 403);
+
+        $result = DB::transaction(function () use ($actor) {
+            $event = Event::query()
+                ->where('uid', $this->eventUid)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $document = $event->responsibleIdentityDocument()
+                ->lockForUpdate()
+                ->first();
+
+            if (! $document) {
+                return 'missing_record';
+            }
+
+            if (blank($document->file_path) || ! Storage::disk('local')->exists($document->file_path)) {
+                return 'missing_file';
+            }
+
+            $document->status = 'verified';
+            $document->verified_by = $actor->uid;
+            $document->verified_at = now();
+            $document->rejection_reason = null;
+            $document->save();
+
+            return 'verified';
+        });
+
+        if ($result === 'missing_record') {
+            session()->flash('error', 'Identitas penanggung jawab belum tersedia.');
+
+            return;
+        }
+
+        if ($result === 'missing_file') {
+            session()->flash('error', 'Identitas penanggung jawab tidak tersedia atau file fisik hilang.');
+
+            return;
+        }
+
+        $this->responsibleIdentityRejectionReason = '';
+
+        session()->flash('message', 'Identitas penanggung jawab berhasil diverifikasi.');
+    }
+
+    public function rejectResponsibleIdentity(): void
+    {
+        $this->authorizeAgreementReview();
+
+        $validated = $this->validate([
+            'responsibleIdentityRejectionReason' => 'required|string|max:1000',
+        ]);
+
+        $actor = Auth::user();
+        abort_unless($actor, 403);
+
+        $updated = DB::transaction(function () use ($actor, $validated) {
+            $event = Event::query()
+                ->where('uid', $this->eventUid)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $document = $event->responsibleIdentityDocument()
+                ->lockForUpdate()
+                ->first();
+
+            if (! $document) {
+                return false;
+            }
+
+            $document->status = 'rejected';
+            $document->verified_by = $actor->uid;
+            $document->verified_at = null;
+            $document->rejection_reason = $validated['responsibleIdentityRejectionReason'];
+            $document->save();
+
+            return true;
+        });
+
+        if (! $updated) {
+            session()->flash('error', 'Identitas penanggung jawab belum tersedia.');
+
+            return;
+        }
+
+        $this->responsibleIdentityRejectionReason = '';
+
+        session()->flash('message', 'Identitas penanggung jawab ditolak.');
     }
 
     public function finalizeAgreement(): void

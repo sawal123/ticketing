@@ -256,6 +256,8 @@ Route::prefix('admin')
             ->name('admin.event.review.bank-book');
         Route::get('/event/{uid}/review/organizer-letter', [AdminEventReviewFileController::class, 'organizerLetter'])
             ->name('admin.event.review.organizer-letter');
+        Route::get('/event/{uid}/review/responsible-identity', [AdminEventReviewFileController::class, 'responsibleIdentity'])
+            ->name('admin.event.review.responsible-identity');
         Route::get('/event/{uid}/review/mou/unsigned/{agreementUid?}', [AdminEventMouPdfController::class, 'unsigned'])
             ->name('admin.event.review.mou.unsigned');
         Route::get('/event/{uid}/review/mou/signed/{agreementUid?}', [AdminEventMouPdfController::class, 'signed'])
