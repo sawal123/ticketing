@@ -10,6 +10,7 @@ class EventDocument extends Model
     use HasFactory;
 
     public const TYPE_ORGANIZER_LETTER = 'ORGANIZER_LETTER';
+    public const TYPE_RESPONSIBLE_IDENTITY = 'RESPONSIBLE_IDENTITY';
 
     protected $fillable = [
         'uid',
