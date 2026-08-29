@@ -753,8 +753,8 @@ class AdminAgreementReviewTest extends TestCase
             $table->string('uid');
             $table->string('event_uid');
             $table->string('document_type');
-            $table->string('document_number');
-            $table->date('document_date');
+            $table->string('document_number')->nullable();
+            $table->date('document_date')->nullable();
             $table->string('original_name');
             $table->string('file_path')->nullable();
             $table->string('mime_type')->nullable();
