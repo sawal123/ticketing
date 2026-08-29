@@ -226,6 +226,22 @@
                             <div class="mt-2 text-xs text-slate-500 dark:text-slate-400">Format yang diterima: PDF, JPG, JPEG, PNG. Maksimal 5 MB.</div>
                             @error('organizer_letter') <span class="text-rose-500 text-xs mt-1">{{ $message }}</span> @enderror
                         </div>
+
+                        <div class="md:col-span-2">
+                            <label class="block text-[11px] font-black text-slate-400 uppercase tracking-[0.1em] mb-2">KTP / Identitas Penanggung Jawab</label>
+                            <input type="file" wire:model="responsible_identity" accept=".pdf,image/jpeg,image/png"
+                                class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-800 dark:text-slate-200 text-sm focus:ring-2 focus:ring-indigo-500 transition-all">
+                            @if ($existingResponsibleIdentityOriginalName)
+                                <div class="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                                    File saat ini: {{ $existingResponsibleIdentityOriginalName }}
+                                </div>
+                            @endif
+                            <div wire:loading wire:target="responsible_identity" class="text-indigo-600 text-xs font-semibold mt-2">
+                                Mengupload identitas penanggung jawab...
+                            </div>
+                            <div class="mt-2 text-xs text-slate-500 dark:text-slate-400">Format yang diterima: PDF, JPG, JPEG, PNG. Maksimal 5 MB.</div>
+                            @error('responsible_identity') <span class="text-rose-500 text-xs mt-1">{{ $message }}</span> @enderror
+                        </div>
                     </div>
                 </section>
 

@@ -258,6 +258,7 @@ class VoucherTaxTicketSecurityTest extends TestCase
             ->set('document_number', 'FEE-001')
             ->set('document_date', now()->toDateString())
             ->set('organizer_letter', UploadedFile::fake()->create('organizer-letter.pdf', 128, 'application/pdf'))
+            ->set('responsible_identity', UploadedFile::fake()->create('responsible-identity.pdf', 128, 'application/pdf'))
             ->call('save');
 
         $event = Event::where('event', 'Fee Event')->firstOrFail();

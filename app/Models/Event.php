@@ -69,6 +69,12 @@ class Event extends Model
             ->where('document_type', EventDocument::TYPE_ORGANIZER_LETTER);
     }
 
+    public function responsibleIdentityDocument()
+    {
+        return $this->hasOne(EventDocument::class, 'event_uid', 'uid')
+            ->where('document_type', EventDocument::TYPE_RESPONSIBLE_IDENTITY);
+    }
+
     public function agreements()
     {
         return $this->hasMany(Agreement::class, 'event_uid', 'uid');
