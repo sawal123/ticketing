@@ -21,7 +21,7 @@ return new class extends Migration
             ->whereNull('document_number')
             ->orWhereNull('document_date')
             ->exists()) {
-            return;
+            throw new \RuntimeException('Cannot roll back 2026_08_29_090000_make_event_document_reference_nullable while event_documents still contains NULL document_number or document_date values. Resolve nullable rows first.');
         }
 
         Schema::table('event_documents', function (Blueprint $table) {
