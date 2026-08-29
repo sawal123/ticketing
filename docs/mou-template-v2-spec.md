@@ -78,8 +78,8 @@ Perubahan data di atas tidak boleh menjadi trigger addendum.
 | 5 | PASAL 1 - Definisi | STATIC | Menentukan definisi istilah hukum dan operasional utama. | Tidak ada. | Teks hukum statis. | Jangan mengambil data runtime. |
 | 6 | PASAL 2 - Maksud, Tujuan dan Ruang Lingkup | STATIC + SNAPSHOT | Menjelaskan kerja sama penyelenggaraan dan penjualan tiket event tertentu. | Nama event, peran platform, ruang lingkup layanan. | `agreements.event_snapshot.event_name`, `platform_party_snapshot.*` target V2-1/V2-2 | Isi hukum statis, event menjadi referensi dinamis. |
 | 7 | PASAL 3 - Pendaftaran, Verifikasi dan Listing Event | STATIC + SNAPSHOT | Menjelaskan proses onboarding event dan prasyarat listing. | Nama event, status/verifikasi dokumen bila ingin disebut. | `agreements.event_snapshot.event_name`, `agreements.document_snapshot.*`, `agreements.bank_snapshot.*` | Jika status verifikasi hanya informasional, jangan dijadikan trigger addendum. |
-| 8 | PASAL 4 - Penjualan dan Pengelolaan Tiket | STATIC + SNAPSHOT | Menjelaskan peran platform atas penjualan tiket. | Periode mulai penjualan, payment methods yang aktif bila perlu dirujuk. | `agreements.event_snapshot.start_sale`, `agreements.commercial_snapshot.payment_gateways` | Detail kategori/harga/kuota tiket tidak boleh masuk. |
-| 9 | PASAL 5 - Biaya, Pajak dan Ketentuan Komersial | STATIC + SNAPSHOT | Menetapkan buyer/event fee dan payment channel fee yang relevan. | Buyer/event fee, payment gateway aktif, fixed fee, percent fee, payment OTP bila relevan. | `agreements.commercial_snapshot.*`, `agreements.event_snapshot.buyer_fee` | Jangan gunakan istilah `buyer/platform fee` sebagai satu field; `platform/system fee` belum punya source authoritative. |
+| 8 | PASAL 4 - Penjualan dan Pengelolaan Tiket | STATIC + SNAPSHOT | Menjelaskan peran platform atas penjualan tiket. | Periode mulai penjualan. | `agreements.event_snapshot.start_sale` | Detail kategori/harga/kuota tiket tidak boleh masuk; daftar payment gateway adalah konfigurasi operasional (V2-R0). |
+| 9 | PASAL 5 - Biaya, Pajak dan Ketentuan Komersial | STATIC + SNAPSHOT | Menjelaskan secara umum ketentuan biaya, pajak dan komersial. | Periode penjualan; deskripsi umum kewajiban biaya kepada Pembeli tanpa nilai. | `agreements.event_snapshot.start_sale` | V2-R0: Buyer/Event Fee dan payment channel fee adalah konfigurasi operasional; nilai tidak menjadi isi kontraktual dan tidak memicu addendum. Jangan gunakan istilah `buyer/platform fee` sebagai satu field. |
 | 10 | PASAL 6 - Rekonsiliasi dan Pencairan Dana | STATIC + SNAPSHOT | Menetapkan rekening tujuan dan proses settlement. | Rekening pencairan, pemilik rekening, bank. | `agreements.bank_snapshot.bank_name`, `account_number`, `account_holder_name` | Status verifikasi rekening dapat disebut sebagai info, bukan trigger addendum saat ini. |
 | 11 | PASAL 7 - Pembatalan, Penjadwalan Ulang dan Refund | STATIC + SNAPSHOT | Mengatur konsekuensi operasional saat event batal/ditunda. | Nama event, tanggal event bila perlu konteks. | `agreements.event_snapshot.event_name`, `start`, `end` | Isi hukum dominan statis. |
 | 12 | PASAL 8 - Hak dan Kewajiban PIHAK PERTAMA | STATIC + CONFIG | Menetapkan kewajiban dan hak platform. | Identitas PIHAK PERTAMA jika disebut. | `platform_party_snapshot.*` target V2-1/V2-2 | Jangan hardcode identitas sekarang. |
@@ -88,7 +88,7 @@ Perubahan data di atas tidak boleh menjadi trigger addendum.
 | 15 | PASAL 11 - Publikasi dan Merek | STATIC + SNAPSHOT | Menetapkan penggunaan nama, logo, dan materi promosi. | Nama event dan nama para pihak. | `agreements.event_snapshot.event_name`, `agreements.party_snapshot.organizer_name`, `platform_party_snapshot.*` target V2-1/V2-2 | Merek/logotype actual tidak perlu jadi field kontraktual baru pada V2-0. |
 | 16 | PASAL 12 - Data Pribadi, Keamanan dan Kerahasiaan | STATIC | Menetapkan kewajiban perlindungan data dan kerahasiaan. | Tidak ada. | Teks hukum statis. | Tidak memerlukan source runtime. |
 | 17 | PASAL 13 - Kekayaan Intelektual | STATIC | Menetapkan kepemilikan dan lisensi kekayaan intelektual. | Tidak ada. | Teks hukum statis. | Tidak memerlukan source runtime. |
-| 18 | PASAL 14 - Fraud, Chargeback dan Penahanan Dana | STATIC + SNAPSHOT | Menjelaskan risiko transaksi dan hak platform menahan dana. | Payment methods dan fee context bila dirujuk. | `agreements.commercial_snapshot.payment_gateways` | Payment semantics tidak diubah; pasal hanya mendeskripsikan. |
+| 18 | PASAL 14 - Fraud, Chargeback dan Penahanan Dana | STATIC | Menjelaskan risiko transaksi dan hak platform menahan dana, termasuk payment provider secara umum. | Tidak ada / teks hukum statis. | Tidak ada | V2-R0: pasal tidak memakai daftar payment gateway maupun fee live/frozen sebagai isi kontraktual; hanya menjelaskan secara umum. |
 | 19 | PASAL 15 - Ketersediaan Layanan | STATIC | Menjelaskan best effort / availability layanan. | Tidak ada. | Teks hukum statis. | Tidak memerlukan source runtime. |
 | 20 | PASAL 16 - Jangka Waktu dan Pengakhiran | STATIC + SNAPSHOT | Menentukan masa berlaku kerja sama dan pengakhiran. | Tanggal event atau periode event bila dijadikan batas. | `agreements.event_snapshot.start`, `end` | Tanggal efektif perjanjian tetap perlu formula legal yang konsisten. |
 | 21 | PASAL 17 - Keadaan Kahar | STATIC | Menetapkan force majeure. | Tidak ada. | Teks hukum statis. | Tidak memerlukan source runtime. |
@@ -97,7 +97,7 @@ Perubahan data di atas tidak boleh menjadi trigger addendum.
 | 24 | PASAL 20 - Ketentuan Lain | STATIC | Menampung klausul miscellaneous. | Tidak ada. | Teks hukum statis. | Tidak memerlukan source runtime. |
 | 25 | PASAL 21 - Penutup | STATIC + SNAPSHOT | Menutup dokumen dan menegaskan keberlakuan perjanjian. | Nama para pihak, nomor dokumen. | `agreements.document_number`, `agreements.party_snapshot.organizer_name`, `platform_party_snapshot.*` target V2-1/V2-2 | Teks hukum statis, identitas dinamis; `document_number` tetap TBD bila policy/generator belum ada. |
 | 26 | Halaman Penandatanganan | CONFIG + SNAPSHOT | Menyediakan blok tanda tangan para pihak. | Nama badan usaha, wakil, jabatan PIHAK PERTAMA; nama penyelenggara, penanggung jawab, jabatan PIHAK KEDUA. | `platform_party_snapshot.*` target V2-1/V2-2; `agreements.party_snapshot.*` | PIHAK PERTAMA belum punya source authoritative saat ini. |
-| 27 | Lampiran I - Data Event & Ketentuan Komersial | SNAPSHOT | Merangkum data event dan komersial yang bersifat contractual. | Nama event, penyelenggara, tanggal/waktu event, venue, alamat venue, periode penjualan, buyer/event fee, payment method, payment channel fee, rekening pencairan. | `agreements.event_snapshot.*`, `agreements.party_snapshot.organizer_name`, `agreements.commercial_snapshot.*`, `agreements.bank_snapshot.*` | Jangan memasukkan data tiket/kategori/harga/kuota dan jangan memakai istilah `buyer/platform fee` sebagai satu field. |
+| 27 | Lampiran I - Data Event & Informasi Pencairan | SNAPSHOT | Merangkum data event dan informasi pencairan yang bersifat contractual. | Nama event, penyelenggara, tanggal/waktu event, venue, alamat venue, kota/kabupaten, provinsi, periode penjualan, rekening pencairan, status verifikasi rekening. | `agreements.event_snapshot.*`, `agreements.party_snapshot.organizer_name`, `agreements.bank_snapshot.*` | V2-R0: TIDAK memuat ticket category/name, harga tiket, kuota, benefit, Buyer/Event Fee, payment gateway list, atau gateway fee. |
 | 28 | Lampiran II - Dokumen/Kesiapan & Kontak Resmi | SNAPSHOT + CONFIG | Merangkum data dokumen pendukung dan kontak resmi yang benar-benar tersedia. | PIC penyelenggara, rekening/buku rekening, surat penyelenggara, kontak resmi para pihak, status verifikasi relevan bila ditampilkan. | `agreements.party_snapshot.*`, `agreements.bank_snapshot.*`, `agreements.document_snapshot.*`, `platform_party_snapshot.*` target V2-1/V2-2 | `bank_book_path`/private storage path dilarang masuk snapshot/PDF; jika checklist tertentu belum dikelola sistem, tulis `BELUM TERSEDIA - jangan diasumsikan`. |
 
 ## Field Source Matrix
@@ -137,12 +137,12 @@ Perubahan data di atas tidak boleh menjadi trigger addendum.
 | DOKUMEN | jenis dokumen penyelenggara | DATABASE -> SNAPSHOT | Preview/final: `event_documents.document_type` -> `agreements.document_snapshot.document_type` | Ya | Ya | Saat ini default ke `ORGANIZER_LETTER`. |
 | DOKUMEN | nama file surat penyelenggara | DATABASE -> SNAPSHOT | Preview: `event_documents.original_name`; Final: `agreements.document_snapshot.original_name` | Ya | Ya | Saat ini termasuk contractual diff. |
 | DOKUMEN | nomor dokumen agreement | DATABASE | `agreements.document_number` | Ya, field tersedia | TBD | Field tersedia, tetapi policy/generator numbering authoritative belum didefinisikan; jangan asumsikan selalu terisi. |
-| KOMERSIAL | buyer/event fee | DATABASE -> SNAPSHOT | Sumber dasar: `events.fee` via `TicketPricingService::tax($event, 0)`; Final: `agreements.event_snapshot.buyer_fee` dan `agreements.commercial_snapshot.buyer_fee` | Ya | Ya | Semantik saat ini: `percent`, `fixed`, atau `none`. |
-| KOMERSIAL | payment gateway yang digunakan | DATABASE -> SNAPSHOT | Preview: `event_payment_gateways` join `payment_gateways`; Final: `agreements.commercial_snapshot.payment_gateways[*].payment` | Ya | Ya | Hanya gateway yang punya relasi `paymentGateway` valid. |
-| KOMERSIAL | active/inactive payment method | DATABASE -> SNAPSHOT | Preview/final: `event_payment_gateways.is_active`, `payment_gateways.is_active`, `effective_is_active` | Ya | Ya | Sudah dimonitor addendum per gateway. |
-| KOMERSIAL | payment channel fee fixed | DATABASE -> SNAPSHOT | Sumber dasar: `event_payment_gateways.fee_fixed` atau fallback `payment_gateways.default_fee_fixed` / `payment_gateways.biaya`; Final: `agreements.commercial_snapshot.payment_gateways[*].resolved_fee_fixed` | Ya | Ya | Ini payment channel fee, bukan platform/system fee. |
-| KOMERSIAL | payment channel fee percent | DATABASE -> SNAPSHOT | Sumber dasar: `event_payment_gateways.fee_percent` atau fallback `payment_gateways.default_fee_percent` / `payment_gateways.biaya`; Final: `agreements.commercial_snapshot.payment_gateways[*].resolved_fee_percent` | Ya | Ya | Ini payment channel fee, bukan platform/system fee. |
-| KOMERSIAL | fee mode gateway | DATABASE -> SNAPSHOT | `event_payment_gateways.fee_mode`; Final: `agreements.commercial_snapshot.payment_gateways[*].fee_mode` | Ya | Ya | `global` atau `manual`. |
+| KOMERSIAL | buyer/event fee | DATABASE -> SNAPSHOT | Sumber dasar: `events.fee` via `TicketPricingService::tax($event, 0)`; Final: `agreements.event_snapshot.buyer_fee` dan `agreements.commercial_snapshot.buyer_fee` | Ya | Tidak | V2-R0: konfigurasi operasional; boleh disnapshot untuk audit tetapi nilai tidak kontraktual dan tidak memicu addendum. Semantik saat ini: `percent`, `fixed`, atau `none`. |
+| KOMERSIAL | payment gateway yang digunakan | DATABASE -> SNAPSHOT | Preview: `event_payment_gateways` join `payment_gateways`; Final: `agreements.commercial_snapshot.payment_gateways[*].payment` | Ya | Tidak | V2-R0: konfigurasi operasional; boleh disnapshot untuk audit tetapi tidak kontraktual. Hanya gateway yang punya relasi `paymentGateway` valid. |
+| KOMERSIAL | active/inactive payment method | DATABASE -> SNAPSHOT | Preview/final: `event_payment_gateways.is_active`, `payment_gateways.is_active`, `effective_is_active` | Ya | Tidak | V2-R0: konfigurasi operasional; tidak memicu addendum. |
+| KOMERSIAL | payment channel fee fixed | DATABASE -> SNAPSHOT | Sumber dasar: `event_payment_gateways.fee_fixed` atau fallback `payment_gateways.default_fee_fixed` / `payment_gateways.biaya`; Final: `agreements.commercial_snapshot.payment_gateways[*].resolved_fee_fixed` | Ya | Tidak | V2-R0: konfigurasi operasional; tidak kontraktual. Ini payment channel fee, bukan platform/system fee. |
+| KOMERSIAL | payment channel fee percent | DATABASE -> SNAPSHOT | Sumber dasar: `event_payment_gateways.fee_percent` atau fallback `payment_gateways.default_fee_percent` / `payment_gateways.biaya`; Final: `agreements.commercial_snapshot.payment_gateways[*].resolved_fee_percent` | Ya | Tidak | V2-R0: konfigurasi operasional; tidak kontraktual. Ini payment channel fee, bukan platform/system fee. |
+| KOMERSIAL | fee mode gateway | DATABASE -> SNAPSHOT | `event_payment_gateways.fee_mode`; Final: `agreements.commercial_snapshot.payment_gateways[*].fee_mode` | Ya | Tidak | V2-R0: konfigurasi operasional; tidak memicu addendum. `global` atau `manual`. |
 | KOMERSIAL | platform/system fee | CONFIG | BELUM ADA SOURCE AUTHORITATIVE jika belum ada field khusus | Belum | TBD | Jangan memakai istilah ini sebagai alias `buyer_fee` atau `payment channel fee`. |
 | KOMERSIAL | payment OTP | DATABASE -> SNAPSHOT | Preview: `events.payment_otp_enabled`; Final: `agreements.commercial_snapshot.payment_otp_enabled` | Ya | Ya | Cantumkan hanya jika pasal/lampiran memang membutuhkan. |
 | LAMPIRAN I | nama event | SNAPSHOT | `agreements.event_snapshot.event_name` | Ya | Ya | Termasuk data contractual. |
@@ -151,9 +151,9 @@ Perubahan data di atas tidak boleh menjadi trigger addendum.
 | LAMPIRAN I | venue | SNAPSHOT | `agreements.event_snapshot.venue_name` | Ya | Ya | Termasuk data contractual. |
 | LAMPIRAN I | alamat venue | SNAPSHOT | `agreements.event_snapshot.venue_address`, `venue_city`, `venue_province` | Ya | Ya | Termasuk data contractual. |
 | LAMPIRAN I | periode penjualan | SNAPSHOT | `agreements.event_snapshot.start_sale` | Ya | Ya | End of sales belum punya field khusus authoritative. |
-| LAMPIRAN I | buyer/event fee | SNAPSHOT | `agreements.commercial_snapshot.buyer_fee` | Ya | Ya | Termasuk data contractual. |
-| LAMPIRAN I | payment method | SNAPSHOT | `agreements.commercial_snapshot.payment_gateways[*].payment` | Ya | Ya | Tampilkan sesuai kebutuhan legal. |
-| LAMPIRAN I | payment channel fee | SNAPSHOT | `agreements.commercial_snapshot.payment_gateways[*].resolved_fee_fixed`, `resolved_fee_percent` | Ya | Ya | Termasuk data contractual. |
+| LAMPIRAN I | buyer/event fee | SNAPSHOT | `agreements.commercial_snapshot.buyer_fee` | Ya | Tidak | V2-R0: TIDAK termasuk Lampiran I; hanya disnapshot untuk audit, nilai tidak kontraktual. |
+| LAMPIRAN I | payment method | SNAPSHOT | `agreements.commercial_snapshot.payment_gateways[*].payment` | Ya | Tidak | V2-R0: TIDAK termasuk Lampiran I. |
+| LAMPIRAN I | payment channel fee | SNAPSHOT | `agreements.commercial_snapshot.payment_gateways[*].resolved_fee_fixed`, `resolved_fee_percent` | Ya | Tidak | V2-R0: TIDAK termasuk Lampiran I. |
 | LAMPIRAN I | rekening pencairan | SNAPSHOT | `agreements.bank_snapshot.bank_name`, `account_number`, `account_holder_name` | Ya | Ya | Termasuk data contractual. |
 | LAMPIRAN II | identitas penanggung jawab penyelenggara | SNAPSHOT | `agreements.party_snapshot.responsible_name`, `responsible_position`, `email`, `phone` | Ya | Ya | Data kontak penyelenggara tersedia. |
 | LAMPIRAN II | rekening/buku rekening | SNAPSHOT + DATABASE | Snapshot rekening: `agreements.bank_snapshot.*`; metadata aman bila diperlukan dari source live `event_bank_accounts.bank_book_original_name`, `bank_book_mime`, status/verifikasi | Sebagian | Rekening: Ya, buku rekening file: Tidak | `bank_book_path` atau private storage path tidak boleh masuk snapshot/PDF. |
@@ -166,6 +166,7 @@ Perubahan data di atas tidak boleh menjadi trigger addendum.
 | OUT OF CONTRACT | kuota | DATABASE | `hargas` / data tiket lain | Ya | Tidak | Tidak boleh masuk template `mou-v2` dan tidak boleh trigger addendum. |
 | OUT OF CONTRACT | benefit tiket | DATABASE | Tidak dipetakan untuk kontrak | Tidak diketahui | Tidak | Eksplisit di luar kontrak. |
 | OUT OF CONTRACT | syarat per kategori tiket | DATABASE | Tidak dipetakan untuk kontrak | Tidak diketahui | Tidak | Eksplisit di luar kontrak. |
+| KTP PENANGGUNG JAWAB | dokumen identitas penanggung jawab | DATABASE (target) | Upload penyewa per Event; file private; admin approve/reject; status VERIFIED wajib sebelum finalisasi | Target | Tidak | V2-R0: KTP adalah prerequisite/readiness finalisasi dan bukti administratif, BUKAN contractual diff; perubahan status/verifikasi KTP TIDAK membuat Addendum; boleh dibekukan metadata/status aman untuk audit; MOU/Lampiran hanya menampilkan status TERVERIFIKASI / MENUNGGU VERIFIKASI / DITOLAK; jangan tampilkan foto KTP, NIK, private/signed/storage path. Fase awal tanpa field DB khusus NIK. |
 
 ## Bagian yang Bersifat Teks Hukum Tetap
 
@@ -191,3 +192,127 @@ Pendekatan implementasi yang diharapkan:
 - Perubahan profil global Gotik setelah agreement dibekukan tidak boleh otomatis mengubah agreement lama atau memicu addendum; addendum untuk profil PIHAK PERTAMA harus eksplisit bila memang dibutuhkan.
 - `agreements.document_number` tetap perlu policy/generator authoritative sebelum implementasi mengandalkan field tersebut sebagai nomor dokumen final.
 - Jika Lampiran II ingin menampilkan bukti file buku rekening, hanya metadata aman atau status verifikasi yang boleh dipakai; `bank_book_path` privat tidak boleh ikut dibekukan ke snapshot final maupun dirender ke PDF.
+
+## Revisi Scope V2-R0 (Post-UAT)
+
+Revisi ini ditetapkan setelah UAT dan menjadi acuan corrective phase. Revisi hanya berlaku untuk dokumen baru yang difinalisasi setelah implementasi corrective phase; seluruh Agreement non-DRAFT tidak boleh diregenerate dan tetap memakai file/history existing bila tersedia.
+
+### 1. Buyer/Event Fee — Konfigurasi Operasional, Bukan Kontraktual
+
+- `events.fee` (Buyer/Event Fee) adalah konfigurasi transaksi operasional.
+- Nilainya dapat berubah sesuai kewenangan aplikasi.
+- Boleh tetap disnapshot untuk audit/transaction history.
+- Nominal/persentasenya TIDAK menjadi isi kontraktual MOU.
+- Perubahan nilainya TIDAK memicu Addendum.
+
+MOU hanya boleh menjelaskan secara umum bahwa biaya tambahan kepada Pembeli harus diinformasikan sebelum transaksi; nilai spesifik (`Rp X` / `X%`) tidak disebut sebagai bagian kontrak.
+
+### 2. Payment Gateway — Konfigurasi Operasional, Bukan Kontraktual
+
+Berikut adalah konfigurasi operasional:
+
+- daftar payment gateway
+- status active/inactive
+- fixed fee
+- percentage fee
+- fee_mode global/manual
+
+Data boleh tetap tersimpan pada `commercial_snapshot` untuk audit, tetapi:
+
+- tidak dirender sebagai nilai kontraktual MOU
+- tidak memicu Addendum
+- tidak perlu dicantumkan di Lampiran I
+
+MOU boleh menjelaskan secara umum bahwa Platform menyediakan kanal pembayaran yang tersedia dan biaya kanal, jika ada, ditampilkan kepada Pembeli sebelum transaksi.
+
+### 3. Lampiran I — Scope Direvisi
+
+Scope Lampiran I direvisi menjadi **DATA EVENT DAN INFORMASI PENCAIRAN**.
+
+Minimal contractual data:
+
+- Nama Event
+- Nama Penyelenggara
+- Tanggal/Waktu Mulai
+- Tanggal/Waktu Selesai
+- Venue
+- Alamat Venue
+- Kota/Kabupaten
+- Provinsi
+- Mulai Penjualan
+- Rekening pencairan
+- Status verifikasi rekening
+
+TIDAK BOLEH memuat:
+
+- ticket category
+- ticket name
+- harga tiket
+- kuota
+- benefit
+- Buyer/Event Fee
+- payment gateway list
+- gateway fee
+
+### 4. KTP Penanggung Jawab
+
+Requirement:
+
+- KTP/dokumen identitas penanggung jawab disimpan per Event.
+- File bersifat private.
+- Upload oleh penyewa.
+- Admin approve/reject.
+- Status `VERIFIED` wajib sebelum MOU dapat difinalisasi.
+
+MOU/Lampiran hanya boleh menampilkan status:
+
+- Identitas Penanggung Jawab: `TERVERIFIKASI` / `MENUNGGU VERIFIKASI` / `DITOLAK`
+
+KTP adalah prerequisite/readiness finalisasi dan bukti administratif, BUKAN contractual diff. Perubahan status/verifikasi KTP TIDAK membuat Addendum; metadata/status aman boleh dibekukan untuk audit.
+
+JANGAN tampilkan:
+
+- foto KTP
+- NIK
+- private path
+- signed URL
+- storage path
+
+Pada fase awal jangan membuat field database khusus NIK.
+
+### 5. PDF Pagination
+
+Aturan rendering PDF:
+
+- Section panjang boleh split antar halaman.
+- Jangan `page-break-inside: avoid` pada seluruh section.
+- Heading tidak boleh orphan dari konten pertama.
+- Table row individual tidak boleh terpotong jika memungkinkan.
+- Table header boleh repeat.
+- Cover harus stabil satu halaman.
+- Signature block tidak boleh terpotong.
+- Lampiran boleh berlanjut ke halaman berikutnya.
+
+Tidak ada penguncian exact page count.
+
+### 6. Addendum — Diff yang Tidak Kontraktual
+
+Perubahan berikut TIDAK merupakan contractual diff:
+
+- Buyer/Event Fee
+- payment gateway active/inactive
+- payment gateway fee
+- fee_mode
+
+Perubahan contractual Event/Organizer/Bank existing tetap mengikuti versioning existing. Data tiket tetap OUT OF CONTRACT.
+
+### 7. Historical — Immutable
+
+Aturan immutability berlaku untuk seluruh agreement non-DRAFT, tidak terbatas pada `READY`/`COMPLETED`:
+
+- Hanya Agreement `DRAFT` yang belum memiliki file historical yang boleh menghasilkan preview/final PDF baru sesuai lifecycle existing.
+- Agreement non-DRAFT (`READY`, `SENT_TO_PRIVY`, `SIGNING`, `COMPLETED`, `REJECTED`, `CANCELLED`) tidak boleh diregenerate.
+- File `unsigned`/`signed` existing tidak boleh dioverwrite.
+- Agreement non-DRAFT tetap mengikuti file/history existing bila tersedia.
+
+Tidak ada backfill, regenerate, atau migrasi historical. Revisi hanya berlaku untuk dokumen baru setelah implementasi corrective phase.

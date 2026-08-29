@@ -4,6 +4,10 @@ Checklist manual ini digunakan sebagai final QA untuk template `mou-v2` sebelum 
 **Jangan mengisi PASS secara otomatis** — setiap item wajib diverifikasi secara manual dan
 diisi oleh tester.
 
+> Catatan V2-R0: Checklist ini mengikuti scope kontrak terbaru setelah UAT — Buyer/Event Fee dan
+> payment gateway adalah konfigurasi operasional (bukan isi kontraktual MOU), lihat
+> `docs/mou-template-v2-spec.md` bagian "Revisi Scope V2-R0 (Post-UAT)".
+
 Format kolom:
 
 - `[ ] PASS` / `[ ] FAIL`
@@ -20,6 +24,7 @@ Format kolom:
 | Organizer Event terisi (nama, penanggung jawab, jabatan, telepon, email, alamat) | [ ] PASS / [ ] FAIL | | |
 | Rekening Event terisi + terverifikasi + file buku rekening fisik tersedia | [ ] PASS / [ ] FAIL | | |
 | Surat penyelenggara terisi + terverifikasi + file fisik tersedia | [ ] PASS / [ ] FAIL | | |
+| KTP/dokumen identitas penanggung jawab terupload (file private) + status VERIFIED | [ ] PASS / [ ] FAIL | | |
 | Payment gateway event dikonfigurasi (minimal 1 efektif aktif) | [ ] PASS / [ ] FAIL | | |
 | Buyer / event fee terkonfigurasi (Rp / persen) | [ ] PASS / [ ] FAIL | | |
 
@@ -31,7 +36,7 @@ Format kolom:
 | PIHAK PERTAMA benar (dari frozen platform profile) | [ ] PASS / [ ] FAIL | | |
 | PIHAK KEDUA benar (dari frozen organizer) | [ ] PASS / [ ] FAIL | | |
 | Pasal 1–21 lengkap | [ ] PASS / [ ] FAIL | | |
-| LAMPIRAN I benar (data event + komersial) | [ ] PASS / [ ] FAIL | | |
+| LAMPIRAN I benar (Data Event & Informasi Pencairan — tanpa fee/gateway) | [ ] PASS / [ ] FAIL | | |
 | LAMPIRAN II benar (readiness + kontak resmi) | [ ] PASS / [ ] FAIL | | |
 | Preview read-only dan tidak mengubah file historis | [ ] PASS / [ ] FAIL | | |
 
@@ -81,6 +86,8 @@ Format kolom:
 | Finalisasi + signing Addendum bekerja | [ ] PASS / [ ] FAIL | | |
 | Perubahan ticket-only (kategori/nama/harga/kuota/benefit/syarat) tidak membuat Addendum | [ ] PASS / [ ] FAIL | | |
 | Data ticket tidak muncul pada MOU / Lampiran | [ ] PASS / [ ] FAIL | | |
+| Perubahan Buyer/Event Fee tidak membuat Addendum | [ ] PASS / [ ] FAIL | | |
+| Perubahan payment gateway (active/inactive, fee, fee_mode) tidak membuat Addendum | [ ] PASS / [ ] FAIL | | |
 
 ## G. Historical
 
@@ -91,23 +98,29 @@ Format kolom:
 | File historical tidak berubah oleh cutover v2 | [ ] PASS / [ ] FAIL | | |
 | Parent lineage v1 tetap addendum-v1; parent v2 tetap addendum-v2 | [ ] PASS / [ ] FAIL | | |
 
-## H. Komersial (Lampiran I)
+## H. Lampiran I — Scope V2-R0
 
 | Item | Hasil | Evidence | Catatan |
 | --- | --- | --- | --- |
-| Fee `Rp 2.000 + 3%` benar | [ ] PASS / [ ] FAIL | | |
-| Fee `Rp 0 + 3%` benar (komponen nol tidak hilang) | [ ] PASS / [ ] FAIL | | |
-| Fee `Rp 4.000 + 0%` benar (komponen nol tidak hilang) | [ ] PASS / [ ] FAIL | | |
-| Menggunakan frozen `commercial.payment_gateways` (bukan hitung ulang live) | [ ] PASS / [ ] FAIL | | |
-| Istilah buyer fee = "Biaya Pembeli / Event Fee" (bukan "Platform Fee") | [ ] PASS / [ ] FAIL | | |
+| Lampiran I berjudul "Data Event & Informasi Pencairan" | [ ] PASS / [ ] FAIL | | |
+| Memuat minimal: nama event, penyelenggara, tanggal/waktu, venue, alamat venue, kota, provinsi, mulai penjualan, rekening pencairan, status verifikasi rekening | [ ] PASS / [ ] FAIL | | |
+| TIDAK memuat ticket category / nama tiket / harga / kuota / benefit | [ ] PASS / [ ] FAIL | | |
+| TIDAK memuat Buyer/Event Fee (nilai Rp/% tidak muncul sebagai kontrak) | [ ] PASS / [ ] FAIL | | |
+| TIDAK memuat daftar payment gateway / gateway fee | [ ] PASS / [ ] FAIL | | |
+| Buyer/Event Fee hanya disebut umum ("Biaya Pembeli / Event Fee") tanpa nilai | [ ] PASS / [ ] FAIL | | |
 
-## I. Multi-Gateway
+## I. PDF Pagination (V2-R0)
 
 | Item | Hasil | Evidence | Catatan |
 | --- | --- | --- | --- |
-| 30 payment gateway dirender seluruhnya | [ ] PASS / [ ] FAIL | | |
-| PDF non-empty dan terbaca | [ ] PASS / [ ] FAIL | | |
-| Tidak ada asumsi seluruh tabel satu halaman (pagination CSS wajar) | [ ] PASS / [ ] FAIL | | |
+| Section panjang boleh split antar halaman | [ ] PASS / [ ] FAIL | | |
+| Heading tidak orphan dari konten pertama | [ ] PASS / [ ] FAIL | | |
+| Table row individual tidak terpotong jika memungkinkan | [ ] PASS / [ ] FAIL | | |
+| Table header boleh repeat | [ ] PASS / [ ] FAIL | | |
+| Cover stabil satu halaman | [ ] PASS / [ ] FAIL | | |
+| Signature block tidak terpotong | [ ] PASS / [ ] FAIL | | |
+| Lampiran boleh lanjut ke halaman berikutnya | [ ] PASS / [ ] FAIL | | |
+| Tidak ada asumsi exact page count | [ ] PASS / [ ] FAIL | | |
 
 ## J. Lampiran II
 
@@ -118,6 +131,16 @@ Format kolom:
 | Missing surat penyelenggara → `BELUM LENGKAP` | [ ] PASS / [ ] FAIL | | |
 | Buku Rekening Fisik tetap `BELUM TERSEDIA` (snapshot belum simpan availability file) | [ ] PASS / [ ] FAIL | | |
 | Path private tidak dirender | [ ] PASS / [ ] FAIL | | |
+
+## K. KTP Penanggung Jawab (V2-R0)
+
+| Item | Hasil | Evidence | Catatan |
+| --- | --- | --- | --- |
+| Upload KTP/dokumen identitas penanggung jawab oleh penyewa (file private) | [ ] PASS / [ ] FAIL | | |
+| Admin dapat approve / reject | [ ] PASS / [ ] FAIL | | |
+| Status VERIFIED wajib sebelum MOU difinalisasi | [ ] PASS / [ ] FAIL | | |
+| MOU/Lampiran hanya menampilkan status (TERVERIFIKASI / MENUNGGU VERIFIKASI / DITOLAK) | [ ] PASS / [ ] FAIL | | |
+| Foto KTP / NIK / private path / signed URL / storage path tidak tampil | [ ] PASS / [ ] FAIL | | |
 
 ---
 

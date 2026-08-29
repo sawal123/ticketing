@@ -17,6 +17,8 @@ Checklist ini disiapkan sebagai panduan review counsel sebelum template `mou-v2`
 - Pastikan klausul IP, merek, dan materi promosi cukup untuk kebutuhan listing, publikasi, dan pelaksanaan kerja sama.
 - Verifikasi kebutuhan legal terkait halaman tanda tangan, validitas tanda tangan elektronik, workflow download unsigned, penandatanganan independen, upload signed PDF, verifikasi admin, dan wording unsigned template.
 - Cek konsistensi istilah dan data antara body utama dengan Lampiran I-II saat lampiran diimplementasikan.
+- Per V2-R0 (post-UAT): pastikan Buyer/Event Fee dan payment gateway tidak dikunci sebagai nilai kontraktual MOU; MOU hanya menyatakan secara umum bahwa biaya tambahan kepada Pembeli diinformasikan sebelum transaksi.
+- Per V2-R0 (post-UAT): verifikasi bahwa identitas penanggung jawab hanya tampil sebagai status verifikasi (TERVERIFIKASI / MENUNGGU VERIFIKASI / DITOLAK) tanpa foto KTP, NIK, atau path privat.
 - Identifikasi regulasi, standar kepatuhan, atau referensi hukum spesifik yang baru boleh dicantumkan setelah review counsel selesai.
 
 ## Legal Sign-off
