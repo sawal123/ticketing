@@ -1157,13 +1157,7 @@ class AgreementFinalizationTest extends TestCase
             'rejection_reason' => null,
         ], $overrides);
 
-        $document = EventDocument::updateOrCreate(
-            [
-                'event_uid' => $event->uid,
-                'document_type' => EventDocument::TYPE_RESPONSIBLE_IDENTITY,
-            ],
-            $data
-        );
+        $document = EventDocument::create($data);
 
         if (filled($document->file_path) && empty($overrides['skip_storage'])) {
             Storage::disk('local')->put($document->file_path, 'organizer-finalization-file');
@@ -1203,7 +1197,13 @@ class AgreementFinalizationTest extends TestCase
             'rejection_reason' => null,
         ], $overrides);
 
-        $document = EventDocument::create($data);
+        $document = EventDocument::updateOrCreate(
+            [
+                'event_uid' => $event->uid,
+                'document_type' => EventDocument::TYPE_RESPONSIBLE_IDENTITY,
+            ],
+            $data
+        );
 
         if (filled($document->file_path) && empty($overrides['skip_storage'])) {
             Storage::disk('local')->put($document->file_path, 'responsible-identity-finalization-file');
