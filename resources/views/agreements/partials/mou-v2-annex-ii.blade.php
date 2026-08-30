@@ -5,7 +5,6 @@
     $bankAccount = is_array($payload['bank_account'] ?? null) ? $payload['bank_account'] : [];
     $organizerLetter = is_array($payload['organizer_letter'] ?? null) ? $payload['organizer_letter'] : [];
     $responsibleIdentity = is_array($payload['responsible_identity'] ?? null) ? $payload['responsible_identity'] : [];
-    $commercial = is_array($payload['commercial'] ?? null) ? $payload['commercial'] : [];
 
     $display = static fn ($value, $fallback = '-') => filled($value) ? $value : $fallback;
     $documentNumber = $display($agreement['document_number'] ?? null);
@@ -43,10 +42,6 @@
         $organizerLetter['original_name'] ?? null,
     ])->every(fn ($value) => filled($value));
 
-    $paymentGatewayAvailable = collect($commercial['payment_gateways'] ?? [])
-        ->filter(fn ($gateway) => is_array($gateway))
-        ->contains(fn ($gateway) => ! empty($gateway['effective_is_active']));
-
     $readinessRows = [
         [
             'item' => 'Data Penyelenggara',
@@ -82,11 +77,6 @@
             'item' => 'Identitas Penanggung Jawab',
             'status' => $mapVerificationStatus($responsibleIdentity['verification_status'] ?? 'missing'),
             'note' => 'Status mengikuti nilai verifikasi identitas penanggung jawab pada frozen snapshot.',
-        ],
-        [
-            'item' => 'Kanal Pembayaran Efektif',
-            'status' => $paymentGatewayAvailable ? 'TERSEDIA' : 'TIDAK TERSEDIA',
-            'note' => 'Berdasarkan minimal satu gateway frozen dengan effective_is_active = true.',
         ],
     ];
 

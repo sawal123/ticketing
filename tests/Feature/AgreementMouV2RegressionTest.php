@@ -429,7 +429,7 @@ class AgreementMouV2RegressionTest extends TestCase
         $this->assertStringNotContainsString('VIP Ticket', $html);
     }
 
-    public function test_annex_i_keeps_zero_fee_components_and_frozen_gateways(): void
+    public function test_annex_i_hides_commercial_terms_while_snapshot_stays_frozen_for_audit(): void
     {
         $tenant = $this->tenant();
         $admin = $this->admin();
@@ -468,10 +468,14 @@ class AgreementMouV2RegressionTest extends TestCase
 
         $html = view('agreements.mou-v2-pdf', ['payload' => $payload])->render();
 
-        $this->assertStringContainsString('Rp 2.000 + 3%', $html);
-        $this->assertStringContainsString('Rp 0 + 3%', $html);
-        $this->assertStringContainsString('Rp 4.000 + 0%', $html);
-        $this->assertStringContainsString('Biaya Pembeli / Event Fee', $html);
+        $this->assertStringContainsString('DATA EVENT DAN INFORMASI PENCAIRAN', $html);
+        $this->assertStringNotContainsString('Biaya Pembeli / Event Fee', $html);
+        $this->assertStringNotContainsString('Gateway Fixed+Percent', $html);
+        $this->assertStringNotContainsString('Gateway Zero+Percent', $html);
+        $this->assertStringNotContainsString('Gateway Fixed+Zero', $html);
+        $this->assertStringNotContainsString('Rp 2.000 + 3%', $html);
+        $this->assertStringNotContainsString('Rp 0 + 3%', $html);
+        $this->assertStringNotContainsString('Rp 4.000 + 0%', $html);
         // "Platform Fee" dilarang hanya sebagai LABEL/ISTILAH biaya (sel berdiri
         // sendiri dalam markup), bukan sebagai substring dalam nama badan usaha
         // yang sah seperti "PT Platform Fee".
@@ -491,7 +495,7 @@ class AgreementMouV2RegressionTest extends TestCase
             ->firstWhere('payment', 'Gateway Fixed+Percent')['resolved_fee_fixed'] ?? null);
     }
 
-    public function test_multi_gateway_pdf_renders_all_thirty_gateways(): void
+    public function test_multi_gateway_snapshots_remain_available_for_audit_without_rendering_gateway_rows(): void
     {
         $tenant = $this->tenant();
         $admin = $this->admin();
@@ -516,16 +520,16 @@ class AgreementMouV2RegressionTest extends TestCase
         $ready = $agreement->fresh();
         $payload = app(AgreementFinalizationService::class)->pdfPayloadForAgreement($ready);
         $html = view('agreements.mou-v2-pdf', ['payload' => $payload])->render();
+        $payloadNames = collect($payload['commercial']['payment_gateways'] ?? [])->pluck('payment');
 
         foreach ($names as $name) {
-            $this->assertStringContainsString($name, $html);
+            $this->assertTrue($payloadNames->contains($name));
+            $this->assertStringNotContainsString($name, $html);
         }
 
         $pdf = Storage::disk('local')->get($ready->unsigned_pdf_path);
         $this->assertStringStartsWith('%PDF', $pdf);
         $this->assertGreaterThan(0, strlen($pdf));
-        // No exact page-count assertion: pagination is CSS-driven, not a hard
-        // requirement that the whole table fit on one page.
     }
 
     public function test_annex_ii_readiness_marks_missing_data_belum_lengkap_without_private_paths(): void

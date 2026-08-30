@@ -460,6 +460,32 @@ class AgreementVersioningAddendumTest extends TestCase
         return $document;
     }
 
+    private function createCompletedMouEventWithGatewayConfig(User $tenant, User $admin, array $gatewayConfigOverrides): array
+    {
+        [$event, $mou] = $this->createDraftMouEvent($tenant, $admin);
+
+        EventPaymentGateway::query()->where('event_id', $event->id)->firstOrFail()->update(array_merge([
+            'fee_mode' => EventPaymentGateway::FEE_MODE_MANUAL,
+            'fee_fixed' => 2000,
+            'fee_percent' => 0,
+        ], $gatewayConfigOverrides));
+
+        $finResult = app(AgreementFinalizationService::class)->finalizeForEvent($event, $admin->uid, $mou->uid);
+        $this->assertTrue($finResult['ok']);
+        $mou->refresh();
+
+        $dummyPdf = UploadedFile::fake()->create('signed-mou-custom-gateway.pdf', 100, 'application/pdf');
+        $upResult = app(AgreementSignedUploadService::class)->storeForEvent($event, $tenant->uid, $dummyPdf, $mou->uid);
+        $this->assertTrue($upResult['ok']);
+        $mou->refresh();
+
+        $appResult = app(AgreementSignedVerificationService::class)->approveForEvent($event, $admin->uid, $mou->uid);
+        $this->assertTrue($appResult['ok']);
+        $mou->refresh();
+
+        return [$event->fresh(), $mou->fresh()];
+    }
+
     private function completeAddendum(Event $event, User $tenant, User $admin, Agreement $addendum, ?string $filename = null): Agreement
     {
         $filename ??= 'signed-addendum-v'.$addendum->version.'.pdf';
@@ -562,7 +588,7 @@ class AgreementVersioningAddendumTest extends TestCase
         $this->assertEquals(2, Agreement::where('event_uid', $event->uid)->count());
     }
 
-    public function test_event_gateway_active_to_inactive_creates_draft_addendum(): void
+    public function test_event_gateway_active_to_inactive_does_not_create_draft_addendum(): void
     {
         $tenant = $this->tenant();
         $admin = $this->admin();
@@ -572,18 +598,157 @@ class AgreementVersioningAddendumTest extends TestCase
         $gatewayConfig = EventPaymentGateway::query()->where('event_id', $event->id)->firstOrFail();
         $gatewayConfig->update(['is_active' => false]);
 
-        $addendum = app(AgreementVersioningService::class)->checkForContractualChanges($event, $tenant->uid);
+        $addendum = app(AgreementVersioningService::class)->checkForContractualChanges($event->fresh(), $tenant->uid);
+
+        $this->assertNull($addendum);
+        $this->assertSame($mou->uid, Agreement::query()->where('event_uid', $event->uid)->sole()->uid);
+    }
+
+    public function test_global_gateway_active_to_inactive_does_not_create_draft_addendum(): void
+    {
+        $tenant = $this->tenant();
+        $admin = $this->admin();
+
+        [$event, $mou] = $this->createCompletedMouEvent($tenant, $admin);
+
+        PaymentGateway::query()->where('payment', 'BCA Virtual Account')->firstOrFail()->update(['is_active' => false]);
+
+        $addendum = app(AgreementVersioningService::class)->checkForContractualChanges($event->fresh(), $tenant->uid);
+
+        $this->assertNull($addendum);
+        $this->assertSame($mou->uid, Agreement::query()->where('event_uid', $event->uid)->sole()->uid);
+    }
+
+    public function test_event_fee_change_only_does_not_create_addendum(): void
+    {
+        $tenant = $this->tenant();
+        $admin = $this->admin();
+
+        [$event, $mou] = $this->createCompletedMouEvent($tenant, $admin);
+
+        $event->update(['fee' => 12]);
+
+        $addendum = app(AgreementVersioningService::class)->checkForContractualChanges($event->fresh(), $tenant->uid);
+
+        $this->assertNull($addendum);
+        $this->assertSame($mou->uid, Agreement::query()->where('event_uid', $event->uid)->sole()->uid);
+    }
+
+    public function test_gateway_fee_mode_change_only_does_not_create_addendum(): void
+    {
+        $tenant = $this->tenant();
+        $admin = $this->admin();
+
+        [$event, $mou] = $this->createCompletedMouEvent($tenant, $admin);
+
+        EventPaymentGateway::query()->where('event_id', $event->id)->firstOrFail()->update([
+            'fee_mode' => EventPaymentGateway::FEE_MODE_MANUAL,
+            'fee_fixed' => 2000,
+            'fee_percent' => 0,
+        ]);
+
+        $addendum = app(AgreementVersioningService::class)->checkForContractualChanges($event->fresh(), $tenant->uid);
+
+        $this->assertNull($addendum);
+        $this->assertSame($mou->uid, Agreement::query()->where('event_uid', $event->uid)->sole()->uid);
+    }
+
+    public function test_gateway_fixed_fee_change_only_does_not_create_addendum(): void
+    {
+        $tenant = $this->tenant();
+        $admin = $this->admin();
+
+        [$event, $mou] = $this->createCompletedMouEventWithGatewayConfig($tenant, $admin, [
+            'fee_mode' => EventPaymentGateway::FEE_MODE_MANUAL,
+            'fee_fixed' => 2000,
+            'fee_percent' => 0,
+        ]);
+
+        EventPaymentGateway::query()->where('event_id', $event->id)->firstOrFail()->update([
+            'fee_fixed' => 4500,
+        ]);
+
+        $addendum = app(AgreementVersioningService::class)->checkForContractualChanges($event->fresh(), $tenant->uid);
+
+        $this->assertNull($addendum);
+        $this->assertSame($mou->uid, Agreement::query()->where('event_uid', $event->uid)->sole()->uid);
+    }
+
+    public function test_gateway_percent_fee_change_only_does_not_create_addendum(): void
+    {
+        $tenant = $this->tenant();
+        $admin = $this->admin();
+
+        [$event, $mou] = $this->createCompletedMouEventWithGatewayConfig($tenant, $admin, [
+            'fee_mode' => EventPaymentGateway::FEE_MODE_MANUAL,
+            'fee_fixed' => 0,
+            'fee_percent' => 1.5,
+        ]);
+
+        EventPaymentGateway::query()->where('event_id', $event->id)->firstOrFail()->update([
+            'fee_percent' => 3.25,
+        ]);
+
+        $addendum = app(AgreementVersioningService::class)->checkForContractualChanges($event->fresh(), $tenant->uid);
+
+        $this->assertNull($addendum);
+        $this->assertSame($mou->uid, Agreement::query()->where('event_uid', $event->uid)->sole()->uid);
+    }
+
+    public function test_adding_or_removing_gateway_only_does_not_create_addendum(): void
+    {
+        $tenant = $this->tenant();
+        $admin = $this->admin();
+
+        [$event, $mou] = $this->createCompletedMouEvent($tenant, $admin);
+
+        $extraGateway = PaymentGateway::create([
+            'payment' => 'QRIS Tambahan',
+            'category' => 'qris',
+            'biaya' => 0,
+            'biaya_type' => 'fixed',
+            'default_fee_fixed' => 0,
+            'default_fee_percent' => 0,
+            'is_active' => true,
+            'slug' => 'qris-tambahan',
+        ]);
+
+        EventPaymentGateway::create([
+            'event_id' => $event->id,
+            'payment_gateway_id' => $extraGateway->id,
+            'is_active' => true,
+            'fee_mode' => EventPaymentGateway::FEE_MODE_GLOBAL,
+        ]);
+
+        $afterAdd = app(AgreementVersioningService::class)->checkForContractualChanges($event->fresh(), $tenant->uid);
+
+        $this->assertNull($afterAdd);
+        $this->assertSame($mou->uid, Agreement::query()->where('event_uid', $event->uid)->sole()->uid);
+
+        EventPaymentGateway::query()->where('event_id', $event->id)->firstOrFail()->delete();
+
+        $afterRemove = app(AgreementVersioningService::class)->checkForContractualChanges($event->fresh(), $tenant->uid);
+
+        $this->assertNull($afterRemove);
+        $this->assertSame($mou->uid, Agreement::query()->where('event_uid', $event->uid)->sole()->uid);
+    }
+
+    public function test_payment_otp_change_still_creates_draft_addendum(): void
+    {
+        $tenant = $this->tenant();
+        $admin = $this->admin();
+
+        [$event, $mou] = $this->createCompletedMouEvent($tenant, $admin);
+
+        $event->update(['payment_otp_enabled' => true]);
+
+        $addendum = app(AgreementVersioningService::class)->checkForContractualChanges($event->fresh(), $tenant->uid);
         $preview = app(AgreementVersioningService::class)->buildAddendumPreview($event->fresh(), $addendum);
 
         $this->assertNotNull($addendum);
         $this->assertSame(Agreement::STATUS_DRAFT, $addendum->status);
         $this->assertSame($mou->uid, $addendum->parent_agreement_uid);
-        $this->assertTrue(collect($preview['diffs'])->contains(function (array $diff) {
-            return $diff['section'] === 'Payment Gateway'
-                && $diff['label'] === 'Gateway: BCA Virtual Account'
-                && str_contains($diff['before'], 'Event: Aktif')
-                && str_contains($diff['after'], 'Event: Nonaktif');
-        }));
+        $this->assertTrue(collect($preview['diffs'])->contains(fn (array $diff) => $diff['field'] === 'payment_otp_enabled'));
     }
 
     public function test_reverting_live_data_removes_stale_draft_addendum(): void
