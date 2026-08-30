@@ -4,7 +4,8 @@ Checklist ini disiapkan sebagai panduan review counsel sebelum template `mou-v2`
 
 - Pastikan identitas PIHAK PERTAMA dan PIHAK KEDUA sesuai source authoritative, termasuk nama badan usaha, legalitas, alamat, wakil, dan kontak resmi.
 - Tinjau kembali definisi utama agar konsisten dengan istilah operasional platform, transaksi tiket, refund, rekonsiliasi, dan Gate System.
-- Verifikasi pemisahan istilah `Biaya Pembeli / Event Fee`, `Biaya Kanal Pembayaran`, pajak, dan ketentuan komersial lain agar tidak menimbulkan ambiguitas.
+- Verifikasi wording umum mengenai biaya tambahan kepada pembeli, biaya kanal/metode pembayaran, dan pajak/pungutan agar tidak menimbulkan ambiguitas.
+- Pastikan konfigurasi mutable seperti Buyer/Event Fee, daftar gateway, status gateway, dan exact fixed/percentage gateway fee tidak dibekukan sebagai nilai kontraktual.
 - Konfirmasi formulasi rekonsiliasi, settlement, penahanan dana, dan rekening pencairan tanpa memasukkan SLA atau periode yang belum authoritative.
 - Review pasal pembatalan, penjadwalan ulang, dan refund agar pembagian tanggung jawab PARA PIHAK terhadap pembeli jelas.
 - Tinjau hak dan kewajiban PIHAK PERTAMA serta PIHAK KEDUA agar seimbang, operasional, dan sesuai model bisnis.
@@ -17,8 +18,8 @@ Checklist ini disiapkan sebagai panduan review counsel sebelum template `mou-v2`
 - Pastikan klausul IP, merek, dan materi promosi cukup untuk kebutuhan listing, publikasi, dan pelaksanaan kerja sama.
 - Verifikasi kebutuhan legal terkait halaman tanda tangan, validitas tanda tangan elektronik, workflow download unsigned, penandatanganan independen, upload signed PDF, verifikasi admin, dan wording unsigned template.
 - Cek konsistensi istilah dan data antara body utama dengan Lampiran I-II saat lampiran diimplementasikan.
-- Per V2-R0 (post-UAT): pastikan Buyer/Event Fee dan payment gateway tidak dikunci sebagai nilai kontraktual MOU; MOU hanya menyatakan secara umum bahwa biaya tambahan kepada Pembeli diinformasikan sebelum transaksi.
-- Per V2-R0 (post-UAT): verifikasi bahwa identitas penanggung jawab hanya tampil sebagai status verifikasi (TERVERIFIKASI / MENUNGGU VERIFIKASI / DITOLAK) tanpa foto KTP, NIK, atau path privat.
+- Verifikasi bahwa identitas penanggung jawab hanya tampil sebagai status verifikasi (TERVERIFIKASI / MENUNGGU VERIFIKASI / DITOLAK) tanpa foto KTP, NIK, `file_path`, storage path, signed URL, atau path privat.
+- Minta counsel menilai apakah wording umum biaya tambahan, kanal/metode pembayaran, dan pajak/pungutan sudah memadai secara hukum tanpa mengunci konfigurasi mutable sebagai nilai kontrak.
 - Identifikasi regulasi, standar kepatuhan, atau referensi hukum spesifik yang baru boleh dicantumkan setelah review counsel selesai.
 
 ## Legal Sign-off
