@@ -28,14 +28,17 @@
         }
 
         .mou-v2-cover,
-        .mou-v2-section,
-        .signature-page {
+        .signature-page,
+        .cover-event-box,
+        .party-card,
+        .signature-column,
+        .annex-note,
+        .annex-audit {
             page-break-inside: avoid;
         }
 
         .mou-v2-cover {
-            min-height: 245mm;
-            padding: 18mm 8mm 10mm;
+            padding: 12mm 8mm 6mm;
             text-align: center;
             page-break-after: always;
         }
@@ -68,13 +71,13 @@
         h1 {
             font-size: 23pt;
             letter-spacing: 0.08em;
-            margin-top: 12mm;
+            margin-top: 8mm;
         }
 
         h2 {
             font-size: 14pt;
             line-height: 1.55;
-            margin-top: 8mm;
+            margin-top: 6mm;
         }
 
         h3 {
@@ -92,7 +95,7 @@
         }
 
         .cover-parties {
-            margin-top: 22mm;
+            margin-top: 16mm;
         }
 
         .cover-parties p {
@@ -126,11 +129,28 @@
         }
 
         .cover-event-box {
-            margin-top: 22mm;
+            margin-top: 16mm;
             border: 1px solid #cbd5e1;
             border-radius: 12px;
-            padding: 16px 18px;
+            padding: 14px 16px;
             text-align: left;
+        }
+
+        table {
+            page-break-inside: auto;
+        }
+
+        thead {
+            display: table-header-group;
+        }
+
+        tbody {
+            display: table-row-group;
+        }
+
+        tr {
+            page-break-inside: avoid;
+            page-break-after: auto;
         }
 
         .cover-event-label {
@@ -174,6 +194,15 @@
             border-bottom: 1px solid #cbd5e1;
             padding: 10px 0 8px;
             margin-bottom: 12px;
+            page-break-after: avoid;
+        }
+
+        .section-heading + p,
+        .section-heading + .party-card-grid,
+        .section-heading + .clause-list,
+        .annex-heading + .annex-section,
+        .annex-section-header + table {
+            page-break-before: avoid;
         }
 
         .party-card-grid {
@@ -223,12 +252,11 @@
 
         .signature-page {
             page-break-before: always;
-            min-height: 220mm;
         }
 
         .signature-grid {
             width: 100%;
-            margin-top: 24px;
+            margin-top: 18px;
         }
 
         .signature-column {
@@ -341,23 +369,6 @@
             background: #eef4fb;
             color: #1e3a5f;
             font-size: 9pt;
-        }
-
-        .gateway-fee-table {
-            page-break-inside: auto;
-        }
-
-        .gateway-fee-table thead {
-            display: table-header-group;
-        }
-
-        .gateway-fee-table tbody {
-            display: table-row-group;
-        }
-
-        .gateway-fee-table tr {
-            page-break-inside: avoid;
-            page-break-after: auto;
         }
 
         .annex-table th {
