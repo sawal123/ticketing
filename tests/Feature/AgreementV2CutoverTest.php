@@ -158,6 +158,7 @@ class AgreementV2CutoverTest extends TestCase
         [$eventLegacy, $mouLegacy] = $this->completedLegacyMouEvent($tenant, $admin, [
             'event' => 'Konser Parent Legacy',
         ]);
+        $this->verifiedResponsibleIdentity($eventLegacy);
         $eventLegacy->update(['venue_name' => 'Venue Addendum V1']);
 
         $addendumLegacy = app(AgreementVersioningService::class)->checkForContractualChanges($eventLegacy->fresh(), $tenant->uid);

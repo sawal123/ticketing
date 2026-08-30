@@ -403,7 +403,7 @@ class AdminAgreementReviewTest extends TestCase
 
         $this->actingAs($tenant)
             ->get(route('admin.event.review.responsible-identity', $event->uid))
-            ->assertForbidden();
+            ->assertRedirect('/');
     }
 
     public function test_admin_can_open_private_responsible_identity(): void
