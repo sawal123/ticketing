@@ -90,6 +90,47 @@ class AgreementMouV2RegressionTest extends TestCase
         $this->assertStringStartsWith('%PDF', $pdf);
     }
 
+    public function test_mou_v2_pdf_pagination_styles_allow_long_sections_and_atomic_blocks(): void
+    {
+        $tenant = $this->tenant();
+        $admin = $this->admin();
+        $this->platformLegalProfile([
+            'company_name' => 'PT Platform ' . str_repeat('Regresi Panjang ', 5),
+            'address' => 'Jl. ' . str_repeat('Alamat Platform Panjang ', 4),
+            'representative_name' => 'Rani ' . str_repeat('Platform ', 4),
+            'representative_position' => 'Direktur ' . str_repeat('Utama ', 3),
+        ]);
+
+        $event = $this->readyEvent($tenant, [
+            'event' => 'Festival ' . str_repeat('Musik Sangat Panjang ', 6),
+            'venue_name' => 'Gedung ' . str_repeat('Serbaguna ', 5),
+            'venue_address' => 'Jl. ' . str_repeat('Alamat Venue Sangat Panjang ', 5),
+        ]);
+        $event->organizer->update([
+            'organizer_name' => 'PT ' . str_repeat('Penyelenggara Panjang ', 5),
+            'responsible_name' => 'Budi ' . str_repeat('Santoso ', 4),
+            'address' => 'Jl. ' . str_repeat('Alamat Penyelenggara Sangat Panjang ', 5),
+        ]);
+
+        $agreement = $this->mouAgreement($event->fresh());
+        $this->assertTrue(app(AgreementFinalizationService::class)->finalizeForEvent($event->fresh(), $admin->uid, $agreement->uid)['ok']);
+
+        $ready = $agreement->fresh();
+        $payload = app(AgreementFinalizationService::class)->pdfPayloadForAgreement($ready);
+        $html = view('agreements.mou-v2-pdf', ['payload' => $payload])->render();
+
+        $this->assertStringContainsString('Festival Musik Sangat Panjang', $html);
+        $this->assertDoesNotMatchRegularExpression('/\.mou-v2-section\b[^{}]*\{[^}]*page-break-inside:\s*avoid;/s', $html);
+        $this->assertMatchesRegularExpression('/\.cover-event-box\s*\{[^}]*page-break-inside:\s*avoid;/s', $html);
+        $this->assertMatchesRegularExpression('/\btr\s*\{[^}]*page-break-inside:\s*avoid;[^}]*page-break-after:\s*auto;/s', $html);
+        $this->assertMatchesRegularExpression('/\.signature-page\s*\{[^}]*page-break-before:\s*always;/s', $html);
+        $this->assertMatchesRegularExpression('/\.mou-v2-annex\s*\{[^}]*page-break-before:\s*always;/s', $html);
+
+        $pdf = Storage::disk('local')->get($ready->unsigned_pdf_path);
+        $this->assertStringStartsWith('%PDF', $pdf);
+        $this->assertGreaterThan(0, strlen($pdf));
+    }
+
     public function test_finalized_mou_v2_payload_is_frozen_against_live_changes(): void
     {
         $tenant = $this->tenant();
