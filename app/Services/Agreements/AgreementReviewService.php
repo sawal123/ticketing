@@ -27,6 +27,7 @@ class AgreementReviewService
             'organizer',
             'bankAccount',
             'organizerLetter',
+            'responsibleIdentityDocument',
             'eventPaymentGateways.paymentGateway',
         ]);
 
@@ -34,6 +35,7 @@ class AgreementReviewService
         $organizer = $event->organizer;
         $bankAccount = $event->bankAccount;
         $organizerLetter = $event->organizerLetter;
+        $responsibleIdentity = $event->responsibleIdentityDocument;
         $disk = Storage::disk('local');
 
         $organizerComplete = collect([
@@ -61,6 +63,12 @@ class AgreementReviewService
         $organizerLetterPhysicalAvailable = filled($organizerLetter?->file_path)
             && $disk->exists($organizerLetter->file_path);
         $organizerLetterVerified = strtolower((string) $organizerLetter?->status) === 'verified';
+        $responsibleIdentityAvailable = $responsibleIdentity !== null
+            && filled($responsibleIdentity->original_name)
+            && filled($responsibleIdentity->file_path);
+        $responsibleIdentityPhysicalAvailable = filled($responsibleIdentity?->file_path)
+            && $disk->exists($responsibleIdentity->file_path);
+        $responsibleIdentityVerified = strtolower((string) $responsibleIdentity?->status) === 'verified';
 
         $paymentGateways = collect($commercial['payment_gateways'] ?? []);
         $paymentConfigValid = $this->paymentConfigIsValid($commercial);
@@ -119,6 +127,26 @@ class AgreementReviewService
                 'Organizer letter VERIFIED',
                 $organizerLetterVerified,
                 'Surat penyelenggara belum diverifikasi.'
+            ),
+            $this->checkItem(
+                'responsible_identity_available',
+                'Identitas penanggung jawab tersedia',
+                $responsibleIdentityAvailable,
+                'Identitas penanggung jawab belum tersedia.'
+            ),
+            $this->checkItem(
+                'physical_responsible_identity_available',
+                'Physical identitas penanggung jawab tersedia',
+                $responsibleIdentityPhysicalAvailable,
+                filled($responsibleIdentity?->file_path)
+                    ? 'File identitas penanggung jawab fisik tidak ditemukan.'
+                    : 'File identitas penanggung jawab belum tersedia.'
+            ),
+            $this->checkItem(
+                'responsible_identity_verified',
+                'Identitas penanggung jawab VERIFIED',
+                $responsibleIdentityVerified,
+                'Identitas penanggung jawab belum diverifikasi.'
             ),
             $this->checkItem(
                 'payment_configuration_valid',

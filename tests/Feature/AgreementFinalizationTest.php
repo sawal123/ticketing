@@ -78,6 +78,11 @@ class AgreementFinalizationTest extends TestCase
         $this->assertNotNull($agreement->party_snapshot);
         $this->assertNotNull($agreement->bank_snapshot);
         $this->assertNotNull($agreement->document_snapshot);
+        $this->assertSame(EventDocument::TYPE_RESPONSIBLE_IDENTITY, $agreement->document_snapshot['responsible_identity']['document_type']);
+        $this->assertSame('verified', $agreement->document_snapshot['responsible_identity']['verification_status']);
+        $this->assertArrayNotHasKey('file_path', $agreement->document_snapshot['responsible_identity']);
+        $this->assertArrayNotHasKey('nik', $agreement->document_snapshot['responsible_identity']);
+        $this->assertArrayNotHasKey('url', $agreement->document_snapshot['responsible_identity']);
         $this->assertNotNull($agreement->commercial_snapshot);
         $this->assertNotNull($agreement->unsigned_pdf_path);
         $this->assertTrue(Storage::disk('local')->exists($agreement->unsigned_pdf_path));
@@ -187,6 +192,58 @@ class AgreementFinalizationTest extends TestCase
         $this->assertSame('not_ready', $resultC['reason']);
         $this->assertContains('Belum ada payment gateway event yang efektif aktif.', $resultC['blocking_reasons']);
         $this->assertSame(Agreement::STATUS_DRAFT, $agreementC->refresh()->status);
+    }
+
+    public function test_finalization_is_rejected_when_responsible_identity_is_missing_pending_or_rejected(): void
+    {
+        $admin = $this->admin();
+        $tenant = $this->tenant();
+
+        $eventMissing = $this->event($tenant, ['event' => 'Finalization Identity Missing']);
+        $this->organizer($eventMissing);
+        $this->verifiedBankAccount($eventMissing);
+        $this->verifiedOrganizerLetter($eventMissing);
+        $agreementMissing = $this->agreement($tenant, $eventMissing);
+        $gatewayMissing = $this->gateway(['payment' => 'Gateway Identity Missing']);
+        $this->eventGateway($eventMissing, $gatewayMissing, ['is_active' => true]);
+        $eventMissing->responsibleIdentityDocument()->delete();
+
+        $resultMissing = app(AgreementFinalizationService::class)->finalizeForEvent($eventMissing, $admin->uid);
+        $this->assertFalse($resultMissing['ok']);
+        $this->assertContains('Identitas penanggung jawab belum tersedia.', $resultMissing['blocking_reasons']);
+        $this->assertSame(Agreement::STATUS_DRAFT, $agreementMissing->refresh()->status);
+
+        $eventPending = $this->event($tenant, ['event' => 'Finalization Identity Pending']);
+        $this->organizer($eventPending);
+        $this->verifiedBankAccount($eventPending);
+        $this->verifiedOrganizerLetter($eventPending);
+        $this->responsibleIdentity($eventPending, ['status' => 'pending']);
+        $agreementPending = $this->agreement($tenant, $eventPending);
+        $gatewayPending = $this->gateway(['payment' => 'Gateway Identity Pending']);
+        $this->eventGateway($eventPending, $gatewayPending, ['is_active' => true]);
+
+        $resultPending = app(AgreementFinalizationService::class)->finalizeForEvent($eventPending, $admin->uid);
+        $this->assertFalse($resultPending['ok']);
+        $this->assertContains('Identitas penanggung jawab belum diverifikasi.', $resultPending['blocking_reasons']);
+        $this->assertSame(Agreement::STATUS_DRAFT, $agreementPending->refresh()->status);
+
+        $eventRejected = $this->event($tenant, ['event' => 'Finalization Identity Rejected']);
+        $this->organizer($eventRejected);
+        $this->verifiedBankAccount($eventRejected);
+        $this->verifiedOrganizerLetter($eventRejected);
+        $this->responsibleIdentity($eventRejected, [
+            'status' => 'rejected',
+            'verified_by' => 'admin-existing',
+            'rejection_reason' => 'Foto identitas buram.',
+        ]);
+        $agreementRejected = $this->agreement($tenant, $eventRejected);
+        $gatewayRejected = $this->gateway(['payment' => 'Gateway Identity Rejected']);
+        $this->eventGateway($eventRejected, $gatewayRejected, ['is_active' => true]);
+
+        $resultRejected = app(AgreementFinalizationService::class)->finalizeForEvent($eventRejected, $admin->uid);
+        $this->assertFalse($resultRejected['ok']);
+        $this->assertContains('Identitas penanggung jawab belum diverifikasi.', $resultRejected['blocking_reasons']);
+        $this->assertSame(Agreement::STATUS_DRAFT, $agreementRejected->refresh()->status);
     }
 
     public function test_snapshot_is_frozen_after_finalization(): void
@@ -931,8 +988,8 @@ class AgreementFinalizationTest extends TestCase
             $table->string('uid');
             $table->string('event_uid');
             $table->string('document_type');
-            $table->string('document_number');
-            $table->date('document_date');
+            $table->string('document_number')->nullable();
+            $table->date('document_date')->nullable();
             $table->string('original_name');
             $table->string('file_path')->nullable();
             $table->string('mime_type')->nullable();
@@ -1111,7 +1168,53 @@ class AgreementFinalizationTest extends TestCase
 
     private function verifiedOrganizerLetter(Event $event, array $overrides = []): EventDocument
     {
+        if (! $event->responsibleIdentityDocument()->exists()) {
+            $this->verifiedResponsibleIdentity($event);
+        }
+
         return $this->organizerLetter($event, array_merge([
+            'status' => 'verified',
+            'verified_at' => now()->subDay(),
+            'verified_by' => 'admin-existing',
+            'rejection_reason' => null,
+        ], $overrides));
+    }
+
+    private function responsibleIdentity(Event $event, array $overrides = []): EventDocument
+    {
+        $data = array_merge([
+            'uid' => (string) Str::uuid(),
+            'event_uid' => $event->uid,
+            'document_type' => EventDocument::TYPE_RESPONSIBLE_IDENTITY,
+            'document_number' => null,
+            'document_date' => null,
+            'original_name' => 'responsible-identity-finalization.pdf',
+            'file_path' => 'private/events/' . $event->uid . '/responsible-identity/responsible-identity-finalization.pdf',
+            'mime_type' => 'application/pdf',
+            'status' => 'pending',
+            'verified_by' => null,
+            'verified_at' => null,
+            'rejection_reason' => null,
+        ], $overrides);
+
+        $document = EventDocument::updateOrCreate(
+            [
+                'event_uid' => $event->uid,
+                'document_type' => EventDocument::TYPE_RESPONSIBLE_IDENTITY,
+            ],
+            $data
+        );
+
+        if (filled($document->file_path) && empty($overrides['skip_storage'])) {
+            Storage::disk('local')->put($document->file_path, 'responsible-identity-finalization-file');
+        }
+
+        return $document;
+    }
+
+    private function verifiedResponsibleIdentity(Event $event, array $overrides = []): EventDocument
+    {
+        return $this->responsibleIdentity($event, array_merge([
             'status' => 'verified',
             'verified_at' => now()->subDay(),
             'verified_by' => 'admin-existing',

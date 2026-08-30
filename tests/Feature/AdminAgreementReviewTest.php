@@ -218,6 +218,45 @@ class AdminAgreementReviewTest extends TestCase
         $this->assertNull($document->rejection_reason);
     }
 
+    public function test_approve_responsible_identity_succeeds(): void
+    {
+        $admin = $this->admin();
+        $tenant = $this->tenant();
+        $event = $this->event($tenant);
+        $document = $this->responsibleIdentity($event, ['status' => 'pending']);
+
+        Livewire::actingAs($admin)
+            ->test(EventDetail::class, ['uid' => $event->uid])
+            ->set('activeTab', 'review-mou')
+            ->call('approveResponsibleIdentity');
+
+        $document->refresh();
+
+        $this->assertSame('verified', $document->status);
+        $this->assertSame($admin->uid, $document->verified_by);
+        $this->assertNotNull($document->verified_at);
+        $this->assertNull($document->rejection_reason);
+    }
+
+    public function test_approve_responsible_identity_fails_when_file_is_missing(): void
+    {
+        $admin = $this->admin();
+        $tenant = $this->tenant();
+        $event = $this->event($tenant);
+        $document = $this->responsibleIdentity($event, ['skip_storage' => true]);
+
+        Livewire::actingAs($admin)
+            ->test(EventDetail::class, ['uid' => $event->uid])
+            ->set('activeTab', 'review-mou')
+            ->call('approveResponsibleIdentity');
+
+        $document->refresh();
+
+        $this->assertSame('pending', $document->status);
+        $this->assertNull($document->verified_at);
+        $this->assertNull($document->verified_by);
+    }
+
     public function test_reject_organizer_letter_requires_reason(): void
     {
         $admin = $this->admin();
@@ -249,6 +288,41 @@ class AdminAgreementReviewTest extends TestCase
 
         $this->assertSame('rejected', $document->status);
         $this->assertSame('Nomor surat tidak cocok dengan lampiran.', $document->rejection_reason);
+        $this->assertSame($admin->uid, $document->verified_by);
+        $this->assertNull($document->verified_at);
+    }
+
+    public function test_reject_responsible_identity_requires_reason(): void
+    {
+        $admin = $this->admin();
+        $tenant = $this->tenant();
+        $event = $this->event($tenant);
+        $this->responsibleIdentity($event);
+
+        Livewire::actingAs($admin)
+            ->test(EventDetail::class, ['uid' => $event->uid])
+            ->set('activeTab', 'review-mou')
+            ->call('rejectResponsibleIdentity')
+            ->assertHasErrors(['responsibleIdentityRejectionReason' => 'required']);
+    }
+
+    public function test_reject_responsible_identity_succeeds(): void
+    {
+        $admin = $this->admin();
+        $tenant = $this->tenant();
+        $event = $this->event($tenant);
+        $document = $this->responsibleIdentity($event, ['status' => 'pending']);
+
+        Livewire::actingAs($admin)
+            ->test(EventDetail::class, ['uid' => $event->uid])
+            ->set('activeTab', 'review-mou')
+            ->set('responsibleIdentityRejectionReason', 'Foto identitas tidak terbaca jelas.')
+            ->call('rejectResponsibleIdentity');
+
+        $document->refresh();
+
+        $this->assertSame('rejected', $document->status);
+        $this->assertSame('Foto identitas tidak terbaca jelas.', $document->rejection_reason);
         $this->assertSame($admin->uid, $document->verified_by);
         $this->assertNull($document->verified_at);
     }
@@ -321,6 +395,51 @@ class AdminAgreementReviewTest extends TestCase
         $this->assertStringContainsString('review-letter.pdf', (string) $response->headers->get('content-disposition'));
     }
 
+    public function test_non_admin_cannot_open_private_responsible_identity(): void
+    {
+        $tenant = $this->tenant();
+        $event = $this->event($tenant);
+        $this->responsibleIdentity($event);
+
+        $this->actingAs($tenant)
+            ->get(route('admin.event.review.responsible-identity', $event->uid))
+            ->assertRedirect('/');
+    }
+
+    public function test_admin_can_open_private_responsible_identity(): void
+    {
+        $admin = $this->admin();
+        $tenant = $this->tenant();
+        $event = $this->event($tenant);
+        $document = $this->responsibleIdentity($event, [
+            'file_path' => 'private/events/' . $event->uid . '/responsible-identity/review-identity.pdf',
+            'original_name' => 'review-identity.pdf',
+        ]);
+
+        $response = $this->actingAs($admin)
+            ->get(route('admin.event.review.responsible-identity', $event->uid));
+
+        $response->assertOk();
+        $this->assertSame('responsible-identity-review-file', $response->streamedContent());
+        $this->assertStringContainsString('review-identity.pdf', (string) $response->headers->get('content-disposition'));
+    }
+
+    public function test_missing_private_responsible_identity_returns_404(): void
+    {
+        $admin = $this->admin();
+        $tenant = $this->tenant();
+        $event = $this->event($tenant);
+        $this->responsibleIdentity($event, [
+            'file_path' => 'private/events/' . $event->uid . '/responsible-identity/missing-identity.pdf',
+            'original_name' => 'missing-identity.pdf',
+            'skip_storage' => true,
+        ]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.event.review.responsible-identity', $event->uid))
+            ->assertNotFound();
+    }
+
     public function test_missing_private_review_file_returns_404(): void
     {
         $admin = $this->admin();
@@ -344,6 +463,7 @@ class AdminAgreementReviewTest extends TestCase
         $event = $this->event($tenant);
         $bankAccount = $this->verifiedBankAccount($event);
         $document = $this->verifiedOrganizerLetter($event);
+        $identity = $this->verifiedResponsibleIdentity($event);
         $this->agreement($tenant, $event);
         $gateway = $this->gateway();
         $this->eventGateway($event, $gateway, ['is_active' => true]);
@@ -353,6 +473,7 @@ class AdminAgreementReviewTest extends TestCase
             ->assertOk()
             ->assertDontSeeText($bankAccount->bank_book_path)
             ->assertDontSeeText($document->file_path)
+            ->assertDontSeeText($identity->file_path)
             ->assertDontSeeText('storage/app/private');
     }
 
@@ -389,6 +510,7 @@ class AdminAgreementReviewTest extends TestCase
         $this->organizer($event);
         $this->verifiedBankAccount($event);
         $this->verifiedOrganizerLetter($event);
+        $this->verifiedResponsibleIdentity($event);
         $agreement = $this->agreement($tenant, $event, ['status' => Agreement::STATUS_DRAFT]);
         $gateway = $this->gateway(['is_active' => true]);
         $this->eventGateway($event, $gateway, ['is_active' => true]);
@@ -631,8 +753,8 @@ class AdminAgreementReviewTest extends TestCase
             $table->string('uid');
             $table->string('event_uid');
             $table->string('document_type');
-            $table->string('document_number');
-            $table->date('document_date');
+            $table->string('document_number')->nullable();
+            $table->date('document_date')->nullable();
             $table->string('original_name');
             $table->string('file_path')->nullable();
             $table->string('mime_type')->nullable();
@@ -811,6 +933,42 @@ class AdminAgreementReviewTest extends TestCase
     private function verifiedOrganizerLetter(Event $event, array $overrides = []): EventDocument
     {
         return $this->organizerLetter($event, array_merge([
+            'status' => 'verified',
+            'verified_at' => now()->subDay(),
+            'verified_by' => 'admin-existing',
+            'rejection_reason' => null,
+        ], $overrides));
+    }
+
+    private function responsibleIdentity(Event $event, array $overrides = []): EventDocument
+    {
+        $data = array_merge([
+            'uid' => (string) Str::uuid(),
+            'event_uid' => $event->uid,
+            'document_type' => EventDocument::TYPE_RESPONSIBLE_IDENTITY,
+            'document_number' => null,
+            'document_date' => null,
+            'original_name' => 'responsible-identity-review.pdf',
+            'file_path' => 'private/events/' . $event->uid . '/responsible-identity/responsible-identity-review.pdf',
+            'mime_type' => 'application/pdf',
+            'status' => 'pending',
+            'verified_by' => null,
+            'verified_at' => null,
+            'rejection_reason' => null,
+        ], $overrides);
+
+        $document = EventDocument::create($data);
+
+        if (filled($document->file_path) && empty($overrides['skip_storage'])) {
+            Storage::disk('local')->put($document->file_path, 'responsible-identity-review-file');
+        }
+
+        return $document;
+    }
+
+    private function verifiedResponsibleIdentity(Event $event, array $overrides = []): EventDocument
+    {
+        return $this->responsibleIdentity($event, array_merge([
             'status' => 'verified',
             'verified_at' => now()->subDay(),
             'verified_by' => 'admin-existing',

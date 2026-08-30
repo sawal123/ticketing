@@ -78,6 +78,7 @@ class AgreementV2CutoverTest extends TestCase
         $this->organizer($event);
         $this->verifiedBankAccount($event);
         $this->verifiedOrganizerLetter($event);
+        $this->verifiedResponsibleIdentity($event);
         $agreement = $this->agreement($tenant, $event, ['document_number' => 'MOU/FINAL/001']);
         $gateway = $this->gateway(['payment' => 'Gateway Final V2']);
         $this->eventGateway($event, $gateway, ['is_active' => true]);
@@ -157,6 +158,7 @@ class AgreementV2CutoverTest extends TestCase
         [$eventLegacy, $mouLegacy] = $this->completedLegacyMouEvent($tenant, $admin, [
             'event' => 'Konser Parent Legacy',
         ]);
+        $this->verifiedResponsibleIdentity($eventLegacy);
         $eventLegacy->update(['venue_name' => 'Venue Addendum V1']);
 
         $addendumLegacy = app(AgreementVersioningService::class)->checkForContractualChanges($eventLegacy->fresh(), $tenant->uid);
@@ -374,6 +376,32 @@ class AgreementV2CutoverTest extends TestCase
         ], $overrides));
     }
 
+    private function verifiedResponsibleIdentity(Event $event, array $overrides = []): EventDocument
+    {
+        $document = EventDocument::updateOrCreate(
+            [
+                'event_uid' => $event->uid,
+                'document_type' => EventDocument::TYPE_RESPONSIBLE_IDENTITY,
+            ],
+            array_merge([
+                'uid' => (string) Str::uuid(),
+                'document_number' => null,
+                'document_date' => null,
+                'original_name' => 'responsible-identity.pdf',
+                'file_path' => 'private/events/'.$event->uid.'/responsible-identity/responsible-identity.pdf',
+                'mime_type' => 'application/pdf',
+                'status' => 'verified',
+                'verified_by' => 'admin-existing',
+                'verified_at' => now()->subDay(),
+                'rejection_reason' => null,
+            ], $overrides)
+        );
+
+        Storage::disk('local')->put($document->file_path, 'responsible-identity');
+
+        return $document;
+    }
+
     private function agreement(User $tenant, Event $event, array $overrides = []): Agreement
     {
         return Agreement::create(array_merge([
@@ -443,6 +471,7 @@ class AgreementV2CutoverTest extends TestCase
         $this->organizer($event);
         $this->verifiedBankAccount($event);
         $this->verifiedOrganizerLetter($event);
+        $this->verifiedResponsibleIdentity($event);
         $agreement = $this->agreement($tenant, $event, ['document_number' => 'MOU/V2/001']);
         $gateway = $this->gateway();
         $this->eventGateway($event, $gateway, ['is_active' => true]);

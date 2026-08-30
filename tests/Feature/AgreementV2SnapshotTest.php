@@ -425,8 +425,8 @@ class AgreementV2SnapshotTest extends TestCase
             $table->string('uid');
             $table->string('event_uid');
             $table->string('document_type');
-            $table->string('document_number');
-            $table->date('document_date');
+            $table->string('document_number')->nullable();
+            $table->date('document_date')->nullable();
             $table->string('original_name');
             $table->string('file_path')->nullable();
             $table->string('mime_type')->nullable();
@@ -651,6 +651,8 @@ class AgreementV2SnapshotTest extends TestCase
         ]);
         Storage::disk('local')->put('private/events/'.$event->uid.'/documents/surat.pdf', 'dummy-letter');
 
+        $this->verifiedResponsibleIdentity($event, $admin->uid);
+
         $gateway = PaymentGateway::create([
             'payment' => 'BCA Virtual Account',
             'category' => 'bank_transfer',
@@ -696,6 +698,32 @@ class AgreementV2SnapshotTest extends TestCase
         ])->save();
 
         return [$event->fresh(), $agreement->fresh()];
+    }
+
+    private function verifiedResponsibleIdentity(Event $event, string $verifiedBy, array $overrides = []): EventDocument
+    {
+        $document = EventDocument::updateOrCreate(
+            [
+                'event_uid' => $event->uid,
+                'document_type' => EventDocument::TYPE_RESPONSIBLE_IDENTITY,
+            ],
+            array_merge([
+                'uid' => (string) Str::uuid(),
+                'document_number' => null,
+                'document_date' => null,
+                'original_name' => 'responsible-identity.pdf',
+                'file_path' => 'private/events/'.$event->uid.'/responsible-identity/responsible-identity.pdf',
+                'mime_type' => 'application/pdf',
+                'status' => 'verified',
+                'verified_by' => $verifiedBy,
+                'verified_at' => now(),
+                'rejection_reason' => null,
+            ], $overrides)
+        );
+
+        Storage::disk('local')->put($document->file_path, 'dummy-responsible-identity');
+
+        return $document;
     }
 
     private function expectedPlatformSnapshot(array $values): array

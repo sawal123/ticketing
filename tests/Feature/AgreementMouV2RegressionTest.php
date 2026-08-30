@@ -815,10 +815,37 @@ class AgreementMouV2RegressionTest extends TestCase
         $this->organizer($event);
         $this->verifiedBankAccount($event);
         $this->verifiedOrganizerLetter($event);
+        $this->verifiedResponsibleIdentity($event);
         $this->agreement($tenant, $event, ['document_number' => 'MOU/REG/001']);
         $this->attachGateway($event);
 
         return $event->fresh();
+    }
+
+    private function verifiedResponsibleIdentity(Event $event, array $overrides = []): EventDocument
+    {
+        $document = EventDocument::updateOrCreate(
+            [
+                'event_uid' => $event->uid,
+                'document_type' => EventDocument::TYPE_RESPONSIBLE_IDENTITY,
+            ],
+            array_merge([
+                'uid' => (string) Str::uuid(),
+                'document_number' => null,
+                'document_date' => null,
+                'original_name' => 'responsible-identity.pdf',
+                'file_path' => 'private/events/'.$event->uid.'/responsible-identity/responsible-identity.pdf',
+                'mime_type' => 'application/pdf',
+                'status' => 'verified',
+                'verified_by' => 'admin-existing',
+                'verified_at' => now()->subDay(),
+                'rejection_reason' => null,
+            ], $overrides)
+        );
+
+        Storage::disk('local')->put($document->file_path, 'responsible-identity');
+
+        return $document;
     }
 
     private function mouAgreement(Event $event): Agreement

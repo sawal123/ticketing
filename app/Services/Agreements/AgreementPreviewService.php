@@ -33,6 +33,7 @@ class AgreementPreviewService
         $organizer = $event->organizer;
         $bankAccount = $event->bankAccount;
         $organizerLetter = $event->organizerLetter;
+        $responsibleIdentity = $event->responsibleIdentityDocument;
         $commercial = $this->buildCommercialSummaryForEvent($event);
         $templateVersion = $this->resolveTemplateVersionForAgreement($agreement);
 
@@ -80,6 +81,12 @@ class AgreementPreviewService
                 'document_date' => $this->formatDate($organizerLetter?->document_date),
                 'original_name' => $organizerLetter?->original_name,
                 'verification_status' => $organizerLetter?->status,
+            ],
+            'responsible_identity' => [
+                'document_type' => $responsibleIdentity?->document_type,
+                'original_name' => $responsibleIdentity?->original_name,
+                'verification_status' => $responsibleIdentity?->status,
+                'verified_at' => $this->formatDateTime($responsibleIdentity?->verified_at),
             ],
             'commercial' => $commercial,
         ];
@@ -154,6 +161,7 @@ class AgreementPreviewService
             'organizer',
             'bankAccount',
             'organizerLetter',
+            'responsibleIdentityDocument',
             'eventPaymentGateways.paymentGateway',
         ]);
     }
