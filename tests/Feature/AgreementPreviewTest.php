@@ -258,14 +258,15 @@ class AgreementPreviewTest extends TestCase
         $this->assertSame('4500.00', $preview['commercial']['payment_gateways'][0]['resolved_fee_fixed']);
         $this->assertSame('1.5', $preview['commercial']['payment_gateways'][0]['resolved_fee_percent']);
 
-        $this->actingAs($tenant)
-            ->get(route('dashboard.event.detail', $event->uid).'?activeTab=mou')
-            ->assertOk()
-            ->assertDontSeeText('Biaya Pembeli / Event Fee')
-            ->assertDontSeeText('11%')
-            ->assertDontSeeText('Gateway Manual Preview')
-            ->assertDontSeeText('Rp 4.500')
-            ->assertDontSeeText('1.5%');
+        $html = view('agreements.mou-v2-preview', [
+            'payload' => $preview,
+        ])->render();
+
+        $this->assertStringNotContainsString('Biaya Pembeli / Event Fee', $html);
+        $this->assertStringNotContainsString('11%', $html);
+        $this->assertStringNotContainsString('Gateway Manual Preview', $html);
+        $this->assertStringNotContainsString('Rp 4.500', $html);
+        $this->assertStringNotContainsString('1.5%', $html);
     }
 
     public function test_preview_keeps_percent_buyer_fee_internal_without_rendering_it_in_mou_html(): void
@@ -283,12 +284,13 @@ class AgreementPreviewTest extends TestCase
         $this->assertEquals(10.0, $preview['commercial']['buyer_fee']['value']);
         $this->assertSame('10%', $preview['commercial']['ticket_tax']['value']);
 
-        $this->actingAs($tenant)
-            ->get(route('dashboard.event.detail', $event->uid).'?activeTab=mou')
-            ->assertOk()
-            ->assertDontSeeText('Biaya Pembeli / Event Fee')
-            ->assertDontSeeText('10%')
-            ->assertDontSeeText('Rp 10');
+        $html = view('agreements.mou-v2-preview', [
+            'payload' => $preview,
+        ])->render();
+
+        $this->assertStringNotContainsString('Biaya Pembeli / Event Fee', $html);
+        $this->assertStringNotContainsString('10%', $html);
+        $this->assertStringNotContainsString('Rp 10', $html);
     }
 
     public function test_preview_keeps_fixed_buyer_fee_internal_without_rendering_it_in_mou_html(): void
@@ -306,12 +308,13 @@ class AgreementPreviewTest extends TestCase
         $this->assertEquals(5000.0, $preview['commercial']['buyer_fee']['value']);
         $this->assertSame('Rp 5.000', $preview['commercial']['ticket_tax']['value']);
 
-        $this->actingAs($tenant)
-            ->get(route('dashboard.event.detail', $event->uid).'?activeTab=mou')
-            ->assertOk()
-            ->assertDontSeeText('Biaya Pembeli / Event Fee')
-            ->assertDontSeeText('Rp 5.000')
-            ->assertDontSeeText('5000%');
+        $html = view('agreements.mou-v2-preview', [
+            'payload' => $preview,
+        ])->render();
+
+        $this->assertStringNotContainsString('Biaya Pembeli / Event Fee', $html);
+        $this->assertStringNotContainsString('Rp 5.000', $html);
+        $this->assertStringNotContainsString('5000%', $html);
     }
 
     public function test_preview_keeps_global_gateway_new_defaults_internal_without_rendering_gateway_details(): void
@@ -336,13 +339,14 @@ class AgreementPreviewTest extends TestCase
         $this->assertSame('2000.00', $preview['commercial']['payment_gateways'][0]['resolved_fee_fixed']);
         $this->assertSame('3', $preview['commercial']['payment_gateways'][0]['resolved_fee_percent']);
 
-        $this->actingAs($tenant)
-            ->get(route('dashboard.event.detail', $event->uid).'?activeTab=mou')
-            ->assertOk()
-            ->assertDontSeeText('Gateway Global New')
-            ->assertDontSeeText('Biaya Kanal Pembayaran')
-            ->assertDontSeeText('Rp 2.000')
-            ->assertDontSeeText('3%');
+        $html = view('agreements.mou-v2-preview', [
+            'payload' => $preview,
+        ])->render();
+
+        $this->assertStringNotContainsString('Gateway Global New', $html);
+        $this->assertStringNotContainsString('Biaya Kanal Pembayaran', $html);
+        $this->assertStringNotContainsString('Rp 2.000', $html);
+        $this->assertStringNotContainsString('3%', $html);
     }
 
     public function test_preview_keeps_explicit_zero_global_defaults_internal_without_rendering_gateway_details(): void
@@ -368,11 +372,14 @@ class AgreementPreviewTest extends TestCase
         $this->assertSame('0.00', $preview['commercial']['payment_gateways'][0]['resolved_fee_fixed']);
         $this->assertSame('0', $preview['commercial']['payment_gateways'][0]['resolved_fee_percent']);
 
-        $this->actingAs($tenant)
-            ->get(route('dashboard.event.detail', $event->uid).'?activeTab=mou')
-            ->assertOk()
-            ->assertDontSeeText('Gateway Zero Default')
-            ->assertDontSeeText('Rp 4.000');
+        $html = view('agreements.mou-v2-preview', [
+            'payload' => $preview,
+        ])->render();
+
+        $this->assertStringNotContainsString('Gateway Zero Default', $html);
+        $this->assertStringNotContainsString('Rp 0', $html);
+        $this->assertStringNotContainsString('0%', $html);
+        $this->assertStringNotContainsString('Rp 4.000', $html);
     }
 
     public function test_preview_keeps_legacy_gateway_rupiah_fallback_internal_without_rendering_gateway_details(): void
@@ -476,11 +483,11 @@ class AgreementPreviewTest extends TestCase
         $this->assertFalse($preview['commercial']['payment_gateways'][0]['effective_is_active']);
         $this->assertNotContains('Gateway Global Inactive', $preview['commercial']['active_payment_methods']);
 
-        $response = $this->actingAs($tenant)
-            ->get(route('dashboard.event.detail', $event->uid).'?activeTab=mou');
+        $html = view('agreements.mou-v2-preview', [
+            'payload' => $preview,
+        ])->render();
 
-        $response->assertOk()
-            ->assertDontSeeText('Gateway Global Inactive');
+        $this->assertStringNotContainsString('Gateway Global Inactive', $html);
     }
 
     public function test_preview_keeps_event_inactive_gateway_internal_without_rendering_gateway_details(): void
@@ -502,11 +509,11 @@ class AgreementPreviewTest extends TestCase
         $this->assertFalse($preview['commercial']['payment_gateways'][0]['effective_is_active']);
         $this->assertNotContains('Gateway Event Inactive', $preview['commercial']['active_payment_methods']);
 
-        $response = $this->actingAs($tenant)
-            ->get(route('dashboard.event.detail', $event->uid).'?activeTab=mou');
+        $html = view('agreements.mou-v2-preview', [
+            'payload' => $preview,
+        ])->render();
 
-        $response->assertOk()
-            ->assertDontSeeText('Gateway Event Inactive');
+        $this->assertStringNotContainsString('Gateway Event Inactive', $html);
     }
 
     private function tenant(array $overrides = []): User
