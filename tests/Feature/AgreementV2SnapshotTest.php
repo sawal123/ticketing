@@ -144,6 +144,59 @@ class AgreementV2SnapshotTest extends TestCase
         $this->assertSame('1.5', $commercial['payment_gateways'][0]['resolved_fee_percent'] ?? null);
     }
 
+    public function test_completed_parent_snapshots_remain_frozen_after_live_commercial_and_identity_changes(): void
+    {
+        $admin = $this->admin();
+        $tenant = $this->tenant();
+        [$event, $mou] = $this->completedMouEvent($tenant, $admin);
+
+        $originalEventSnapshot = $mou->event_snapshot;
+        $originalPartySnapshot = $mou->party_snapshot;
+        $originalBankSnapshot = $mou->bank_snapshot;
+        $originalDocumentSnapshot = $mou->document_snapshot;
+        $originalCommercialSnapshot = $mou->commercial_snapshot;
+        $originalPlatformSnapshot = $mou->platform_party_snapshot;
+        $originalUnsignedPdf = $mou->unsigned_pdf_path;
+
+        $event->update(['fee' => 12]);
+
+        PaymentGateway::query()->where('payment', 'BCA Virtual Account')->firstOrFail()->update([
+            'is_active' => false,
+        ]);
+
+        EventPaymentGateway::query()->where('event_id', $event->id)->firstOrFail()->update([
+            'is_active' => false,
+            'fee_mode' => EventPaymentGateway::FEE_MODE_MANUAL,
+            'fee_fixed' => 4500,
+            'fee_percent' => 1.5,
+        ]);
+
+        $replacementPath = 'private/events/'.$event->uid.'/responsible-identity/responsible-identity-r5.pdf';
+        $this->verifiedResponsibleIdentity($event->fresh(), $admin->uid, [
+            'original_name' => 'responsible-identity-r5.pdf',
+            'file_path' => $replacementPath,
+            'status' => 'rejected',
+            'verified_at' => null,
+            'rejection_reason' => 'Dokumen blur',
+        ]);
+
+        $result = app(AgreementVersioningService::class)->checkForContractualChanges($event->fresh(), $tenant->uid);
+
+        $this->assertNull($result);
+
+        $mou->refresh();
+
+        $this->assertSame($originalEventSnapshot, $mou->event_snapshot);
+        $this->assertSame($originalPartySnapshot, $mou->party_snapshot);
+        $this->assertSame($originalBankSnapshot, $mou->bank_snapshot);
+        $this->assertSame($originalDocumentSnapshot, $mou->document_snapshot);
+        $this->assertSame($originalCommercialSnapshot, $mou->commercial_snapshot);
+        $this->assertSame($originalPlatformSnapshot, $mou->platform_party_snapshot);
+        $this->assertSame($originalUnsignedPdf, $mou->unsigned_pdf_path);
+        $this->assertSame('responsible-identity.pdf', $mou->document_snapshot['responsible_identity']['original_name'] ?? null);
+        $this->assertSame('verified', $mou->document_snapshot['responsible_identity']['verification_status'] ?? null);
+    }
+
     public function test_global_platform_profile_change_does_not_auto_create_addendum_for_legacy_completed_agreement_with_null_snapshot(): void
     {
         $admin = $this->admin();
