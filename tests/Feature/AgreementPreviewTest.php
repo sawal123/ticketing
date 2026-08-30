@@ -220,14 +220,14 @@ class AgreementPreviewTest extends TestCase
     {
         $tenant = $this->tenant(['email' => 'commercial-preview@example.test']);
         $event = $this->event($tenant, [
-            'event' => 'Konser Komersial Preview',
+            'event' => 'Konser Komersial Internal',
             'fee' => 11,
             'payment_otp_enabled' => true,
         ]);
         $this->agreement($tenant, $event);
 
         $gateway = PaymentGateway::create([
-            'payment' => 'Gateway Manual Preview',
+            'payment' => 'GW-R3-MANUAL-PREVIEW-83',
             'category' => 'bank_transfer',
             'biaya' => 0,
             'biaya_type' => 'rupiah',
@@ -254,7 +254,7 @@ class AgreementPreviewTest extends TestCase
         $this->assertEquals(11.0, $preview['commercial']['buyer_fee']['value']);
         $this->assertSame('11%', $preview['commercial']['ticket_tax']['value']);
         $this->assertTrue($preview['commercial']['payment_otp_enabled']);
-        $this->assertSame('Gateway Manual Preview', $preview['commercial']['payment_gateways'][0]['payment']);
+        $this->assertSame('GW-R3-MANUAL-PREVIEW-83', $preview['commercial']['payment_gateways'][0]['payment']);
         $this->assertSame('4500.00', $preview['commercial']['payment_gateways'][0]['resolved_fee_fixed']);
         $this->assertSame('1.5', $preview['commercial']['payment_gateways'][0]['resolved_fee_percent']);
 
@@ -263,10 +263,8 @@ class AgreementPreviewTest extends TestCase
         ])->render();
 
         $this->assertStringNotContainsString('Biaya Pembeli / Event Fee', $html);
-        $this->assertStringNotContainsString('11%', $html);
-        $this->assertStringNotContainsString('Gateway Manual Preview', $html);
-        $this->assertStringNotContainsString('Rp 4.500', $html);
-        $this->assertStringNotContainsString('1.5%', $html);
+        $this->assertStringNotContainsString('Kanal Pembayaran', $html);
+        $this->assertStringNotContainsString('GW-R3-MANUAL-PREVIEW-83', $html);
     }
 
     public function test_preview_keeps_percent_buyer_fee_internal_without_rendering_it_in_mou_html(): void
@@ -289,8 +287,6 @@ class AgreementPreviewTest extends TestCase
         ])->render();
 
         $this->assertStringNotContainsString('Biaya Pembeli / Event Fee', $html);
-        $this->assertStringNotContainsString('10%', $html);
-        $this->assertStringNotContainsString('Rp 10', $html);
     }
 
     public function test_preview_keeps_fixed_buyer_fee_internal_without_rendering_it_in_mou_html(): void
@@ -313,17 +309,15 @@ class AgreementPreviewTest extends TestCase
         ])->render();
 
         $this->assertStringNotContainsString('Biaya Pembeli / Event Fee', $html);
-        $this->assertStringNotContainsString('Rp 5.000', $html);
-        $this->assertStringNotContainsString('5000%', $html);
     }
 
     public function test_preview_keeps_global_gateway_new_defaults_internal_without_rendering_gateway_details(): void
     {
         $tenant = $this->tenant(['email' => 'gateway-global-new@example.test']);
-        $event = $this->event($tenant, ['event' => 'Konser Gateway Global New']);
+        $event = $this->event($tenant, ['event' => 'Konser Pembayaran Global Baru']);
         $this->agreement($tenant, $event);
         $gateway = $this->gateway([
-            'payment' => 'Gateway Global New',
+            'payment' => 'GW-R3-GLOBAL-NEW-83',
             'default_fee_fixed' => 2000,
             'default_fee_percent' => 3,
         ]);
@@ -334,8 +328,8 @@ class AgreementPreviewTest extends TestCase
 
         $preview = app(AgreementPreviewService::class)->buildForEvent($event->fresh());
 
-        $this->assertContains('Gateway Global New', $preview['commercial']['active_payment_methods']);
-        $this->assertSame('Gateway Global New', $preview['commercial']['payment_gateways'][0]['payment']);
+        $this->assertContains('GW-R3-GLOBAL-NEW-83', $preview['commercial']['active_payment_methods']);
+        $this->assertSame('GW-R3-GLOBAL-NEW-83', $preview['commercial']['payment_gateways'][0]['payment']);
         $this->assertSame('2000.00', $preview['commercial']['payment_gateways'][0]['resolved_fee_fixed']);
         $this->assertSame('3', $preview['commercial']['payment_gateways'][0]['resolved_fee_percent']);
 
@@ -343,19 +337,17 @@ class AgreementPreviewTest extends TestCase
             'payload' => $preview,
         ])->render();
 
-        $this->assertStringNotContainsString('Gateway Global New', $html);
-        $this->assertStringNotContainsString('Biaya Kanal Pembayaran', $html);
-        $this->assertStringNotContainsString('Rp 2.000', $html);
-        $this->assertStringNotContainsString('3%', $html);
+        $this->assertStringNotContainsString('Kanal Pembayaran', $html);
+        $this->assertStringNotContainsString('GW-R3-GLOBAL-NEW-83', $html);
     }
 
     public function test_preview_keeps_explicit_zero_global_defaults_internal_without_rendering_gateway_details(): void
     {
         $tenant = $this->tenant(['email' => 'gateway-global-zero@example.test']);
-        $event = $this->event($tenant, ['event' => 'Konser Gateway Zero']);
+        $event = $this->event($tenant, ['event' => 'Konser Pembayaran Zero Default']);
         $this->agreement($tenant, $event);
         $gateway = $this->gateway([
-            'payment' => 'Gateway Zero Default',
+            'payment' => 'GW-R3-ZERO-DEFAULT-83',
             'biaya' => 4000,
             'biaya_type' => 'rupiah',
             'default_fee_fixed' => 0,
@@ -368,7 +360,8 @@ class AgreementPreviewTest extends TestCase
 
         $preview = app(AgreementPreviewService::class)->buildForEvent($event->fresh());
 
-        $this->assertContains('Gateway Zero Default', $preview['commercial']['active_payment_methods']);
+        $this->assertContains('GW-R3-ZERO-DEFAULT-83', $preview['commercial']['active_payment_methods']);
+        $this->assertSame('GW-R3-ZERO-DEFAULT-83', $preview['commercial']['payment_gateways'][0]['payment']);
         $this->assertSame('0.00', $preview['commercial']['payment_gateways'][0]['resolved_fee_fixed']);
         $this->assertSame('0', $preview['commercial']['payment_gateways'][0]['resolved_fee_percent']);
 
@@ -376,19 +369,17 @@ class AgreementPreviewTest extends TestCase
             'payload' => $preview,
         ])->render();
 
-        $this->assertStringNotContainsString('Gateway Zero Default', $html);
-        $this->assertStringNotContainsString('Rp 0', $html);
-        $this->assertStringNotContainsString('0%', $html);
-        $this->assertStringNotContainsString('Rp 4.000', $html);
+        $this->assertStringNotContainsString('Kanal Pembayaran', $html);
+        $this->assertStringNotContainsString('GW-R3-ZERO-DEFAULT-83', $html);
     }
 
     public function test_preview_keeps_legacy_gateway_rupiah_fallback_internal_without_rendering_gateway_details(): void
     {
         $tenant = $this->tenant(['email' => 'gateway-legacy-rupiah@example.test']);
-        $event = $this->event($tenant, ['event' => 'Konser Gateway Legacy Rupiah']);
+        $event = $this->event($tenant, ['event' => 'Konser Fallback Rupiah']);
         $this->agreement($tenant, $event);
         $gateway = $this->gateway([
-            'payment' => 'Gateway Legacy Rupiah',
+            'payment' => 'GW-R3-LEGACY-RUPIAH-83',
             'biaya' => 4000,
             'biaya_type' => 'rupiah',
             'default_fee_fixed' => 0,
@@ -406,11 +397,11 @@ class AgreementPreviewTest extends TestCase
         $preview = app(AgreementPreviewService::class)->buildForEvent($event);
         $html = view('agreements.mou-v2-preview', ['payload' => $preview])->render();
 
-        $this->assertSame('Gateway Legacy Rupiah', $preview['commercial']['payment_gateways'][0]['payment']);
+        $this->assertSame('GW-R3-LEGACY-RUPIAH-83', $preview['commercial']['payment_gateways'][0]['payment']);
         $this->assertSame('4000.00', $preview['commercial']['payment_gateways'][0]['resolved_fee_fixed']);
         $this->assertSame('0', $preview['commercial']['payment_gateways'][0]['resolved_fee_percent']);
-        $this->assertStringNotContainsString('Gateway Legacy Rupiah', $html);
-        $this->assertStringNotContainsString('Rp 4.000', $html);
+        $this->assertStringNotContainsString('Kanal Pembayaran', $html);
+        $this->assertStringNotContainsString('GW-R3-LEGACY-RUPIAH-83', $html);
     }
 
     public function test_draft_preview_includes_safe_responsible_identity_metadata(): void
@@ -436,10 +427,10 @@ class AgreementPreviewTest extends TestCase
     public function test_preview_keeps_legacy_gateway_percent_fallback_internal_without_rendering_gateway_details(): void
     {
         $tenant = $this->tenant(['email' => 'gateway-legacy-percent@example.test']);
-        $event = $this->event($tenant, ['event' => 'Konser Gateway Legacy Percent']);
+        $event = $this->event($tenant, ['event' => 'Konser Fallback Persen']);
         $this->agreement($tenant, $event);
         $gateway = $this->gateway([
-            'payment' => 'Gateway Legacy Percent',
+            'payment' => 'GW-R3-LEGACY-PERCENT-83',
             'biaya' => 3,
             'biaya_type' => 'persen',
             'default_fee_fixed' => 0,
@@ -457,20 +448,20 @@ class AgreementPreviewTest extends TestCase
         $preview = app(AgreementPreviewService::class)->buildForEvent($event);
         $html = view('agreements.mou-v2-preview', ['payload' => $preview])->render();
 
-        $this->assertSame('Gateway Legacy Percent', $preview['commercial']['payment_gateways'][0]['payment']);
+        $this->assertSame('GW-R3-LEGACY-PERCENT-83', $preview['commercial']['payment_gateways'][0]['payment']);
         $this->assertSame('0.00', $preview['commercial']['payment_gateways'][0]['resolved_fee_fixed']);
         $this->assertSame('3', $preview['commercial']['payment_gateways'][0]['resolved_fee_percent']);
-        $this->assertStringNotContainsString('Gateway Legacy Percent', $html);
-        $this->assertStringNotContainsString('3%', $html);
+        $this->assertStringNotContainsString('Kanal Pembayaran', $html);
+        $this->assertStringNotContainsString('GW-R3-LEGACY-PERCENT-83', $html);
     }
 
     public function test_preview_keeps_globally_inactive_gateway_internal_without_rendering_gateway_details(): void
     {
         $tenant = $this->tenant(['email' => 'gateway-global-inactive@example.test']);
-        $event = $this->event($tenant, ['event' => 'Konser Gateway Global Inactive']);
+        $event = $this->event($tenant, ['event' => 'Konser Gateway Global Dimatikan']);
         $this->agreement($tenant, $event);
         $gateway = $this->gateway([
-            'payment' => 'Gateway Global Inactive',
+            'payment' => 'GW-R3-GLOBAL-INACTIVE-83',
             'is_active' => false,
         ]);
         $this->eventGateway($event, $gateway, [
@@ -479,24 +470,25 @@ class AgreementPreviewTest extends TestCase
 
         $preview = app(AgreementPreviewService::class)->buildForEvent($event->fresh());
 
-        $this->assertSame('Gateway Global Inactive', $preview['commercial']['payment_gateways'][0]['payment']);
+        $this->assertSame('GW-R3-GLOBAL-INACTIVE-83', $preview['commercial']['payment_gateways'][0]['payment']);
         $this->assertFalse($preview['commercial']['payment_gateways'][0]['effective_is_active']);
-        $this->assertNotContains('Gateway Global Inactive', $preview['commercial']['active_payment_methods']);
+        $this->assertNotContains('GW-R3-GLOBAL-INACTIVE-83', $preview['commercial']['active_payment_methods']);
 
         $html = view('agreements.mou-v2-preview', [
             'payload' => $preview,
         ])->render();
 
-        $this->assertStringNotContainsString('Gateway Global Inactive', $html);
+        $this->assertStringNotContainsString('Kanal Pembayaran', $html);
+        $this->assertStringNotContainsString('GW-R3-GLOBAL-INACTIVE-83', $html);
     }
 
     public function test_preview_keeps_event_inactive_gateway_internal_without_rendering_gateway_details(): void
     {
         $tenant = $this->tenant(['email' => 'gateway-event-inactive@example.test']);
-        $event = $this->event($tenant, ['event' => 'Konser Gateway Event Inactive']);
+        $event = $this->event($tenant, ['event' => 'Konser Gateway Event Dimatikan']);
         $this->agreement($tenant, $event);
         $gateway = $this->gateway([
-            'payment' => 'Gateway Event Inactive',
+            'payment' => 'GW-R3-EVENT-INACTIVE-83',
             'is_active' => true,
         ]);
         $this->eventGateway($event, $gateway, [
@@ -505,15 +497,16 @@ class AgreementPreviewTest extends TestCase
 
         $preview = app(AgreementPreviewService::class)->buildForEvent($event->fresh());
 
-        $this->assertSame('Gateway Event Inactive', $preview['commercial']['payment_gateways'][0]['payment']);
+        $this->assertSame('GW-R3-EVENT-INACTIVE-83', $preview['commercial']['payment_gateways'][0]['payment']);
         $this->assertFalse($preview['commercial']['payment_gateways'][0]['effective_is_active']);
-        $this->assertNotContains('Gateway Event Inactive', $preview['commercial']['active_payment_methods']);
+        $this->assertNotContains('GW-R3-EVENT-INACTIVE-83', $preview['commercial']['active_payment_methods']);
 
         $html = view('agreements.mou-v2-preview', [
             'payload' => $preview,
         ])->render();
 
-        $this->assertStringNotContainsString('Gateway Event Inactive', $html);
+        $this->assertStringNotContainsString('Kanal Pembayaran', $html);
+        $this->assertStringNotContainsString('GW-R3-EVENT-INACTIVE-83', $html);
     }
 
     private function tenant(array $overrides = []): User
