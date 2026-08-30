@@ -48,9 +48,7 @@
                 'Penyelenggara adalah PIHAK KEDUA yang bertanggung jawab atas perizinan, pelaksanaan, materi promosi, dan seluruh keputusan operasional Event.',
                 'Pembeli adalah setiap pihak yang memperoleh tiket melalui Platform sesuai syarat transaksi yang berlaku.',
                 'Tiket adalah bukti hak akses ke Event yang diterbitkan dan/atau divalidasi melalui Platform.',
-                'Payment Gateway adalah kanal atau metode pembayaran yang diaktifkan pada sistem untuk memproses transaksi pembelian tiket oleh Pembeli.',
-                'Biaya Pembeli / Event Fee adalah komponen biaya transaksi yang dapat dibebankan kepada Pembeli sesuai konfigurasi Event dan ketentuan komersial yang disepakati PARA PIHAK.',
-                'Biaya Kanal Pembayaran adalah biaya yang timbul dari penggunaan kanal pembayaran tertentu, termasuk biaya tetap dan/atau persentase sesuai metode pembayaran yang digunakan.',
+                'Payment Gateway adalah kanal atau metode pembayaran yang tersedia pada sistem untuk mendukung pemrosesan transaksi pembelian tiket oleh Pembeli.',
                 'Rekonsiliasi adalah proses pencocokan, pemeriksaan, dan penetapan data transaksi penjualan tiket berdasarkan catatan pada Platform dan/atau kanal pembayaran terkait.',
                 'Refund adalah pengembalian dana kepada Pembeli atas transaksi tiket sesuai kebijakan Event, hasil koordinasi PARA PIHAK, dan ketentuan kanal pembayaran yang relevan.',
                 'Gate System adalah sistem validasi dan pencatatan akses masuk Event yang digunakan untuk memeriksa keabsahan tiket pada saat pelaksanaan Event.',
@@ -83,12 +81,12 @@
             ],
         ],
         5 => [
-            'title' => 'Biaya, Pajak dan Ketentuan Komersial',
+            'title' => 'Biaya, Pembayaran dan Pajak',
             'clauses' => [
-                'PARA PIHAK sepakat membedakan Biaya Pembeli / Event Fee dari Biaya Kanal Pembayaran sebagai komponen komersial yang memiliki fungsi dan pembebanan tersendiri.',
-                'Biaya Pembeli / Event Fee merupakan komponen biaya transaksi yang diinformasikan kepada Pembeli sesuai konfigurasi dan ketentuan komersial yang disepakati.',
-                'Biaya Kanal Pembayaran mengikuti metode pembayaran yang digunakan, termasuk biaya tetap dan/atau persentase yang diberlakukan oleh kanal terkait apabila ada.',
-                'Pajak, pungutan, atau biaya lain yang relevan dilaksanakan sesuai karakter transaksinya dan mengikuti data authoritative maupun pengaturan komersial yang disepakati PARA PIHAK.',
+                'PIHAK PERTAMA dapat menyediakan kanal pembayaran yang tersedia pada Platform untuk memproses transaksi pembelian tiket oleh Pembeli.',
+                'Biaya tambahan kepada Pembeli, apabila berlaku, wajib diinformasikan secara transparan kepada Pembeli sebelum transaksi dan/atau pembayaran diselesaikan.',
+                'Biaya yang timbul dari penggunaan kanal pembayaran tertentu, apabila berlaku, diinformasikan kepada Pembeli sebelum transaksi sesuai metode pembayaran yang dipilih.',
+                'Pajak, pungutan, atau biaya lain yang relevan dilaksanakan sesuai karakter transaksi dan mengikuti ketentuan yang berlaku.',
             ],
         ],
         6 => [

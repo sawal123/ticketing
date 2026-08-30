@@ -210,22 +210,6 @@ class AgreementVersioningService
             }
         }
 
-        // Buyer fee in event
-        $beforeFeeMode = (string) ($beforeEvent['buyer_fee']['mode'] ?? 'none');
-        $afterFeeMode = (string) ($afterEvent['buyer_fee']['mode'] ?? 'none');
-        $beforeFeeVal = (float) ($beforeEvent['buyer_fee']['value'] ?? 0);
-        $afterFeeVal = (float) ($afterEvent['buyer_fee']['value'] ?? 0);
-
-        if ($beforeFeeMode !== $afterFeeMode || abs($beforeFeeVal - $afterFeeVal) > 0.0001) {
-            $diffs[] = [
-                'section' => 'Event',
-                'field' => 'buyer_fee',
-                'label' => 'Biaya Pembeli / Event Fee',
-                'before' => $this->formatFeeDisplay($beforeFeeMode, $beforeFeeVal),
-                'after' => $this->formatFeeDisplay($afterFeeMode, $afterFeeVal),
-            ];
-        }
-
         // 2. Platform / PIHAK PERTAMA
         if (array_key_exists('platform_party_snapshot', $afterSnapshots)) {
             $beforePlatformParty = $this->normalizePlatformPartySnapshot($parentAgreement->platform_party_snapshot);
@@ -341,53 +325,6 @@ class AgreementVersioningService
                 'before' => $beforeOtp ? 'Aktif' : 'Nonaktif',
                 'after' => $afterOtp ? 'Aktif' : 'Nonaktif',
             ];
-        }
-
-        $beforeGateways = collect($beforeComm['payment_gateways'] ?? [])
-            ->keyBy(fn ($g) => $this->gatewaySnapshotKey((array) $g));
-        $afterGateways = collect($afterComm['payment_gateways'] ?? [])
-            ->keyBy(fn ($g) => $this->gatewaySnapshotKey((array) $g));
-
-        $allGatewayKeys = $beforeGateways->keys()->merge($afterGateways->keys())->unique();
-
-        foreach ($allGatewayKeys as $key) {
-            $bg = $beforeGateways->get($key);
-            $ag = $afterGateways->get($key);
-
-            $gName = $ag['payment'] ?? $bg['payment'] ?? $key;
-
-            $bEventActive = (bool) ($bg['event_is_active'] ?? false);
-            $aEventActive = (bool) ($ag['event_is_active'] ?? false);
-            $bGlobalActive = (bool) ($bg['global_is_active'] ?? false);
-            $aGlobalActive = (bool) ($ag['global_is_active'] ?? false);
-            $bEffectiveActive = (bool) ($bg['effective_is_active'] ?? false);
-            $aEffectiveActive = (bool) ($ag['effective_is_active'] ?? false);
-            $bMode = (string) ($bg['fee_mode'] ?? 'global');
-            $aMode = (string) ($ag['fee_mode'] ?? 'global');
-            $bFixed = (string) ($bg['resolved_fee_fixed'] ?? '0.00');
-            $aFixed = (string) ($ag['resolved_fee_fixed'] ?? '0.00');
-            $bPercent = (string) ($bg['resolved_fee_percent'] ?? '0');
-            $aPercent = (string) ($ag['resolved_fee_percent'] ?? '0');
-
-            if (
-                $bEventActive !== $aEventActive
-                || $bGlobalActive !== $aGlobalActive
-                || $bEffectiveActive !== $aEffectiveActive
-                || $bMode !== $aMode
-                || $bFixed !== $aFixed
-                || $bPercent !== $aPercent
-            ) {
-                $bDesc = $this->formatGatewaySnapshotDisplay($bEventActive, $bGlobalActive, $bEffectiveActive, $bMode, $bFixed, $bPercent);
-                $aDesc = $this->formatGatewaySnapshotDisplay($aEventActive, $aGlobalActive, $aEffectiveActive, $aMode, $aFixed, $aPercent);
-
-                $diffs[] = [
-                    'section' => 'Payment Gateway',
-                    'field' => 'gateway_'.$key,
-                    'label' => 'Gateway: '.$gName,
-                    'before' => $bDesc,
-                    'after' => $aDesc,
-                ];
-            }
         }
 
         return $diffs;
@@ -541,39 +478,6 @@ class AgreementVersioningService
         }
 
         return ['none', 0.0];
-    }
-
-    private function formatFeeDisplay(string $mode, float $value): string
-    {
-        return match ($mode) {
-            'percent' => $value.'%',
-            'fixed' => 'Rp '.number_format($value, 0, ',', '.'),
-            default => 'None / Rp 0',
-        };
-    }
-
-    private function gatewaySnapshotKey(array $gateway): string
-    {
-        return (string) ($gateway['payment_gateway_id'] ?? $gateway['payment'] ?? '');
-    }
-
-    private function formatGatewaySnapshotDisplay(
-        bool $eventIsActive,
-        bool $globalIsActive,
-        bool $effectiveIsActive,
-        string $mode,
-        string $fixed,
-        string $percent
-    ): string {
-        return sprintf(
-            'Event: %s | Global: %s | Effective: %s | Mode: %s | Fixed: Rp %s | Percent: %s%%',
-            $eventIsActive ? 'Aktif' : 'Nonaktif',
-            $globalIsActive ? 'Aktif' : 'Nonaktif',
-            $effectiveIsActive ? 'Aktif' : 'Nonaktif',
-            $mode,
-            $fixed,
-            $percent
-        );
     }
 
     private function deleteDraftAddendumIfSafe(Agreement $agreement): bool

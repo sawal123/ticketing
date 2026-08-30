@@ -51,11 +51,11 @@ class AgreementMouV2TemplateTest extends TestCase
             'Pembeli adalah',
             'Tiket adalah',
             'Payment Gateway adalah',
-            'Biaya Pembeli / Event Fee adalah',
-            'Biaya Kanal Pembayaran adalah',
             'Rekonsiliasi adalah',
             'Refund adalah',
             'Gate System adalah',
+            'Biaya tambahan kepada Pembeli, apabila berlaku, wajib diinformasikan secara transparan',
+            'Biaya yang timbul dari penggunaan kanal pembayaran tertentu, apabila berlaku, diinformasikan kepada Pembeli sebelum transaksi',
             'sesuai mekanisme penandatanganan yang berlaku dan disepakati PARA PIHAK.',
         ] as $text) {
             $this->assertStringContainsString($text, $pdfHtml);
@@ -88,6 +88,10 @@ class AgreementMouV2TemplateTest extends TestCase
         $this->assertStringNotContainsString('callback', $previewHtml);
         $this->assertStringNotContainsString('API', $pdfHtml);
         $this->assertStringNotContainsString('API', $previewHtml);
+        $this->assertStringNotContainsString('Biaya Pembeli / Event Fee adalah', $pdfHtml);
+        $this->assertStringNotContainsString('Biaya Pembeli / Event Fee adalah', $previewHtml);
+        $this->assertStringNotContainsString('Biaya Kanal Pembayaran adalah', $pdfHtml);
+        $this->assertStringNotContainsString('Biaya Kanal Pembayaran adalah', $previewHtml);
 
         $this->assertGreaterThan(
             strpos($pdfHtml, 'PASAL 21'),

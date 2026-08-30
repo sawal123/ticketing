@@ -113,6 +113,37 @@ class AgreementV2SnapshotTest extends TestCase
         $this->assertNull(app(AgreementFinalizationService::class)->pdfPayloadForAgreement($agreement)['platform_party']);
     }
 
+    public function test_finalization_keeps_commercial_snapshot_for_audit_even_when_not_contractual(): void
+    {
+        $admin = $this->admin();
+        $tenant = $this->tenant();
+        [$event, $agreement] = $this->draftMouEvent($tenant, $admin);
+
+        $event->update([
+            'fee' => 12,
+            'payment_otp_enabled' => true,
+        ]);
+
+        EventPaymentGateway::query()->where('event_id', $event->id)->firstOrFail()->update([
+            'fee_mode' => EventPaymentGateway::FEE_MODE_MANUAL,
+            'fee_fixed' => 4500,
+            'fee_percent' => 1.5,
+        ]);
+
+        $result = app(AgreementFinalizationService::class)->finalizeForEvent($event->fresh(), $admin->uid, $agreement->uid);
+        $this->assertTrue($result['ok']);
+
+        $commercial = $agreement->fresh()->commercial_snapshot;
+
+        $this->assertSame('percent', $commercial['buyer_fee']['mode'] ?? null);
+        $this->assertEquals(12.0, $commercial['buyer_fee']['value'] ?? null);
+        $this->assertTrue($commercial['payment_otp_enabled'] ?? false);
+        $this->assertCount(1, $commercial['payment_gateways'] ?? []);
+        $this->assertSame('BCA Virtual Account', $commercial['payment_gateways'][0]['payment'] ?? null);
+        $this->assertSame('4500.00', $commercial['payment_gateways'][0]['resolved_fee_fixed'] ?? null);
+        $this->assertSame('1.5', $commercial['payment_gateways'][0]['resolved_fee_percent'] ?? null);
+    }
+
     public function test_global_platform_profile_change_does_not_auto_create_addendum_for_legacy_completed_agreement_with_null_snapshot(): void
     {
         $admin = $this->admin();
@@ -220,7 +251,7 @@ class AgreementV2SnapshotTest extends TestCase
         $this->assertSame($parentSnapshot, app(AgreementFinalizationService::class)->pdfPayloadForAgreement($addendum)['platform_party']);
     }
 
-    public function test_compute_diffs_detects_explicit_platform_party_snapshot_change_and_keeps_existing_diff_behavior(): void
+    public function test_compute_diffs_detects_explicit_platform_party_snapshot_change_while_ignoring_mutable_commercial_terms(): void
     {
         $parent = new Agreement([
             'event_snapshot' => [
@@ -266,7 +297,16 @@ class AgreementV2SnapshotTest extends TestCase
             'commercial_snapshot' => [
                 'buyer_fee' => ['mode' => 'fixed', 'value' => 5000.0],
                 'payment_otp_enabled' => false,
-                'payment_gateways' => [],
+                'payment_gateways' => [[
+                    'payment_gateway_id' => 1,
+                    'payment' => 'BCA Virtual Account',
+                    'event_is_active' => true,
+                    'global_is_active' => true,
+                    'effective_is_active' => true,
+                    'fee_mode' => 'global',
+                    'resolved_fee_fixed' => '2000.00',
+                    'resolved_fee_percent' => '0',
+                ]],
             ],
         ]);
 
@@ -295,12 +335,26 @@ class AgreementV2SnapshotTest extends TestCase
             'party_snapshot' => $parent->party_snapshot,
             'bank_snapshot' => $parent->bank_snapshot,
             'document_snapshot' => $parent->document_snapshot,
-            'commercial_snapshot' => $parent->commercial_snapshot,
+            'commercial_snapshot' => [
+                'buyer_fee' => ['mode' => 'percent', 'value' => 10.0],
+                'payment_otp_enabled' => false,
+                'payment_gateways' => [[
+                    'payment_gateway_id' => 1,
+                    'payment' => 'BCA Virtual Account',
+                    'event_is_active' => false,
+                    'global_is_active' => false,
+                    'effective_is_active' => false,
+                    'fee_mode' => 'manual',
+                    'resolved_fee_fixed' => '4500.00',
+                    'resolved_fee_percent' => '1.5',
+                ]],
+            ],
         ], $parent);
 
         $this->assertTrue(collect($diffs)->contains(fn ($diff) => $diff['section'] === 'PIHAK PERTAMA' && $diff['field'] === 'platform_company_name'));
         $this->assertTrue(collect($diffs)->contains(fn ($diff) => $diff['section'] === 'Event' && $diff['field'] === 'venue_name'));
-        $this->assertTrue(collect($diffs)->contains(fn ($diff) => $diff['field'] === 'buyer_fee' && $diff['label'] === 'Biaya Pembeli / Event Fee'));
+        $this->assertFalse(collect($diffs)->contains(fn ($diff) => $diff['field'] === 'buyer_fee'));
+        $this->assertFalse(collect($diffs)->contains(fn ($diff) => str_starts_with((string) $diff['field'], 'gateway_')));
     }
 
     public function test_ticket_changes_do_not_create_contractual_diff_or_addendum(): void
