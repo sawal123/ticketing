@@ -121,7 +121,7 @@ class AgreementMouV2RegressionTest extends TestCase
 
         $this->assertStringContainsString('Festival Musik Sangat Panjang', $html);
         $this->assertDoesNotMatchRegularExpression('/\.mou-v2-section\b[^{}]*\{[^}]*page-break-inside:\s*avoid;/s', $html);
-        $this->assertMatchesRegularExpression('/\.cover-event-box\s*\{[^}]*page-break-inside:\s*avoid;/s', $html);
+        $this->assertMatchesRegularExpression('/\.cover-event-box(?:\s*,[^{}]*)*\s*\{[^}]*page-break-inside:\s*avoid;/s', $html);
         $this->assertMatchesRegularExpression('/\btr\s*\{[^}]*page-break-inside:\s*avoid;[^}]*page-break-after:\s*auto;/s', $html);
         $this->assertMatchesRegularExpression('/\.signature-page\s*\{[^}]*page-break-before:\s*always;/s', $html);
         $this->assertMatchesRegularExpression('/\.mou-v2-annex\s*\{[^}]*page-break-before:\s*always;/s', $html);
