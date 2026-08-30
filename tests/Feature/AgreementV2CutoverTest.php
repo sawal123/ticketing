@@ -138,6 +138,154 @@ class AgreementV2CutoverTest extends TestCase
         $this->assertSame(AgreementVersioningService::LEGACY_TEMPLATE_VERSION, $addendumPayload['agreement']['template_version']);
     }
 
+    public function test_historical_v1_and_v2_completed_files_and_template_versions_remain_unchanged_after_live_changes(): void
+    {
+        $tenant = $this->tenant();
+        $admin = $this->admin();
+
+        $legacyEvent = $this->event($tenant, ['event' => 'Konser Historical Legacy']);
+        $this->organizer($legacyEvent);
+        $this->verifiedBankAccount($legacyEvent);
+        $this->verifiedOrganizerLetter($legacyEvent);
+        $this->verifiedResponsibleIdentity($legacyEvent);
+        $this->eventGateway($legacyEvent, $this->gateway(), ['is_active' => true]);
+
+        $legacyMouUnsigned = 'private/agreements/legacy-mou-historical/unsigned.pdf';
+        $legacyMouSigned = 'private/agreements/legacy-mou-historical/signed.pdf';
+        $legacyMou = $this->agreement($tenant, $legacyEvent, [
+            'created_by' => $admin->uid,
+            'status' => Agreement::STATUS_COMPLETED,
+            'template_version' => null,
+            'document_number' => 'MOU/LEGACY/HIST/001',
+            'event_snapshot' => $this->eventSnapshot($legacyEvent, 'Konser Historical Legacy'),
+            'party_snapshot' => $this->partySnapshot(),
+            'bank_snapshot' => $this->bankSnapshot(),
+            'document_snapshot' => array_merge($this->documentSnapshot(), [
+                'responsible_identity' => [
+                    'document_type' => EventDocument::TYPE_RESPONSIBLE_IDENTITY,
+                    'original_name' => 'responsible-identity.pdf',
+                    'verification_status' => 'verified',
+                    'verified_at' => now()->subDay()->format('d-m-Y H:i'),
+                ],
+            ]),
+            'commercial_snapshot' => $this->commercialSnapshot(),
+            'unsigned_pdf_path' => $legacyMouUnsigned,
+            'signed_pdf_path' => $legacyMouSigned,
+            'completed_at' => now()->subDays(2),
+        ]);
+        Storage::disk('local')->put($legacyMouUnsigned, 'legacy-mou-unsigned');
+        Storage::disk('local')->put($legacyMouSigned, 'legacy-mou-signed');
+
+        $legacyEvent->update(['venue_name' => 'Venue Legacy Addendum 1']);
+        $legacyAddendum = app(AgreementVersioningService::class)->checkForContractualChanges($legacyEvent->fresh(), $tenant->uid);
+        $this->assertNotNull($legacyAddendum);
+
+        $legacyAddendumUnsigned = 'private/agreements/legacy-addendum-historical/unsigned.pdf';
+        $legacyAddendumSigned = 'private/agreements/legacy-addendum-historical/signed.pdf';
+        $legacyAddendum->forceFill([
+            'status' => Agreement::STATUS_COMPLETED,
+            'unsigned_pdf_path' => $legacyAddendumUnsigned,
+            'signed_pdf_path' => $legacyAddendumSigned,
+            'completed_at' => now()->subDay(),
+        ])->save();
+        Storage::disk('local')->put($legacyAddendumUnsigned, 'legacy-addendum-unsigned');
+        Storage::disk('local')->put($legacyAddendumSigned, 'legacy-addendum-signed');
+
+        $this->platformLegalProfile([
+            'company_name' => 'PT Platform V2',
+            'representative_name' => 'Rani Platform',
+            'representative_position' => 'Direktur',
+        ]);
+
+        $v2Event = $this->event($tenant, ['event' => 'Konser Historical V2']);
+        $this->organizer($v2Event);
+        $this->verifiedBankAccount($v2Event);
+        $this->verifiedOrganizerLetter($v2Event);
+        $this->verifiedResponsibleIdentity($v2Event);
+        $this->eventGateway($v2Event, $this->gateway(['payment' => 'Gateway Historical V2']), ['is_active' => true]);
+
+        $v2MouUnsigned = 'private/agreements/v2-mou-historical/unsigned.pdf';
+        $v2MouSigned = 'private/agreements/v2-mou-historical/signed.pdf';
+        $v2Mou = $this->agreement($tenant, $v2Event, [
+            'created_by' => $admin->uid,
+            'status' => Agreement::STATUS_COMPLETED,
+            'template_version' => AgreementFinalizationService::TEMPLATE_VERSION,
+            'document_number' => 'MOU/V2/HIST/001',
+            'event_snapshot' => $this->eventSnapshot($v2Event, 'Konser Historical V2'),
+            'platform_party_snapshot' => [
+                'company_name' => 'PT Platform V2',
+                'representative_name' => 'Rani Platform',
+                'representative_position' => 'Direktur',
+            ],
+            'party_snapshot' => $this->partySnapshot(),
+            'bank_snapshot' => $this->bankSnapshot(),
+            'document_snapshot' => array_merge($this->documentSnapshot(), [
+                'responsible_identity' => [
+                    'document_type' => EventDocument::TYPE_RESPONSIBLE_IDENTITY,
+                    'original_name' => 'responsible-identity.pdf',
+                    'verification_status' => 'verified',
+                    'verified_at' => now()->subDay()->format('d-m-Y H:i'),
+                ],
+            ]),
+            'commercial_snapshot' => $this->commercialSnapshot(),
+            'unsigned_pdf_path' => $v2MouUnsigned,
+            'signed_pdf_path' => $v2MouSigned,
+            'completed_at' => now()->subDays(2),
+        ]);
+        Storage::disk('local')->put($v2MouUnsigned, 'v2-mou-unsigned');
+        Storage::disk('local')->put($v2MouSigned, 'v2-mou-signed');
+
+        $v2Event->update(['venue_name' => 'Venue V2 Addendum 1']);
+        $v2Addendum = app(AgreementVersioningService::class)->checkForContractualChanges($v2Event->fresh(), $tenant->uid);
+        $this->assertNotNull($v2Addendum);
+
+        $v2AddendumUnsigned = 'private/agreements/v2-addendum-historical/unsigned.pdf';
+        $v2AddendumSigned = 'private/agreements/v2-addendum-historical/signed.pdf';
+        $v2Addendum->forceFill([
+            'status' => Agreement::STATUS_COMPLETED,
+            'unsigned_pdf_path' => $v2AddendumUnsigned,
+            'signed_pdf_path' => $v2AddendumSigned,
+            'completed_at' => now()->subDay(),
+        ])->save();
+        Storage::disk('local')->put($v2AddendumUnsigned, 'v2-addendum-unsigned');
+        Storage::disk('local')->put($v2AddendumSigned, 'v2-addendum-signed');
+
+        $legacyEvent->update(['event' => 'Konser Historical Legacy Baru']);
+        $v2Event->update(['event' => 'Konser Historical V2 Baru']);
+
+        $this->assertNotNull(app(AgreementVersioningService::class)->checkForContractualChanges($legacyEvent->fresh(), $tenant->uid));
+        $this->assertNotNull(app(AgreementVersioningService::class)->checkForContractualChanges($v2Event->fresh(), $tenant->uid));
+
+        $legacyMou->refresh();
+        $legacyAddendum->refresh();
+        $v2Mou->refresh();
+        $v2Addendum->refresh();
+
+        $this->assertNull($legacyMou->template_version);
+        $this->assertSame($legacyMouUnsigned, $legacyMou->unsigned_pdf_path);
+        $this->assertSame($legacyMouSigned, $legacyMou->signed_pdf_path);
+        $this->assertSame('legacy-mou-unsigned', Storage::disk('local')->get($legacyMouUnsigned));
+        $this->assertSame('legacy-mou-signed', Storage::disk('local')->get($legacyMouSigned));
+
+        $this->assertSame(AgreementVersioningService::LEGACY_TEMPLATE_VERSION, $legacyAddendum->template_version);
+        $this->assertSame($legacyAddendumUnsigned, $legacyAddendum->unsigned_pdf_path);
+        $this->assertSame($legacyAddendumSigned, $legacyAddendum->signed_pdf_path);
+        $this->assertSame('legacy-addendum-unsigned', Storage::disk('local')->get($legacyAddendumUnsigned));
+        $this->assertSame('legacy-addendum-signed', Storage::disk('local')->get($legacyAddendumSigned));
+
+        $this->assertSame(AgreementFinalizationService::TEMPLATE_VERSION, $v2Mou->template_version);
+        $this->assertSame($v2MouUnsigned, $v2Mou->unsigned_pdf_path);
+        $this->assertSame($v2MouSigned, $v2Mou->signed_pdf_path);
+        $this->assertSame('v2-mou-unsigned', Storage::disk('local')->get($v2MouUnsigned));
+        $this->assertSame('v2-mou-signed', Storage::disk('local')->get($v2MouSigned));
+
+        $this->assertSame(AgreementVersioningService::TEMPLATE_VERSION, $v2Addendum->template_version);
+        $this->assertSame($v2AddendumUnsigned, $v2Addendum->unsigned_pdf_path);
+        $this->assertSame($v2AddendumSigned, $v2Addendum->signed_pdf_path);
+        $this->assertSame('v2-addendum-unsigned', Storage::disk('local')->get($v2AddendumUnsigned));
+        $this->assertSame('v2-addendum-signed', Storage::disk('local')->get($v2AddendumSigned));
+    }
+
     public function test_addendum_template_version_follows_parent_lineage_for_v1_and_v2(): void
     {
         $tenant = $this->tenant();

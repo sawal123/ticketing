@@ -751,6 +751,144 @@ class AgreementVersioningAddendumTest extends TestCase
         $this->assertTrue(collect($preview['diffs'])->contains(fn (array $diff) => $diff['field'] === 'payment_otp_enabled'));
     }
 
+    public function test_payment_otp_disable_still_creates_draft_addendum(): void
+    {
+        $tenant = $this->tenant();
+        $admin = $this->admin();
+
+        [$event, $mou] = $this->createDraftMouEvent($tenant, $admin);
+        $event->update(['payment_otp_enabled' => true]);
+
+        $this->assertTrue(app(AgreementFinalizationService::class)->finalizeForEvent($event->fresh(), $admin->uid, $mou->uid)['ok']);
+        $this->assertTrue(app(AgreementSignedUploadService::class)->storeForEvent(
+            $event->fresh(),
+            $tenant->uid,
+            UploadedFile::fake()->create('signed-mou-otp-enabled.pdf', 100, 'application/pdf'),
+            $mou->uid
+        )['ok']);
+        $this->assertTrue(app(AgreementSignedVerificationService::class)->approveForEvent(
+            $event->fresh(),
+            $admin->uid,
+            $mou->uid
+        )['ok']);
+
+        $event->update(['payment_otp_enabled' => false]);
+
+        $addendum = app(AgreementVersioningService::class)->checkForContractualChanges($event->fresh(), $tenant->uid);
+        $preview = app(AgreementVersioningService::class)->buildAddendumPreview($event->fresh(), $addendum);
+
+        $this->assertNotNull($addendum);
+        $this->assertSame($mou->uid, $addendum->parent_agreement_uid);
+        $this->assertTrue(collect($preview['diffs'])->contains(fn (array $diff) => $diff['field'] === 'payment_otp_enabled'
+            && $diff['before'] === 'Aktif'
+            && $diff['after'] === 'Nonaktif'));
+    }
+
+    public function test_responsible_identity_review_changes_do_not_create_addendum_or_mutate_completed_parent(): void
+    {
+        $tenant = $this->tenant();
+        $admin = $this->admin();
+
+        [$event, $mou] = $this->createCompletedMouEvent($tenant, $admin);
+
+        $originalDocumentSnapshot = $mou->document_snapshot;
+        $originalCommercialSnapshot = $mou->commercial_snapshot;
+        $originalUnsignedPdf = $mou->unsigned_pdf_path;
+        $originalSignedPdf = $mou->signed_pdf_path;
+
+        $replacementPath = 'private/events/' . $event->uid . '/responsible-identity/replacement-r5.pdf';
+        Storage::disk('local')->put($replacementPath, 'replacement-r5');
+
+        EventDocument::query()
+            ->where('event_uid', $event->uid)
+            ->where('document_type', EventDocument::TYPE_RESPONSIBLE_IDENTITY)
+            ->firstOrFail()
+            ->update([
+                'original_name' => 'replacement-r5.pdf',
+                'file_path' => $replacementPath,
+                'status' => 'pending',
+                'verified_by' => null,
+                'verified_at' => null,
+                'rejection_reason' => null,
+            ]);
+
+        $liveSnapshots = app(AgreementVersioningService::class)->buildLiveSnapshots($event->fresh(), $mou->fresh());
+
+        $this->assertSame([], app(AgreementVersioningService::class)->computeDiffs($liveSnapshots, $mou->fresh()));
+        $this->assertNull(app(AgreementVersioningService::class)->checkForContractualChanges($event->fresh(), $tenant->uid));
+
+        $rejectedPath = 'private/events/' . $event->uid . '/responsible-identity/rejected-r5.pdf';
+        Storage::disk('local')->put($rejectedPath, 'rejected-r5');
+
+        EventDocument::query()
+            ->where('event_uid', $event->uid)
+            ->where('document_type', EventDocument::TYPE_RESPONSIBLE_IDENTITY)
+            ->firstOrFail()
+            ->update([
+                'original_name' => 'rejected-r5.pdf',
+                'file_path' => $rejectedPath,
+                'status' => 'rejected',
+                'verified_by' => $admin->uid,
+                'verified_at' => now()->addMinute(),
+                'rejection_reason' => 'Dokumen blur',
+            ]);
+
+        $liveSnapshotsAfterReview = app(AgreementVersioningService::class)->buildLiveSnapshots($event->fresh(), $mou->fresh());
+
+        $this->assertSame([], app(AgreementVersioningService::class)->computeDiffs($liveSnapshotsAfterReview, $mou->fresh()));
+        $this->assertNull(app(AgreementVersioningService::class)->checkForContractualChanges($event->fresh(), $tenant->uid));
+
+        $mou->refresh();
+
+        $this->assertSame($originalDocumentSnapshot, $mou->document_snapshot);
+        $this->assertSame($originalCommercialSnapshot, $mou->commercial_snapshot);
+        $this->assertSame($originalUnsignedPdf, $mou->unsigned_pdf_path);
+        $this->assertSame($originalSignedPdf, $mou->signed_pdf_path);
+        $this->assertSame('responsible-identity.pdf', $mou->document_snapshot['responsible_identity']['original_name'] ?? null);
+        $this->assertSame('verified', $mou->document_snapshot['responsible_identity']['verification_status'] ?? null);
+        $this->assertSame(1, Agreement::query()->where('event_uid', $event->uid)->count());
+    }
+
+    public function test_responsible_name_change_still_creates_draft_addendum_without_leaking_identity_metadata(): void
+    {
+        $tenant = $this->tenant();
+        $admin = $this->admin();
+
+        [$event, $mou] = $this->createCompletedMouEvent($tenant, $admin);
+
+        $sentinelPath = 'private/events/' . $event->uid . '/responsible-identity/ktp-r5-sentinel.pdf';
+        Storage::disk('local')->put($sentinelPath, 'ktp-r5-sentinel');
+
+        EventDocument::query()
+            ->where('event_uid', $event->uid)
+            ->where('document_type', EventDocument::TYPE_RESPONSIBLE_IDENTITY)
+            ->firstOrFail()
+            ->update([
+                'original_name' => 'ktp-r5-sentinel.pdf',
+                'file_path' => $sentinelPath,
+                'status' => 'rejected',
+                'verified_by' => $admin->uid,
+                'verified_at' => null,
+                'rejection_reason' => 'Foto buram',
+            ]);
+
+        $event->organizer()->update([
+            'responsible_name' => 'Siti Responsible R5',
+        ]);
+
+        $addendum = app(AgreementVersioningService::class)->checkForContractualChanges($event->fresh(), $tenant->uid);
+        $preview = app(AgreementVersioningService::class)->buildAddendumPreview($event->fresh(), $addendum);
+        $diffsJson = (string) json_encode($preview['diffs']);
+
+        $this->assertNotNull($addendum);
+        $this->assertSame($mou->uid, $addendum->parent_agreement_uid);
+        $this->assertTrue(collect($preview['diffs'])->contains(fn (array $diff) => $diff['field'] === 'responsible_name'
+            && $diff['before'] === 'Budi Santoso'
+            && $diff['after'] === 'Siti Responsible R5'));
+        $this->assertStringNotContainsString('ktp-r5-sentinel.pdf', $diffsJson);
+        $this->assertStringNotContainsString('private/events/', $diffsJson);
+    }
+
     public function test_reverting_live_data_removes_stale_draft_addendum(): void
     {
         $tenant = $this->tenant();
