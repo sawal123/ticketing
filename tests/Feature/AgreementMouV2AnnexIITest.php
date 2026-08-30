@@ -118,8 +118,10 @@ class AgreementMouV2AnnexIITest extends TestCase
         foreach ([$pdfHtml, $previewHtml] as $html) {
             $this->assertStringContainsString('BELUM LENGKAP', $html);
             $this->assertStringContainsString('DITOLAK', $html);
-            $this->assertStringContainsString('TIDAK TERSEDIA', $html);
             $this->assertStringContainsString('<td>-</td>', $html);
+            $this->assertStringNotContainsString('Kanal Pembayaran Efektif', $html);
+            $this->assertStringNotContainsString('Gateway Snapshot A', $html);
+            $this->assertStringNotContainsString('Gateway Snapshot B', $html);
         }
     }
 
@@ -144,8 +146,8 @@ class AgreementMouV2AnnexIITest extends TestCase
         foreach ([$pdfHtml, $previewHtml] as $html) {
             $this->assertStringContainsString('MENUNGGU VERIFIKASI', $html);
             $this->assertStringContainsString('arsip-lama', $html);
-            $this->assertStringContainsString('TIDAK TERSEDIA', $html);
             $this->assertStringContainsString('BELUM TERSEDIA', $html);
+            $this->assertStringNotContainsString('Kanal Pembayaran Efektif', $html);
         }
     }
 
