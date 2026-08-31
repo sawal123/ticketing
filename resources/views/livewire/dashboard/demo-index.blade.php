@@ -7,6 +7,73 @@
         </x-admin.button>
     </div>
 
+    @if ($gettingStarted['visible'] ?? false)
+        <x-admin.card class="overflow-hidden p-6 sm:p-8">
+            <div class="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
+                <div class="min-w-0 flex-1 space-y-5">
+                    <div class="space-y-2">
+                        <p class="text-[11px] font-black uppercase tracking-[0.24em] text-indigo-500 dark:text-indigo-300">Onboarding</p>
+                        <div class="space-y-1">
+                            <h3 class="text-2xl font-black tracking-tight text-slate-900 dark:text-white">Mulai Menggunakan Gotik</h3>
+                            <p class="text-sm text-slate-500 dark:text-slate-400">Checklist ini membaca data dashboard Anda secara otomatis dan mengarahkan ke langkah berikutnya.</p>
+                        </div>
+                        @if (filled($gettingStarted['event_name'] ?? null))
+                            <p class="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                                Event onboarding: <span class="text-slate-700 dark:text-slate-200">{{ $gettingStarted['event_name'] }}</span>
+                            </p>
+                        @endif
+                    </div>
+
+                    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        @foreach ($gettingStarted['steps'] as $step)
+                            <div class="flex items-center gap-3 rounded-2xl border border-slate-200/80 bg-slate-50/80 px-4 py-3 dark:border-slate-700 dark:bg-slate-900/40">
+                                <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border {{ $step['completed'] ? 'border-emerald-200 bg-emerald-100 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/15 dark:text-emerald-300' : 'border-slate-200 bg-white text-slate-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-500' }}">
+                                    @if ($step['completed'])
+                                        <i data-lucide="check" class="h-4 w-4"></i>
+                                    @else
+                                        <span class="h-2.5 w-2.5 rounded-full bg-current"></span>
+                                    @endif
+                                </span>
+                                <div class="min-w-0">
+                                    <p class="text-sm font-semibold {{ $step['completed'] ? 'text-slate-700 dark:text-slate-200' : 'text-slate-800 dark:text-white' }}">
+                                        {{ $step['label'] }}
+                                    </p>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+
+                <div class="w-full max-w-xl xl:w-[22rem]">
+                    <div class="rounded-[1.75rem] border border-slate-200 bg-slate-50/80 p-5 dark:border-slate-700 dark:bg-slate-900/40">
+                        <div class="flex items-center justify-between gap-3">
+                            <div>
+                                <p class="text-sm font-bold text-slate-800 dark:text-white">{{ $gettingStarted['completed_count'] }} dari {{ $gettingStarted['total_steps'] }} selesai</p>
+                                <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">{{ $gettingStarted['progress_percentage'] }}% progress</p>
+                            </div>
+                            <span class="inline-flex items-center rounded-full bg-white px-3 py-1 text-sm font-black text-slate-700 shadow-sm dark:bg-slate-800 dark:text-slate-200">
+                                {{ $gettingStarted['progress_percentage'] }}%
+                            </span>
+                        </div>
+
+                        <div class="mt-4 h-3 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ $gettingStarted['progress_percentage'] }}">
+                            <div class="h-full rounded-full bg-gradient-to-r from-indigo-600 via-sky-500 to-emerald-500 transition-all duration-300" style="width: {{ $gettingStarted['progress_percentage'] }}%"></div>
+                        </div>
+
+                        <div class="mt-5 flex flex-col gap-3 sm:flex-row">
+                            <x-admin.button href="{{ $gettingStarted['primary_url'] }}" wire:navigate variant="primary" class="w-full justify-center">
+                                Lanjutkan Setup
+                            </x-admin.button>
+                            <x-admin.button type="button" wire:click="dismissGettingStartedChecklist" variant="secondary" class="w-full justify-center">
+                                Lewati
+                            </x-admin.button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </x-admin.card>
+    @endif
+
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
         <!-- LEFT COLUMN: STATISTICS (7/12) -->
         <div class="lg:col-span-7 space-y-6">

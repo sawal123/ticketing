@@ -12,6 +12,7 @@ use App\Models\Partner;
 use App\Models\Transaction;
 use App\Services\Reports\FinancialSnapshotService;
 use App\Services\Tickets\GateTokenService;
+use App\Services\Tutorials\GettingStartedChecklistService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -495,6 +496,17 @@ class DemoIndex extends Component
         $this->isGenderModalOpen = ! $this->isGenderModalOpen;
     }
 
+    public function dismissGettingStartedChecklist()
+    {
+        $user = auth()->user();
+
+        if (! $user) {
+            return;
+        }
+
+        app(GettingStartedChecklistService::class)->dismiss($user);
+    }
+
     private function snapshotCartQuery(?string $ownerId = null)
     {
         $query = Cart::query()
@@ -520,6 +532,7 @@ class DemoIndex extends Component
         $ownerScope = $isAdmin ? null : $ownerId;
         $snapshot = app(FinancialSnapshotService::class);
         $ownerRevenueExpression = $snapshot->ownerRevenueSqlExpression();
+        $gettingStarted = app(GettingStartedChecklistService::class)->buildForUser($user);
 
         $availablePartners = Partner::query()
             ->where('user_uid', $ownerId)
@@ -630,6 +643,7 @@ class DemoIndex extends Component
                 'nonCash' => $chartNonCashQty,
             ],
             'gender' => $genderStats,
+            'gettingStarted' => $gettingStarted,
         ]);
     }
 }
