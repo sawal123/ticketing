@@ -16,6 +16,7 @@ use App\Services\Tutorials\GettingStartedChecklistService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
@@ -644,6 +645,51 @@ class DemoIndex extends Component
             ],
             'gender' => $genderStats,
             'gettingStarted' => $gettingStarted,
+            'dashboardTourSteps' => $user->role === 'penyewa' && Schema::hasTable('tutorial_progress')
+                ? $this->dashboardTourSteps()
+                : [],
         ]);
+    }
+
+    private function dashboardTourSteps(): array
+    {
+        return [
+            [
+                'target' => '[data-tour="dashboard-help"]',
+                'title' => 'Panduan Singkat',
+                'description' => 'Buka Panduan kapan saja untuk melihat bantuan ringkas sesuai halaman yang sedang Anda gunakan.',
+                'placement' => 'bottom',
+            ],
+            [
+                'target' => '[data-tour="dashboard-revenue"]',
+                'title' => 'Ringkasan Keuangan',
+                'description' => 'Total Omset merangkum nilai penjualan dari event Anda.',
+                'placement' => 'bottom',
+            ],
+            [
+                'target' => '[data-tour="dashboard-transactions"]',
+                'title' => 'Total Transaksi',
+                'description' => 'Angka ini merangkum transaksi berhasil. Detail transaksi dapat dibuka dari event atau menu Transaksi.',
+                'placement' => 'bottom',
+            ],
+            [
+                'target' => '[data-tour="dashboard-active-events"]',
+                'title' => 'Event Aktif',
+                'description' => 'Dari bagian ini Anda dapat membuka Detail Event serta transaksi online atau cash untuk event aktif.',
+                'placement' => 'left',
+            ],
+            [
+                'target' => '[data-tour="dashboard-sales-trend"]',
+                'title' => 'Tren Penjualan',
+                'description' => 'Grafik ini menampilkan tren penjualan tujuh hari terakhir.',
+                'placement' => 'top',
+            ],
+            [
+                'target' => '[data-tour="dashboard-revenue"]',
+                'title' => 'Penarikan Saldo',
+                'description' => 'Untuk mengajukan pencairan saldo, buka menu Penarikan Saldo dari navigasi dashboard.',
+                'placement' => 'bottom',
+            ],
+        ];
     }
 }
