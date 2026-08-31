@@ -3,7 +3,16 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 
-    <div class="mb-6 flex items-center justify-between">
+    @php
+        $helpContext = match ($activeTab) {
+            'tiket' => 'event-ticket',
+            'mou' => 'event-mou',
+            'transaksi' => 'event-transaction',
+            default => 'event-detail',
+        };
+    @endphp
+
+    <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
             <nav class="flex text-sm text-slate-500 mb-1" aria-label="Breadcrumb">
                 <ol class="flex items-center space-x-2">
@@ -15,9 +24,12 @@
             </nav>
             <h2 class="text-2xl font-bold text-slate-800 dark:text-white">{{ $event->event }}</h2>
         </div>
-        <x-admin.button variant="secondary" icon="arrow-left" onclick="history.back()">
-            Kembali
-        </x-admin.button>
+        <div class="flex flex-wrap items-center gap-3">
+            <x-dashboard.contextual-help :context="$helpContext" />
+            <x-admin.button variant="secondary" icon="arrow-left" onclick="history.back()">
+                Kembali
+            </x-admin.button>
+        </div>
     </div>
     {{-- {{ url('/a') }} --}}
     <!-- Alert Message -->

@@ -1,10 +1,13 @@
-<div class="space-y-6">
+    <div class="space-y-6">
     <!-- Header Section -->
-    <div class="flex items-center justify-between mb-2">
+    <div class="mb-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h2 class="text-2xl font-bold text-slate-800 dark:text-white uppercase tracking-tight">Dashboard</h2>
-        <x-admin.button variant="primary" size="lg" icon="plus-circle" x-on:click="$dispatch('open-modal', { name: 'sell-modal' })">
-            Jual Tiket
-        </x-admin.button>
+        <div class="flex flex-wrap items-center gap-3">
+            <x-dashboard.contextual-help context="dashboard" />
+            <x-admin.button variant="primary" size="lg" icon="plus-circle" x-on:click="$dispatch('open-modal', { name: 'sell-modal' })">
+                Jual Tiket
+            </x-admin.button>
+        </div>
     </div>
 
     @if ($gettingStarted['visible'] ?? false)
