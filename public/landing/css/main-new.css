@@ -484,6 +484,9 @@ header {
 }
 
 .event-card {
+    --event-card-secondary: rgba(240, 236, 255, 0.72);
+    --event-card-tertiary: rgba(240, 236, 255, 0.58);
+    --event-card-disabled: rgba(240, 236, 255, 0.62);
     background: var(--bg2);
     border: 1px solid var(--border);
     border-radius: 18px;
@@ -605,7 +608,7 @@ header {
 .status-close {
     background: rgba(255, 255, 255, 0.06);
     border: 1px solid rgba(255, 255, 255, 0.1);
-    color: rgba(255, 255, 255, 0.35);
+    color: var(--event-card-tertiary);
 }
 
 .card-loc {
@@ -618,7 +621,7 @@ header {
     gap: 4px;
     font-size: 11px;
     font-weight: 600;
-    color: rgba(255, 255, 255, 0.6);
+    color: var(--event-card-secondary);
     background: rgba(0, 0, 0, 0.35);
     backdrop-filter: blur(8px);
     padding: 3px 10px;
@@ -628,7 +631,7 @@ header {
 .card-loc svg {
     width: 10px;
     height: 10px;
-    color: rgba(255, 255, 255, 0.4);
+    color: var(--event-card-tertiary);
     flex-shrink: 0;
 }
 
@@ -661,12 +664,12 @@ header {
     align-items: center;
     gap: 6px;
     font-size: 12px;
-    color: var(--dim);
+    color: var(--event-card-secondary);
 }
 .meta-row svg {
     width: 12px;
     height: 12px;
-    color: rgba(255, 255, 255, 0.22);
+    color: var(--event-card-tertiary);
     flex-shrink: 0;
 }
 
@@ -680,7 +683,7 @@ header {
 }
 .price-from {
     font-size: 10px;
-    color: var(--dim);
+    color: var(--event-card-tertiary);
     text-transform: uppercase;
     letter-spacing: 0.07em;
     margin-bottom: 2px;
@@ -693,11 +696,11 @@ header {
 }
 .price-na {
     font-size: 12px;
-    color: var(--dim);
+    color: var(--event-card-secondary);
 }
 .card-by {
     font-size: 11px;
-    color: var(--dim);
+    color: var(--event-card-tertiary);
     margin-top: 2px;
 }
 
@@ -726,7 +729,10 @@ header {
     box-shadow: 0 4px 16px rgba(167, 139, 250, 0.35);
 }
 .btn-beli.disabled {
-    opacity: 0.3;
+    color: var(--event-card-disabled);
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.12);
+    opacity: 1;
     pointer-events: none;
 }
 .btn-beli svg {
