@@ -17,6 +17,7 @@ use App\Models\HargaCart;
 use App\Models\User;
 use App\Models\Voucher;
 use App\Services\Tickets\GateTokenService;
+use App\Services\Tutorials\GettingStartedChecklistService;
 use Illuminate\Contracts\Bus\Dispatcher as BusDispatcher;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
@@ -47,6 +48,22 @@ class DashboardCashCheckoutTest extends TestCase
 
         $this->createSchema();
         $this->withoutMiddleware([GlobalDataMiddleware::class, LogActivityMiddleware::class]);
+        $this->mock(GettingStartedChecklistService::class, function ($mock) {
+            $mock->shouldReceive('buildForUser')->andReturn([
+                'visible' => false,
+                'dismissed' => false,
+                'completed' => false,
+                'tutorial_key' => GettingStartedChecklistService::TUTORIAL_KEY,
+                'completed_count' => 0,
+                'total_steps' => 6,
+                'progress_percentage' => 0,
+                'steps' => [],
+                'next_step' => null,
+                'primary_url' => null,
+                'event_uid' => null,
+                'event_name' => null,
+            ]);
+        });
     }
 
     public function test_cash_checkout_creates_success_transaction_and_reduces_remaining_stock(): void
