@@ -1,5 +1,9 @@
 @props(['name', 'title', 'icon' => 'info', 'maxWidth' => 'md'])
 
+@php
+    $titleId = $name . '-title';
+@endphp
+
 <div 
     x-data="{ show: false }" 
     x-on:open-modal.window="if ($event.detail.name === '{{ $name }}') show = true"
@@ -24,15 +28,18 @@
             <!-- Modal Card -->
             <div 
                 class="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl w-full max-w-{{ $maxWidth }} p-6 relative z-10 border border-slate-200 dark:border-slate-700"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="{{ $titleId }}"
                 x-transition:enter="transition ease-out duration-300 transform"
                 x-transition:enter-start="opacity-0 scale-95 translate-y-4"
                 x-transition:enter-end="opacity-100 scale-100 translate-y-0"
             >
-                <button x-on:click="show = false" class="absolute top-4 right-4 p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400 transition-colors">
+                <button x-on:click="show = false" type="button" aria-label="Tutup dialog" title="Tutup dialog" class="absolute top-4 right-4 p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400 transition-colors">
                     <i data-lucide="x" class="w-5 h-5"></i>
                 </button>
         
-                <h3 class="text-xl font-bold text-slate-800 dark:text-white mb-6 flex items-center gap-3">
+                <h3 id="{{ $titleId }}" class="text-xl font-bold text-slate-800 dark:text-white mb-6 flex items-center gap-3">
                     <div class="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center">
                         <i data-lucide="{{ $icon }}" class="w-5 h-5 text-indigo-600 dark:text-indigo-400"></i>
                     </div>

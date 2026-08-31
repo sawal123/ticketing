@@ -1,15 +1,18 @@
 <div>
-    <div class="flex items-center justify-between mb-6">
+    <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
             <h2 class="text-2xl font-bold text-slate-800 dark:text-white">Manajemen Event</h2>
             <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Daftar semua event yang terdaftar di platform.
             </p>
         </div>
-        <a href="{{ route('dashboard.event.create') }}" wire:navigate>
-            <x-admin.button variant="primary" size="lg" icon="plus">
-                Tambah Event
-            </x-admin.button>
-        </a>
+        <div class="flex flex-wrap items-center gap-3">
+            <x-dashboard.contextual-help context="event-index" />
+            <a href="{{ route('dashboard.event.create') }}" wire:navigate>
+                <x-admin.button variant="primary" size="lg" icon="plus">
+                    Tambah Event
+                </x-admin.button>
+            </a>
+        </div>
     </div>
 
     @if (session()->has('message'))

@@ -6,7 +6,8 @@
             <p class="text-slate-500 dark:text-slate-400 text-sm">Kelola penarikan dana dari penjualan tiket online
                 Anda.</p>
         </div>
-        <div class="flex items-center gap-3">
+        <div class="flex flex-wrap items-center gap-3">
+            <x-dashboard.contextual-help context="withdrawal" />
             <x-admin.button wire:click="openCreateModal" icon="plus" variant="primary">
                 Tarik Saldo
             </x-admin.button>
