@@ -109,4 +109,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(Agreement::class, 'tenant_user_uid', 'uid');
     }
+
+    public function tutorialProgress()
+    {
+        return $this->hasMany(TutorialProgress::class, 'user_uid', 'uid');
+    }
 }
