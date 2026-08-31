@@ -29,6 +29,9 @@ class InteractiveTourEngineTest extends TestCase
             ->assertSee('x-text="progressLabel"', false)
             ->assertSee('role="dialog"', false)
             ->assertSee('aria-modal="true"', false)
+            ->assertSee('id="interactive-tour-', false)
+            ->assertSee('aria-labelledby="interactive-tour-', false)
+            ->assertSee('aria-describedby="interactive-tour-', false)
             ->assertSee('Kembali')
             ->assertSee('Lanjut')
             ->assertSee('Lewati');
@@ -98,6 +101,20 @@ class InteractiveTourEngineTest extends TestCase
         $this->assertStringContainsString('if (this.activeSteps.length === 0)', $engine);
         $this->assertStringContainsString('this.cleanup();', $engine);
         $this->assertStringNotContainsString('$wire.finish()', substr($engine, strpos($engine, 'if (this.activeSteps.length === 0)'), 160));
+    }
+
+    public function test_lifecycle_is_initialized_once_and_dialog_ids_are_instance_scoped(): void
+    {
+        $view = file_get_contents(resource_path('views/livewire/tutorials/interactive-tour.blade.php'));
+        $engine = file_get_contents(resource_path('js/interactive-tour.js'));
+
+        $this->assertStringNotContainsString('x-init="init()"', $view);
+        $this->assertStringContainsString("'interactive-tour-' . \$this->getId()", $view);
+        $this->assertStringNotContainsString('aria-labelledby="interactive-tour-title"', $view);
+        $this->assertStringNotContainsString('aria-describedby="interactive-tour-description"', $view);
+        $this->assertStringContainsString('if (this.initialized)', $engine);
+        $this->assertStringContainsString("window.removeEventListener('start-tour', this.startListener);", $engine);
+        $this->assertStringNotContainsString('fixed inset-0 z-[190] bg-slate-950/55', $view);
     }
 
     private function user(array $overrides = []): User

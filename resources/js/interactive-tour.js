@@ -10,8 +10,14 @@ window.interactiveTour = (config) => ({
     spotlightStyle: '',
     tooltipStyle: '',
     useMobileLayout: false,
+    initialized: false,
 
     init() {
+        if (this.initialized) {
+            return;
+        }
+
+        this.initialized = true;
         this.startListener = (event) => {
             if (event.detail?.tutorialKey === this.tutorialKey) {
                 this.start();
@@ -25,6 +31,7 @@ window.interactiveTour = (config) => ({
 
     destroy() {
         window.removeEventListener('start-tour', this.startListener);
+        this.initialized = false;
         this.cleanup();
     },
 
