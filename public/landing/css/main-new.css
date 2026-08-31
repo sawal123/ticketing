@@ -171,42 +171,73 @@ header {
    SLIDER — image only, full width
 ══════════════════════════════ */
 .slider-section {
+    --slider-gap: 16px;
+    --slider-radius: 22px;
+    --slide-basis: 100%;
+    --slide-aspect-ratio: 16 / 9;
     margin-top: 64px;
+    width: min(100% - 32px, 1440px);
+    margin-inline: auto;
+    padding-bottom: 36px;
     position: relative;
-    overflow: hidden;
-    background: #0a0810;
-    /* Aspect ratio 21:9 desktop, 16:9 mobile */
-    aspect-ratio: 21/11 !important;
+    overflow: clip;
+    background: transparent;
 }
 
-@media (max-width: 768px) {
+@media (min-width: 768px) {
     .slider-section {
-        aspect-ratio: 16/9;
+        --slider-gap: 18px;
+        --slide-basis: min(82%, 760px);
+        width: min(100% - 48px, 1440px);
     }
+}
+
+@media (min-width: 1024px) {
+    .slider-section {
+        --slider-gap: 20px;
+        --slide-basis: calc((100% - var(--slider-gap)) / 2);
+        --slide-aspect-ratio: 1.85 / 1;
+        width: min(100% - 64px, 1440px);
+    }
+}
+
+.slider-section[data-slide-count="1"] {
+    --slide-basis: 100%;
+}
+
+.slider-viewport {
+    overflow: hidden;
 }
 
 .slider-track {
     display: flex;
-    height: 100%;
+    gap: var(--slider-gap);
     transition: transform 0.65s cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: transform;
 }
 
 /* Each slide */
 .slide {
-    flex-shrink: 0;
+    flex: 0 0 var(--slide-basis);
+    aspect-ratio: var(--slide-aspect-ratio);
+    min-width: 0;
+    position: relative;
+}
+
+.slide-media {
     width: 100%;
     height: 100%;
-    position: relative;
     overflow: hidden;
+    position: relative;
+    border-radius: var(--slider-radius);
+    background: #0a0810;
 }
 
 /* Image fills the slide */
 .slide-img {
-    position: absolute;
-    inset: 0;
     width: 100%;
     height: 100%;
-    object-fit: fill;
+    object-fit: cover;
     object-position: center;
     display: block;
 }
@@ -270,7 +301,7 @@ header {
 }
 
 /* Bottom gradient so dots stay readable */
-.slide::after {
+.slide-media::after {
     content: "";
     position: absolute;
     inset: 0;
@@ -319,7 +350,7 @@ header {
 /* ── Arrows ── */
 .sl-arrow {
     position: absolute;
-    top: 50%;
+    top: calc(50% - 18px);
     transform: translateY(-50%);
     z-index: 10;
     width: 40px;
@@ -340,10 +371,10 @@ header {
     color: #fff;
 }
 .sl-arrow.prev {
-    left: 20px;
+    left: 12px;
 }
 .sl-arrow.next {
-    right: 20px;
+    right: 12px;
 }
 .sl-arrow svg {
     width: 18px;
@@ -353,8 +384,9 @@ header {
 /* ── Dots ── */
 .sl-dots {
     position: absolute;
-    bottom: 18px;
-    right: 28px;
+    left: 50%;
+    bottom: 0;
+    transform: translateX(-50%);
     z-index: 10;
     display: flex;
     align-items: center;
@@ -822,6 +854,10 @@ footer {
 @media (max-width: 768px) {
     header {
         padding: 0 16px;
+    }
+    .slider-section {
+        width: calc(100% - 24px);
+        padding-bottom: 32px;
     }
     .nav-search {
         width: 160px;
