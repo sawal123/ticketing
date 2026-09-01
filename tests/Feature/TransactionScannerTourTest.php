@@ -27,6 +27,7 @@ class TransactionScannerTourTest extends TestCase
         parent::setUp();
 
         Config::set('database.default', env('DB_CONNECTION', 'mysql'));
+        DB::setDefaultConnection('mysql');
         DB::purge('sqlite');
         DB::purge('mysql');
 
