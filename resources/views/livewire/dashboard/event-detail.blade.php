@@ -27,12 +27,12 @@
         <div class="flex flex-wrap items-center gap-3">
             <x-dashboard.contextual-help :context="$helpContext" />
             @if (auth()->user()?->role === 'penyewa' && $activeTab === 'tiket')
-                <x-admin.button type="button" variant="secondary" x-on:click="$dispatch('start-tour', { tutorialKey: 'event.tickets' })" title="Mulai tur manajemen tiket">
+                <x-admin.button type="button" variant="secondary" x-on:click="$dispatch('replay-tour', { tutorialKey: 'event.tickets' })" title="Mulai tur manajemen tiket">
                     Tur Tiket
                 </x-admin.button>
             @endif
             @if (auth()->user()?->role === 'penyewa' && $activeTab === 'transaksi')
-                <x-admin.button type="button" variant="secondary" x-on:click="$dispatch('start-tour', { tutorialKey: 'event.transactions' })" title="Mulai tur transaksi">
+                <x-admin.button type="button" variant="secondary" x-on:click="$dispatch('replay-tour', { tutorialKey: 'event.transactions' })" title="Mulai tur transaksi">
                     Tur Transaksi
                 </x-admin.button>
             @endif
