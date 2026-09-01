@@ -25,7 +25,12 @@ window.interactiveTour = (config) => ({
         };
         this.replayListener = async (event) => {
             if (event.detail?.tutorialKey === this.tutorialKey && !window.__interactiveTourActive) {
-                this.canStart = await this.$wire.replay();
+                const replayed = await this.$wire.replay();
+                if (!replayed) {
+                    return;
+                }
+
+                this.canStart = true;
                 this.start();
             }
         };
