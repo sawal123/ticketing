@@ -23,14 +23,22 @@ window.interactiveTour = (config) => ({
                 this.start();
             }
         };
+        this.replayListener = async (event) => {
+            if (event.detail?.tutorialKey === this.tutorialKey && !window.__interactiveTourActive) {
+                this.canStart = await this.$wire.replay();
+                this.start();
+            }
+        };
         this.positionListener = () => this.positionCurrentStep();
         this.keyListener = (event) => this.handleKeyboard(event);
 
         window.addEventListener('start-tour', this.startListener);
+        window.addEventListener('replay-tour', this.replayListener);
     },
 
     destroy() {
         window.removeEventListener('start-tour', this.startListener);
+        window.removeEventListener('replay-tour', this.replayListener);
         this.initialized = false;
         this.cleanup();
     },
