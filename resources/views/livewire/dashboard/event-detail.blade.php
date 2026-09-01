@@ -31,6 +31,11 @@
                     Tur Tiket
                 </x-admin.button>
             @endif
+            @if (auth()->user()?->role === 'penyewa' && $activeTab === 'transaksi')
+                <x-admin.button type="button" variant="secondary" x-on:click="$dispatch('start-tour', { tutorialKey: 'event.transactions' })" title="Mulai tur transaksi">
+                    Tur Transaksi
+                </x-admin.button>
+            @endif
             <x-admin.button variant="secondary" icon="arrow-left" onclick="history.back()">
                 Kembali
             </x-admin.button>
@@ -71,7 +76,7 @@
             <i data-lucide="file-badge" class="w-4 h-4"></i>
             MOU
         </button>
-        <button wire:click="setTab('transaksi')"
+        <button data-tour="transaction-tab" wire:click="setTab('transaksi')"
             class="flex items-center gap-2 cursor-pointer px-4 py-2 text-sm font-medium rounded-lg transition-all {{ $activeTab === 'transaksi' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700' }}">
             <i data-lucide="shopping-cart" class="w-4 h-4"></i>
             Transaksi
@@ -568,7 +573,7 @@
 
                 <div class="space-y-4">
                     <!-- Filters UI -->
-                    <x-admin.card padding="p-4">
+                    <x-admin.card data-tour="transaction-filters" padding="p-4">
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
                             <div>
                                 <label
@@ -626,7 +631,7 @@
                         </div>
 
                         <!-- Export Actions -->
-                        <div
+                        <div data-tour="transaction-export"
                             class="mt-4 pt-4 border-t border-slate-100 dark:border-slate-700 flex flex-wrap items-center justify-between gap-4">
                             <div class="text-xs text-slate-500 font-medium">
                                 <i data-lucide="info" class="w-3.5 h-3.5 inline mr-1 opacity-50"></i>
@@ -651,7 +656,7 @@
                         </div>
                     </x-admin.card>
 
-                    <div class="relative min-h-[300px]">
+                    <div data-tour="transaction-list" class="relative min-h-[300px]">
                         <!-- Localized Loading for Table (Pagination/Filters) -->
                         <div wire:loading
                             wire:target="perPage, gotoPage, nextPage, previousPage, filterRange, filterPayment, searchTransaction"
@@ -750,6 +755,9 @@
                         </x-admin.table>
                     </div>
                 </div>
+                @if (auth()->user()?->role === 'penyewa' && $transactionTourSteps !== [])
+                    <livewire:tutorials.interactive-tour tutorial-key="event.transactions" :steps="$transactionTourSteps" />
+                @endif
             @endif
         </div>
     </div>

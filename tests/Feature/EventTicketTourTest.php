@@ -79,7 +79,12 @@ class EventTicketTourTest extends TestCase
             ->assertSee('data-tour="ticket-add"', false);
 
         $component = file_get_contents(app_path('Livewire/Dashboard/EventDetail.php'));
-        $this->assertSame(3, substr_count($component, "'target' =>"));
+        $method = substr(
+            $component,
+            strpos($component, 'private function ticketTourSteps'),
+            strpos($component, 'private function transactionTourSteps') - strpos($component, 'private function ticketTourSteps')
+        );
+        $this->assertSame(3, substr_count($method, "'target' =>"));
     }
 
     public function test_admin_and_staff_do_not_receive_tenant_tours(): void
