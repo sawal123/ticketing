@@ -60,6 +60,7 @@ use App\Livewire\Dashboard\EventDetail as DashboardEventDetail;
 use App\Livewire\Dashboard\EventIndex as DashboardEventIndex;
 use App\Livewire\Dashboard\PartnerIndex;
 use App\Livewire\Dashboard\PenarikanIndex as DashboardPenarikanIndex;
+use App\Livewire\Dashboard\HelpCenter;
 use App\Livewire\Dashboard\SettingsIndex;
 use App\Livewire\Dashboard\StaffIndex;
 use App\Livewire\Dashboard\VoucherIndex;
@@ -189,6 +190,7 @@ Route::prefix('dashboard')
         });
 
         Route::middleware(['roles:penyewa,staff'])->group(function () {
+            Route::get('/panduan', HelpCenter::class)->name('dashboard.help');
             Route::get('/event', DashboardEventIndex::class)->name('dashboard.event');
             Route::get('/event/create', EventCreate::class)->name('dashboard.event.create');
             Route::get('/event/edit/{uid}', EventCreate::class)->name('dashboard.event.edit');

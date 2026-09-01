@@ -77,6 +77,7 @@
     ];
 
     $help = $contexts[$context] ?? null;
+    $articleAnchors = ['dashboard' => 'memulai-dashboard', 'event-index' => 'memulai-event', 'event-form' => 'memulai-event', 'event-detail' => 'operasional-event', 'event-ticket' => 'penjualan-tiket', 'event-mou' => 'dokumen-mou', 'event-transaction' => 'operasional-transaksi', 'withdrawal' => 'keuangan-penarikan'];
     $modalName = 'contextual-help-' . $context;
 @endphp
 
@@ -111,6 +112,9 @@
             </ul>
 
             <div class="flex justify-end pt-2">
+                @if (isset($articleAnchors[$context]) && in_array(auth()->user()?->role, ['penyewa', 'staff'], true))
+                    <a href="{{ route('dashboard.help') . '#' . $articleAnchors[$context] }}" class="mr-auto text-sm font-semibold text-indigo-600 hover:text-indigo-700">Lihat panduan lengkap</a>
+                @endif
                 <x-admin.button type="button" variant="secondary" x-on:click="show = false" title="Tutup panduan">
                     Tutup
                 </x-admin.button>
