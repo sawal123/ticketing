@@ -788,6 +788,9 @@ class EventDetail extends Component
             'ticketTourSteps' => $this->activeTab === 'tiket' && auth()->user()?->role === 'penyewa'
                 ? $this->ticketTourSteps()
                 : [],
+            'transactionTourSteps' => $this->activeTab === 'transaksi' && auth()->user()?->role === 'penyewa'
+                ? $this->transactionTourSteps()
+                : [],
         ]);
     }
 
@@ -811,6 +814,42 @@ class EventDetail extends Component
                 'title' => 'Tambah Tiket',
                 'description' => 'Gunakan tombol ini untuk membuka form kategori, qty atau stok, dan harga tiket.',
                 'placement' => 'bottom',
+            ],
+        ];
+    }
+
+    private function transactionTourSteps(): array
+    {
+        return [
+            [
+                'target' => '[data-tour="transaction-tab"]',
+                'title' => 'Tab Transaksi',
+                'description' => 'Kelola dan pantau transaksi event dari tab ini.',
+                'placement' => 'bottom',
+            ],
+            [
+                'target' => '[data-tour="transaction-filters"]',
+                'title' => 'Filter dan Pencarian',
+                'description' => 'Gunakan pencarian dan filter untuk menemukan transaksi berdasarkan invoice, pembeli, metode pembayaran, atau periode.',
+                'placement' => 'bottom',
+            ],
+            [
+                'target' => '[data-tour="transaction-list"]',
+                'title' => 'Daftar Transaksi',
+                'description' => 'Daftar ini menampilkan transaksi event yang tersedia pada halaman ini. Buka detail transaksi untuk melihat informasi pembeli dan tiket.',
+                'placement' => 'top',
+            ],
+            [
+                'target' => '[data-tour="transaction-list"]',
+                'title' => 'Flow Scanner dan Verifikasi',
+                'description' => 'Setelah tiket siap digunakan, petugas melakukan check-in melalui aplikasi scanner. QR/barcode dibaca terlebih dahulu, data tiket ditampilkan, lalu petugas menekan Verifikasi untuk menyelesaikan check-in. Hasil verifikasi kemudian tercatat pada transaksi/laporan.',
+                'placement' => 'top',
+            ],
+            [
+                'target' => '[data-tour="transaction-export"]',
+                'title' => 'Export Laporan',
+                'description' => 'Export mengikuti filter transaksi yang sedang aktif dan dapat digunakan untuk kebutuhan laporan event. Data verifikasi tiket ikut tersedia pada laporan sesuai data transaksi.',
+                'placement' => 'top',
             ],
         ];
     }
