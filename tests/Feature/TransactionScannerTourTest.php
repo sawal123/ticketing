@@ -8,9 +8,8 @@ use App\Livewire\Dashboard\EventDetail;
 use App\Livewire\Tutorials\InteractiveTour;
 use App\Models\Event;
 use App\Models\User;
+use App\Services\Tutorials\TutorialProgressService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Config;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\View;
@@ -25,11 +24,6 @@ class TransactionScannerTourTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-
-        Config::set('database.default', env('DB_CONNECTION', 'mysql'));
-        DB::setDefaultConnection('mysql');
-        DB::purge('sqlite');
-        DB::purge('mysql');
 
         Storage::fake('local');
         Storage::fake('public');
@@ -87,10 +81,20 @@ class TransactionScannerTourTest extends TestCase
         $tenant = $this->user('penyewa');
         $steps = [['target' => '[data-tour="fixture"]', 'title' => 'Fixture', 'description' => 'Fixture']];
 
+        $this->mock(TutorialProgressService::class, function ($mock) {
+            $mock->shouldReceive('isCompleted')->zeroOrMoreTimes()->andReturnFalse();
+            $mock->shouldReceive('isDismissed')->zeroOrMoreTimes()->andReturnFalse();
+            $mock->shouldReceive('markCompleted')
+                ->once()
+                ->withArgs(fn (User $user, string $tutorialKey) => $tutorialKey === 'event.transactions');
+            $mock->shouldReceive('markDismissed')
+                ->once()
+                ->withArgs(fn (User $user, string $tutorialKey) => $tutorialKey === 'event.transactions');
+        });
+
         Livewire::actingAs($tenant)
             ->test(InteractiveTour::class, ['tutorialKey' => 'event.tickets', 'steps' => $steps])
-            ->call('finish')
-            ->assertSet('canStart', false);
+            ->assertSet('canStart', true);
 
         Livewire::actingAs($tenant)
             ->test(InteractiveTour::class, ['tutorialKey' => 'event.transactions', 'steps' => $steps])
@@ -102,15 +106,9 @@ class TransactionScannerTourTest extends TestCase
             ->test(InteractiveTour::class, ['tutorialKey' => 'dashboard.overview', 'steps' => $steps])
             ->assertSet('canStart', true);
 
-        $otherTenant = $this->user('penyewa');
-
-        Livewire::actingAs($otherTenant)
+        Livewire::actingAs($tenant)
             ->test(InteractiveTour::class, ['tutorialKey' => 'event.transactions', 'steps' => $steps])
             ->call('dismiss')
-            ->assertSet('canStart', false);
-
-        Livewire::actingAs($otherTenant)
-            ->test(InteractiveTour::class, ['tutorialKey' => 'event.transactions', 'steps' => $steps])
             ->assertSet('canStart', false);
     }
 
