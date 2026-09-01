@@ -261,7 +261,46 @@ class PenarikanIndex extends Component
 
         return view('livewire.dashboard.penarikan-index', [
             'penarikans' => $penarikans,
+            'withdrawalTourSteps' => auth()->user()?->role === 'penyewa'
+                ? $this->withdrawalTourSteps()
+                : [],
         ]);
+    }
+
+    private function withdrawalTourSteps(): array
+    {
+        return [
+            [
+                'target' => '[data-tour="withdrawal-summary"]',
+                'title' => 'Ringkasan Saldo',
+                'description' => 'Ringkasan ini menunjukkan pendapatan online dan dana yang sedang atau sudah ditarik. Saldo yang dapat diajukan dihitung setelah penarikan yang masih mengunci saldo dikurangkan.',
+                'placement' => 'bottom',
+            ],
+            [
+                'target' => '[data-tour="withdrawal-create"]',
+                'title' => 'Ajukan Penarikan',
+                'description' => 'Gunakan Tarik Saldo untuk membuat pengajuan. Form akan menampilkan saldo tersedia, rekening tujuan, nominal penarikan, dan catatan.',
+                'placement' => 'bottom',
+            ],
+            [
+                'target' => '[data-tour="withdrawal-history"]',
+                'title' => 'Status Penarikan',
+                'description' => 'Pengajuan dimulai dari PENDING. Setelah admin mulai memproses, status menjadi PROCESSING, lalu SUCCESS setelah penarikan diselesaikan.',
+                'placement' => 'top',
+            ],
+            [
+                'target' => '[data-tour="withdrawal-history"]',
+                'title' => 'Pending dan Invoice',
+                'description' => 'Pengajuan PENDING masih dapat diedit atau dibatalkan. Invoice tersedia pada pengajuan PENDING, PROCESSING, dan SUCCESS.',
+                'placement' => 'top',
+            ],
+            [
+                'target' => '[data-tour="withdrawal-history"]',
+                'title' => 'Success dan Bukti Transfer',
+                'description' => 'Pada penarikan SUCCESS, bukti transfer dapat dibuka jika admin sudah mengunggahnya. Jika belum tersedia, halaman akan menampilkan informasi bahwa bukti transfer belum tersedia.',
+                'placement' => 'top',
+            ],
+        ];
     }
 
     public function canViewTransferProof(Penarikan $penarikan): bool
