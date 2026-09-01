@@ -9,7 +9,7 @@
         <div class="flex flex-wrap items-center gap-3">
             <x-dashboard.contextual-help context="withdrawal" />
             @if (auth()->user()?->role === 'penyewa')
-                <x-admin.button type="button" variant="secondary" x-on:click="$dispatch('start-tour', { tutorialKey: 'withdrawal.overview' })" title="Mulai tur penarikan">
+                <x-admin.button type="button" variant="secondary" x-on:click="$dispatch('replay-tour', { tutorialKey: 'withdrawal.overview' })" title="Mulai tur penarikan">
                     Tur Penarikan
                 </x-admin.button>
             @endif

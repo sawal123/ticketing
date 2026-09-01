@@ -7,7 +7,7 @@
         <div class="flex flex-wrap items-center gap-3">
             <x-dashboard.contextual-help context="event-form" />
             @if (auth()->user()?->role === 'penyewa')
-                <x-admin.button type="button" variant="secondary" x-on:click="$dispatch('start-tour', { tutorialKey: 'event.setup' })" title="Mulai tur event">
+                <x-admin.button type="button" variant="secondary" x-on:click="$dispatch('replay-tour', { tutorialKey: 'event.setup' })" title="Mulai tur event">
                     Tur Event
                 </x-admin.button>
             @endif

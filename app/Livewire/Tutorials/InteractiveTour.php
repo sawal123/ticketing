@@ -47,6 +47,20 @@ class InteractiveTour extends Component
         $this->canStart = false;
     }
 
+    public function replay(): bool
+    {
+        $user = auth()->user();
+
+        if (! $user || $this->tutorialKey === '' || $this->steps === []) {
+            return false;
+        }
+
+        app(TutorialProgressService::class)->reset($user, $this->tutorialKey);
+        $this->canStart = true;
+
+        return true;
+    }
+
     public function render()
     {
         return view('livewire.tutorials.interactive-tour');

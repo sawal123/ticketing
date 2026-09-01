@@ -7,7 +7,7 @@
                 <x-dashboard.contextual-help context="dashboard" />
             </div>
             @if (auth()->user()?->role === 'penyewa')
-                <x-admin.button type="button" variant="secondary" x-on:click="$dispatch('start-tour', { tutorialKey: 'dashboard.overview' })" title="Mulai tur dashboard">
+                <x-admin.button type="button" variant="secondary" x-on:click="$dispatch('replay-tour', { tutorialKey: 'dashboard.overview' })" title="Mulai tur dashboard">
                     Tur Dashboard
                 </x-admin.button>
             @endif
