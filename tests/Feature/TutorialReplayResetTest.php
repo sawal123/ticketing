@@ -8,6 +8,8 @@ use App\Models\User;
 use App\Services\Tutorials\TutorialProgressService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -15,6 +17,15 @@ use Tests\TestCase;
 class TutorialReplayResetTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        if (DB::connection()->getDriverName() === 'sqlite') {
+            Schema::table('users', fn ($table) => $table->unique('uid'));
+        }
+    }
 
     public function test_tenant_can_reset_only_an_allowed_tutorial_without_affecting_other_users_or_keys(): void
     {
