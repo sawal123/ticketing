@@ -12,18 +12,16 @@ use App\Models\Harga;
 use App\Models\Talent;
 use App\Services\Agreements\AgreementPreviewService;
 use App\Services\Agreements\AgreementSignedUploadService;
-use App\Services\Agreements\AgreementVersioningService;
 use App\Services\Reports\FinancialSnapshotService;
 use App\Services\SecureImageStorage;
 use App\Services\Tickets\GateTokenService;
 use App\Support\ExportSanitizer;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
-use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
+use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 use Livewire\WithPagination;
@@ -267,13 +265,13 @@ class EventDetail extends Component
             })
             ->when($this->searchTransaction, function ($q) {
                 $q->where(function ($sub) {
-                    $sub->where('carts.invoice', 'like', '%'.$this->searchTransaction.'%')
+                    $sub->where('carts.invoice', 'like', '%' . $this->searchTransaction . '%')
                         ->orWhere(function ($online) {
                             $online->where('carts.payment_type', '!=', 'cash')
                                 ->whereHas('users', function ($u) {
                                     $u->where(function ($userQuery) {
-                                        $userQuery->where('name', 'like', '%'.$this->searchTransaction.'%')
-                                            ->orWhere('email', 'like', '%'.$this->searchTransaction.'%');
+                                        $userQuery->where('name', 'like', '%' . $this->searchTransaction . '%')
+                                            ->orWhere('email', 'like', '%' . $this->searchTransaction . '%');
                                     });
                                 });
                         })
@@ -281,8 +279,8 @@ class EventDetail extends Component
                             $cashCart->where('carts.payment_type', 'cash')
                                 ->whereHas('cashBuyer', function ($cash) {
                                     $cash->where(function ($cashQuery) {
-                                        $cashQuery->where('name', 'like', '%'.$this->searchTransaction.'%')
-                                            ->orWhere('email', 'like', '%'.$this->searchTransaction.'%');
+                                        $cashQuery->where('name', 'like', '%' . $this->searchTransaction . '%')
+                                            ->orWhere('email', 'like', '%' . $this->searchTransaction . '%');
                                     });
                                 });
                         });
@@ -324,7 +322,7 @@ class EventDetail extends Component
                 'carts.pajak',
                 'carts.internet_fee',
                 'carts.gross_amount',
-                DB::raw($snapshots->taxSnapshotSqlExpression().' as tax_snapshot'),
+                DB::raw($snapshots->taxSnapshotSqlExpression() . ' as tax_snapshot'),
             ])
             ->where('carts.event_uid', $this->eventUid)
             ->where('carts.status', 'SUCCESS')
@@ -346,19 +344,19 @@ class EventDetail extends Component
 
         if ($this->searchTransaction) {
             $query->where(function ($q) {
-                $q->where('carts.invoice', 'like', '%'.$this->searchTransaction.'%')
+                $q->where('carts.invoice', 'like', '%' . $this->searchTransaction . '%')
                     ->orWhere(function ($online) {
                         $online->where('carts.payment_type', '!=', 'cash')
                             ->where(function ($user) {
-                                $user->where('users.name', 'like', '%'.$this->searchTransaction.'%')
-                                    ->orWhere('users.email', 'like', '%'.$this->searchTransaction.'%');
+                                $user->where('users.name', 'like', '%' . $this->searchTransaction . '%')
+                                    ->orWhere('users.email', 'like', '%' . $this->searchTransaction . '%');
                             });
                     })
                     ->orWhere(function ($cash) {
                         $cash->where('carts.payment_type', 'cash')
                             ->where(function ($cashBuyer) {
-                                $cashBuyer->where('cashes.name', 'like', '%'.$this->searchTransaction.'%')
-                                    ->orWhere('cashes.email', 'like', '%'.$this->searchTransaction.'%');
+                                $cashBuyer->where('cashes.name', 'like', '%' . $this->searchTransaction . '%')
+                                    ->orWhere('cashes.email', 'like', '%' . $this->searchTransaction . '%');
                             });
                     });
             });
@@ -392,7 +390,7 @@ class EventDetail extends Component
     {
         $this->sanitizeFilters();
 
-        $fileName = 'transaksi-event-'.Str::slug($this->getEventData()->event).'-'.now()->format('YmdHis').'.csv';
+        $fileName = 'transaksi-event-' . Str::slug($this->getEventData()->event) . '-' . now()->format('YmdHis') . '.csv';
 
         $headers = [
             'Content-type' => 'text/csv',
@@ -492,7 +490,7 @@ class EventDetail extends Component
                 return;
             }
         } catch (\Throwable $e) {
-            session()->flash('error', 'Upload dokumen bertanda tangan gagal: '.$e->getMessage());
+            session()->flash('error', 'Upload dokumen bertanda tangan gagal: ' . $e->getMessage());
             $this->reset('signedMou');
 
             return;
@@ -580,7 +578,7 @@ class EventDetail extends Component
                 'string',
                 'max:255',
                 Rule::unique('hargas', 'kategori')
-                    ->where(fn ($query) => $query->where('uid', $this->eventUid)),
+                    ->where(fn($query) => $query->where('uid', $this->eventUid)),
             ],
             'newHarga.qty' => 'required|integer|min:0',
             'newHarga.harga' => 'required|integer|min:0',
@@ -701,13 +699,13 @@ class EventDetail extends Component
         $mouCompleted = false;
 
         if ($this->activeTab === 'mou') {
-            $hasAgreementsTable = Schema::hasTable('agreements');
+            $hasAgreementsTable = \Illuminate\Support\Facades\Schema::hasTable('agreements');
 
             $agreementsHistory = $hasAgreementsTable
                 ? $event->agreements()
-                    ->orderByRaw("CASE WHEN type = 'mou' THEN 1 ELSE 2 END ASC")
-                    ->orderBy('version', 'asc')
-                    ->get()
+                ->orderByRaw("CASE WHEN type = 'mou' THEN 1 ELSE 2 END ASC")
+                ->orderBy('version', 'asc')
+                ->get()
                 : collect();
 
             $activeAgreement = $hasAgreementsTable
@@ -722,7 +720,7 @@ class EventDetail extends Component
             $mouAgreement = $activeAgreement ?? $event->currentMouAgreement;
 
             if ($activeAgreement?->isAddendum() && $activeAgreement->isDraft()) {
-                $addendumPreview = app(AgreementVersioningService::class)
+                $addendumPreview = app(\App\Services\Agreements\AgreementVersioningService::class)
                     ->buildAddendumPreview($event, $activeAgreement);
             } else {
                 $mouPreview = app(AgreementPreviewService::class)->buildForEvent($event);
@@ -764,7 +762,7 @@ class EventDetail extends Component
                 if ($hargaCartWithVoucher) {
                     $voucherCode = $hargaCartWithVoucher->voucher;
                 }
-                $discount = $selectedTransaction->hargaCarts->sum(fn ($i) => (int) ($i->disc ?? 0));
+                $discount = $selectedTransaction->hargaCarts->sum(fn($i) => (int) ($i->disc ?? 0));
             }
         }
 
@@ -894,7 +892,7 @@ class EventDetail extends Component
             $this->resendEmailUid = null;
             session()->flash('message', 'Email barcode telah dijadwalkan untuk dikirim.');
         } catch (\Exception $e) {
-            session()->flash('error', 'Gagal mengirim email: '.$e->getMessage());
+            session()->flash('error', 'Gagal mengirim email: ' . $e->getMessage());
         }
     }
 
@@ -1016,14 +1014,14 @@ class EventDetail extends Component
     private function hargaHasTransactions(Harga $harga): bool
     {
         return $harga->hargaCarts()
-            ->whereHas('cart', fn ($query) => $query->whereIn('status', self::BLOCKING_TRANSACTION_STATUSES))
+            ->whereHas('cart', fn($query) => $query->whereIn('status', self::BLOCKING_TRANSACTION_STATUSES))
             ->exists();
     }
 
     private function minimumLockedQty(Harga $harga): int
     {
         $cartQuantity = (int) $harga->hargaCarts()
-            ->whereHas('cart', fn ($query) => $query->whereIn('status', self::LOCKED_QTY_STATUSES))
+            ->whereHas('cart', fn($query) => $query->whereIn('status', self::LOCKED_QTY_STATUSES))
             ->sum('quantity');
 
         return max((int) $harga->sold_qty + (int) $harga->reserved_qty, $cartQuantity);

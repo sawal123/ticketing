@@ -9,7 +9,6 @@ use App\Models\EventBankAccount;
 use App\Models\EventDocument;
 use App\Models\EventOrganizer;
 use App\Models\Fasilitas;
-use App\Services\Agreements\AgreementVersioningService;
 use App\Services\SecureImageStorage;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -426,7 +425,7 @@ class EventCreate extends Component
                 if (! $this->editingEventUid) {
                     Agreement::createDraftForEvent($event, $actorUid);
                 } else {
-                    app(AgreementVersioningService::class)
+                    app(\App\Services\Agreements\AgreementVersioningService::class)
                         ->checkForContractualChanges($event, $actorUid);
                 }
             });

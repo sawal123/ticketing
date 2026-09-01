@@ -98,6 +98,12 @@ class EventTicketTourTest extends TestCase
             ->assertDontSee('Tur Event')
             ->assertDontSee('event.setup', false);
 
+        Livewire::actingAs($staff)
+            ->test(EventDetail::class, ['uid' => $event->uid])
+            ->set('activeTab', 'tiket')
+            ->assertDontSee('Tur Tiket')
+            ->assertDontSee('event.tickets', false);
+
         Livewire::actingAs($admin)
             ->test(EventDetail::class, ['uid' => $event->uid])
             ->set('activeTab', 'tiket')
