@@ -9,6 +9,8 @@ use App\Livewire\Tutorials\InteractiveTour;
 use App\Models\Event;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\View;
@@ -23,6 +25,10 @@ class TransactionScannerTourTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        Config::set('database.default', env('DB_CONNECTION', 'mysql'));
+        DB::purge('sqlite');
+        DB::purge('mysql');
 
         Storage::fake('local');
         Storage::fake('public');
