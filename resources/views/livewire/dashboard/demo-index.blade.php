@@ -3,7 +3,14 @@
     <div class="mb-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h2 class="text-2xl font-bold text-slate-800 dark:text-white uppercase tracking-tight">Dashboard</h2>
         <div class="flex flex-wrap items-center gap-3">
-            <x-dashboard.contextual-help context="dashboard" />
+            <div data-tour="dashboard-help">
+                <x-dashboard.contextual-help context="dashboard" />
+            </div>
+            @if (auth()->user()?->role === 'penyewa')
+                <x-admin.button type="button" variant="secondary" x-on:click="$dispatch('start-tour', { tutorialKey: 'dashboard.overview' })" title="Mulai tur dashboard">
+                    Tur Dashboard
+                </x-admin.button>
+            @endif
             <x-admin.button variant="primary" size="lg" icon="plus-circle" x-on:click="$dispatch('open-modal', { name: 'sell-modal' })">
                 Jual Tiket
             </x-admin.button>
@@ -81,7 +88,7 @@
         <!-- LEFT COLUMN: STATISTICS (7/12) -->
         <div class="lg:col-span-7 space-y-6">
             <!-- Total Omset (Large Card) -->
-            <x-admin.card class="p-8 relative overflow-hidden group">
+            <x-admin.card data-tour="dashboard-revenue" class="p-8 relative overflow-hidden group">
                 <div class="relative z-10">
                     <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Total Omset (Seluruh)</p>
                     <h3 class="text-4xl font-black text-slate-800 dark:text-white tracking-tight">
@@ -95,7 +102,7 @@
 
             <!-- Triple Stats Grid -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <x-admin.card class="p-6">
+                <x-admin.card data-tour="dashboard-transactions" class="p-6">
                     <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Total Transaksi</p>
                     <h4 class="text-3xl font-black text-slate-800 dark:text-white">
                         {{ number_format($stats['transaksi']) }}
@@ -146,7 +153,7 @@
         </div>
 
         <!-- RIGHT COLUMN: ACTIVE EVENTS (5/12) -->
-        <div class="lg:col-span-5 space-y-4">
+        <div data-tour="dashboard-active-events" class="lg:col-span-5 space-y-4">
             <div class="flex items-center justify-between">
                 <h4 class="text-sm font-bold text-slate-800 dark:text-white">Event aktif :</h4>
                 <a href="{{ auth()->user()->role === 'admin' ? route('admin.event') : url('/dashboard/event') }}" class="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline">Lihat semua</a>
@@ -189,7 +196,7 @@
     </div>
 
     <!-- Main Trend Chart -->
-    <div class="mb-8" x-data="{
+    <div data-tour="dashboard-sales-trend" class="mb-8" x-data="{
         labels: @js($chart['labels']),
         revenue: @js($chart['revenue']),
         cash: @js($chart['cash']),
@@ -297,6 +304,10 @@
             </div>
         </x-admin.card>
     </div>
+
+    @if (auth()->user()?->role === 'penyewa')
+        <livewire:tutorials.interactive-tour tutorial-key="dashboard.overview" :steps="$dashboardTourSteps" />
+    @endif
 
     <!-- MODAL JUAL TIKET (POS SYSTEM) -->
     <x-admin.modal name="sell-modal" title="{{ $selectedEventId ? 'Jual Tiket - ' . $selectedEvent->event : 'Pilih Event' }}" icon="shopping-cart">
