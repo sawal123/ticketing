@@ -785,7 +785,34 @@ class EventDetail extends Component
             'mouSignedAwaitingReview' => $mouSignedAwaitingReview,
             'mouSignedRejected' => $mouSignedRejected,
             'mouCompleted' => $mouCompleted,
+            'ticketTourSteps' => $this->activeTab === 'tiket' && auth()->user()?->role === 'penyewa'
+                ? $this->ticketTourSteps()
+                : [],
         ]);
+    }
+
+    private function ticketTourSteps(): array
+    {
+        return [
+            [
+                'target' => '[data-tour="ticket-tab"]',
+                'title' => 'Manajemen Tiket',
+                'description' => 'Tiket untuk event ini dikelola dari tab Manajemen Tiket.',
+                'placement' => 'bottom',
+            ],
+            [
+                'target' => '[data-tour="ticket-list"]',
+                'title' => 'Daftar Tiket',
+                'description' => 'Tabel ini menampilkan kategori, stok, tiket terjual, harga, dan status. Status tiket dapat diaktifkan atau dinonaktifkan dari tabel ini.',
+                'placement' => 'top',
+            ],
+            [
+                'target' => '[data-tour="ticket-add"]',
+                'title' => 'Tambah Tiket',
+                'description' => 'Gunakan tombol ini untuk membuka form kategori, qty atau stok, dan harga tiket.',
+                'placement' => 'bottom',
+            ],
+        ];
     }
 
     public function confirmResendEmail($uid)

@@ -479,7 +479,50 @@ class EventCreate extends Component
             'categories' => Category::all(),
             'fasilitasData' => Fasilitas::all(),
             'title' => $this->editingEventUid ? 'Edit Event' : 'Add New Event',
+            'eventTourSteps' => auth()->user()?->role === 'penyewa' ? $this->eventTourSteps() : [],
         ]);
+    }
+
+    private function eventTourSteps(): array
+    {
+        return [
+            [
+                'target' => '[data-tour="event-info"]',
+                'title' => 'Informasi Event',
+                'description' => 'Isi nama event, kategori, dan fasilitas sebagai informasi dasar event Anda.',
+                'placement' => 'bottom',
+            ],
+            [
+                'target' => '[data-tour="event-organizer"]',
+                'title' => 'Informasi Penyelenggara',
+                'description' => 'Data penyelenggara dan penanggung jawab disimpan khusus untuk event ini.',
+                'placement' => 'bottom',
+            ],
+            [
+                'target' => '[data-tour="event-schedule"]',
+                'title' => 'Jadwal Event',
+                'description' => 'Atur mulai penjualan tiket serta waktu mulai dan selesai event.',
+                'placement' => 'bottom',
+            ],
+            [
+                'target' => '[data-tour="event-bank-account"]',
+                'title' => 'Rekening Pencairan',
+                'description' => 'Rekening ini digunakan khusus untuk pencairan event tersebut.',
+                'placement' => 'bottom',
+            ],
+            [
+                'target' => '[data-tour="event-documents"]',
+                'title' => 'Dokumen Penyelenggara',
+                'description' => 'Dokumen penyelenggara disimpan per event. Setelah event tersimpan, proses MOU dapat dilanjutkan dari tab MOU di Detail Event.',
+                'placement' => 'top',
+            ],
+            [
+                'target' => '[data-tour="event-location"]',
+                'title' => 'Lokasi Event',
+                'description' => 'Lengkapi venue dan alamat event agar informasi lokasi tersusun rapi.',
+                'placement' => 'top',
+            ],
+        ];
     }
 
     private function ownedEventQuery(string $uid)

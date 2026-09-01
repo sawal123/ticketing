@@ -26,6 +26,11 @@
         </div>
         <div class="flex flex-wrap items-center gap-3">
             <x-dashboard.contextual-help :context="$helpContext" />
+            @if (auth()->user()?->role === 'penyewa' && $activeTab === 'tiket')
+                <x-admin.button type="button" variant="secondary" x-on:click="$dispatch('start-tour', { tutorialKey: 'event.tickets' })" title="Mulai tur manajemen tiket">
+                    Tur Tiket
+                </x-admin.button>
+            @endif
             <x-admin.button variant="secondary" icon="arrow-left" onclick="history.back()">
                 Kembali
             </x-admin.button>
@@ -56,7 +61,7 @@
             <i data-lucide="info" class="w-4 h-4"></i>
             Informasi & Talent
         </button>
-        <button wire:click="setTab('tiket')"
+        <button data-tour="ticket-tab" wire:click="setTab('tiket')"
             class="flex items-center gap-2 cursor-pointer px-4 py-2 text-sm font-medium rounded-lg transition-all {{ $activeTab === 'tiket' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700' }}">
             <i data-lucide="ticket" class="w-4 h-4"></i>
             Manajemen Tiket
@@ -227,10 +232,10 @@
                     </div>
                 </div>
             @elseif($activeTab === 'tiket')
-                <x-admin.table title="Kategori Tiket & Harga" :headers="['Kategori', 'Stok', 'Terjual', 'Harga', 'Status', 'Aksi']" :count="$event->hargas->count()">
+                <x-admin.table data-tour="ticket-list" title="Kategori Tiket & Harga" :headers="['Kategori', 'Stok', 'Terjual', 'Harga', 'Status', 'Aksi']" :count="$event->hargas->count()">
                     <x-slot name="headerAction">
                         <x-admin.button variant="primary" size="md" icon="plus"
-                            wire:click="openAddTicketModal" loading-target="openAddTicketModal">
+                            data-tour="ticket-add" wire:click="openAddTicketModal" loading-target="openAddTicketModal">
                             Tambah Tiket
                         </x-admin.button>
                     </x-slot>
@@ -288,6 +293,9 @@
                         </tr>
                     @endforelse
                 </x-admin.table>
+                @if (auth()->user()?->role === 'penyewa' && $ticketTourSteps !== [])
+                    <livewire:tutorials.interactive-tour tutorial-key="event.tickets" :steps="$ticketTourSteps" />
+                @endif
             @elseif($activeTab === 'mou')
                 <div class="space-y-4">
                     {{-- History Tabel Agreement --}}

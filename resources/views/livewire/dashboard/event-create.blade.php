@@ -6,6 +6,11 @@
         </div>
         <div class="flex flex-wrap items-center gap-3">
             <x-dashboard.contextual-help context="event-form" />
+            @if (auth()->user()?->role === 'penyewa')
+                <x-admin.button type="button" variant="secondary" x-on:click="$dispatch('start-tour', { tutorialKey: 'event.setup' })" title="Mulai tur event">
+                    Tur Event
+                </x-admin.button>
+            @endif
             <x-admin.button href="{{ auth()->user()->role === 'admin' ? route('admin.event') : route('dashboard.event') }}" wire:navigate variant="secondary" icon="arrow-left" class="!py-2 !px-4">
                 Kembali
             </x-admin.button>
@@ -23,7 +28,7 @@
     <form wire:submit.prevent="save" class="space-y-6">
         <x-admin.card padding="p-8">
             <div class="space-y-10">
-                <section class="space-y-6">
+                <section data-tour="event-info" class="space-y-6">
                     <div>
                         <h2 class="text-lg font-black text-slate-800 dark:text-white">Informasi Event</h2>
                         <p class="text-sm text-slate-500 dark:text-slate-400">Isi informasi dasar event dan kategori yang sesuai.</p>
@@ -66,7 +71,7 @@
                     </div>
                 </section>
 
-                <section class="space-y-6 border-t border-slate-100 dark:border-slate-700 pt-8">
+                <section data-tour="event-organizer" class="space-y-6 border-t border-slate-100 dark:border-slate-700 pt-8">
                     <div>
                         <h2 class="text-lg font-black text-slate-800 dark:text-white">Informasi Penyelenggara</h2>
                         <p class="text-sm text-slate-500 dark:text-slate-400">Data penyelenggara ini disimpan per event dan tidak mengikuti perubahan profil akun.</p>
@@ -110,7 +115,7 @@
                     </div>
                 </section>
 
-                <section class="space-y-6 border-t border-slate-100 dark:border-slate-700 pt-8">
+                <section data-tour="event-schedule" class="space-y-6 border-t border-slate-100 dark:border-slate-700 pt-8">
                     <div>
                         <h2 class="text-lg font-black text-slate-800 dark:text-white">Jadwal Event</h2>
                         <p class="text-sm text-slate-500 dark:text-slate-400">Pastikan urutan waktu penjualan dan pelaksanaan event sudah benar.</p>
@@ -148,7 +153,7 @@
                     </div>
                 </section>
 
-                <section class="space-y-6 border-t border-slate-100 dark:border-slate-700 pt-8">
+                <section data-tour="event-bank-account" class="space-y-6 border-t border-slate-100 dark:border-slate-700 pt-8">
                     <div>
                         <h2 class="text-lg font-black text-slate-800 dark:text-white">Rekening Pencairan Event</h2>
                         <p class="text-sm text-slate-500 dark:text-slate-400">Rekening ini disimpan khusus untuk event yang sedang Anda buat atau edit.</p>
@@ -190,7 +195,7 @@
                     </div>
                 </section>
 
-                <section class="space-y-6 border-t border-slate-100 dark:border-slate-700 pt-8">
+                <section data-tour="event-documents" class="space-y-6 border-t border-slate-100 dark:border-slate-700 pt-8">
                     <div>
                         <h2 class="text-lg font-black text-slate-800 dark:text-white">Dokumen Penyelenggara</h2>
                         <p class="text-sm text-slate-500 dark:text-slate-400">Surat penyelenggara event atau seminar disimpan per event dan tetap private.</p>
@@ -246,7 +251,7 @@
                     </div>
                 </section>
 
-                <section class="space-y-6 border-t border-slate-100 dark:border-slate-700 pt-8">
+                <section data-tour="event-location" class="space-y-6 border-t border-slate-100 dark:border-slate-700 pt-8">
                     <div>
                         <h2 class="text-lg font-black text-slate-800 dark:text-white">Lokasi Event</h2>
                         <p class="text-sm text-slate-500 dark:text-slate-400">Gunakan detail venue yang lengkap agar menjadi sumber data event yang rapi.</p>
@@ -381,6 +386,10 @@
             </div>
         </x-admin.card>
     </form>
+
+    @if (auth()->user()?->role === 'penyewa' && $eventTourSteps !== [])
+        <livewire:tutorials.interactive-tour tutorial-key="event.setup" :steps="$eventTourSteps" />
+    @endif
 
     <!-- Trix Editor Assets -->
     <link rel="stylesheet" type="text/css" href="https://unpkg.com/trix@2.0.8/dist/trix.css">
