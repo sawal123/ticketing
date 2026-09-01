@@ -8,7 +8,12 @@
         </div>
         <div class="flex flex-wrap items-center gap-3">
             <x-dashboard.contextual-help context="withdrawal" />
-            <x-admin.button wire:click="openCreateModal" icon="plus" variant="primary">
+            @if (auth()->user()?->role === 'penyewa')
+                <x-admin.button type="button" variant="secondary" x-on:click="$dispatch('start-tour', { tutorialKey: 'withdrawal.overview' })" title="Mulai tur penarikan">
+                    Tur Penarikan
+                </x-admin.button>
+            @endif
+            <x-admin.button data-tour="withdrawal-create" wire:click="openCreateModal" icon="plus" variant="primary">
                 Tarik Saldo
             </x-admin.button>
         </div>
@@ -31,7 +36,7 @@
     @endif
 
     <!-- Stats Section -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <div data-tour="withdrawal-summary" class="grid grid-cols-1 md:grid-cols-3 gap-6">
         <x-admin.card title="Total Saldo (Non-Cash)" icon="banknote" iconColor="indigo">
             <div class="text-2xl font-bold text-slate-800 dark:text-white">
                 Rp {{ number_format($totalSaldo, 0, ',', '.') }}
@@ -54,7 +59,7 @@
     </div>
 
     <!-- Filter & Table Section -->
-    <x-admin.card>
+    <x-admin.card data-tour="withdrawal-history">
         <div class="flex flex-col md:flex-row justify-between gap-4 mb-6">
             <div class="flex-1 max-w-md">
                 <x-admin.input wire:model.live.debounce.300ms="search" placeholder="Cari catatan atau nominal..."
@@ -162,6 +167,10 @@
             </x-slot>
         </x-admin.table>
     </x-admin.card>
+
+    @if (auth()->user()?->role === 'penyewa' && $withdrawalTourSteps !== [])
+        <livewire:tutorials.interactive-tour tutorial-key="withdrawal.overview" :steps="$withdrawalTourSteps" />
+    @endif
 
     <!-- Create/Edit Modal -->
     <x-admin.modal name="penarikan-modal" title="{{ $isEditMode ? 'Edit Penarikan' : 'Ajukan Penarikan' }}"

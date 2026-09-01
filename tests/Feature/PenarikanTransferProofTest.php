@@ -9,6 +9,7 @@ use App\Livewire\Dashboard\PenarikanIndex as DashboardPenarikanIndex;
 use App\Models\Penarikan;
 use App\Models\User;
 use App\Services\PrivateTransferProofStorage;
+use App\Services\Tutorials\TutorialProgressService;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -118,6 +119,11 @@ class PenarikanTransferProofTest extends TestCase
             $table->integer('disc')->nullable();
             $table->timestamps();
             $table->softDeletes();
+        });
+
+        $this->mock(TutorialProgressService::class, function ($mock) {
+            $mock->shouldReceive('isCompleted')->andReturnFalse();
+            $mock->shouldReceive('isDismissed')->andReturnFalse();
         });
     }
 

@@ -8,6 +8,7 @@ use App\Livewire\Dashboard\PenarikanIndex as DashboardPenarikanIndex;
 use App\Models\Bank;
 use App\Models\Penarikan;
 use App\Models\User;
+use App\Services\Tutorials\TutorialProgressService;
 use App\Services\Withdrawals\WithdrawalBalanceService;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
@@ -53,6 +54,11 @@ class AdminPenarikanDetailTest extends TestCase
         });
 
         $this->createPenarikansTable(withSnapshot: true);
+
+        $this->mock(TutorialProgressService::class, function ($mock) {
+            $mock->shouldReceive('isCompleted')->andReturnFalse();
+            $mock->shouldReceive('isDismissed')->andReturnFalse();
+        });
 
         view()->share('logo', collect([(object) ['logo' => '', 'icon' => '']]));
     }

@@ -6,6 +6,7 @@ use App\Livewire\Dashboard\PenarikanIndex;
 use App\Models\Bank;
 use App\Models\Penarikan;
 use App\Models\User;
+use App\Services\Tutorials\TutorialProgressService;
 use App\Services\Withdrawals\WithdrawalBalanceService;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
@@ -64,6 +65,11 @@ class DashboardPenarikanBankAndWithdrawAllTest extends TestCase
             $table->string('bank_account_number')->nullable();
             $table->timestamps();
             $table->softDeletes();
+        });
+
+        $this->mock(TutorialProgressService::class, function ($mock) {
+            $mock->shouldReceive('isCompleted')->andReturnFalse();
+            $mock->shouldReceive('isDismissed')->andReturnFalse();
         });
     }
 
