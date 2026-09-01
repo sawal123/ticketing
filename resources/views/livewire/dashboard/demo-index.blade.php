@@ -6,7 +6,7 @@
             <div data-tour="dashboard-help">
                 <x-dashboard.contextual-help context="dashboard" />
             </div>
-            @if (auth()->user()?->role === 'penyewa' && $dashboardTourSteps !== [])
+            @if (auth()->user()?->role === 'penyewa')
                 <x-admin.button type="button" variant="secondary" x-on:click="$dispatch('start-tour', { tutorialKey: 'dashboard.overview' })" title="Mulai tur dashboard">
                     Tur Dashboard
                 </x-admin.button>
@@ -305,7 +305,7 @@
         </x-admin.card>
     </div>
 
-    @if (auth()->user()?->role === 'penyewa' && $dashboardTourSteps !== [])
+    @if (auth()->user()?->role === 'penyewa')
         <livewire:tutorials.interactive-tour tutorial-key="dashboard.overview" :steps="$dashboardTourSteps" />
     @endif
 

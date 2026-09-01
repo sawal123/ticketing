@@ -18,6 +18,7 @@ use App\Models\User;
 use App\Models\Voucher;
 use App\Services\Tickets\GateTokenService;
 use App\Services\Tutorials\GettingStartedChecklistService;
+use App\Services\Tutorials\TutorialProgressService;
 use Illuminate\Contracts\Bus\Dispatcher as BusDispatcher;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
@@ -32,10 +33,16 @@ use Tests\TestCase;
 
 class DashboardCashCheckoutTest extends TestCase
 {
+    protected string $originalDatabaseDefault;
+
+    protected mixed $originalSqliteDatabase;
+
     protected function setUp(): void
     {
         parent::setUp();
 
+        $this->originalDatabaseDefault = Config::get('database.default');
+        $this->originalSqliteDatabase = Config::get('database.connections.sqlite.database');
         Config::set('database.default', 'sqlite');
         Config::set('database.connections.sqlite.database', ':memory:');
         Config::set('cache.default', 'array');
@@ -64,6 +71,19 @@ class DashboardCashCheckoutTest extends TestCase
                 'event_name' => null,
             ]);
         });
+        $this->mock(TutorialProgressService::class, function ($mock) {
+            $mock->shouldReceive('isCompleted')->andReturnFalse();
+            $mock->shouldReceive('isDismissed')->andReturnFalse();
+        });
+    }
+
+    protected function tearDown(): void
+    {
+        DB::purge('sqlite');
+        Config::set('database.default', $this->originalDatabaseDefault);
+        Config::set('database.connections.sqlite.database', $this->originalSqliteDatabase);
+
+        parent::tearDown();
     }
 
     public function test_cash_checkout_creates_success_transaction_and_reduces_remaining_stock(): void

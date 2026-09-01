@@ -16,7 +16,6 @@ use App\Services\Tutorials\GettingStartedChecklistService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
@@ -645,7 +644,7 @@ class DemoIndex extends Component
             ],
             'gender' => $genderStats,
             'gettingStarted' => $gettingStarted,
-            'dashboardTourSteps' => $user->role === 'penyewa' && Schema::hasTable('tutorial_progress')
+            'dashboardTourSteps' => $user->role === 'penyewa'
                 ? $this->dashboardTourSteps()
                 : [],
         ]);
