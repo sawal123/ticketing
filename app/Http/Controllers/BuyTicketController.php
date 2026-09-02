@@ -311,5 +311,4 @@ class BuyTicketController extends Controller
             ->values()
             ->all();
     }
-
 }
