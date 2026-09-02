@@ -214,6 +214,31 @@ class EventRegistrationModeTest extends TestCase
         ]);
     }
 
+    public function test_event_with_soft_deleted_cart_rejects_registration_mode_change(): void
+    {
+        $tenant = $this->tenant();
+        $category = Category::create(['name' => 'Trail Run', 'slug' => 'trail-run']);
+        $event = $this->editableEvent($tenant, $category);
+        $cart = $this->cart($event, $tenant);
+        $cart->delete();
+
+        $event->load('carts');
+
+        $this->assertTrue($event->carts->isEmpty());
+        $this->assertTrue($event->registrationModeLocked());
+
+        Livewire::actingAs($tenant)
+            ->test(EventCreate::class, ['uid' => $event->uid])
+            ->set('registration_mode', Event::REGISTRATION_MODE_TEAM)
+            ->call('save')
+            ->assertHasErrors(['registration_mode']);
+
+        $this->assertDatabaseHas('events', [
+            'uid' => $event->uid,
+            'registration_mode' => Event::REGISTRATION_MODE_TICKETING,
+        ]);
+    }
+
     public function test_locked_mode_cannot_be_bypassed_by_direct_livewire_manipulation(): void
     {
         $tenant = $this->tenant();

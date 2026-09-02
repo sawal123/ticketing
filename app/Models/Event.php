@@ -110,11 +110,9 @@ class Event extends Model
 
     public function hasRegistrationModeTransactions(): bool
     {
-        if ($this->relationLoaded('carts')) {
-            return $this->carts->isNotEmpty();
-        }
-
-        return $this->carts()->exists();
+        return $this->carts()
+            ->withTrashed()
+            ->exists();
     }
 
     public function category()
