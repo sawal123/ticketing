@@ -54,6 +54,39 @@
                         </div>
 
                         <div class="md:col-span-2">
+                            <label class="block text-[11px] font-black text-slate-400 uppercase tracking-[0.1em] mb-2">Jenis Pendaftaran</label>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                @foreach($registrationModeOptions as $mode => $option)
+                                    <label class="cursor-pointer">
+                                        <input
+                                            type="radio"
+                                            wire:model="registration_mode"
+                                            value="{{ $mode }}"
+                                            class="sr-only peer"
+                                            @disabled($registrationModeLocked)
+                                        >
+                                        <div class="h-full rounded-2xl border px-4 py-4 transition-all"
+                                            @class([
+                                                'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800',
+                                                'peer-checked:border-indigo-500 peer-checked:bg-indigo-50 peer-checked:dark:bg-indigo-950/40',
+                                                'peer-disabled:cursor-not-allowed peer-disabled:opacity-70',
+                                            ])>
+                                            <div class="text-sm font-black text-slate-800 dark:text-white">{{ $option['label'] }}</div>
+                                            <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ $option['description'] }}</p>
+                                        </div>
+                                    </label>
+                                @endforeach
+                            </div>
+                            @if ($editingEventUid && $registrationModeLocked)
+                                <div class="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
+                                    <div class="font-semibold">Jenis pendaftaran saat ini: {{ $currentRegistrationModeLabel }}</div>
+                                    <p class="mt-1 text-xs">Jenis pendaftaran tidak dapat diubah karena event sudah memiliki data operasional.</p>
+                                </div>
+                            @endif
+                            @error('registration_mode') <span class="text-rose-500 text-xs mt-1">{{ $message }}</span> @enderror
+                        </div>
+
+                        <div class="md:col-span-2">
                             <label class="block text-[11px] font-black text-slate-400 uppercase tracking-[0.1em] mb-2">Fasilitas</label>
                             <div class="flex flex-wrap gap-2">
                                 @foreach($fasilitasData as $f)

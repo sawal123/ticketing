@@ -10,6 +10,18 @@ class Event extends Model
 {
     use HasFactory, SoftDeletes;
 
+    public const REGISTRATION_MODE_TICKETING = 'ticketing';
+
+    public const REGISTRATION_MODE_INDIVIDUAL = 'individual';
+
+    public const REGISTRATION_MODE_TEAM = 'team';
+
+    public const REGISTRATION_MODES = [
+        self::REGISTRATION_MODE_TICKETING,
+        self::REGISTRATION_MODE_INDIVIDUAL,
+        self::REGISTRATION_MODE_TEAM,
+    ];
+
     protected $fillable = [
         'category_id',
         'uid',
@@ -32,11 +44,76 @@ class Event extends Model
         'slug',
         'konfirmasi',
         'payment_otp_enabled',
+        'registration_mode',
     ];
 
     protected $casts = [
         'payment_otp_enabled' => 'boolean',
     ];
+
+    public static function registrationModes(): array
+    {
+        return self::REGISTRATION_MODES;
+    }
+
+    public static function registrationModeOptions(): array
+    {
+        return [
+            self::REGISTRATION_MODE_TICKETING => [
+                'label' => 'Ticketing Biasa',
+                'description' => 'Konser, festival, seminar, dan event umum.',
+            ],
+            self::REGISTRATION_MODE_INDIVIDUAL => [
+                'label' => 'Pendaftaran Individu',
+                'description' => 'Pendaftaran peserta per orang.',
+            ],
+            self::REGISTRATION_MODE_TEAM => [
+                'label' => 'Pendaftaran Tim',
+                'description' => 'Pendaftaran satu tim/kelompok.',
+            ],
+        ];
+    }
+
+    public static function normalizeRegistrationMode(?string $mode): string
+    {
+        return in_array($mode, self::REGISTRATION_MODES, true)
+            ? $mode
+            : self::REGISTRATION_MODE_TICKETING;
+    }
+
+    public static function registrationModeLabel(?string $mode): string
+    {
+        $mode = self::normalizeRegistrationMode($mode);
+
+        return self::registrationModeOptions()[$mode]['label'];
+    }
+
+    public function getRegistrationModeAttribute($value): string
+    {
+        return self::normalizeRegistrationMode($value);
+    }
+
+    public function registrationModeLocked(): bool
+    {
+        return $this->hasRegistrationModeTicketCategories()
+            || $this->hasRegistrationModeTransactions();
+    }
+
+    public function hasRegistrationModeTicketCategories(): bool
+    {
+        if ($this->relationLoaded('hargas')) {
+            return $this->hargas->isNotEmpty();
+        }
+
+        return $this->hargas()->exists();
+    }
+
+    public function hasRegistrationModeTransactions(): bool
+    {
+        return $this->carts()
+            ->withTrashed()
+            ->exists();
+    }
 
     public function category()
     {
@@ -105,7 +182,6 @@ class Event extends Model
             ?? $this->latestCompletedAgreement();
     }
 
-
     public function harga()
     {
         return $this->hasOne(Harga::class, 'uid', 'uid')
@@ -129,6 +205,7 @@ class Event extends Model
     {
         return $this->hasMany(Cart::class, 'event_uid', 'uid');
     }
+
     public function hargas()
     {
         return $this->hasMany(Harga::class, 'uid', 'uid');
