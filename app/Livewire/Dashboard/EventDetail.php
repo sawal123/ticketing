@@ -8,6 +8,7 @@ use App\Models\Agreement;
 use App\Models\Cart;
 use App\Models\Cash;
 use App\Models\Event;
+use App\Models\EventRegistrationField;
 use App\Models\Harga;
 use App\Models\Talent;
 use App\Services\Agreements\AgreementPreviewService;
@@ -88,6 +89,10 @@ class EventDetail extends Component
         'description' => '',
     ];
 
+    public $registrationField = ['label' => '', 'type' => 'text', 'scope' => 'registration', 'is_required' => false, 'options' => ''];
+
+    public $editingRegistrationFieldId;
+
     // For Delete Modal
     public $deletingHargaId;
 
@@ -130,7 +135,7 @@ class EventDetail extends Component
 
     private function allowedTabs(): array
     {
-        return ['umum', 'tiket', 'mou', 'transaksi'];
+        return ['umum', 'tiket', 'mou', 'transaksi', 'form-pendaftaran'];
     }
 
     private function sanitizeFilters(): void
@@ -145,6 +150,10 @@ class EventDetail extends Component
         }
 
         if (! in_array($this->activeTab, $this->allowedTabs(), true)) {
+            $this->activeTab = 'umum';
+        }
+
+        if ($this->activeTab === 'form-pendaftaran' && ! $this->registrationFieldsAvailable()) {
             $this->activeTab = 'umum';
         }
 
@@ -207,7 +216,7 @@ class EventDetail extends Component
         $isAdmin = $user->role === 'admin';
         $ownerId = ($user->role === 'staff') ? $user->parent_uid : $user->uid;
 
-        $query = Event::with([
+        $with = [
             'talents',
             'hargas' => function ($query) {
                 $query->withSum(['hargaCarts as sold_count' => function ($q) {
@@ -216,7 +225,13 @@ class EventDetail extends Component
                     });
                 }], 'quantity');
             },
-        ])->where('uid', $this->eventUid);
+        ];
+
+        if (Schema::hasTable('event_registration_fields')) {
+            $with[] = 'registrationFields';
+        }
+
+        $query = Event::with($with)->where('uid', $this->eventUid);
 
         if (! $isAdmin) {
             $query->where('user_uid', $ownerId);
@@ -457,6 +472,90 @@ class EventDetail extends Component
         $this->activeTab = $tab;
         $this->sanitizeFilters();
         $this->resetPage();
+    }
+
+    public function openAddRegistrationFieldModal(): void
+    {
+        if (! $this->registrationFieldsAvailable()) {
+            $this->addError('registrationField', 'Field pendaftaran tidak tersedia untuk event ticketing.');
+
+            return;
+        }
+
+        $this->resetValidation();
+        $this->editingRegistrationFieldId = null;
+        $this->registrationField = ['label' => '', 'type' => 'text', 'scope' => 'registration', 'is_required' => false, 'options' => ''];
+        $this->dispatch('open-modal', name: 'registration-field-modal');
+    }
+
+    public function editRegistrationField($id): void
+    {
+        $field = $this->authorizedRegistrationField($id);
+        $this->editingRegistrationFieldId = $field->id;
+        $this->registrationField = ['label' => $field->label, 'type' => $field->type, 'scope' => $field->scope, 'is_required' => $field->is_required, 'options' => implode("\n", $field->options ?? [])];
+        $this->resetValidation();
+        $this->dispatch('open-modal', name: 'registration-field-modal');
+    }
+
+    public function saveRegistrationField(): void
+    {
+        $event = $this->authorizedRegistrationEvent();
+        if (! $event) {
+            return;
+        }
+        $validated = $this->validate(['registrationField.label' => 'required|string|max:255', 'registrationField.type' => ['required', Rule::in(EventRegistrationField::types())], 'registrationField.scope' => ['required', Rule::in(EventRegistrationField::scopes())], 'registrationField.is_required' => 'boolean', 'registrationField.options' => 'nullable|string']);
+        if ($event->registration_mode === Event::REGISTRATION_MODE_INDIVIDUAL && $validated['registrationField']['scope'] === 'member') {
+            $this->addError('registrationField.scope', 'Scope member hanya tersedia untuk pendaftaran tim.');
+
+            return;
+        }
+        $options = $this->normalizedRegistrationFieldOptions($validated['registrationField']['type'], $validated['registrationField']['options'] ?? '');
+        if ($options === false) {
+            return;
+        }
+        $data = ['label' => trim($validated['registrationField']['label']), 'type' => $validated['registrationField']['type'], 'scope' => $validated['registrationField']['scope'], 'is_required' => (bool) $validated['registrationField']['is_required'], 'options' => $options];
+        if ($this->editingRegistrationFieldId) {
+            $this->authorizedRegistrationField($this->editingRegistrationFieldId)->update($data);
+        } else {
+            $data['event_uid'] = $event->uid;
+            $data['sort_order'] = (int) $event->registrationFields()->max('sort_order') + 1;
+            EventRegistrationField::create($data);
+        }
+        $this->dispatch('close-modal', name: 'registration-field-modal');
+        session()->flash('message', 'Field pendaftaran berhasil disimpan.');
+    }
+
+    public function deleteRegistrationField($id): void
+    {
+        DB::transaction(function () use ($id) {
+            $field = $this->authorizedRegistrationField($id);
+            $event = $this->authorizedRegistrationEvent();
+            if (! $event) {
+                return;
+            }
+            $field->delete();
+            $this->reindexRegistrationFields($event);
+        });
+    }
+
+    public function moveRegistrationField($id, $direction): void
+    {
+        DB::transaction(function () use ($id, $direction) {
+            $field = $this->authorizedRegistrationField($id);
+            $event = $this->authorizedRegistrationEvent();
+            if (! $event || ! in_array($direction, ['up', 'down'], true)) {
+                return;
+            }
+            $fields = $event->registrationFields()->lockForUpdate()->get();
+            $index = $fields->search(fn ($item) => $item->id === $field->id);
+            $other = $fields->get($direction === 'up' ? $index - 1 : $index + 1);
+            if ($other) {
+                $fieldOrder = $field->sort_order;
+                $field->update(['sort_order' => $other->sort_order]);
+                $other->update(['sort_order' => $fieldOrder]);
+            }
+            $this->reindexRegistrationFields($event);
+        });
     }
 
     /**
@@ -1057,6 +1156,58 @@ class EventDetail extends Component
         return Harga::where('id', $id)
             ->where('uid', $this->eventUid)
             ->firstOrFail();
+    }
+
+    private function registrationFieldsAvailable(): bool
+    {
+        return $this->getEventData()->registration_mode !== Event::REGISTRATION_MODE_TICKETING;
+    }
+
+    private function authorizedRegistrationEvent(): ?Event
+    {
+        $event = $this->getEventData();
+        if ($event->registration_mode === Event::REGISTRATION_MODE_TICKETING) {
+            $this->addError('registrationField', 'Field pendaftaran tidak tersedia untuk event ticketing.');
+
+            return null;
+        }
+
+        return $event;
+    }
+
+    private function authorizedRegistrationField($id): EventRegistrationField
+    {
+        $event = $this->authorizedRegistrationEvent();
+        if (! $event) {
+            abort(403);
+        }
+
+        return EventRegistrationField::where('id', $id)->where('event_uid', $event->uid)->firstOrFail();
+    }
+
+    private function normalizedRegistrationFieldOptions(string $type, string $options): array|false|null
+    {
+        if ($type !== 'select') {
+            return null;
+        }
+        $normalized = array_values(array_unique(array_filter(array_map('trim', preg_split('/\R/', $options)))));
+        if (count($normalized) < 2) {
+            $this->addError('registrationField.options', 'Pilihan select minimal dua opsi.');
+
+            return false;
+        }
+        if (count($normalized) > 50 || collect($normalized)->contains(fn ($option) => mb_strlen($option) > 100)) {
+            $this->addError('registrationField.options', 'Pilihan select tidak valid.');
+
+            return false;
+        }
+
+        return $normalized;
+    }
+
+    private function reindexRegistrationFields(Event $event): void
+    {
+        $event->registrationFields()->lockForUpdate()->get()->values()->each(fn ($field, $index) => $field->update(['sort_order' => $index + 1]));
     }
 
     private function authorizedTalent($id): Talent

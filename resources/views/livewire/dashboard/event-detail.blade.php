@@ -71,6 +71,13 @@
             <i data-lucide="ticket" class="w-4 h-4"></i>
             Manajemen Tiket
         </button>
+        @if (in_array($event->registration_mode, [\App\Models\Event::REGISTRATION_MODE_INDIVIDUAL, \App\Models\Event::REGISTRATION_MODE_TEAM], true))
+            <button wire:click="setTab('form-pendaftaran')"
+                class="flex items-center gap-2 cursor-pointer px-4 py-2 text-sm font-medium rounded-lg transition-all {{ $activeTab === 'form-pendaftaran' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700' }}">
+                <i data-lucide="list-plus" class="w-4 h-4"></i>
+                Form Pendaftaran
+            </button>
+        @endif
         <button wire:click="setTab('mou')"
             class="flex items-center gap-2 cursor-pointer px-4 py-2 text-sm font-medium rounded-lg transition-all {{ $activeTab === 'mou' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700' }}">
             <i data-lucide="file-badge" class="w-4 h-4"></i>
@@ -236,6 +243,29 @@
                         </x-admin.card>
                     </div>
                 </div>
+            @elseif($activeTab === 'form-pendaftaran')
+                <x-admin.table title="Field Form Pendaftaran" :headers="['Label', 'Tipe', 'Scope', 'Status', 'Urutan', 'Aksi']" :count="$event->registrationFields->count()">
+                    <x-slot name="headerAction">
+                        <x-admin.button variant="primary" icon="plus" wire:click="openAddRegistrationFieldModal">Tambah Field</x-admin.button>
+                    </x-slot>
+                    @forelse($event->registrationFields as $field)
+                        <tr wire:key="registration-field-{{ $field->id }}">
+                            <td class="px-5 py-4 font-semibold">{{ $field->label }}</td>
+                            <td class="px-5 py-4">{{ $field->type }}</td>
+                            <td class="px-5 py-4">{{ $field->scope }}</td>
+                            <td class="px-5 py-4">{{ $field->is_required ? 'Required' : 'Optional' }}</td>
+                            <td class="px-5 py-4">{{ $field->sort_order }}</td>
+                            <td class="px-5 py-4"><div class="flex gap-1 justify-center">
+                                <x-admin.button wire:click="moveRegistrationField({{ $field->id }}, 'up')" variant="ghost" size="sm" icon="chevron-up" title="Naik" />
+                                <x-admin.button wire:click="moveRegistrationField({{ $field->id }}, 'down')" variant="ghost" size="sm" icon="chevron-down" title="Turun" />
+                                <x-admin.button wire:click="editRegistrationField({{ $field->id }})" variant="ghost" size="sm" icon="pencil" title="Edit" />
+                                <x-admin.button wire:click="deleteRegistrationField({{ $field->id }})" variant="ghost" size="sm" icon="trash-2" class="text-rose-600" title="Hapus" />
+                            </div></td>
+                        </tr>
+                    @empty
+                        <tr><td colspan="6" class="px-5 py-8 text-center text-slate-400">Belum ada field pendaftaran.</td></tr>
+                    @endforelse
+                </x-admin.table>
             @elseif($activeTab === 'tiket')
                 <x-admin.table data-tour="ticket-list" title="Kategori Tiket & Harga" :headers="['Kategori', 'Stok', 'Terjual', 'Harga', 'Status', 'Aksi']" :count="$event->hargas->count()">
                     <x-slot name="headerAction">
@@ -761,6 +791,19 @@
             @endif
         </div>
     </div>
+
+    <x-admin.modal name="registration-field-modal" title="Field Pendaftaran" icon="list-plus">
+        <form wire:submit="saveRegistrationField" class="space-y-4">
+            <div><label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Label</label><x-admin.input wire:model="registrationField.label" required :error="$errors->first('registrationField.label')" /></div>
+            <div class="grid grid-cols-2 gap-4">
+                <div><label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Tipe</label><select wire:model.live="registrationField.type" class="w-full rounded-xl border-slate-200 dark:bg-slate-700"><option value="text">Text</option><option value="number">Number</option><option value="select">Select</option><option value="textarea">Textarea</option></select></div>
+                <div><label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Scope</label><select wire:model="registrationField.scope" class="w-full rounded-xl border-slate-200 dark:bg-slate-700"><option value="registration">Registration</option>@if($event->registration_mode === \App\Models\Event::REGISTRATION_MODE_TEAM)<option value="member">Member</option>@endif</select></div>
+            </div>
+            <label class="flex items-center gap-2 text-sm"><input type="checkbox" wire:model="registrationField.is_required"> Required</label>
+            @if($registrationField['type'] === 'select')<div><label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Options (satu per baris)</label><textarea wire:model="registrationField.options" rows="5" class="w-full rounded-xl border-slate-200 dark:bg-slate-700"></textarea>@error('registrationField.options')<p class="text-xs text-rose-500">{{ $message }}</p>@enderror</div>@endif
+            <div class="flex justify-end gap-3"><x-admin.button type="button" x-on:click="show = false" variant="ghost">Batal</x-admin.button><x-admin.button type="submit" variant="primary">Simpan Field</x-admin.button></div>
+        </form>
+    </x-admin.modal>
 
     <!-- Add Ticket Modal -->
     <x-admin.modal name="add-ticket-modal" title="Tambah Kategori Tiket" icon="plus">

@@ -211,6 +211,13 @@ class Event extends Model
         return $this->hasMany(Harga::class, 'uid', 'uid');
     }
 
+    public function registrationFields()
+    {
+        return $this->hasMany(EventRegistrationField::class, 'event_uid', 'uid')
+            ->orderBy('sort_order')
+            ->orderBy('id');
+    }
+
     public function eventPaymentGateways()
     {
         return $this->hasMany(EventPaymentGateway::class);
