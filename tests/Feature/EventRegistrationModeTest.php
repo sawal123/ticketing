@@ -11,6 +11,7 @@ use App\Models\Event;
 use App\Models\EventBankAccount;
 use App\Models\EventDocument;
 use App\Models\EventOrganizer;
+use App\Models\EventRegistrationField;
 use App\Models\Harga;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
@@ -305,6 +306,189 @@ class EventRegistrationModeTest extends TestCase
             ->assertSee('Jenis pendaftaran saat ini: Pendaftaran Individu')
             ->assertSee('Jenis pendaftaran tidak dapat diubah karena event sudah memiliki data operasional.')
             ->assertSeeHtml('disabled');
+    }
+
+    public function test_team_event_with_member_field_rejects_change_to_individual(): void
+    {
+        $tenant = $this->tenant();
+        $category = Category::create(['name' => 'Member Team', 'slug' => 'member-team']);
+        $event = $this->editableEvent($tenant, $category, [
+            'registration_mode' => Event::REGISTRATION_MODE_TEAM,
+        ]);
+        $this->registrationField($event, ['scope' => 'member', 'label' => 'Nama Anggota']);
+
+        Livewire::actingAs($tenant)
+            ->test(EventCreate::class, ['uid' => $event->uid])
+            ->set('registration_mode', Event::REGISTRATION_MODE_INDIVIDUAL)
+            ->call('save')
+            ->assertHasErrors(['registration_mode'])
+            ->assertSet('registration_mode', Event::REGISTRATION_MODE_TEAM);
+
+        $this->assertDatabaseHas('events', [
+            'uid' => $event->uid,
+            'registration_mode' => Event::REGISTRATION_MODE_TEAM,
+        ]);
+    }
+
+    public function test_team_event_with_registration_only_field_allows_change_to_individual(): void
+    {
+        $tenant = $this->tenant();
+        $category = Category::create(['name' => 'Individual From Team', 'slug' => 'individual-from-team']);
+        $event = $this->editableEvent($tenant, $category, [
+            'registration_mode' => Event::REGISTRATION_MODE_TEAM,
+        ]);
+        $field = $this->registrationField($event, ['scope' => 'registration', 'label' => 'Nama Peserta']);
+
+        Livewire::actingAs($tenant)
+            ->test(EventCreate::class, ['uid' => $event->uid])
+            ->set('registration_mode', Event::REGISTRATION_MODE_INDIVIDUAL)
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('events', [
+            'uid' => $event->uid,
+            'registration_mode' => Event::REGISTRATION_MODE_INDIVIDUAL,
+        ]);
+        $this->assertDatabaseHas('event_registration_fields', [
+            'id' => $field->id,
+            'scope' => 'registration',
+        ]);
+    }
+
+    public function test_individual_event_with_registration_field_allows_change_to_team(): void
+    {
+        $tenant = $this->tenant();
+        $category = Category::create(['name' => 'Team From Individual', 'slug' => 'team-from-individual']);
+        $event = $this->editableEvent($tenant, $category, [
+            'registration_mode' => Event::REGISTRATION_MODE_INDIVIDUAL,
+        ]);
+        $field = $this->registrationField($event, ['scope' => 'registration', 'label' => 'Nama Peserta']);
+
+        Livewire::actingAs($tenant)
+            ->test(EventCreate::class, ['uid' => $event->uid])
+            ->set('registration_mode', Event::REGISTRATION_MODE_TEAM)
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('events', [
+            'uid' => $event->uid,
+            'registration_mode' => Event::REGISTRATION_MODE_TEAM,
+        ]);
+        $this->assertDatabaseHas('event_registration_fields', [
+            'id' => $field->id,
+            'scope' => 'registration',
+        ]);
+    }
+
+    public function test_individual_and_team_events_with_fields_reject_change_to_ticketing(): void
+    {
+        $tenant = $this->tenant();
+        $category = Category::create(['name' => 'Back To Ticketing', 'slug' => 'back-to-ticketing']);
+
+        foreach ([Event::REGISTRATION_MODE_INDIVIDUAL, Event::REGISTRATION_MODE_TEAM] as $mode) {
+            $event = $this->editableEvent($tenant, $category, [
+                'registration_mode' => $mode,
+            ]);
+            $this->registrationField($event, ['scope' => 'registration']);
+
+            Livewire::actingAs($tenant)
+                ->test(EventCreate::class, ['uid' => $event->uid])
+                ->set('registration_mode', Event::REGISTRATION_MODE_TICKETING)
+                ->call('save')
+                ->assertHasErrors(['registration_mode'])
+                ->assertSet('registration_mode', $mode);
+
+            $this->assertDatabaseHas('events', [
+                'uid' => $event->uid,
+                'registration_mode' => $mode,
+            ]);
+        }
+    }
+
+    public function test_rejected_mode_change_keeps_mode_and_registration_fields_unchanged(): void
+    {
+        $tenant = $this->tenant();
+        $category = Category::create(['name' => 'Keep Fields', 'slug' => 'keep-fields']);
+        $event = $this->editableEvent($tenant, $category, [
+            'registration_mode' => Event::REGISTRATION_MODE_TEAM,
+        ]);
+        $member = $this->registrationField($event, [
+            'scope' => 'member',
+            'label' => 'Nama Anggota',
+            'type' => 'text',
+            'is_required' => true,
+            'sort_order' => 1,
+        ]);
+        $registration = $this->registrationField($event, [
+            'scope' => 'registration',
+            'label' => 'Nama Tim',
+            'type' => 'text',
+            'is_required' => false,
+            'sort_order' => 2,
+        ]);
+
+        Livewire::actingAs($tenant)
+            ->test(EventCreate::class, ['uid' => $event->uid])
+            ->set('registration_mode', Event::REGISTRATION_MODE_INDIVIDUAL)
+            ->call('save')
+            ->assertHasErrors(['registration_mode']);
+
+        $this->assertDatabaseHas('events', [
+            'uid' => $event->uid,
+            'registration_mode' => Event::REGISTRATION_MODE_TEAM,
+        ]);
+
+        foreach ([$member, $registration] as $field) {
+            $this->assertDatabaseHas('event_registration_fields', [
+                'id' => $field->id,
+                'event_uid' => $event->uid,
+                'label' => $field->label,
+                'type' => $field->type,
+                'scope' => $field->scope,
+                'is_required' => $field->is_required,
+                'sort_order' => $field->sort_order,
+            ]);
+        }
+
+        $this->assertSame(2, EventRegistrationField::where('event_uid', $event->uid)->count());
+    }
+
+    public function test_reg2_guard_cannot_be_bypassed_by_direct_livewire_manipulation(): void
+    {
+        $tenant = $this->tenant();
+        $category = Category::create(['name' => 'Bypass Reg2', 'slug' => 'bypass-reg2']);
+        $event = $this->editableEvent($tenant, $category, [
+            'registration_mode' => Event::REGISTRATION_MODE_TEAM,
+        ]);
+        $this->registrationField($event, ['scope' => 'member', 'label' => 'Nama Anggota']);
+
+        Livewire::actingAs($tenant)
+            ->test(EventCreate::class, ['uid' => $event->uid])
+            ->assertSet('registrationModeLocked', false)
+            ->set('registrationModeLocked', false)
+            ->set('registration_mode', Event::REGISTRATION_MODE_INDIVIDUAL)
+            ->call('save')
+            ->assertHasErrors(['registration_mode'])
+            ->assertSet('registration_mode', Event::REGISTRATION_MODE_TEAM);
+
+        $this->assertDatabaseHas('events', [
+            'uid' => $event->uid,
+            'registration_mode' => Event::REGISTRATION_MODE_TEAM,
+        ]);
+        $this->assertSame(1, EventRegistrationField::where('event_uid', $event->uid)->count());
+    }
+
+    private function registrationField(Event $event, array $overrides = []): EventRegistrationField
+    {
+        return EventRegistrationField::create(array_merge([
+            'event_uid' => $event->uid,
+            'label' => 'Field '.Str::random(5),
+            'type' => 'text',
+            'scope' => 'registration',
+            'is_required' => false,
+            'options' => null,
+            'sort_order' => 1,
+        ], $overrides));
     }
 
     private function fillCreateForm(Testable $component, Category $category, array $overrides = []): Testable
