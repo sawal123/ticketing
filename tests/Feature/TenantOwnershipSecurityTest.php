@@ -322,6 +322,8 @@ class TenantOwnershipSecurityTest extends TestCase
                 'kategori' => 'Regular',
                 'qty' => 15,
                 'harga' => 100000,
+                'max_order_qty' => 5,
+                'description' => '',
                 'status' => 'active',
             ])
             ->call('updateTicket')
@@ -343,6 +345,8 @@ class TenantOwnershipSecurityTest extends TestCase
                 'kategori' => 'Regular',
                 'qty' => 24,
                 'harga' => 100000,
+                'max_order_qty' => 5,
+                'description' => '',
                 'status' => 'active',
             ])
             ->call('updateTicket')
@@ -364,6 +368,8 @@ class TenantOwnershipSecurityTest extends TestCase
                 'kategori' => 'Regular',
                 'qty' => 25,
                 'harga' => 100000,
+                'max_order_qty' => 5,
+                'description' => '',
                 'status' => 'active',
             ])
             ->call('updateTicket')

@@ -785,6 +785,23 @@
                         :error="$errors->first('newHarga.harga')" />
                 </div>
             </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Maksimal per
+                        Pemesanan</label>
+                    <x-admin.input type="number" wire:model="newHarga.max_order_qty" min="1" required
+                        :error="$errors->first('newHarga.max_order_qty')" />
+                </div>
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Deskripsi
+                    Tiket</label>
+                <textarea wire:model="newHarga.description" rows="3" placeholder="Deskripsi kategori tiket (opsional)"
+                    class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"></textarea>
+                @error('newHarga.description')
+                    <p class="text-xs text-rose-500 mt-1">{{ $message }}</p>
+                @enderror
+            </div>
             <div class="flex justify-end gap-3 mt-6">
                 <x-admin.button type="button" x-on:click="show = false" variant="ghost">Batal</x-admin.button>
                 <x-admin.button type="submit" variant="primary" icon="save" wire:loading.attr="disabled">
@@ -814,6 +831,23 @@
                         (Rp)</label>
                     <x-admin.input type="number" wire:model="editingHarga.harga" required />
                 </div>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Maksimal per
+                        Pemesanan</label>
+                    <x-admin.input type="number" wire:model="editingHarga.max_order_qty" min="1" required
+                        :error="$errors->first('editingHarga.max_order_qty')" />
+                </div>
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Deskripsi
+                    Tiket</label>
+                <textarea wire:model="editingHarga.description" rows="3" placeholder="Deskripsi kategori tiket (opsional)"
+                    class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"></textarea>
+                @error('editingHarga.description')
+                    <p class="text-xs text-rose-500 mt-1">{{ $message }}</p>
+                @enderror
             </div>
             <div class="flex justify-end gap-3 mt-6">
                 <x-admin.button type="button" x-on:click="show = false" variant="ghost">Batal</x-admin.button>

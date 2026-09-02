@@ -52,6 +52,12 @@ class TicketReservationService
                     ]);
                 }
 
+                if ((int) $item['quantity'] > $harga->maxOrderQty()) {
+                    throw ValidationException::withMessages([
+                        'quantity' => "Maksimal pemesanan tiket {$harga->kategori} adalah {$harga->maxOrderQty()}.",
+                    ]);
+                }
+
                 if ($harga->remainingQty() < $item['quantity']) {
                     throw ValidationException::withMessages([
                         'quantity' => "Stok tiket {$harga->kategori} baru saja habis.",
