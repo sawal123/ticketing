@@ -46,10 +46,14 @@ class Event extends Model
         'konfirmasi',
         'payment_otp_enabled',
         'registration_mode',
+        'team_min_members',
+        'team_max_members',
     ];
 
     protected $casts = [
         'payment_otp_enabled' => 'boolean',
+        'team_min_members' => 'integer',
+        'team_max_members' => 'integer',
     ];
 
     public static function registrationModes(): array
@@ -277,6 +281,11 @@ class Event extends Model
         return $this->hasMany(EventRegistrationField::class, 'event_uid', 'uid')
             ->orderBy('sort_order')
             ->orderBy('id');
+    }
+
+    public function registrations()
+    {
+        return $this->hasMany(EventRegistration::class, 'event_uid', 'uid');
     }
 
     public function eventPaymentGateways()

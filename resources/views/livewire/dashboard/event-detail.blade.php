@@ -244,6 +244,28 @@
                     </div>
                 </div>
             @elseif($activeTab === 'form-pendaftaran')
+                @if ($event->registration_mode === \App\Models\Event::REGISTRATION_MODE_TEAM)
+                    <x-admin.card title="Pengaturan Tim">
+                        <form wire:submit="saveTeamSettings" class="space-y-4">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <x-admin.input label="Minimum Anggota" type="number" min="1" wire:model="team_min_members" :error="$errors->first('team_min_members')" />
+                                </div>
+                                <div>
+                                    <x-admin.input label="Maksimum Anggota" type="number" min="1" wire:model="team_max_members" :error="$errors->first('team_max_members')" />
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <x-admin.button type="submit" variant="primary" icon="save">Simpan</x-admin.button>
+                                @if ($event->team_min_members !== null && $event->team_max_members !== null)
+                                    <span class="text-sm text-slate-500 dark:text-slate-400">
+                                        Saat ini: {{ $event->team_min_members }} - {{ $event->team_max_members }} anggota per tim.
+                                    </span>
+                                @endif
+                            </div>
+                        </form>
+                    </x-admin.card>
+                @endif
                 <x-admin.table title="Field Form Pendaftaran" :headers="['Label', 'Tipe', 'Scope', 'Status', 'Urutan', 'Aksi']" :count="$event->registrationFields->count()">
                     <x-slot name="headerAction">
                         <x-admin.button variant="primary" icon="plus" wire:click="openAddRegistrationFieldModal">Tambah Field</x-admin.button>
