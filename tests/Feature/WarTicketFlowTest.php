@@ -361,6 +361,8 @@ class WarTicketFlowTest extends TestCase
             $table->unsignedInteger('reserved_qty')->default(0);
             $table->integer('harga')->nullable();
             $table->string('status')->default('active');
+            $table->unsignedInteger('max_order_qty')->default(5);
+            $table->text('description')->nullable();
             $table->timestamps();
         });
 

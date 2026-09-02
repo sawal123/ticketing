@@ -72,6 +72,8 @@ class EventDetail extends Component
         'kategori' => '',
         'qty' => 0,
         'harga' => 0,
+        'max_order_qty' => 5,
+        'description' => '',
     ];
 
     public $editingHargaId;
@@ -80,6 +82,8 @@ class EventDetail extends Component
         'kategori' => '',
         'qty' => 0,
         'harga' => 0,
+        'max_order_qty' => 5,
+        'description' => '',
     ];
 
     // For Delete Modal
@@ -563,6 +567,8 @@ class EventDetail extends Component
             'kategori' => '',
             'qty' => 0,
             'harga' => 0,
+            'max_order_qty' => 5,
+            'description' => '',
         ];
 
         $this->dispatch('open-modal', name: 'add-ticket-modal');
@@ -582,6 +588,8 @@ class EventDetail extends Component
             ],
             'newHarga.qty' => 'required|integer|min:0',
             'newHarga.harga' => 'required|integer|min:0',
+            'newHarga.max_order_qty' => 'required|integer|min:1',
+            'newHarga.description' => 'nullable|string|max:2000',
         ], [
             'newHarga.kategori.unique' => 'Nama kategori tiket sudah digunakan pada event ini.',
         ]);
@@ -592,6 +600,8 @@ class EventDetail extends Component
             'qty' => (int) $validated['newHarga']['qty'],
             'harga' => (int) $validated['newHarga']['harga'],
             'status' => 'active',
+            'max_order_qty' => (int) $validated['newHarga']['max_order_qty'],
+            'description' => $validated['newHarga']['description'] ?? null,
         ]);
 
         $this->dispatch('close-modal', name: 'add-ticket-modal');
@@ -606,6 +616,8 @@ class EventDetail extends Component
             'kategori' => $harga->kategori,
             'qty' => $harga->qty,
             'harga' => $harga->harga,
+            'max_order_qty' => $harga->maxOrderQty(),
+            'description' => $harga->description,
         ];
 
         $this->dispatch('open-modal', name: 'edit-ticket-modal');
@@ -617,6 +629,8 @@ class EventDetail extends Component
             'editingHarga.kategori' => 'required',
             'editingHarga.qty' => 'required|integer|min:0',
             'editingHarga.harga' => 'required|integer|min:0',
+            'editingHarga.max_order_qty' => 'required|integer|min:1',
+            'editingHarga.description' => 'nullable|string|max:2000',
         ]);
 
         $harga = $this->authorizedHarga($this->editingHargaId);
@@ -632,6 +646,8 @@ class EventDetail extends Component
             'kategori' => $this->editingHarga['kategori'],
             'qty' => (int) $this->editingHarga['qty'],
             'harga' => (int) $this->editingHarga['harga'],
+            'max_order_qty' => (int) $this->editingHarga['max_order_qty'],
+            'description' => $this->editingHarga['description'] ?: null,
         ]);
 
         $this->dispatch('close-modal', name: 'edit-ticket-modal');

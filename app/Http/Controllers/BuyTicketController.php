@@ -232,10 +232,6 @@ class BuyTicketController extends Controller
             return redirect()->back()->with('error', 'Harap pilih minimal 1 tiket!');
         }
 
-        if ($totalRequestedQty > 5) {
-            return redirect()->back()->with('error', 'Maksimal total pemesanan adalah 5 tiket.');
-        }
-
         $event = Event::where('uid', $eventUid)->firstOrFail();
 
         $activeCart = Cart::where('event_uid', $event->uid)
