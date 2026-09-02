@@ -245,6 +245,16 @@ class EventCreate extends Component
 
                 return null;
             }
+
+            // REG2: reject mode changes that are incompatible with the
+            // registration fields currently stored for this event.
+            $registrationModeViolation = $authoritativeEvent->registrationModeChangeViolation($requestedRegistrationMode);
+            if ($registrationModeViolation !== null) {
+                $this->registration_mode = $authoritativeEvent->registration_mode;
+                $this->addError('registration_mode', $registrationModeViolation);
+
+                return null;
+            }
         }
 
         $eventStart = Carbon::parse($this->event_start);

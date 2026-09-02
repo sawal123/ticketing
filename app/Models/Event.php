@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Schema;
 
 class Event extends Model
 {
@@ -112,6 +113,66 @@ class Event extends Model
     {
         return $this->carts()
             ->withTrashed()
+            ->exists();
+    }
+
+    /**
+     * REG2 compatibility guard.
+     *
+     * Returns a user-facing rejection message when switching the event to the
+     * requested registration mode is incompatible with the registration fields
+     * currently stored for this event, or null when the change is allowed.
+     *
+     * The event and its registration fields are always read from the database
+     * (authoritative), never from client state. Events without any field or
+     * schemas without the event_registration_fields table are always allowed
+     * to change, so partial test schemas remain safe.
+     */
+    public function registrationModeChangeViolation(string $requestedMode): ?string
+    {
+        if (! Schema::hasTable('event_registration_fields')) {
+            return null;
+        }
+
+        $requestedMode = self::normalizeRegistrationMode($requestedMode);
+
+        if ($requestedMode === $this->registration_mode) {
+            return null;
+        }
+
+        if ($requestedMode === self::REGISTRATION_MODE_TICKETING) {
+            if ($this->hasRegistrationFields()) {
+                return 'hapus field pendaftaran terlebih dahulu sebelum mengubah event menjadi Ticketing Biasa.';
+            }
+
+            return null;
+        }
+
+        if ($requestedMode === self::REGISTRATION_MODE_INDIVIDUAL && $this->hasMemberScopeRegistrationField()) {
+            return 'hapus/ubah field scope member terlebih dahulu.';
+        }
+
+        return null;
+    }
+
+    public function hasRegistrationFields(): bool
+    {
+        if ($this->relationLoaded('registrationFields')) {
+            return $this->registrationFields->isNotEmpty();
+        }
+
+        return $this->registrationFields()->exists();
+    }
+
+    public function hasMemberScopeRegistrationField(): bool
+    {
+        if ($this->relationLoaded('registrationFields')) {
+            return $this->registrationFields
+                ->contains(fn (EventRegistrationField $field) => $field->scope === 'member');
+        }
+
+        return $this->registrationFields()
+            ->where('scope', 'member')
             ->exists();
     }
 
