@@ -93,6 +93,10 @@ class EventDetail extends Component
 
     public $editingRegistrationFieldId;
 
+    public $team_min_members;
+
+    public $team_max_members;
+
     // For Delete Modal
     public $deletingHargaId;
 
@@ -208,6 +212,10 @@ class EventDetail extends Component
     public function mount($uid)
     {
         $this->eventUid = $uid;
+
+        $event = $this->getEventData();
+        $this->team_min_members = $event->team_min_members;
+        $this->team_max_members = $event->team_max_members;
     }
 
     protected function getEventData()
@@ -536,6 +544,35 @@ class EventDetail extends Component
             $field->delete();
             $this->reindexRegistrationFields($event);
         });
+    }
+
+    public function saveTeamSettings(): void
+    {
+        $event = $this->authorizedTeamSettingsEvent();
+        if (! $event) {
+            return;
+        }
+
+        $validated = $this->validate([
+            'team_min_members' => 'required|integer|min:1',
+            'team_max_members' => 'required|integer|min:1',
+        ]);
+
+        $min = (int) $validated['team_min_members'];
+        $max = (int) $validated['team_max_members'];
+
+        if ($max < $min) {
+            $this->addError('team_max_members', 'Maksimum anggota tidak boleh lebih kecil dari minimum anggota.');
+
+            return;
+        }
+
+        $event->update([
+            'team_min_members' => $min,
+            'team_max_members' => $max,
+        ]);
+
+        session()->flash('message', 'Pengaturan tim berhasil disimpan.');
     }
 
     public function moveRegistrationField($id, $direction): void
@@ -1168,6 +1205,18 @@ class EventDetail extends Component
         $event = $this->getEventData();
         if ($event->registration_mode === Event::REGISTRATION_MODE_TICKETING) {
             $this->addError('registrationField', 'Field pendaftaran tidak tersedia untuk event ticketing.');
+
+            return null;
+        }
+
+        return $event;
+    }
+
+    private function authorizedTeamSettingsEvent(): ?Event
+    {
+        $event = $this->getEventData();
+        if ($event->registration_mode !== Event::REGISTRATION_MODE_TEAM) {
+            $this->addError('team_min_members', 'Pengaturan tim hanya tersedia untuk event pendaftaran tim.');
 
             return null;
         }
