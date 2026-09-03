@@ -496,6 +496,9 @@ class TransactionController extends Controller
     {
         return $request->only([
             'ticket_holder_name',
+            'registration_answers',
+            'team_name',
+            'members',
         ]);
     }
 }

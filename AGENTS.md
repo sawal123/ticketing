@@ -94,3 +94,68 @@ main
 └── feature/event-registration
     └── feat/<milestone>
 ```
+
+Lanjutkan branch existing hanya bila prompt menyatakannya dengan eksplisit.
+
+Sebelum push:
+
+1. Pastikan perubahan hanya mencakup scope task.
+2. Jangan menambah file generated atau perubahan lokal milik user tanpa instruksi.
+3. Jangan merge branch atau PR tanpa instruksi eksplisit.
+4. Push hanya setelah verification yang diminta selesai.
+
+---
+
+## Scope Discipline
+
+- Kerjakan hanya milestone dan file/area yang diperlukan oleh prompt.
+- Jangan mengambil scope milestone berikutnya, termasuk dashboard, export, checkout redesign, atau refactor pembayaran kecuali disebutkan.
+- Jangan mengubah schema existing selain melalui migration baru yang memang diperlukan oleh task.
+- Jangan mengubah behavior ticketing existing saat menambah behavior registration kecuali requirement menyatakan sebaliknya.
+- Jika requirement bertentangan atau perubahan di luar scope diperlukan, berhenti dan laporkan blocker sebelum mengubah area tersebut.
+
+---
+
+## Testing
+
+- Tambahkan behavioral test untuk bug fix, security guard, dan flow baru yang diminta.
+- Gunakan test feature/service existing sebagai pola; jangan melemahkan assertion untuk membuat test lulus.
+- Jalankan test secara sequential. Jangan menjalankan PHPUnit paralel.
+- Jalankan targeted test untuk area yang berubah dan regression test terkait.
+- Jalankan existing test payment/OTP/checkout bila perubahan menyentuh checkout atau payment.
+
+---
+
+## Verification
+
+Setelah implementasi, jalankan dalam urutan yang sesuai risiko task:
+
+1. Pint untuk seluruh file PHP yang berubah.
+2. Targeted PHPUnit dan regression suite terkait.
+3. Full suite sequential: `php -d memory_limit=512M vendor/bin/phpunit`.
+4. `git diff --check`.
+5. Periksa `git status --short` sebelum commit dan push.
+
+Jika full suite atau verification wajib gagal, jangan menyatakan siap merge. Jelaskan kegagalan yang masih tersisa secara ringkas.
+
+---
+
+## Existing Tests
+
+- Existing test adalah kontrak behavior. Jangan menghapus atau menulis ulang assertion unrelated hanya untuk menyesuaikan perubahan baru.
+- Untuk checkout/payment, jaga test OTP, Midtrans callback, recipient snapshot, quantity, dan ticketing tetap hijau.
+- Untuk registration, jaga test mode event, dynamic fields, dan team roster tetap hijau.
+
+---
+
+## Final Output
+
+Output akhir default menggunakan tepat 5 poin singkat:
+
+1. File yang berubah.
+2. Perbaikan atau behavior utama.
+3. Test behavioral yang ditambahkan.
+4. Hasil verification, termasuk Pint dan `git diff --check`.
+5. HEAD branch/PR dan status siap atau tidak siap merge.
+
+Jangan menyatakan merge telah dilakukan kecuali prompt meminta merge secara eksplisit.

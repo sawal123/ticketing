@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Http\Controllers\TransactionController;
 use App\Models\Cart;
 use App\Models\Event;
 use App\Models\EventRegistration;
@@ -9,6 +10,7 @@ use App\Models\EventRegistrationField;
 use App\Models\HargaCart;
 use App\Models\User;
 use App\Services\Registrations\CheckoutRegistrationService;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -132,6 +134,27 @@ class CheckoutRegistrationIntegrationTest extends TestCase
         $this->assertCount(2, $registration->fresh()->members);
     }
 
+    public function test_team_registration_accepts_members_above_minimum_up_to_maximum(): void
+    {
+        $event = $this->event(Event::REGISTRATION_MODE_TEAM, 2, 5);
+        $nickname = $this->field($event, 'Nickname', 'text', 'member', true);
+        $cart = $this->cart($event);
+        $this->cartItem($cart, 1);
+
+        $registration = $this->service()->persist($cart, [
+            'team_name' => 'Team Five',
+            'members' => [
+                ['is_captain' => true, 'answers' => [(string) $nickname->id => 'One']],
+                ['is_captain' => false, 'answers' => [(string) $nickname->id => 'Two']],
+                ['is_captain' => false, 'answers' => [(string) $nickname->id => 'Three']],
+                ['is_captain' => false, 'answers' => [(string) $nickname->id => 'Four']],
+                ['is_captain' => false, 'answers' => [(string) $nickname->id => 'Five']],
+            ],
+        ]);
+
+        $this->assertCount(5, $registration->fresh()->members);
+    }
+
     public function test_team_registration_rejects_invalid_roster(): void
     {
         $event = $this->event(Event::REGISTRATION_MODE_TEAM, 2, 3);
@@ -142,6 +165,26 @@ class CheckoutRegistrationIntegrationTest extends TestCase
         $this->service()->persist($cart, [
             'team_name' => 'Team Alpha',
             'members' => [['is_captain' => true, 'answers' => []]],
+        ]);
+    }
+
+    public function test_team_registration_rejects_roster_above_maximum(): void
+    {
+        $event = $this->event(Event::REGISTRATION_MODE_TEAM, 2, 5);
+        $cart = $this->cart($event);
+        $this->cartItem($cart, 1);
+
+        $this->expectException(ValidationException::class);
+        $this->service()->persist($cart, [
+            'team_name' => 'Too Many',
+            'members' => [
+                ['is_captain' => true, 'answers' => []],
+                ['is_captain' => false, 'answers' => []],
+                ['is_captain' => false, 'answers' => []],
+                ['is_captain' => false, 'answers' => []],
+                ['is_captain' => false, 'answers' => []],
+                ['is_captain' => false, 'answers' => []],
+            ],
         ]);
     }
 
@@ -227,6 +270,28 @@ class CheckoutRegistrationIntegrationTest extends TestCase
 
         $this->expectException(ValidationException::class);
         $this->service()->persist($cart, ['registration_answers' => []]);
+    }
+
+    public function test_registration_validation_error_keeps_registration_team_and_member_input_only(): void
+    {
+        $request = Request::create('/paynow', 'POST', [
+            'ticket_holder_name' => 'Buyer',
+            'registration_answers' => ['10' => 'Open'],
+            'team_name' => 'Team Alpha',
+            'members' => [['is_captain' => '1', 'answers' => ['11' => 'Captain']]],
+            'payment_gateway_id' => 99,
+            'cart_uid' => 'cart-secret',
+        ]);
+        $method = new \ReflectionMethod(TransactionController::class, 'recipientInput');
+        $method->setAccessible(true);
+
+        session()->flashInput($method->invoke(new TransactionController, $request));
+
+        $this->assertSame(['10' => 'Open'], session()->getOldInput('registration_answers'));
+        $this->assertSame('Team Alpha', session()->getOldInput('team_name'));
+        $this->assertSame([['is_captain' => '1', 'answers' => ['11' => 'Captain']]], session()->getOldInput('members'));
+        $this->assertNull(session()->getOldInput('payment_gateway_id'));
+        $this->assertNull(session()->getOldInput('cart_uid'));
     }
 
     private function service(): CheckoutRegistrationService

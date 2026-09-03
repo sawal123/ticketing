@@ -175,7 +175,9 @@
                     $registrationLocked = $hasActivePaymentLink;
                     $registrationAnswers = old('registration_answers', $registration?->answers ?? []);
                     $savedMembers = $registration?->members ?? collect();
-                    $memberCount = max(1, (int) ($event->team_min_members ?? 1));
+                    $teamMinMembers = max(1, (int) ($event->team_min_members ?? 1));
+                    $teamMaxMembers = max($teamMinMembers, (int) ($event->team_max_members ?? $teamMinMembers));
+                    $memberCount = min($teamMaxMembers, max($teamMinMembers, count(old('members', $savedMembers))));
                 @endphp
                 <div class="card">
                     <div class="card-header">
@@ -235,11 +237,15 @@
                                         <label style="display:block;font-weight:700;font-size:13px;margin-bottom:8px;color:#fff;">Nama Tim *</label>
                                         <input type="text" name="team_name" form="paynowForm" value="{{ old('team_name', $registration?->team_name) }}" class="voucher-input">
                                     </div>
+                                    <div id="teamRosterMembers" data-min-members="{{ $teamMinMembers }}" data-max-members="{{ $teamMaxMembers }}">
                                     @for ($memberIndex = 0; $memberIndex < $memberCount; $memberIndex++)
                                         @php $memberAnswers = old("members.{$memberIndex}.answers", data_get($savedMembers->get($memberIndex), 'answers', [])); @endphp
-                                        <div style="padding:12px;border:1px solid rgba(255,255,255,0.08);border-radius:12px;display:grid;gap:10px;">
-                                            <label style="font-weight:700;font-size:13px;color:#fff;">Anggota {{ $memberIndex + 1 }}</label>
-                                            <label style="font-size:12px;color:var(--muted);"><input type="checkbox" name="members[{{ $memberIndex }}][is_captain]" form="paynowForm" value="1" @checked(old("members.{$memberIndex}.is_captain", $memberIndex === 0))> Kapten tim</label>
+                                        <div class="team-member-card" style="padding:12px;border:1px solid rgba(255,255,255,0.08);border-radius:12px;display:grid;gap:10px;margin-top:10px;">
+                                            <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;">
+                                                <label class="team-member-title" style="font-weight:700;font-size:13px;color:#fff;">Anggota {{ $memberIndex + 1 }}</label>
+                                                <button type="button" class="team-member-remove" style="border:0;border-radius:8px;padding:5px 8px;background:rgba(232,84,122,0.16);color:#f6a1b7;font-size:12px;">Hapus Anggota</button>
+                                            </div>
+                                            <label style="font-size:12px;color:var(--muted);"><input type="checkbox" class="team-member-captain" name="members[{{ $memberIndex }}][is_captain]" form="paynowForm" value="1" @checked(old("members.{$memberIndex}.is_captain", $memberIndex === 0))> Kapten tim</label>
                                             @foreach ($memberFields as $field)
                                                 <div>
                                                     <label style="display:block;font-size:12px;margin-bottom:6px;color:#fff;">{{ $field->label }}{{ $field->is_required ? ' *' : '' }}</label>
@@ -259,11 +265,118 @@
                                             @endforeach
                                         </div>
                                     @endfor
+                                    </div>
+                                    <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;margin-top:12px;">
+                                        <span id="teamRosterCount" style="font-size:12px;color:var(--muted);"></span>
+                                        <button type="button" id="teamMemberAdd" style="border:0;border-radius:8px;padding:7px 10px;background:rgba(61,217,196,0.16);color:#72eadb;font-size:12px;">Tambah Anggota</button>
+                                    </div>
+                                    <template id="teamMemberTemplate">
+                                        <div class="team-member-card" style="padding:12px;border:1px solid rgba(255,255,255,0.08);border-radius:12px;display:grid;gap:10px;margin-top:10px;">
+                                            <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;">
+                                                <label class="team-member-title" style="font-weight:700;font-size:13px;color:#fff;">Anggota</label>
+                                                <button type="button" class="team-member-remove" style="border:0;border-radius:8px;padding:5px 8px;background:rgba(232,84,122,0.16);color:#f6a1b7;font-size:12px;">Hapus Anggota</button>
+                                            </div>
+                                            <label style="font-size:12px;color:var(--muted);"><input type="checkbox" class="team-member-captain" name="members[__INDEX__][is_captain]" form="paynowForm" value="1"> Kapten tim</label>
+                                            @foreach ($memberFields as $field)
+                                                <div>
+                                                    <label style="display:block;font-size:12px;margin-bottom:6px;color:#fff;">{{ $field->label }}{{ $field->is_required ? ' *' : '' }}</label>
+                                                    @if ($field->type === 'textarea')
+                                                        <textarea name="members[__INDEX__][answers][{{ $field->id }}]" form="paynowForm" class="voucher-input" rows="2"></textarea>
+                                                    @elseif ($field->type === 'select')
+                                                        <select name="members[__INDEX__][answers][{{ $field->id }}]" form="paynowForm" class="voucher-input">
+                                                            <option value="">Pilih {{ $field->label }}</option>
+                                                            @foreach ($field->options ?? [] as $option)
+                                                                <option value="{{ $option }}">{{ $option }}</option>
+                                                            @endforeach
+                                                        </select>
+                                                    @else
+                                                        <input type="{{ $field->type === 'number' ? 'number' : 'text' }}" name="members[__INDEX__][answers][{{ $field->id }}]" form="paynowForm" class="voucher-input">
+                                                    @endif
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    </template>
                                 @endif
                             </div>
                         @endif
                     </div>
                 </div>
+            @endif
+
+            @if ($event->registration_mode === \App\Models\Event::REGISTRATION_MODE_TEAM && !$registrationLocked)
+                <script>
+                    (() => {
+                        const roster = document.getElementById('teamRosterMembers');
+                        const addButton = document.getElementById('teamMemberAdd');
+                        const countLabel = document.getElementById('teamRosterCount');
+                        const template = document.getElementById('teamMemberTemplate');
+
+                        if (!roster || !addButton || !countLabel || !template) {
+                            return;
+                        }
+
+                        const minimum = Number(roster.dataset.minMembers);
+                        const maximum = Number(roster.dataset.maxMembers);
+                        let nextIndex = roster.querySelectorAll('.team-member-card').length;
+
+                        const cards = () => Array.from(roster.querySelectorAll('.team-member-card'));
+                        const updateControls = () => {
+                            const currentCards = cards();
+                            countLabel.textContent = `Anggota ${currentCards.length} dari ${minimum}-${maximum}`;
+                            addButton.disabled = currentCards.length >= maximum;
+                            addButton.style.opacity = addButton.disabled ? '0.5' : '1';
+                            currentCards.forEach((card, index) => {
+                                card.querySelector('.team-member-title').textContent = `Anggota ${index + 1}`;
+                                card.querySelector('.team-member-remove').disabled = currentCards.length <= minimum;
+                                card.querySelector('.team-member-remove').style.opacity = currentCards.length <= minimum ? '0.5' : '1';
+                            });
+                        };
+
+                        const ensureCaptain = () => {
+                            const captains = cards().map((card) => card.querySelector('.team-member-captain'));
+                            if (!captains.some((captain) => captain.checked) && captains[0]) {
+                                captains[0].checked = true;
+                            }
+                        };
+
+                        roster.addEventListener('click', (event) => {
+                            const removeButton = event.target.closest('.team-member-remove');
+                            if (!removeButton || cards().length <= minimum) {
+                                return;
+                            }
+
+                            removeButton.closest('.team-member-card').remove();
+                            ensureCaptain();
+                            updateControls();
+                        });
+
+                        roster.addEventListener('change', (event) => {
+                            if (!event.target.classList.contains('team-member-captain') || !event.target.checked) {
+                                return;
+                            }
+
+                            cards().forEach((card) => {
+                                const captain = card.querySelector('.team-member-captain');
+                                if (captain !== event.target) {
+                                    captain.checked = false;
+                                }
+                            });
+                        });
+
+                        addButton.addEventListener('click', () => {
+                            if (cards().length >= maximum) {
+                                return;
+                            }
+
+                            roster.insertAdjacentHTML('beforeend', template.innerHTML.replaceAll('__INDEX__', nextIndex));
+                            nextIndex++;
+                            updateControls();
+                        });
+
+                        ensureCaptain();
+                        updateControls();
+                    })();
+                </script>
             @endif
 
             <!-- TICKET DETAIL -->
