@@ -18,7 +18,7 @@
                     <i data-lucide="chevron-left" class="w-5 h-5"></i>
                 </button>
             @else
-                <button wire:click="previousPage" wire:loading.attr="disabled"
+                <button wire:click="previousPage('{{ $paginator->getPageName() }}')" wire:loading.attr="disabled"
                     class="cursor-pointer p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400 transition-all duration-200">
                     <i data-lucide="chevron-left" class="w-5 h-5"></i>
                 </button>
@@ -39,7 +39,7 @@
                                 {{ $page }}
                             </button>
                         @else
-                            <button wire:click="gotoPage({{ $page }})"
+                            <button wire:click="gotoPage({{ $page }}, '{{ $paginator->getPageName() }}')"
                                 class="cursor-pointer px-3 py-1 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all">
                                 {{ $page }}
                             </button>
@@ -50,7 +50,7 @@
 
             {{-- Next Page Link --}}
             @if ($paginator->hasMorePages())
-                <button wire:click="nextPage" wire:loading.attr="disabled"
+                <button wire:click="nextPage('{{ $paginator->getPageName() }}')" wire:loading.attr="disabled"
                     class="cursor-pointer p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400 transition-all duration-200">
                     <i data-lucide="chevron-right" class="w-5 h-5"></i>
                 </button>

@@ -78,6 +78,13 @@
                 Form Pendaftaran
             </button>
         @endif
+        @if (in_array($event->registration_mode, [\App\Models\Event::REGISTRATION_MODE_INDIVIDUAL, \App\Models\Event::REGISTRATION_MODE_TEAM], true))
+            <button wire:click="setTab('peserta')"
+                class="flex items-center gap-2 cursor-pointer px-4 py-2 text-sm font-medium rounded-lg transition-all {{ $activeTab === 'peserta' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700' }}">
+                <i data-lucide="users" class="w-4 h-4"></i>
+                Peserta
+            </button>
+        @endif
         <button wire:click="setTab('mou')"
             class="flex items-center gap-2 cursor-pointer px-4 py-2 text-sm font-medium rounded-lg transition-all {{ $activeTab === 'mou' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700' }}">
             <i data-lucide="file-badge" class="w-4 h-4"></i>
@@ -288,6 +295,170 @@
                         <tr><td colspan="6" class="px-5 py-8 text-center text-slate-400">Belum ada field pendaftaran.</td></tr>
                     @endforelse
                 </x-admin.table>
+            @elseif($activeTab === 'peserta')
+                <p class="mb-4 flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+                    <i data-lucide="info" class="w-3.5 h-3.5 shrink-0"></i>
+                    Daftar peserta pendaftaran event ini bersifat read-only.
+                </p>
+
+                <div class="space-y-4">
+                    <x-admin.card padding="p-4">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Status</label>
+                                <select wire:model.live="filterParticipantStatus"
+                                    class="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-800 dark:text-slate-200 text-sm focus:ring-2 focus:ring-indigo-500 transition-all">
+                                    <option value="all">Semua Status</option>
+                                    <option value="PENDING">PENDING</option>
+                                    <option value="SUCCESS">SUCCESS</option>
+                                    <option value="CANCELLED">CANCELLED</option>
+                                    <option value="EXPIRED">EXPIRED</option>
+                                </select>
+                            </div>
+                            <div class="flex items-end gap-2 md:col-span-2">
+                                <div class="flex-1">
+                                    <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Cari Peserta</label>
+                                    <x-admin.input wire:model.live.debounce.300ms="searchParticipant"
+                                        placeholder="UID / Invoice / Nama Tim / Nama / Email..." icon="search" />
+                                </div>
+                                <div class="w-24">
+                                    <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Per Hal.</label>
+                                    <select wire:model.live="perPageParticipant"
+                                        class="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs focus:ring-2 focus:ring-indigo-500 transition-all outline-none">
+                                        <option value="10">10</option>
+                                        <option value="25">25</option>
+                                        <option value="50">50</option>
+                                        <option value="100">100</option>
+                                    </select>
+                                </div>
+                                <x-admin.button variant="ghost" icon="rotate-ccw" wire:click="resetParticipantFilters"
+                                    class="mb-0.5" title="Reset Filter"></x-admin.button>
+                            </div>
+                        </div>
+                    </x-admin.card>
+
+                    <div class="relative min-h-[300px]">
+                        <div wire:loading
+                            wire:target="perPageParticipant, gotoPage, nextPage, previousPage, filterParticipantStatus, searchParticipant"
+                            class="absolute inset-0 z-10 bg-white/60 dark:bg-slate-900/60 backdrop-blur-[2px] flex items-center justify-center rounded-3xl transition-all">
+                            <div class="flex flex-col items-center gap-3">
+                                <div
+                                    class="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin">
+                                </div>
+                                <p class="text-xs font-bold text-indigo-600 dark:text-indigo-400 animate-pulse">
+                                    Memperbarui Daftar...</p>
+                            </div>
+                        </div>
+
+                        <x-admin.table title="Daftar Peserta" :headers="['Peserta / Tim', 'Akun Pendaftar', 'Invoice', 'Anggota', 'Pembayaran', 'Status', 'Tanggal', 'Aksi']" :count="$participants->total()">
+                            @forelse($participants as $registration)
+                                @php
+                                    $regUser = $registration->user;
+                                    $regCart = $registration->cart;
+                                    $regIsTeam = $registration->registration_mode === \App\Models\Event::REGISTRATION_MODE_TEAM;
+                                    $regMemberCount = $regIsTeam ? $registration->members->count() : null;
+                                    $regAccountName = $regUser?->name ?? 'Akun tidak ditemukan';
+                                    $regAccountEmail = $regUser?->email ?? '';
+                                    if (! $regCart) {
+                                        $regPaymentLabel = '-';
+                                    } elseif ($regCart->payment_type === 'cash') {
+                                        $regPaymentLabel = 'Cash';
+                                    } elseif ($regCart->paymentGateway) {
+                                        $regPaymentLabel = $regCart->paymentGateway->payment;
+                                    } elseif (filled($regCart->payment_type)) {
+                                        $regPaymentLabel = ucwords(str_replace('_', ' ', (string) $regCart->payment_type));
+                                    } else {
+                                        $regPaymentLabel = '-';
+                                    }
+                                @endphp
+                                <tr class="table-row-hover transition-colors">
+                                    <td class="px-5 py-4 whitespace-nowrap">
+                                        @if ($regIsTeam)
+                                            <div class="flex flex-col">
+                                                <span class="font-bold text-slate-800 dark:text-white">{{ $registration->team_name ?: 'Tim tanpa nama' }}</span>
+                                                <span class="text-xs text-slate-500">{{ $regMemberCount }} anggota</span>
+                                            </div>
+                                        @else
+                                            <div class="flex flex-col">
+                                                <span class="font-medium text-slate-800 dark:text-white">{{ $regAccountName }}</span>
+                                                <span class="text-xs text-slate-500">Peserta individu</span>
+                                            </div>
+                                        @endif
+                                    </td>
+                                    <td class="px-5 py-4 whitespace-nowrap">
+                                        <div class="flex items-center gap-3">
+                                            <div class="w-8 h-8 rounded-full bg-indigo-50 flex items-center justify-center text-xs font-bold text-indigo-600">
+                                                {{ mb_substr($regAccountName, 0, 1) }}
+                                            </div>
+                                            <div class="flex flex-col">
+                                                <span class="font-medium text-slate-800 dark:text-white">{{ $regAccountName }}</span>
+                                                <span class="text-xs text-slate-500">{{ $regAccountEmail }}</span>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="px-5 py-4">
+                                        <span class="text-xs font-mono font-bold bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded text-slate-700 dark:text-slate-300">
+                                            {{ $registration->invoice ?: '-' }}
+                                        </span>
+                                    </td>
+                                    <td class="px-5 py-4">
+                                        <span class="text-sm font-bold text-slate-800 dark:text-white">
+                                            {{ $regMemberCount !== null ? $regMemberCount.' Anggota' : '-' }}
+                                        </span>
+                                    </td>
+                                    <td class="px-5 py-4 text-sm text-slate-600 dark:text-slate-400">
+                                        {{ $regPaymentLabel }}
+                                    </td>
+                                    <td class="px-5 py-4">
+                                        @if ($registration->status === \App\Models\EventRegistration::STATUS_SUCCESS)
+                                            <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest border bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-700">
+                                                <i data-lucide="check-circle" class="w-3 h-3"></i>
+                                                {{ $registration->status }}
+                                            </span>
+                                        @elseif ($registration->status === \App\Models\EventRegistration::STATUS_CANCELLED)
+                                            <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest border bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-700">
+                                                <i data-lucide="x-circle" class="w-3 h-3"></i>
+                                                {{ $registration->status }}
+                                            </span>
+                                        @elseif ($registration->status === \App\Models\EventRegistration::STATUS_EXPIRED)
+                                            <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest border bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700">
+                                                <i data-lucide="clock" class="w-3 h-3"></i>
+                                                {{ $registration->status }}
+                                            </span>
+                                        @else
+                                            <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest border bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-700">
+                                                <i data-lucide="clock" class="w-3 h-3"></i>
+                                                {{ $registration->status ?: 'PENDING' }}
+                                            </span>
+                                        @endif
+                                    </td>
+                                    <td class="px-5 py-4 text-sm text-slate-600 dark:text-slate-400">
+                                        {{ $registration->created_at?->format('d M Y, H:i') }}
+                                    </td>
+                                    <td class="px-5 py-4 text-center">
+                                        <x-admin.button
+                                            x-on:click="$dispatch('open-modal', {name: 'participant-detail-modal'}); $wire.showParticipantDetail('{{ $registration->uid }}')"
+                                            variant="ghost" size="sm" icon="eye"
+                                            class="text-indigo-600" title="Lihat Detail" />
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="8" class="px-5 py-12 text-center">
+                                        <div class="flex flex-col items-center justify-center text-slate-400">
+                                            <i data-lucide="users" class="w-12 h-12 mb-2 opacity-20"></i>
+                                            <p>Tidak ada peserta yang sesuai dengan filter.</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            @endforelse
+
+                            <x-slot name="pagination">
+                                {{ $participants->links('components.admin.pagination') }}
+                            </x-slot>
+                        </x-admin.table>
+                    </div>
+                </div>
             @elseif($activeTab === 'tiket')
                 <x-admin.table data-tour="ticket-list" title="Kategori Tiket & Harga" :headers="['Kategori', 'Stok', 'Terjual', 'Harga', 'Status', 'Aksi']" :count="$event->hargas->count()">
                     <x-slot name="headerAction">
@@ -1105,6 +1276,173 @@
             @endif
         </div>
     </x-admin.modal>
+
+    <!-- Participant Detail Modal -->
+    @if (in_array($event->registration_mode, [\App\Models\Event::REGISTRATION_MODE_INDIVIDUAL, \App\Models\Event::REGISTRATION_MODE_TEAM], true))
+        <x-admin.modal name="participant-detail-modal" title="Detail Peserta" icon="users" maxWidth="lg">
+        <div wire:loading wire:target="showParticipantDetail" class="w-full py-12">
+            <div class="flex flex-col items-center justify-center space-y-4">
+                <div class="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+                <p class="text-sm text-slate-500 font-medium animate-pulse">Mengambil data peserta...</p>
+            </div>
+        </div>
+
+        <div wire:loading.remove wire:target="showParticipantDetail">
+            @if ($selectedRegistration)
+                @php
+                    $detailReg = $selectedRegistration;
+                    $detailUser = $detailReg->user;
+                    $detailCart = $detailReg->cart;
+                    $detailIsTeam = $detailReg->registration_mode === \App\Models\Event::REGISTRATION_MODE_TEAM;
+                    $detailAnswers = $detailReg->answers ?? [];
+                    $detailRegFields = $event->registrationFields->where('scope', 'registration')->values();
+                    $detailMemberFields = $event->registrationFields->where('scope', 'member')->values();
+                    $detailAccountName = $detailUser?->name ?? 'Akun tidak ditemukan';
+                    $detailAccountEmail = $detailUser?->email ?? '';
+                    if (! $detailCart) {
+                        $detailPaymentLabel = '-';
+                    } elseif ($detailCart->payment_type === 'cash') {
+                        $detailPaymentLabel = 'Cash';
+                    } elseif ($detailCart->paymentGateway) {
+                        $detailPaymentLabel = $detailCart->paymentGateway->payment;
+                    } elseif (filled($detailCart->payment_type)) {
+                        $detailPaymentLabel = ucwords(str_replace('_', ' ', (string) $detailCart->payment_type));
+                    } else {
+                        $detailPaymentLabel = '-';
+                    }
+                    $detailStatus = $detailReg->status ?: 'PENDING';
+                    $detailDate = $detailReg->created_at?->format('d M Y, H:i');
+                    $answerText = static function ($value) {
+                        if (! is_scalar($value) && $value !== null) {
+                            return '-';
+                        }
+
+                        return filled($value) ? (string) $value : '-';
+                    };
+                @endphp
+                <div class="space-y-6">
+                    <div class="flex justify-between items-start border-b border-slate-100 dark:border-slate-700 pb-4">
+                        <div>
+                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Invoice</p>
+                            <p class="text-lg font-mono font-bold text-slate-800 dark:text-white">
+                                {{ $detailReg->invoice ?: '-' }}</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Status</p>
+                            <span
+                                class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border {{ in_array($detailStatus, ['SUCCESS', 'CANCELLED', 'EXPIRED'], true) ? ($detailStatus === 'SUCCESS' ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-700' : ($detailStatus === 'CANCELLED' ? 'bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-700' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700')) : 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-700' }}">
+                                {{ $detailStatus }}
+                            </span>
+                        </div>
+                    </div>
+
+                    @if ($detailIsTeam && filled($detailReg->team_name))
+                        <div class="flex items-center gap-3 bg-indigo-50 dark:bg-indigo-900/20 p-4 rounded-2xl">
+                            <div class="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center">
+                                <i data-lucide="shield" class="w-5 h-5 text-indigo-600 dark:text-indigo-400"></i>
+                            </div>
+                            <div>
+                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Nama Tim</p>
+                                <p class="text-sm font-bold text-slate-800 dark:text-white">{{ $detailReg->team_name }}</p>
+                            </div>
+                        </div>
+                    @endif
+
+                    <div class="flex items-center gap-4 bg-slate-50 dark:bg-slate-700/50 p-4 rounded-2xl">
+                        <div
+                            class="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold">
+                            {{ mb_substr($detailAccountName, 0, 1) }}
+                        </div>
+                        <div>
+                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Akun Pendaftar</p>
+                            <p class="text-sm font-bold text-slate-800 dark:text-white">{{ $detailAccountName }}</p>
+                            <p class="text-xs text-slate-500">{{ $detailAccountEmail }}</p>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                        <div class="flex justify-between border border-slate-100 dark:border-slate-700 rounded-xl px-3 py-2.5">
+                            <span class="text-slate-500">Tanggal Pendaftaran</span>
+                            <span class="font-bold text-slate-800 dark:text-white">{{ $detailDate }}</span>
+                        </div>
+                        <div class="flex justify-between border border-slate-100 dark:border-slate-700 rounded-xl px-3 py-2.5">
+                            <span class="text-slate-500">Metode Pembayaran</span>
+                            <span class="font-bold text-slate-800 dark:text-white">{{ $detailPaymentLabel }}</span>
+                        </div>
+                        <div class="flex justify-between border border-slate-100 dark:border-slate-700 rounded-xl px-3 py-2.5">
+                            <span class="text-slate-500">Total</span>
+                            <span class="font-bold text-slate-800 dark:text-white">
+                                {{ $detailCart?->gross_amount !== null ? 'Rp '.number_format((int) $detailCart->gross_amount, 0, ',', '.') : '-' }}
+                            </span>
+                        </div>
+                        <div class="flex justify-between border border-slate-100 dark:border-slate-700 rounded-xl px-3 py-2.5">
+                            <span class="text-slate-500">Tipe</span>
+                            <span class="font-bold text-slate-800 dark:text-white">{{ $detailIsTeam ? 'Tim' : 'Individu' }}</span>
+                        </div>
+                    </div>
+
+                    @if ($detailRegFields->isNotEmpty())
+                        <div>
+                            <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Data Pendaftaran</h4>
+                            <div class="space-y-2">
+                                @foreach ($detailRegFields as $field)
+                                    @php $fieldAnswer = $detailAnswers[$field->id] ?? null; @endphp
+                                    <div class="flex justify-between items-start gap-4 p-3 rounded-xl border border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800">
+                                        <span class="text-slate-500">{{ $field->label }}</span>
+                                        <span class="font-semibold text-slate-800 dark:text-white text-right">{{ $answerText($fieldAnswer) }}</span>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endif
+
+                    @if ($detailIsTeam)
+                        <div>
+                            <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Daftar Anggota ({{ $detailReg->members->count() }})</h4>
+                            <div class="space-y-3">
+                                @forelse ($detailReg->members as $member)
+                                    <div class="p-4 rounded-xl border {{ $member->is_captain ? 'border-indigo-200 dark:border-indigo-800 bg-indigo-50/50 dark:bg-indigo-900/10' : 'border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800' }}">
+                                        <div class="flex items-center justify-between mb-2">
+                                            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">Anggota {{ $loop->iteration }}</p>
+                                            @if ($member->is_captain)
+                                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300">
+                                                    <i data-lucide="star" class="w-3 h-3"></i>
+                                                    Kapten
+                                                </span>
+                                            @endif
+                                        </div>
+                                        @if ($detailMemberFields->isEmpty())
+                                            <p class="text-xs text-slate-400">Tidak ada field anggota untuk event ini.</p>
+                                        @else
+                                            <div class="space-y-1.5">
+                                                @foreach ($detailMemberFields as $memberField)
+                                                    @php $memberAnswer = $member->answers[$memberField->id] ?? null; @endphp
+                                                    <div class="flex justify-between items-start gap-4 text-sm">
+                                                        <span class="text-slate-500">{{ $memberField->label }}</span>
+                                                        <span class="font-semibold text-slate-800 dark:text-white text-right">{{ $answerText($memberAnswer) }}</span>
+                                                    </div>
+                                                @endforeach
+                                            </div>
+                                        @endif
+                                    </div>
+                                @empty
+                                    <p class="text-sm text-slate-400">Belum ada anggota pada pendaftaran ini.</p>
+                                @endforelse
+                            </div>
+                        </div>
+                    @endif
+
+                    <div class="mt-8">
+                        <x-admin.button x-on:click="show = false" variant="secondary" icon="x-circle"
+                            class="w-full !py-3">
+                            Tutup
+                        </x-admin.button>
+                    </div>
+                </div>
+            @endif
+        </div>
+        </x-admin.modal>
+    @endif
 
     <!-- Resend Email Confirmation Modal -->
     <x-admin.modal name="resend-email-modal" title="Kirim Ulang Barcode?" icon="mail">
