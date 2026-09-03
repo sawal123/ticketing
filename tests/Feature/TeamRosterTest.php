@@ -446,6 +446,57 @@ class TeamRosterTest extends TestCase
         $this->assertArrayNotHasKey('members.0.answers', $result['errors']);
     }
 
+    public function test_optional_member_string_field_may_be_blank(): void
+    {
+        $event = $this->dynamicFieldEvent();
+        $nick = $this->memberField($event, 'Nickname');
+        $bio = $this->memberField($event, 'Bio');
+
+        $result = $this->validator()->validateAndNormalize($event, $this->roster('Tim', [
+            $this->rosterMember(true, [
+                (string) $nick->id => 'Captain',
+                (string) $bio->id => '   ',
+            ]),
+        ]));
+
+        $this->assertTrue($result['valid']);
+        $this->assertArrayNotHasKey($bio->id, $result['data']['members'][0]['answers']);
+    }
+
+    public function test_optional_text_field_rejects_false_value(): void
+    {
+        $event = $this->dynamicFieldEvent();
+        $nick = $this->memberField($event, 'Nickname');
+        $alias = $this->registrationField($event, ['label' => 'Alias', 'type' => 'text', 'scope' => 'member', 'is_required' => false, 'sort_order' => 5]);
+
+        $result = $this->validator()->validateAndNormalize($event, $this->roster('Tim', [
+            $this->rosterMember(true, [
+                (string) $nick->id => 'Captain',
+                (string) $alias->id => false,
+            ]),
+        ]));
+
+        $this->assertFalse($result['valid']);
+        $this->assertArrayHasKey("members.0.answers.{$alias->id}", $result['errors']);
+    }
+
+    public function test_optional_text_field_rejects_array_value(): void
+    {
+        $event = $this->dynamicFieldEvent();
+        $nick = $this->memberField($event, 'Nickname');
+        $alias = $this->registrationField($event, ['label' => 'Alias', 'type' => 'text', 'scope' => 'member', 'is_required' => false, 'sort_order' => 5]);
+
+        $result = $this->validator()->validateAndNormalize($event, $this->roster('Tim', [
+            $this->rosterMember(true, [
+                (string) $nick->id => 'Captain',
+                (string) $alias->id => [],
+            ]),
+        ]));
+
+        $this->assertFalse($result['valid']);
+        $this->assertArrayHasKey("members.0.answers.{$alias->id}", $result['errors']);
+    }
+
     public function test_text_field_accepts_string_and_normalizes_it(): void
     {
         $event = $this->dynamicFieldEvent();
@@ -494,12 +545,29 @@ class TeamRosterTest extends TestCase
         $result = $this->validator()->validateAndNormalize($event, $this->roster('Tim', [
             $this->rosterMember(true, [
                 (string) $nick->id => 'Captain',
-                (string) $bio->id => true,
+                (string) $bio->id => false,
             ]),
         ]));
 
         $this->assertFalse($result['valid']);
         $this->assertArrayHasKey("members.0.answers.{$bio->id}", $result['errors']);
+    }
+
+    public function test_optional_number_field_rejects_false_value(): void
+    {
+        $event = $this->dynamicFieldEvent();
+        $nick = $this->memberField($event, 'Nickname');
+        $age = $this->memberField($event, 'Umur');
+
+        $result = $this->validator()->validateAndNormalize($event, $this->roster('Tim', [
+            $this->rosterMember(true, [
+                (string) $nick->id => 'Captain',
+                (string) $age->id => false,
+            ]),
+        ]));
+
+        $this->assertFalse($result['valid']);
+        $this->assertArrayHasKey("members.0.answers.{$age->id}", $result['errors']);
     }
 
     public function test_html_string_answer_is_sanitized_without_leaving_raw_html(): void
@@ -543,6 +611,23 @@ class TeamRosterTest extends TestCase
 
         $result = $this->validator()->validateAndNormalize($event, $this->roster('Tim', [
             $this->rosterMember(true, [(string) $nick->id => 'Captain', (string) $role->id => 'C']),
+        ]));
+
+        $this->assertFalse($result['valid']);
+        $this->assertArrayHasKey("members.0.answers.{$role->id}", $result['errors']);
+    }
+
+    public function test_optional_select_field_rejects_array_value(): void
+    {
+        $event = $this->dynamicFieldEvent();
+        $nick = $this->memberField($event, 'Nickname');
+        $role = $this->memberField($event, 'Role');
+
+        $result = $this->validator()->validateAndNormalize($event, $this->roster('Tim', [
+            $this->rosterMember(true, [
+                (string) $nick->id => 'Captain',
+                (string) $role->id => [],
+            ]),
         ]));
 
         $this->assertFalse($result['valid']);

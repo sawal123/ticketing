@@ -257,6 +257,10 @@ class TeamRosterValidator
                 return ['ok' => true, 'value' => $value + 0];
 
             case 'select':
+                if (! is_string($value) && ! is_int($value) && ! is_float($value)) {
+                    return ['ok' => false, 'message' => 'Pilihan untuk field "'.$field->label.'" tidak valid.'];
+                }
+
                 $options = array_values(array_map('strval', $field->options ?? []));
                 if (! in_array((string) $value, $options, true)) {
                     return ['ok' => false, 'message' => 'Pilihan untuk field "'.$field->label.'" tidak valid.'];
@@ -279,15 +283,7 @@ class TeamRosterValidator
 
     private function isBlank(mixed $value): bool
     {
-        if ($value === null) {
-            return true;
-        }
-
-        if (is_array($value)) {
-            return $value === [];
-        }
-
-        return trim((string) $value) === '';
+        return $value === null || (is_string($value) && trim($value) === '');
     }
 
     /**
