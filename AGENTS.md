@@ -148,6 +148,18 @@ Jika full suite atau verification wajib gagal, jangan menyatakan siap merge. Jel
 
 ---
 
+Batasan database:
+
+- DILARANG menjalankan migrate:fresh, migrate:refresh, db:wipe, atau operasi destructive lain terhadap database development/production.
+- Database development `tiketkonser` tidak boleh dihapus/reset oleh test.
+- RefreshDatabase / migrate:fresh BOLEH hanya pada database testing yang benar-benar terisolasi.
+- Sebelum PHPUnit, pastikan:
+    - APP_ENV=testing
+    - DB_CONNECTION=mysql
+    - DB_DATABASE=ticketing_test
+- Jika database aktif bukan `ticketing_test`, STOP dan jangan jalankan test.
+- Jangan pernah menghapus data database `tiketkonser`.
+
 ## Final Output
 
 Output akhir default menggunakan tepat 5 poin singkat:
