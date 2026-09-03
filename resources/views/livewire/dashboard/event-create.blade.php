@@ -57,7 +57,7 @@
                             <label class="block text-[11px] font-black text-slate-400 uppercase tracking-[0.1em] mb-2">Jenis Pendaftaran</label>
                             <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
                                 @foreach($registrationModeOptions as $mode => $option)
-                                    <label class="cursor-pointer">
+                                    <label class="relative block @if($registrationModeLocked) cursor-not-allowed @else cursor-pointer @endif">
                                         <input
                                             type="radio"
                                             wire:model="registration_mode"
@@ -65,15 +65,28 @@
                                             class="sr-only peer"
                                             @disabled($registrationModeLocked)
                                         >
-                                        <div class="h-full rounded-2xl border px-4 py-4 transition-all"
-                                            @class([
-                                                'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800',
-                                                'peer-checked:border-indigo-500 peer-checked:bg-indigo-50 peer-checked:dark:bg-indigo-950/40',
-                                                'peer-disabled:cursor-not-allowed peer-disabled:opacity-70',
-                                            ])>
+                                        <div
+                                            class="relative h-full rounded-2xl border-2 px-4 py-4 pr-9 transition-all duration-200 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800
+                                                peer-checked:border-indigo-500 peer-checked:ring-2 peer-checked:ring-indigo-500/40 peer-checked:bg-indigo-50 peer-checked:dark:bg-indigo-950/40
+                                                @if($registrationModeLocked)
+                                                    @if($mode !== $registration_mode) opacity-50 @endif
+                                                @else
+                                                    hover:border-indigo-300 hover:dark:border-indigo-500/50 hover:shadow-md peer-checked:hover:border-indigo-600
+                                                @endif"
+                                        >
                                             <div class="text-sm font-black text-slate-800 dark:text-white">{{ $option['label'] }}</div>
                                             <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ $option['description'] }}</p>
                                         </div>
+                                        @if ($registrationModeLocked)
+                                            <span class="pointer-events-none absolute top-3 right-3 inline-flex items-center gap-1 rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300 opacity-0 peer-checked:opacity-100 transition-opacity duration-200">
+                                                <i data-lucide="check" class="w-3 h-3"></i>
+                                                Terpilih
+                                            </span>
+                                        @else
+                                            <span class="pointer-events-none absolute top-3 right-3 inline-flex h-6 w-6 items-center justify-center rounded-full bg-indigo-600 text-white opacity-0 peer-checked:opacity-100 transition-opacity duration-200">
+                                                <i data-lucide="check" class="w-4 h-4"></i>
+                                            </span>
+                                        @endif
                                     </label>
                                 @endforeach
                             </div>
