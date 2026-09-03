@@ -148,6 +148,18 @@ Jika full suite atau verification wajib gagal, jangan menyatakan siap merge. Jel
 
 ---
 
+Batasan database:
+
+- DILARANG menjalankan:
+    - php artisan migrate:fresh
+    - php artisan migrate:refresh
+    - php artisan db:wipe
+    - perintah lain yang menghapus/reset seluruh database.
+- Jangan menghapus data lokal existing.
+- Jika migration perlu diverifikasi, gunakan migration/test database sesuai konfigurasi PHPUnit, bukan database development utama.
+- Untuk test, pastikan APP_ENV=testing dan koneksi database test yang terisolasi.
+- Jika environment test tidak terisolasi atau berpotensi menyentuh database development, STOP dan laporkan blocker.
+
 ## Final Output
 
 Output akhir default menggunakan tepat 5 poin singkat:
