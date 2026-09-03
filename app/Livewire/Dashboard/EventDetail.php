@@ -8,6 +8,7 @@ use App\Models\Agreement;
 use App\Models\Cart;
 use App\Models\Cash;
 use App\Models\Event;
+use App\Models\EventRegistration;
 use App\Models\EventRegistrationField;
 use App\Models\Harga;
 use App\Models\Talent;
@@ -50,6 +51,13 @@ class EventDetail extends Component
         Cart::STATUS_UNPAID,
     ];
 
+    private const PARTICIPANT_STATUSES = [
+        EventRegistration::STATUS_PENDING,
+        EventRegistration::STATUS_SUCCESS,
+        EventRegistration::STATUS_CANCELLED,
+        EventRegistration::STATUS_EXPIRED,
+    ];
+
     #[Layout('layouts.unified')]
     #[Locked]
     public $eventUid;
@@ -69,6 +77,16 @@ class EventDetail extends Component
     public $filterPayment = 'all'; // all, cash, non-cash
 
     public $filterRange; // Format: "YYYY-MM-DD to YYYY-MM-DD"
+
+    // Filters for Participants (REG5)
+    public $searchParticipant = '';
+
+    public $filterParticipantStatus = 'all'; // all, PENDING, SUCCESS, CANCELLED, EXPIRED
+
+    public $perPageParticipant = 10;
+
+    // For Participant Detail Modal
+    public $selectedRegistrationUid;
 
     // For Add/Edit Ticket Modal
     public $newHarga = [
@@ -125,6 +143,9 @@ class EventDetail extends Component
         'searchTransaction' => ['except' => ''],
         'filterPayment' => ['except' => 'all'],
         'filterRange' => ['except' => null],
+        'searchParticipant' => ['except' => ''],
+        'filterParticipantStatus' => ['except' => 'all'],
+        'perPageParticipant' => ['except' => 10],
     ];
 
     private function allowedPerPage(): array
@@ -139,7 +160,19 @@ class EventDetail extends Component
 
     private function allowedTabs(): array
     {
-        return ['umum', 'tiket', 'mou', 'transaksi', 'form-pendaftaran'];
+        return ['umum', 'tiket', 'mou', 'transaksi', 'form-pendaftaran', 'peserta'];
+    }
+
+    private function allowedParticipantStatuses(): array
+    {
+        return array_merge(['all'], self::PARTICIPANT_STATUSES);
+    }
+
+    private function participantsAvailable(): bool
+    {
+        $mode = $this->getEventData()->registration_mode;
+
+        return in_array($mode, [Event::REGISTRATION_MODE_INDIVIDUAL, Event::REGISTRATION_MODE_TEAM], true);
     }
 
     private function sanitizeFilters(): void
@@ -161,7 +194,22 @@ class EventDetail extends Component
             $this->activeTab = 'umum';
         }
 
+        if ($this->activeTab === 'peserta' && ! $this->participantsAvailable()) {
+            $this->activeTab = 'umum';
+        }
+
         $this->searchTransaction = mb_substr(trim((string) $this->searchTransaction), 0, 100);
+
+        $this->perPageParticipant = (int) $this->perPageParticipant;
+        if (! in_array($this->perPageParticipant, $this->allowedPerPage(), true)) {
+            $this->perPageParticipant = 10;
+        }
+
+        if (! in_array($this->filterParticipantStatus, $this->allowedParticipantStatuses(), true)) {
+            $this->filterParticipantStatus = 'all';
+        }
+
+        $this->searchParticipant = mb_substr(trim((string) $this->searchParticipant), 0, 100);
 
         if ($this->filterRange !== null) {
             $this->filterRange = mb_substr(trim((string) $this->filterRange), 0, 32) ?: null;
@@ -276,6 +324,15 @@ class EventDetail extends Component
 
         return Cart::query()
             ->where('event_uid', $this->eventUid);
+    }
+
+    protected function authorizedParticipantQuery()
+    {
+        $this->getEventData();
+
+        return EventRegistration::query()
+            ->where('event_uid', $this->eventUid)
+            ->with(['user', 'cart.paymentGateway', 'members']);
     }
 
     protected function applyFilters($query)
@@ -480,6 +537,7 @@ class EventDetail extends Component
         $this->activeTab = $tab;
         $this->sanitizeFilters();
         $this->resetPage();
+        $this->resetPage('pesertaPage');
     }
 
     public function openAddRegistrationFieldModal(): void
@@ -651,6 +709,14 @@ class EventDetail extends Component
         $this->resetPage();
     }
 
+    public function resetParticipantFilters()
+    {
+        $this->searchParticipant = '';
+        $this->filterParticipantStatus = 'all';
+        $this->perPageParticipant = 10;
+        $this->resetPage('pesertaPage');
+    }
+
     public function toggleDescription()
     {
         $this->showFullDescription = ! $this->showFullDescription;
@@ -810,11 +876,33 @@ class EventDetail extends Component
         $this->dispatch('open-modal', name: 'transaction-detail-modal');
     }
 
+    public function showParticipantDetail($uid)
+    {
+        $exists = $this->authorizedParticipantQuery()
+            ->where('uid', $uid)
+            ->exists();
+
+        if (! $exists) {
+            $this->selectedRegistrationUid = null;
+            session()->flash('error', 'Pendaftaran tidak ditemukan atau bukan milik event ini.');
+
+            return;
+        }
+
+        $this->selectedRegistrationUid = $uid;
+        $this->dispatch('open-modal', name: 'participant-detail-modal');
+    }
+
     public function updated($propertyName)
     {
         if (in_array($propertyName, ['filterPayment', 'filterRange', 'searchTransaction', 'perPage', 'activeTab'])) {
             $this->sanitizeFilters();
             $this->resetPage();
+        }
+
+        if (in_array($propertyName, ['searchParticipant', 'filterParticipantStatus', 'perPageParticipant'])) {
+            $this->sanitizeFilters();
+            $this->resetPage('pesertaPage');
         }
     }
 
@@ -837,6 +925,25 @@ class EventDetail extends Component
             $transactions = $this->applyFilters($transactions)
                 ->orderBy('created_at', 'desc')
                 ->paginate($this->perPage);
+        }
+
+        $participants = [];
+        if ($this->activeTab === 'peserta') {
+            $participants = $this->authorizedParticipantQuery()
+                ->when($this->filterParticipantStatus !== 'all', fn ($query) => $query->where('event_registrations.status', $this->filterParticipantStatus))
+                ->when($this->searchParticipant !== '', function ($query) {
+                    $query->where(function ($sub) {
+                        $sub->where('event_registrations.uid', 'like', '%'.$this->searchParticipant.'%')
+                            ->orWhere('event_registrations.invoice', 'like', '%'.$this->searchParticipant.'%')
+                            ->orWhere('event_registrations.team_name', 'like', '%'.$this->searchParticipant.'%')
+                            ->orWhereHas('user', function ($userQuery) {
+                                $userQuery->where(fn ($inner) => $inner->where('users.name', 'like', '%'.$this->searchParticipant.'%')
+                                    ->orWhere('users.email', 'like', '%'.$this->searchParticipant.'%'));
+                            });
+                    });
+                })
+                ->latest('created_at')
+                ->paginate($this->perPageParticipant, ['*'], 'pesertaPage');
         }
 
         $mouPreview = null;
@@ -920,11 +1027,20 @@ class EventDetail extends Component
             }
         }
 
+        $selectedRegistration = null;
+        if ($this->selectedRegistrationUid) {
+            $selectedRegistration = $this->authorizedParticipantQuery()
+                ->where('uid', $this->selectedRegistrationUid)
+                ->first();
+        }
+
         return view('livewire.dashboard.event-detail', [
             'event' => $event,
             'metrics' => $metrics,
             'transactions' => $transactions,
             'selectedTransaction' => $selectedTransaction,
+            'participants' => $participants,
+            'selectedRegistration' => $selectedRegistration,
             'discount' => $discount,
             'voucherCode' => $voucherCode,
             'mouPreview' => $mouPreview,
