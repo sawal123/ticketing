@@ -628,13 +628,19 @@ class EventDetail extends Component
         return response()->stream($callback, 200, $headers);
     }
 
-    protected function participantExportQuery(Event $event)
+    /**
+     * Shared participant filter/query logic used by the Peserta list (REG5),
+     * exportParticipants and the exportRoster registration subquery.
+     *
+     * Scope is always the authoritative event uid passed in — never a value
+     * supplied by the client.
+     */
+    protected function participantRegistrationQuery(string $eventUid)
     {
         $this->sanitizeFilters();
 
         return EventRegistration::query()
-            ->where('event_uid', $this->eventUid)
-            ->with(['user', 'cart.paymentGateway', 'members'])
+            ->where('event_registrations.event_uid', $eventUid)
             ->when($this->filterParticipantStatus !== 'all', fn ($query) => $query->where('event_registrations.status', $this->filterParticipantStatus))
             ->when($this->searchParticipant !== '', function ($query) {
                 $query->where(function ($sub) {
@@ -649,28 +655,20 @@ class EventDetail extends Component
             });
     }
 
+    protected function participantExportQuery(Event $event)
+    {
+        $this->sanitizeFilters();
+
+        return $this->participantRegistrationQuery($event->uid)
+            ->with(['user', 'cart.paymentGateway', 'members']);
+    }
+
     protected function rosterExportQuery(Event $event)
     {
         $this->sanitizeFilters();
 
-        $registrationUids = EventRegistration::query()
-            ->where('event_uid', $this->eventUid)
-            ->when($this->filterParticipantStatus !== 'all', fn ($query) => $query->where('event_registrations.status', $this->filterParticipantStatus))
-            ->when($this->searchParticipant !== '', function ($query) {
-                $query->where(function ($sub) {
-                    $sub->where('event_registrations.uid', 'like', '%'.$this->searchParticipant.'%')
-                        ->orWhere('event_registrations.invoice', 'like', '%'.$this->searchParticipant.'%')
-                        ->orWhere('event_registrations.team_name', 'like', '%'.$this->searchParticipant.'%')
-                        ->orWhereHas('user', function ($userQuery) {
-                            $userQuery->where(fn ($inner) => $inner->where('users.name', 'like', '%'.$this->searchParticipant.'%')
-                                ->orWhere('users.email', 'like', '%'.$this->searchParticipant.'%'));
-                        });
-                });
-            })
-            ->pluck('uid');
-
         return EventRegistrationMember::query()
-            ->whereIn('registration_uid', $registrationUids)
+            ->whereIn('registration_uid', $this->participantRegistrationQuery($event->uid)->select('event_registrations.uid'))
             ->with(['registration.user', 'registration.cart.paymentGateway'])
             ->orderBy('registration_uid')
             ->orderBy('sort_order')
@@ -1134,7 +1132,8 @@ class EventDetail extends Component
 
         $participants = [];
         if ($this->activeTab === 'peserta') {
-            $participants = $this->participantExportQuery($event)
+            $participants = $this->participantRegistrationQuery($event->uid)
+                ->with(['user', 'cart.paymentGateway', 'members'])
                 ->latest('created_at')
                 ->paginate($this->perPageParticipant, ['*'], 'pesertaPage');
         }

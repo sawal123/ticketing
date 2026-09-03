@@ -514,6 +514,119 @@ class RegistrationExportOperationalTest extends TestCase
         $this->assertStringNotContainsString('INV-FILTER-OTHER', $csv);
     }
 
+    public function test_roster_export_applies_same_search_and_status_filters(): void
+    {
+        $tenant = $this->tenant();
+        $event = $this->event($tenant, [
+            'registration_mode' => Event::REGISTRATION_MODE_TEAM,
+            'team_min_members' => 1,
+            'team_max_members' => 3,
+        ]);
+
+        $matchBuyer = $this->buyer(['name' => 'Match Roster', 'email' => 'match@example.test']);
+        $matchCart = $this->cart($event, $matchBuyer, ['invoice' => 'INV-ROSTER-MATCH']);
+        $matchReg = $this->registration($event, $matchBuyer, $matchCart, [
+            'team_name' => 'Tim Match',
+            'status' => EventRegistration::STATUS_SUCCESS,
+        ]);
+        $this->member($matchReg, ['is_captain' => true, 'sort_order' => 1]);
+
+        $otherBuyer = $this->buyer(['name' => 'Other Roster', 'email' => 'other@example.test']);
+        $otherCart = $this->cart($event, $otherBuyer, ['invoice' => 'INV-ROSTER-OTHER']);
+        $otherReg = $this->registration($event, $otherBuyer, $otherCart, [
+            'team_name' => 'Tim Other',
+            'status' => EventRegistration::STATUS_PENDING,
+        ]);
+        $this->member($otherReg, ['is_captain' => true, 'sort_order' => 1]);
+
+        $this->actingAs($tenant);
+        $component = new EventDetail;
+        $component->eventUid = $event->uid;
+        $component->searchParticipant = 'Match';
+        $component->filterParticipantStatus = EventRegistration::STATUS_SUCCESS;
+
+        ob_start();
+        $component->exportRoster()->sendContent();
+        $csv = ob_get_clean();
+        $rows = $this->csvRows($csv);
+
+        $this->assertCount(3, $rows);
+        $this->assertStringContainsString('INV-ROSTER-MATCH', $csv);
+        $this->assertStringNotContainsString('INV-ROSTER-OTHER', $csv);
+    }
+
+    public function test_roster_export_correct_with_many_registrations(): void
+    {
+        $tenant = $this->tenant();
+        $event = $this->event($tenant, [
+            'registration_mode' => Event::REGISTRATION_MODE_TEAM,
+            'team_min_members' => 1,
+            'team_max_members' => 3,
+        ]);
+        $nickname = $this->field($event, ['label' => 'Nickname', 'type' => 'text', 'scope' => 'member', 'sort_order' => 1]);
+
+        for ($index = 0; $index < 30; $index++) {
+            $buyer = $this->buyer();
+            $cart = $this->cart($event, $buyer, ['invoice' => 'INV-ROSTER-MANY-'.str_pad((string) $index, 3, '0', STR_PAD_LEFT)]);
+            $registration = $this->registration($event, $buyer, $cart, ['team_name' => 'Tim '.$index]);
+            $this->member($registration, ['is_captain' => true, 'sort_order' => 1, 'answers' => [(int) $nickname->id => 'Kapten '.$index]]);
+            $this->member($registration, ['is_captain' => false, 'sort_order' => 2, 'answers' => [(int) $nickname->id => 'Anggota '.$index]]);
+        }
+
+        $this->actingAs($tenant);
+        $component = new EventDetail;
+        $component->eventUid = $event->uid;
+
+        ob_start();
+        $component->exportRoster()->sendContent();
+        $csv = ob_get_clean();
+        $rows = $this->csvRows($csv);
+
+        $this->assertCount(62, $rows); // header + sep + 60 member rows
+        $this->assertStringContainsString('INV-ROSTER-MANY-000', $csv);
+        $this->assertStringContainsString('INV-ROSTER-MANY-029', $csv);
+        $this->assertStringContainsString('Kapten 29', $csv);
+    }
+
+    public function test_roster_export_uses_registration_subquery_not_materialized_uid_list(): void
+    {
+        $tenant = $this->tenant();
+        $event = $this->event($tenant, [
+            'registration_mode' => Event::REGISTRATION_MODE_TEAM,
+            'team_min_members' => 1,
+            'team_max_members' => 3,
+        ]);
+
+        $buyer = $this->buyer();
+        $cart = $this->cart($event, $buyer);
+        $registration = $this->registration($event, $buyer, $cart, ['team_name' => 'Tim Subquery']);
+        $this->member($registration, ['is_captain' => true, 'sort_order' => 1]);
+
+        $component = new EventDetail;
+        $component->eventUid = $event->uid;
+        $component->searchParticipant = 'Subquery';
+        $component->filterParticipantStatus = EventRegistration::STATUS_SUCCESS;
+
+        $method = new \ReflectionMethod(EventDetail::class, 'rosterExportQuery');
+        $method->setAccessible(true);
+        $query = $method->invoke($component, $event);
+        $sql = $query->toSql();
+
+        $this->assertStringContainsString('in (select', strtolower($sql));
+        $this->assertStringNotContainsString("'".$registration->uid."'", $sql);
+        $this->assertStringContainsString('like', strtolower($sql));
+        $this->assertStringContainsString('"event_registrations"."event_uid" = ?', $sql);
+
+        $this->actingAs($tenant);
+        ob_start();
+        $component->exportRoster()->sendContent();
+        $csv = ob_get_clean();
+        $rows = $this->csvRows($csv);
+
+        $this->assertSame($registration->uid, $rows[2][0]);
+        $this->assertStringContainsString('INV', $csv);
+    }
+
     public function test_other_tenant_event_participant_export_is_not_accessible(): void
     {
         $owner = $this->tenant();
