@@ -51,6 +51,8 @@
                                 $kategori = $hargaItem->kategori;
                                 $qty = $hargaItem->qty;
                                 $sold = $jmlhQty[$kategori] ?? 0;
+                                $remaining = max(0, $qty - $sold);
+                                $effectiveMax = min($hargaItem->maxOrderQty(), $remaining);
                             @endphp
 
                             <div class="ticket-tier">
@@ -58,6 +60,11 @@
                                     <div class="tier-name">
                                         {{ $hargaItem->kategori }}
                                     </div>
+                                    @if (!empty($hargaItem->description))
+                                        <div class="tier-description" style="font-size:12px;opacity:0.7;">
+                                            {{ $hargaItem->description }}
+                                        </div>
+                                    @endif
                                     <div class="tier-price">
                                         <span class="currency">Rp</span>
                                         {{ number_format($hargaItem->harga, 0, ',', '.') }}
@@ -68,7 +75,7 @@
                                 @if ($sold < $qty && $hargaItem->status === 'active' && $ticket->status === 'active')
                                     <div class="qty-control ticket-quantity-control input-wrapper"
                                         data-target="quantity{{ $loop->index }}" data-price="{{ $hargaItem->harga }}"
-                                        data-max="5">
+                                        data-max="{{ $effectiveMax }}">
 
                                         <input type="hidden" name="tickets[{{ $loop->index }}][harga_id]"
                                             value="{{ $hargaItem->id }}">
@@ -78,7 +85,7 @@
 
                                         <input type="text"
                                             class="form-control qty-num p-0 qty-input text-center border-0 bg-transparent quantity{{ $loop->index }}"
-                                            value="0" max="5" step="1"
+                                            value="0" max="{{ $effectiveMax }}" step="1"
                                             name="tickets[{{ $loop->index }}][quantity]" readonly>
 
                                         <input type="hidden" name="tickets[{{ $loop->index }}][orderBy]"
@@ -292,6 +299,8 @@
                                 $kategoriMob = $hargaItemMobile->kategori;
                                 $qtyMob = $hargaItemMobile->qty;
                                 $soldMob = $jmlhQty[$kategoriMob] ?? 0;
+                                $remainingMob = max(0, $qtyMob - $soldMob);
+                                $effectiveMaxMob = min($hargaItemMobile->maxOrderQty(), $remainingMob);
                             @endphp
 
                             <div class="sheet-tier">
@@ -299,6 +308,11 @@
                                     <div class="tier-name">
                                         {{ $hargaItemMobile->kategori }}
                                     </div>
+                                    @if (!empty($hargaItemMobile->description))
+                                        <div class="tier-description" style="font-size:12px;opacity:0.7;">
+                                            {{ $hargaItemMobile->description }}
+                                        </div>
+                                    @endif
                                     <div class="tier-price">
                                         <span class="currency">Rp</span>
                                         {{ number_format($hargaItemMobile->harga, 0, ',', '.') }}
@@ -308,7 +322,7 @@
                                 @if ($soldMob < $qtyMob && $hargaItemMobile->status === 'active' && $ticket->status === 'active')
                                     <div class="qty-control ticket-quantity-control input-wrapper"
                                         data-target="quantity{{ $loop->index }}"
-                                        data-price="{{ $hargaItemMobile->harga }}" data-max="5">
+                                        data-price="{{ $hargaItemMobile->harga }}" data-max="{{ $effectiveMaxMob }}">
 
                                         <input type="hidden" name="tickets[{{ $loop->index }}][harga_id]"
                                             value="{{ $hargaItemMobile->id }}">
@@ -320,7 +334,7 @@
 
                                         <input type="text"
                                             class="qty-num qty-input text-center border-0 bg-transparent quantity{{ $loop->index }}"
-                                            min="0" max="5" step="1" value="0"
+                                            min="0" max="{{ $effectiveMaxMob }}" step="1" value="0"
                                             name="tickets[{{ $loop->index }}][quantity]" readonly>
 
                                         <input type="hidden" name="tickets[{{ $loop->index }}][orderBy]"
@@ -437,13 +451,20 @@
                 btn.disabled = (grandTotal <= 0);
             });
 
-            // Update state tombol plus berdasarkan totalQty
-            const plusButtons = document.querySelectorAll(".btn-plus");
-            plusButtons.forEach(btn => {
-                if (totalQty >= 5) {
-                    btn.classList.add("opacity-50", "cursor-not-allowed");
-                } else {
-                    btn.classList.remove("opacity-50", "cursor-not-allowed");
+            // Update state tombol plus berdasarkan limit kategori masing-masing (data-max per wrapper)
+            document.querySelectorAll(".input-wrapper").forEach(wrapper => {
+                const targetClass = wrapper.getAttribute("data-target");
+                const input = wrapper.querySelector("." + targetClass);
+                const plusBtn = wrapper.querySelector(".btn-plus");
+                const max = parseInt(wrapper.getAttribute("data-max")) || 0;
+                const qty = input ? (parseInt(input.value) || 0) : 0;
+
+                if (plusBtn) {
+                    if (qty >= max) {
+                        plusBtn.classList.add("opacity-50", "cursor-not-allowed");
+                    } else {
+                        plusBtn.classList.remove("opacity-50", "cursor-not-allowed");
+                    }
                 }
             });
 
@@ -458,27 +479,15 @@
             if (btnPlus) {
                 const targetId = btnPlus.getAttribute("data-target");
                 const inputs = document.querySelectorAll("." + targetId);
+                const wrapper = btnPlus.closest(".input-wrapper");
+                const max = wrapper ? (parseInt(wrapper.getAttribute("data-max")) || 0) : 0;
 
-                // Hitung total saat ini sebelum menambah
-                let currentTotal = 0;
-                const categories = new Set();
-                document.querySelectorAll(".qty-input").forEach(input => {
-                    const classList = Array.from(input.classList);
-                    const tClass = classList.find(c => c.startsWith('quantity'));
-                    if (tClass && !categories.has(tClass)) {
-                        currentTotal += parseInt(input.value) || 0;
-                        categories.add(tClass);
-                    }
-                });
+                let currentQty = parseInt(inputs[0].value) || 0;
 
-                if (currentTotal < 5) {
-                    let currentQty = parseInt(inputs[0].value) || 0;
+                if (currentQty < max) {
                     currentQty++;
                     inputs.forEach(input => input.value = currentQty);
                     calculateGrandTotal();
-                } else {
-                    // Optional: SweetAlert atau toast jika ada
-                    // alert('Maksimal total pemesanan adalah 5 tiket.');
                 }
             }
 

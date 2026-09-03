@@ -8,20 +8,25 @@ use App\Models\Agreement;
 use App\Models\Cart;
 use App\Models\Cash;
 use App\Models\Event;
+use App\Models\EventRegistration;
+use App\Models\EventRegistrationField;
+use App\Models\EventRegistrationMember;
 use App\Models\Harga;
 use App\Models\Talent;
 use App\Services\Agreements\AgreementPreviewService;
 use App\Services\Agreements\AgreementSignedUploadService;
+use App\Services\Agreements\AgreementVersioningService;
 use App\Services\Reports\FinancialSnapshotService;
 use App\Services\SecureImageStorage;
 use App\Services\Tickets\GateTokenService;
 use App\Support\ExportSanitizer;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
-use Livewire\Attributes\Locked;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 use Livewire\WithPagination;
@@ -47,6 +52,13 @@ class EventDetail extends Component
         Cart::STATUS_UNPAID,
     ];
 
+    private const PARTICIPANT_STATUSES = [
+        EventRegistration::STATUS_PENDING,
+        EventRegistration::STATUS_SUCCESS,
+        EventRegistration::STATUS_CANCELLED,
+        EventRegistration::STATUS_EXPIRED,
+    ];
+
     #[Layout('layouts.unified')]
     #[Locked]
     public $eventUid;
@@ -67,11 +79,23 @@ class EventDetail extends Component
 
     public $filterRange; // Format: "YYYY-MM-DD to YYYY-MM-DD"
 
+    // Filters for Participants (REG5)
+    public $searchParticipant = '';
+
+    public $filterParticipantStatus = 'all'; // all, PENDING, SUCCESS, CANCELLED, EXPIRED
+
+    public $perPageParticipant = 10;
+
+    // For Participant Detail Modal
+    public $selectedRegistrationUid;
+
     // For Add/Edit Ticket Modal
     public $newHarga = [
         'kategori' => '',
         'qty' => 0,
         'harga' => 0,
+        'max_order_qty' => 5,
+        'description' => '',
     ];
 
     public $editingHargaId;
@@ -80,7 +104,17 @@ class EventDetail extends Component
         'kategori' => '',
         'qty' => 0,
         'harga' => 0,
+        'max_order_qty' => 5,
+        'description' => '',
     ];
+
+    public $registrationField = ['label' => '', 'type' => 'text', 'scope' => 'registration', 'is_required' => false, 'options' => ''];
+
+    public $editingRegistrationFieldId;
+
+    public $team_min_members;
+
+    public $team_max_members;
 
     // For Delete Modal
     public $deletingHargaId;
@@ -110,6 +144,9 @@ class EventDetail extends Component
         'searchTransaction' => ['except' => ''],
         'filterPayment' => ['except' => 'all'],
         'filterRange' => ['except' => null],
+        'searchParticipant' => ['except' => ''],
+        'filterParticipantStatus' => ['except' => 'all'],
+        'perPageParticipant' => ['except' => 10],
     ];
 
     private function allowedPerPage(): array
@@ -124,7 +161,19 @@ class EventDetail extends Component
 
     private function allowedTabs(): array
     {
-        return ['umum', 'tiket', 'mou', 'transaksi'];
+        return ['umum', 'tiket', 'mou', 'transaksi', 'form-pendaftaran', 'peserta'];
+    }
+
+    private function allowedParticipantStatuses(): array
+    {
+        return array_merge(['all'], self::PARTICIPANT_STATUSES);
+    }
+
+    private function participantsAvailable(): bool
+    {
+        $mode = $this->getEventData()->registration_mode;
+
+        return in_array($mode, [Event::REGISTRATION_MODE_INDIVIDUAL, Event::REGISTRATION_MODE_TEAM], true);
     }
 
     private function sanitizeFilters(): void
@@ -142,7 +191,26 @@ class EventDetail extends Component
             $this->activeTab = 'umum';
         }
 
+        if ($this->activeTab === 'form-pendaftaran' && ! $this->registrationFieldsAvailable()) {
+            $this->activeTab = 'umum';
+        }
+
+        if ($this->activeTab === 'peserta' && ! $this->participantsAvailable()) {
+            $this->activeTab = 'umum';
+        }
+
         $this->searchTransaction = mb_substr(trim((string) $this->searchTransaction), 0, 100);
+
+        $this->perPageParticipant = (int) $this->perPageParticipant;
+        if (! in_array($this->perPageParticipant, $this->allowedPerPage(), true)) {
+            $this->perPageParticipant = 10;
+        }
+
+        if (! in_array($this->filterParticipantStatus, $this->allowedParticipantStatuses(), true)) {
+            $this->filterParticipantStatus = 'all';
+        }
+
+        $this->searchParticipant = mb_substr(trim((string) $this->searchParticipant), 0, 100);
 
         if ($this->filterRange !== null) {
             $this->filterRange = mb_substr(trim((string) $this->filterRange), 0, 32) ?: null;
@@ -193,6 +261,10 @@ class EventDetail extends Component
     public function mount($uid)
     {
         $this->eventUid = $uid;
+
+        $event = $this->getEventData();
+        $this->team_min_members = $event->team_min_members;
+        $this->team_max_members = $event->team_max_members;
     }
 
     protected function getEventData()
@@ -201,7 +273,7 @@ class EventDetail extends Component
         $isAdmin = $user->role === 'admin';
         $ownerId = ($user->role === 'staff') ? $user->parent_uid : $user->uid;
 
-        $query = Event::with([
+        $with = [
             'talents',
             'hargas' => function ($query) {
                 $query->withSum(['hargaCarts as sold_count' => function ($q) {
@@ -210,7 +282,13 @@ class EventDetail extends Component
                     });
                 }], 'quantity');
             },
-        ])->where('uid', $this->eventUid);
+        ];
+
+        if (Schema::hasTable('event_registration_fields')) {
+            $with[] = 'registrationFields';
+        }
+
+        $query = Event::with($with)->where('uid', $this->eventUid);
 
         if (! $isAdmin) {
             $query->where('user_uid', $ownerId);
@@ -249,6 +327,15 @@ class EventDetail extends Component
             ->where('event_uid', $this->eventUid);
     }
 
+    protected function authorizedParticipantQuery()
+    {
+        $this->getEventData();
+
+        return EventRegistration::query()
+            ->where('event_uid', $this->eventUid)
+            ->with(['user', 'cart.paymentGateway', 'members']);
+    }
+
     protected function applyFilters($query)
     {
         $dateRange = $this->normalizedDateRange();
@@ -265,13 +352,13 @@ class EventDetail extends Component
             })
             ->when($this->searchTransaction, function ($q) {
                 $q->where(function ($sub) {
-                    $sub->where('carts.invoice', 'like', '%' . $this->searchTransaction . '%')
+                    $sub->where('carts.invoice', 'like', '%'.$this->searchTransaction.'%')
                         ->orWhere(function ($online) {
                             $online->where('carts.payment_type', '!=', 'cash')
                                 ->whereHas('users', function ($u) {
                                     $u->where(function ($userQuery) {
-                                        $userQuery->where('name', 'like', '%' . $this->searchTransaction . '%')
-                                            ->orWhere('email', 'like', '%' . $this->searchTransaction . '%');
+                                        $userQuery->where('name', 'like', '%'.$this->searchTransaction.'%')
+                                            ->orWhere('email', 'like', '%'.$this->searchTransaction.'%');
                                     });
                                 });
                         })
@@ -279,8 +366,8 @@ class EventDetail extends Component
                             $cashCart->where('carts.payment_type', 'cash')
                                 ->whereHas('cashBuyer', function ($cash) {
                                     $cash->where(function ($cashQuery) {
-                                        $cashQuery->where('name', 'like', '%' . $this->searchTransaction . '%')
-                                            ->orWhere('email', 'like', '%' . $this->searchTransaction . '%');
+                                        $cashQuery->where('name', 'like', '%'.$this->searchTransaction.'%')
+                                            ->orWhere('email', 'like', '%'.$this->searchTransaction.'%');
                                     });
                                 });
                         });
@@ -322,7 +409,7 @@ class EventDetail extends Component
                 'carts.pajak',
                 'carts.internet_fee',
                 'carts.gross_amount',
-                DB::raw($snapshots->taxSnapshotSqlExpression() . ' as tax_snapshot'),
+                DB::raw($snapshots->taxSnapshotSqlExpression().' as tax_snapshot'),
             ])
             ->where('carts.event_uid', $this->eventUid)
             ->where('carts.status', 'SUCCESS')
@@ -344,19 +431,19 @@ class EventDetail extends Component
 
         if ($this->searchTransaction) {
             $query->where(function ($q) {
-                $q->where('carts.invoice', 'like', '%' . $this->searchTransaction . '%')
+                $q->where('carts.invoice', 'like', '%'.$this->searchTransaction.'%')
                     ->orWhere(function ($online) {
                         $online->where('carts.payment_type', '!=', 'cash')
                             ->where(function ($user) {
-                                $user->where('users.name', 'like', '%' . $this->searchTransaction . '%')
-                                    ->orWhere('users.email', 'like', '%' . $this->searchTransaction . '%');
+                                $user->where('users.name', 'like', '%'.$this->searchTransaction.'%')
+                                    ->orWhere('users.email', 'like', '%'.$this->searchTransaction.'%');
                             });
                     })
                     ->orWhere(function ($cash) {
                         $cash->where('carts.payment_type', 'cash')
                             ->where(function ($cashBuyer) {
-                                $cashBuyer->where('cashes.name', 'like', '%' . $this->searchTransaction . '%')
-                                    ->orWhere('cashes.email', 'like', '%' . $this->searchTransaction . '%');
+                                $cashBuyer->where('cashes.name', 'like', '%'.$this->searchTransaction.'%')
+                                    ->orWhere('cashes.email', 'like', '%'.$this->searchTransaction.'%');
                             });
                     });
             });
@@ -386,11 +473,213 @@ class EventDetail extends Component
         return app(FinancialSnapshotService::class)->collectionTotals($carts);
     }
 
+    public function exportParticipants()
+    {
+        $event = $this->getEventData();
+        if ($event->registration_mode === Event::REGISTRATION_MODE_TICKETING) {
+            session()->flash('error', 'Export peserta tidak tersedia untuk event ticketing.');
+
+            return null;
+        }
+
+        $this->sanitizeFilters();
+
+        $fileName = 'peserta-event-'.Str::slug($event->event).'-'.now()->format('YmdHis').'.csv';
+
+        $headers = [
+            'Content-type' => 'text/csv',
+            'Content-Disposition' => "attachment; filename=$fileName",
+            'Pragma' => 'no-cache',
+            'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
+            'Expires' => '0',
+        ];
+
+        $regFields = $event->registrationFields
+            ->where('scope', EventRegistrationField::SCOPE_REGISTRATION)
+            ->sortBy([['sort_order', 'asc'], ['id', 'asc']])
+            ->values();
+
+        $callback = function () use ($event, $regFields) {
+            $file = fopen('php://output', 'w');
+            fwrite($file, "\xEF\xBB\xBF");
+            fwrite($file, "sep=;\r\n");
+
+            $headers = ['Registration UID', 'Tipe', 'Tim', 'Nama Akun Pendaftar', 'Email Akun', 'Invoice', 'Metode Pembayaran', 'Status Registration', 'Jumlah Anggota', 'Kapten', 'Tanggal Pendaftaran'];
+            foreach ($regFields as $field) {
+                $headers[] = $field->label;
+            }
+            fputcsv($file, ExportSanitizer::csvRow($headers), ';');
+
+            $this->participantExportQuery($event)->latest('created_at')->each(function ($registration) use ($file, $regFields) {
+                $regUser = $registration->user;
+                $regCart = $registration->cart;
+                $isTeam = $registration->registration_mode === Event::REGISTRATION_MODE_TEAM;
+                $memberCount = $isTeam ? $registration->members->count() : null;
+
+                $captain = $isTeam ? $registration->members->firstWhere('is_captain', true) : null;
+                $captainLabel = null;
+                if ($captain) {
+                    $captainIndex = $registration->members->search(fn ($member) => $member->uid === $captain->uid);
+                    $captainLabel = 'Anggota '.((int) $captainIndex + 1);
+                }
+
+                if (! $regCart) {
+                    $paymentLabel = '';
+                } elseif ($regCart->payment_type === 'cash') {
+                    $paymentLabel = 'Cash';
+                } elseif ($regCart->paymentGateway) {
+                    $paymentLabel = $regCart->paymentGateway->payment;
+                } elseif (filled($regCart->payment_type)) {
+                    $paymentLabel = ucwords(str_replace('_', ' ', (string) $regCart->payment_type));
+                } else {
+                    $paymentLabel = '';
+                }
+
+                $answers = $registration->answers ?? [];
+                $row = [
+                    $registration->uid,
+                    $isTeam ? 'Tim' : 'Individu',
+                    $isTeam ? ($registration->team_name ?: '') : '',
+                    $regUser?->name ?? '',
+                    $regUser?->email ?? '',
+                    $registration->invoice ?: '',
+                    $paymentLabel,
+                    $registration->status ?: 'PENDING',
+                    $memberCount ?? '',
+                    $captainLabel ?? '',
+                    $registration->created_at?->format('d M Y, H:i') ?? '',
+                ];
+
+                foreach ($regFields as $field) {
+                    $value = $answers[$field->id] ?? null;
+                    $row[] = is_scalar($value) && filled($value) ? (string) $value : '';
+                }
+
+                fputcsv($file, ExportSanitizer::csvRow($row), ';');
+            });
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
+
+    public function exportRoster()
+    {
+        $event = $this->getEventData();
+        if ($event->registration_mode !== Event::REGISTRATION_MODE_TEAM) {
+            session()->flash('error', 'Export roster hanya tersedia untuk event pendaftaran tim.');
+
+            return null;
+        }
+
+        $this->sanitizeFilters();
+
+        $fileName = 'roster-event-'.Str::slug($event->event).'-'.now()->format('YmdHis').'.csv';
+
+        $headers = [
+            'Content-type' => 'text/csv',
+            'Content-Disposition' => "attachment; filename=$fileName",
+            'Pragma' => 'no-cache',
+            'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
+            'Expires' => '0',
+        ];
+
+        $memberFields = $event->registrationFields
+            ->where('scope', EventRegistrationField::SCOPE_MEMBER)
+            ->sortBy([['sort_order', 'asc'], ['id', 'asc']])
+            ->values();
+
+        $callback = function () use ($event, $memberFields) {
+            $file = fopen('php://output', 'w');
+            fwrite($file, "\xEF\xBB\xBF");
+            fwrite($file, "sep=;\r\n");
+
+            $headers = ['Registration UID', 'Nama Tim', 'Invoice', 'Status Registration', 'Urutan Anggota', 'Kapten'];
+            foreach ($memberFields as $field) {
+                $headers[] = $field->label;
+            }
+            fputcsv($file, ExportSanitizer::csvRow($headers), ';');
+
+            $this->rosterExportQuery($event)->each(function ($member) use ($file, $memberFields) {
+                $registration = $member->registration;
+                $answers = $member->answers ?? [];
+
+                $row = [
+                    $registration?->uid ?? '',
+                    $registration?->team_name ?: '',
+                    $registration?->invoice ?: '',
+                    $registration?->status ?: 'PENDING',
+                    (int) $member->sort_order,
+                    $member->is_captain ? 'Ya' : 'Tidak',
+                ];
+
+                foreach ($memberFields as $field) {
+                    $value = $answers[$field->id] ?? null;
+                    $row[] = is_scalar($value) && filled($value) ? (string) $value : '';
+                }
+
+                fputcsv($file, ExportSanitizer::csvRow($row), ';');
+            });
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
+
+    /**
+     * Shared participant filter/query logic used by the Peserta list (REG5),
+     * exportParticipants and the exportRoster registration subquery.
+     *
+     * Scope is always the authoritative event uid passed in — never a value
+     * supplied by the client.
+     */
+    protected function participantRegistrationQuery(string $eventUid)
+    {
+        $this->sanitizeFilters();
+
+        return EventRegistration::query()
+            ->where('event_registrations.event_uid', $eventUid)
+            ->when($this->filterParticipantStatus !== 'all', fn ($query) => $query->where('event_registrations.status', $this->filterParticipantStatus))
+            ->when($this->searchParticipant !== '', function ($query) {
+                $query->where(function ($sub) {
+                    $sub->where('event_registrations.uid', 'like', '%'.$this->searchParticipant.'%')
+                        ->orWhere('event_registrations.invoice', 'like', '%'.$this->searchParticipant.'%')
+                        ->orWhere('event_registrations.team_name', 'like', '%'.$this->searchParticipant.'%')
+                        ->orWhereHas('user', function ($userQuery) {
+                            $userQuery->where(fn ($inner) => $inner->where('users.name', 'like', '%'.$this->searchParticipant.'%')
+                                ->orWhere('users.email', 'like', '%'.$this->searchParticipant.'%'));
+                        });
+                });
+            });
+    }
+
+    protected function participantExportQuery(Event $event)
+    {
+        $this->sanitizeFilters();
+
+        return $this->participantRegistrationQuery($event->uid)
+            ->with(['user', 'cart.paymentGateway', 'members']);
+    }
+
+    protected function rosterExportQuery(Event $event)
+    {
+        $this->sanitizeFilters();
+
+        return EventRegistrationMember::query()
+            ->whereIn('registration_uid', $this->participantRegistrationQuery($event->uid)->select('event_registrations.uid'))
+            ->with(['registration.user', 'registration.cart.paymentGateway'])
+            ->orderBy('registration_uid')
+            ->orderBy('sort_order')
+            ->orderBy('id');
+    }
+
     public function exportExcel()
     {
         $this->sanitizeFilters();
 
-        $fileName = 'transaksi-event-' . Str::slug($this->getEventData()->event) . '-' . now()->format('YmdHis') . '.csv';
+        $fileName = 'transaksi-event-'.Str::slug($this->getEventData()->event).'-'.now()->format('YmdHis').'.csv';
 
         $headers = [
             'Content-type' => 'text/csv',
@@ -451,6 +740,120 @@ class EventDetail extends Component
         $this->activeTab = $tab;
         $this->sanitizeFilters();
         $this->resetPage();
+        $this->resetPage('pesertaPage');
+    }
+
+    public function openAddRegistrationFieldModal(): void
+    {
+        if (! $this->registrationFieldsAvailable()) {
+            $this->addError('registrationField', 'Field pendaftaran tidak tersedia untuk event ticketing.');
+
+            return;
+        }
+
+        $this->resetValidation();
+        $this->editingRegistrationFieldId = null;
+        $this->registrationField = ['label' => '', 'type' => 'text', 'scope' => 'registration', 'is_required' => false, 'options' => ''];
+        $this->dispatch('open-modal', name: 'registration-field-modal');
+    }
+
+    public function editRegistrationField($id): void
+    {
+        $field = $this->authorizedRegistrationField($id);
+        $this->editingRegistrationFieldId = $field->id;
+        $this->registrationField = ['label' => $field->label, 'type' => $field->type, 'scope' => $field->scope, 'is_required' => $field->is_required, 'options' => implode("\n", $field->options ?? [])];
+        $this->resetValidation();
+        $this->dispatch('open-modal', name: 'registration-field-modal');
+    }
+
+    public function saveRegistrationField(): void
+    {
+        $event = $this->authorizedRegistrationEvent();
+        if (! $event) {
+            return;
+        }
+        $validated = $this->validate(['registrationField.label' => 'required|string|max:255', 'registrationField.type' => ['required', Rule::in(EventRegistrationField::types())], 'registrationField.scope' => ['required', Rule::in(EventRegistrationField::scopes())], 'registrationField.is_required' => 'boolean', 'registrationField.options' => 'nullable|string']);
+        if ($event->registration_mode === Event::REGISTRATION_MODE_INDIVIDUAL && $validated['registrationField']['scope'] === 'member') {
+            $this->addError('registrationField.scope', 'Scope member hanya tersedia untuk pendaftaran tim.');
+
+            return;
+        }
+        $options = $this->normalizedRegistrationFieldOptions($validated['registrationField']['type'], $validated['registrationField']['options'] ?? '');
+        if ($options === false) {
+            return;
+        }
+        $data = ['label' => trim($validated['registrationField']['label']), 'type' => $validated['registrationField']['type'], 'scope' => $validated['registrationField']['scope'], 'is_required' => (bool) $validated['registrationField']['is_required'], 'options' => $options];
+        if ($this->editingRegistrationFieldId) {
+            $this->authorizedRegistrationField($this->editingRegistrationFieldId)->update($data);
+        } else {
+            $data['event_uid'] = $event->uid;
+            $data['sort_order'] = (int) $event->registrationFields()->max('sort_order') + 1;
+            EventRegistrationField::create($data);
+        }
+        $this->dispatch('close-modal', name: 'registration-field-modal');
+        session()->flash('message', 'Field pendaftaran berhasil disimpan.');
+    }
+
+    public function deleteRegistrationField($id): void
+    {
+        DB::transaction(function () use ($id) {
+            $field = $this->authorizedRegistrationField($id);
+            $event = $this->authorizedRegistrationEvent();
+            if (! $event) {
+                return;
+            }
+            $field->delete();
+            $this->reindexRegistrationFields($event);
+        });
+    }
+
+    public function saveTeamSettings(): void
+    {
+        $event = $this->authorizedTeamSettingsEvent();
+        if (! $event) {
+            return;
+        }
+
+        $validated = $this->validate([
+            'team_min_members' => 'required|integer|min:1',
+            'team_max_members' => 'required|integer|min:1',
+        ]);
+
+        $min = (int) $validated['team_min_members'];
+        $max = (int) $validated['team_max_members'];
+
+        if ($max < $min) {
+            $this->addError('team_max_members', 'Maksimum anggota tidak boleh lebih kecil dari minimum anggota.');
+
+            return;
+        }
+
+        $event->update([
+            'team_min_members' => $min,
+            'team_max_members' => $max,
+        ]);
+
+        session()->flash('message', 'Pengaturan tim berhasil disimpan.');
+    }
+
+    public function moveRegistrationField($id, $direction): void
+    {
+        DB::transaction(function () use ($id, $direction) {
+            $field = $this->authorizedRegistrationField($id);
+            $event = $this->authorizedRegistrationEvent();
+            if (! $event || ! in_array($direction, ['up', 'down'], true)) {
+                return;
+            }
+            $fields = $event->registrationFields()->lockForUpdate()->get();
+            $index = $fields->search(fn ($item) => $item->id === $field->id);
+            $other = $fields->get($direction === 'up' ? $index - 1 : $index + 1);
+            if ($other) {
+                $fieldOrder = $field->sort_order;
+                $field->update(['sort_order' => $other->sort_order]);
+                $other->update(['sort_order' => $fieldOrder]);
+            }
+            $this->reindexRegistrationFields($event);
+        });
     }
 
     /**
@@ -490,7 +893,7 @@ class EventDetail extends Component
                 return;
             }
         } catch (\Throwable $e) {
-            session()->flash('error', 'Upload dokumen bertanda tangan gagal: ' . $e->getMessage());
+            session()->flash('error', 'Upload dokumen bertanda tangan gagal: '.$e->getMessage());
             $this->reset('signedMou');
 
             return;
@@ -507,6 +910,14 @@ class EventDetail extends Component
         $this->filterRange = null;
         $this->searchTransaction = '';
         $this->resetPage();
+    }
+
+    public function resetParticipantFilters()
+    {
+        $this->searchParticipant = '';
+        $this->filterParticipantStatus = 'all';
+        $this->perPageParticipant = 10;
+        $this->resetPage('pesertaPage');
     }
 
     public function toggleDescription()
@@ -563,6 +974,8 @@ class EventDetail extends Component
             'kategori' => '',
             'qty' => 0,
             'harga' => 0,
+            'max_order_qty' => 5,
+            'description' => '',
         ];
 
         $this->dispatch('open-modal', name: 'add-ticket-modal');
@@ -578,10 +991,12 @@ class EventDetail extends Component
                 'string',
                 'max:255',
                 Rule::unique('hargas', 'kategori')
-                    ->where(fn($query) => $query->where('uid', $this->eventUid)),
+                    ->where(fn ($query) => $query->where('uid', $this->eventUid)),
             ],
             'newHarga.qty' => 'required|integer|min:0',
             'newHarga.harga' => 'required|integer|min:0',
+            'newHarga.max_order_qty' => 'required|integer|min:1',
+            'newHarga.description' => 'nullable|string|max:2000',
         ], [
             'newHarga.kategori.unique' => 'Nama kategori tiket sudah digunakan pada event ini.',
         ]);
@@ -592,6 +1007,8 @@ class EventDetail extends Component
             'qty' => (int) $validated['newHarga']['qty'],
             'harga' => (int) $validated['newHarga']['harga'],
             'status' => 'active',
+            'max_order_qty' => (int) $validated['newHarga']['max_order_qty'],
+            'description' => $validated['newHarga']['description'] ?? null,
         ]);
 
         $this->dispatch('close-modal', name: 'add-ticket-modal');
@@ -606,6 +1023,8 @@ class EventDetail extends Component
             'kategori' => $harga->kategori,
             'qty' => $harga->qty,
             'harga' => $harga->harga,
+            'max_order_qty' => $harga->maxOrderQty(),
+            'description' => $harga->description,
         ];
 
         $this->dispatch('open-modal', name: 'edit-ticket-modal');
@@ -617,6 +1036,8 @@ class EventDetail extends Component
             'editingHarga.kategori' => 'required',
             'editingHarga.qty' => 'required|integer|min:0',
             'editingHarga.harga' => 'required|integer|min:0',
+            'editingHarga.max_order_qty' => 'required|integer|min:1',
+            'editingHarga.description' => 'nullable|string|max:2000',
         ]);
 
         $harga = $this->authorizedHarga($this->editingHargaId);
@@ -632,6 +1053,8 @@ class EventDetail extends Component
             'kategori' => $this->editingHarga['kategori'],
             'qty' => (int) $this->editingHarga['qty'],
             'harga' => (int) $this->editingHarga['harga'],
+            'max_order_qty' => (int) $this->editingHarga['max_order_qty'],
+            'description' => $this->editingHarga['description'] ?: null,
         ]);
 
         $this->dispatch('close-modal', name: 'edit-ticket-modal');
@@ -656,11 +1079,33 @@ class EventDetail extends Component
         $this->dispatch('open-modal', name: 'transaction-detail-modal');
     }
 
+    public function showParticipantDetail($uid)
+    {
+        $exists = $this->authorizedParticipantQuery()
+            ->where('uid', $uid)
+            ->exists();
+
+        if (! $exists) {
+            $this->selectedRegistrationUid = null;
+            session()->flash('error', 'Pendaftaran tidak ditemukan atau bukan milik event ini.');
+
+            return;
+        }
+
+        $this->selectedRegistrationUid = $uid;
+        $this->dispatch('open-modal', name: 'participant-detail-modal');
+    }
+
     public function updated($propertyName)
     {
         if (in_array($propertyName, ['filterPayment', 'filterRange', 'searchTransaction', 'perPage', 'activeTab'])) {
             $this->sanitizeFilters();
             $this->resetPage();
+        }
+
+        if (in_array($propertyName, ['searchParticipant', 'filterParticipantStatus', 'perPageParticipant'])) {
+            $this->sanitizeFilters();
+            $this->resetPage('pesertaPage');
         }
     }
 
@@ -685,6 +1130,14 @@ class EventDetail extends Component
                 ->paginate($this->perPage);
         }
 
+        $participants = [];
+        if ($this->activeTab === 'peserta') {
+            $participants = $this->participantRegistrationQuery($event->uid)
+                ->with(['user', 'cart.paymentGateway', 'members'])
+                ->latest('created_at')
+                ->paginate($this->perPageParticipant, ['*'], 'pesertaPage');
+        }
+
         $mouPreview = null;
         $addendumPreview = null;
         $mouAgreement = null;
@@ -699,13 +1152,13 @@ class EventDetail extends Component
         $mouCompleted = false;
 
         if ($this->activeTab === 'mou') {
-            $hasAgreementsTable = \Illuminate\Support\Facades\Schema::hasTable('agreements');
+            $hasAgreementsTable = Schema::hasTable('agreements');
 
             $agreementsHistory = $hasAgreementsTable
                 ? $event->agreements()
-                ->orderByRaw("CASE WHEN type = 'mou' THEN 1 ELSE 2 END ASC")
-                ->orderBy('version', 'asc')
-                ->get()
+                    ->orderByRaw("CASE WHEN type = 'mou' THEN 1 ELSE 2 END ASC")
+                    ->orderBy('version', 'asc')
+                    ->get()
                 : collect();
 
             $activeAgreement = $hasAgreementsTable
@@ -720,7 +1173,7 @@ class EventDetail extends Component
             $mouAgreement = $activeAgreement ?? $event->currentMouAgreement;
 
             if ($activeAgreement?->isAddendum() && $activeAgreement->isDraft()) {
-                $addendumPreview = app(\App\Services\Agreements\AgreementVersioningService::class)
+                $addendumPreview = app(AgreementVersioningService::class)
                     ->buildAddendumPreview($event, $activeAgreement);
             } else {
                 $mouPreview = app(AgreementPreviewService::class)->buildForEvent($event);
@@ -762,8 +1215,15 @@ class EventDetail extends Component
                 if ($hargaCartWithVoucher) {
                     $voucherCode = $hargaCartWithVoucher->voucher;
                 }
-                $discount = $selectedTransaction->hargaCarts->sum(fn($i) => (int) ($i->disc ?? 0));
+                $discount = $selectedTransaction->hargaCarts->sum(fn ($i) => (int) ($i->disc ?? 0));
             }
+        }
+
+        $selectedRegistration = null;
+        if ($this->selectedRegistrationUid) {
+            $selectedRegistration = $this->authorizedParticipantQuery()
+                ->where('uid', $this->selectedRegistrationUid)
+                ->first();
         }
 
         return view('livewire.dashboard.event-detail', [
@@ -771,6 +1231,8 @@ class EventDetail extends Component
             'metrics' => $metrics,
             'transactions' => $transactions,
             'selectedTransaction' => $selectedTransaction,
+            'participants' => $participants,
+            'selectedRegistration' => $selectedRegistration,
             'discount' => $discount,
             'voucherCode' => $voucherCode,
             'mouPreview' => $mouPreview,
@@ -931,7 +1393,7 @@ class EventDetail extends Component
             $this->resendEmailUid = null;
             session()->flash('message', 'Email barcode telah dijadwalkan untuk dikirim.');
         } catch (\Exception $e) {
-            session()->flash('error', 'Gagal mengirim email: ' . $e->getMessage());
+            session()->flash('error', 'Gagal mengirim email: '.$e->getMessage());
         }
     }
 
@@ -1041,6 +1503,70 @@ class EventDetail extends Component
             ->firstOrFail();
     }
 
+    private function registrationFieldsAvailable(): bool
+    {
+        return $this->getEventData()->registration_mode !== Event::REGISTRATION_MODE_TICKETING;
+    }
+
+    private function authorizedRegistrationEvent(): ?Event
+    {
+        $event = $this->getEventData();
+        if ($event->registration_mode === Event::REGISTRATION_MODE_TICKETING) {
+            $this->addError('registrationField', 'Field pendaftaran tidak tersedia untuk event ticketing.');
+
+            return null;
+        }
+
+        return $event;
+    }
+
+    private function authorizedTeamSettingsEvent(): ?Event
+    {
+        $event = $this->getEventData();
+        if ($event->registration_mode !== Event::REGISTRATION_MODE_TEAM) {
+            $this->addError('team_min_members', 'Pengaturan tim hanya tersedia untuk event pendaftaran tim.');
+
+            return null;
+        }
+
+        return $event;
+    }
+
+    private function authorizedRegistrationField($id): EventRegistrationField
+    {
+        $event = $this->authorizedRegistrationEvent();
+        if (! $event) {
+            abort(403);
+        }
+
+        return EventRegistrationField::where('id', $id)->where('event_uid', $event->uid)->firstOrFail();
+    }
+
+    private function normalizedRegistrationFieldOptions(string $type, string $options): array|false|null
+    {
+        if ($type !== 'select') {
+            return null;
+        }
+        $normalized = array_values(array_unique(array_filter(array_map('trim', preg_split('/\R/', $options)))));
+        if (count($normalized) < 2) {
+            $this->addError('registrationField.options', 'Pilihan select minimal dua opsi.');
+
+            return false;
+        }
+        if (count($normalized) > 50 || collect($normalized)->contains(fn ($option) => mb_strlen($option) > 100)) {
+            $this->addError('registrationField.options', 'Pilihan select tidak valid.');
+
+            return false;
+        }
+
+        return $normalized;
+    }
+
+    private function reindexRegistrationFields(Event $event): void
+    {
+        $event->registrationFields()->lockForUpdate()->get()->values()->each(fn ($field, $index) => $field->update(['sort_order' => $index + 1]));
+    }
+
     private function authorizedTalent($id): Talent
     {
         $this->getEventData();
@@ -1053,14 +1579,14 @@ class EventDetail extends Component
     private function hargaHasTransactions(Harga $harga): bool
     {
         return $harga->hargaCarts()
-            ->whereHas('cart', fn($query) => $query->whereIn('status', self::BLOCKING_TRANSACTION_STATUSES))
+            ->whereHas('cart', fn ($query) => $query->whereIn('status', self::BLOCKING_TRANSACTION_STATUSES))
             ->exists();
     }
 
     private function minimumLockedQty(Harga $harga): int
     {
         $cartQuantity = (int) $harga->hargaCarts()
-            ->whereHas('cart', fn($query) => $query->whereIn('status', self::LOCKED_QTY_STATUSES))
+            ->whereHas('cart', fn ($query) => $query->whereIn('status', self::LOCKED_QTY_STATUSES))
             ->sum('quantity');
 
         return max((int) $harga->sold_qty + (int) $harga->reserved_qty, $cartQuantity);

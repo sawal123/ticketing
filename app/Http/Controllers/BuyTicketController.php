@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Cart;
 use App\Models\CartVoucher;
 use App\Models\Event;
+use App\Models\EventRegistration;
+use App\Models\EventRegistrationField;
 use App\Models\HargaCart;
 use App\Models\PaymentGateway;
 use App\Models\Voucher;
@@ -12,6 +14,7 @@ use App\Services\Tickets\TicketPricingService;
 use App\Services\Tickets\TicketReservationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -54,6 +57,30 @@ class BuyTicketController extends Controller
             ->where('event_uid', $cart->event_uid)
             ->first() : null;
         $pricing = $pricingService->calculateCart($cart);
+        $registrationFields = collect();
+        $memberFields = collect();
+        $registration = null;
+
+        if ($event->registration_mode !== Event::REGISTRATION_MODE_TICKETING
+            && Schema::hasTable('event_registration_fields')) {
+            $registrationFields = EventRegistrationField::query()
+                ->where('event_uid', $event->uid)
+                ->where('scope', 'registration')
+                ->orderBy('sort_order')
+                ->orderBy('id')
+                ->get();
+            $memberFields = $event->registration_mode === Event::REGISTRATION_MODE_TEAM
+                ? EventRegistrationField::query()
+                    ->where('event_uid', $event->uid)
+                    ->where('scope', 'member')
+                    ->orderBy('sort_order')
+                    ->orderBy('id')
+                    ->get()
+                : collect();
+            $registration = Schema::hasTable('event_registrations')
+                ? EventRegistration::query()->where('cart_uid', $cart->uid)->with('members')->first()
+                : null;
+        }
 
         $this->data_pay = $this->data_pay->map(function (PaymentGateway $gateway) use ($pricingService, $cart) {
             $resolvedPricing = $pricingService->calculateCart($cart, $gateway);
@@ -104,6 +131,9 @@ class BuyTicketController extends Controller
             'nilaiPajak' => $pricing['tax_amount'],
             'subtotal' => $pricing['subtotal'],
             'grandTotal' => $grandTotal,
+            'registrationFields' => $registrationFields,
+            'memberFields' => $memberFields,
+            'registration' => $registration,
         ]);
     }
 
@@ -232,11 +262,11 @@ class BuyTicketController extends Controller
             return redirect()->back()->with('error', 'Harap pilih minimal 1 tiket!');
         }
 
-        if ($totalRequestedQty > 5) {
-            return redirect()->back()->with('error', 'Maksimal total pemesanan adalah 5 tiket.');
-        }
-
         $event = Event::where('uid', $eventUid)->firstOrFail();
+
+        if ($event->registration_mode !== Event::REGISTRATION_MODE_TICKETING && $totalRequestedQty !== 1) {
+            return redirect()->back()->with('error', 'Pendaftaran individual atau tim hanya dapat checkout satu tiket.');
+        }
 
         $activeCart = Cart::where('event_uid', $event->uid)
             ->where('user_uid', Auth::user()->uid)
@@ -315,5 +345,4 @@ class BuyTicketController extends Controller
             ->values()
             ->all();
     }
-
 }

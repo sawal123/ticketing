@@ -9,11 +9,13 @@ use App\Models\EventBankAccount;
 use App\Models\EventDocument;
 use App\Models\EventOrganizer;
 use App\Models\Fasilitas;
+use App\Services\Agreements\AgreementVersioningService;
 use App\Services\SecureImageStorage;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Livewire\WithFileUploads;
@@ -94,12 +96,16 @@ class EventCreate extends Component
 
     public $existingResponsibleIdentityOriginalName = null;
 
+    public $registration_mode;
+
+    public $registrationModeLocked = false;
+
     public function mount($uid = null)
     {
         if ($uid) {
             $this->editingEventUid = $uid;
             $eventData = $this->ownedEventQuery($uid)
-                ->with(['organizer', 'bankAccount', 'organizerLetter', 'responsibleIdentityDocument', 'fasilitas'])
+                ->with(['organizer', 'bankAccount', 'organizerLetter', 'responsibleIdentityDocument', 'fasilitas', 'hargas', 'carts'])
                 ->firstOrFail();
 
             $this->event = $eventData->event;
@@ -145,6 +151,8 @@ class EventCreate extends Component
             $this->existingResponsibleIdentityOriginalName = $this->responsibleIdentityFileExists($responsibleIdentityDocument)
                 ? $responsibleIdentityDocument?->original_name
                 : null;
+            $this->registration_mode = $eventData->registration_mode;
+            $this->registrationModeLocked = $eventData->registrationModeLocked();
         } else {
             $user = auth()->user();
             $this->start_sale = Carbon::now()->format('Y-m-d H:i');
@@ -155,6 +163,7 @@ class EventCreate extends Component
             $this->phone = $user?->nomor;
             $this->email = $user?->email;
             $this->address = $user?->alamat;
+            $this->registration_mode = Event::REGISTRATION_MODE_TICKETING;
         }
     }
 
@@ -183,6 +192,7 @@ class EventCreate extends Component
             'cover' => SecureImageStorage::rules(! $this->editingEventUid),
             'deskripsi' => 'required|string',
             'category_id' => 'required|exists:categories,id',
+            'registration_mode' => ['required', Rule::in(Event::registrationModes())],
             'selectedFasilitas' => 'array',
             'organizer_name' => 'required|string|max:255',
             'responsible_name' => 'required|string|max:255',
@@ -222,6 +232,30 @@ class EventCreate extends Component
         }
 
         $this->validate();
+
+        $requestedRegistrationMode = Event::normalizeRegistrationMode($this->registration_mode);
+
+        if ($this->editingEventUid) {
+            $authoritativeEvent = $this->ownedEventQuery($this->editingEventUid)->firstOrFail();
+            $this->registrationModeLocked = $authoritativeEvent->registrationModeLocked();
+
+            if ($this->registrationModeLocked && $requestedRegistrationMode !== $authoritativeEvent->registration_mode) {
+                $this->registration_mode = $authoritativeEvent->registration_mode;
+                $this->addError('registration_mode', 'Jenis pendaftaran tidak dapat diubah karena event sudah memiliki data operasional.');
+
+                return null;
+            }
+
+            // REG2: reject mode changes that are incompatible with the
+            // registration fields currently stored for this event.
+            $registrationModeViolation = $authoritativeEvent->registrationModeChangeViolation($requestedRegistrationMode);
+            if ($registrationModeViolation !== null) {
+                $this->registration_mode = $authoritativeEvent->registration_mode;
+                $this->addError('registration_mode', $registrationModeViolation);
+
+                return null;
+            }
+        }
 
         $eventStart = Carbon::parse($this->event_start);
         $eventEnd = Carbon::parse($this->event_end);
@@ -266,6 +300,7 @@ class EventCreate extends Component
             'deskripsi' => $this->deskripsi,
             'map' => $this->map,
             'cover' => $coverName,
+            'registration_mode' => $requestedRegistrationMode,
         ];
 
         $organizerData = [
@@ -425,7 +460,7 @@ class EventCreate extends Component
                 if (! $this->editingEventUid) {
                     Agreement::createDraftForEvent($event, $actorUid);
                 } else {
-                    app(\App\Services\Agreements\AgreementVersioningService::class)
+                    app(AgreementVersioningService::class)
                         ->checkForContractualChanges($event, $actorUid);
                 }
             });
@@ -475,11 +510,20 @@ class EventCreate extends Component
 
     public function render()
     {
+        $registrationModeLocked = $this->registrationModeLocked;
+        if ($this->editingEventUid) {
+            $event = $this->ownedEventQuery($this->editingEventUid)->first();
+            $registrationModeLocked = $event?->registrationModeLocked() ?? false;
+        }
+
         return view('livewire.dashboard.event-create', [
             'categories' => Category::all(),
             'fasilitasData' => Fasilitas::all(),
             'title' => $this->editingEventUid ? 'Edit Event' : 'Add New Event',
             'eventTourSteps' => auth()->user()?->role === 'penyewa' ? $this->eventTourSteps() : [],
+            'registrationModeOptions' => Event::registrationModeOptions(),
+            'registrationModeLocked' => $registrationModeLocked,
+            'currentRegistrationModeLabel' => Event::registrationModeLabel($this->registration_mode),
         ]);
     }
 

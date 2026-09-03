@@ -170,6 +170,231 @@
                 </div>
             </div>
 
+            @if ($event->registration_mode !== \App\Models\Event::REGISTRATION_MODE_TICKETING)
+                @php
+                    $registrationLocked = $hasActivePaymentLink;
+                    $registrationAnswers = old('registration_answers', $registration?->answers ?? []);
+                    $savedMembers = $registration?->members ?? collect();
+                    $teamMinMembers = max(1, (int) ($event->team_min_members ?? 1));
+                    $teamMaxMembers = max($teamMinMembers, (int) ($event->team_max_members ?? $teamMinMembers));
+                    $oldMembers = old('members');
+                    $hasOldMembers = is_array($oldMembers);
+                    $memberCount = $hasOldMembers ? count($oldMembers) : $savedMembers->count();
+                    $memberCount = min($teamMaxMembers, max($teamMinMembers, $memberCount));
+                @endphp
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-icon" style="background:rgba(245,200,66,0.12);">&#128221;</div>
+                        <div class="card-title">Form Pendaftaran</div>
+                    </div>
+                    <div class="card-body">
+                        @if ($registrationLocked)
+                            <div style="display:grid;gap:12px;">
+                                @foreach ($registrationFields as $field)
+                                    <div class="detail-row">
+                                        <span class="label">{{ $field->label }}</span>
+                                        <span class="value">{{ data_get($registration?->answers, $field->id, '-') }}</span>
+                                    </div>
+                                @endforeach
+                                @if ($event->registration_mode === \App\Models\Event::REGISTRATION_MODE_TEAM)
+                                    <div class="detail-row">
+                                        <span class="label">Nama Tim</span>
+                                        <span class="value">{{ $registration?->team_name ?: '-' }}</span>
+                                    </div>
+                                    @foreach ($savedMembers as $member)
+                                        <div style="padding:12px;border:1px solid rgba(255,255,255,0.08);border-radius:12px;">
+                                            <strong style="font-size:13px;color:#fff;">Anggota {{ $member->sort_order }}{{ $member->is_captain ? ' (Kapten)' : '' }}</strong>
+                                            @foreach ($memberFields as $field)
+                                                <div class="detail-row" style="margin-top:8px;">
+                                                    <span class="label">{{ $field->label }}</span>
+                                                    <span class="value">{{ data_get($member->answers, $field->id, '-') }}</span>
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    @endforeach
+                                @endif
+                                <div style="font-size:12px;color:var(--muted);">Data pendaftaran terkunci setelah link pembayaran aktif.</div>
+                            </div>
+                        @else
+                            <div style="display:grid;gap:14px;">
+                                @foreach ($registrationFields as $field)
+                                    <div>
+                                        <label style="display:block;font-weight:700;font-size:13px;margin-bottom:8px;color:#fff;">{{ $field->label }}{{ $field->is_required ? ' *' : '' }}</label>
+                                        @if ($field->type === 'textarea')
+                                            <textarea name="registration_answers[{{ $field->id }}]" form="paynowForm" class="voucher-input" rows="3">{{ data_get($registrationAnswers, $field->id) }}</textarea>
+                                        @elseif ($field->type === 'select')
+                                            <select name="registration_answers[{{ $field->id }}]" form="paynowForm" class="voucher-input">
+                                                <option value="">Pilih {{ $field->label }}</option>
+                                                @foreach ($field->options ?? [] as $option)
+                                                    <option value="{{ $option }}" @selected((string) data_get($registrationAnswers, $field->id) === (string) $option)>{{ $option }}</option>
+                                                @endforeach
+                                            </select>
+                                        @else
+                                            <input type="{{ $field->type === 'number' ? 'number' : 'text' }}" name="registration_answers[{{ $field->id }}]" form="paynowForm" value="{{ data_get($registrationAnswers, $field->id) }}" class="voucher-input">
+                                        @endif
+                                    </div>
+                                @endforeach
+
+                                @if ($event->registration_mode === \App\Models\Event::REGISTRATION_MODE_TEAM)
+                                    <div>
+                                        <label style="display:block;font-weight:700;font-size:13px;margin-bottom:8px;color:#fff;">Nama Tim *</label>
+                                        <input type="text" name="team_name" form="paynowForm" value="{{ old('team_name', $registration?->team_name) }}" class="voucher-input">
+                                    </div>
+                                    <div id="teamRosterMembers" data-min-members="{{ $teamMinMembers }}" data-max-members="{{ $teamMaxMembers }}">
+                                    @for ($memberIndex = 0; $memberIndex < $memberCount; $memberIndex++)
+                                        @php
+                                            $oldMember = $hasOldMembers ? data_get($oldMembers, $memberIndex, []) : null;
+                                            $savedMember = $savedMembers->get($memberIndex);
+                                            $memberAnswers = $hasOldMembers
+                                                ? data_get($oldMember, 'answers', [])
+                                                : data_get($savedMember, 'answers', []);
+                                            $isCaptain = $hasOldMembers
+                                                ? !empty(data_get($oldMember, 'is_captain'))
+                                                : ($savedMember ? (bool) $savedMember->is_captain : $memberIndex === 0);
+                                        @endphp
+                                        <div class="team-member-card" style="padding:12px;border:1px solid rgba(255,255,255,0.08);border-radius:12px;display:grid;gap:10px;margin-top:10px;">
+                                            <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;">
+                                                <label class="team-member-title" style="font-weight:700;font-size:13px;color:#fff;">Anggota {{ $memberIndex + 1 }}</label>
+                                                <button type="button" class="team-member-remove" style="border:0;border-radius:8px;padding:5px 8px;background:rgba(232,84,122,0.16);color:#f6a1b7;font-size:12px;">Hapus Anggota</button>
+                                            </div>
+                                            <label style="font-size:12px;color:var(--muted);"><input type="checkbox" class="team-member-captain" name="members[{{ $memberIndex }}][is_captain]" form="paynowForm" value="1" @checked($isCaptain)> Kapten tim</label>
+                                            @foreach ($memberFields as $field)
+                                                <div>
+                                                    <label style="display:block;font-size:12px;margin-bottom:6px;color:#fff;">{{ $field->label }}{{ $field->is_required ? ' *' : '' }}</label>
+                                                    @if ($field->type === 'textarea')
+                                                        <textarea name="members[{{ $memberIndex }}][answers][{{ $field->id }}]" form="paynowForm" class="voucher-input" rows="2">{{ data_get($memberAnswers, $field->id) }}</textarea>
+                                                    @elseif ($field->type === 'select')
+                                                        <select name="members[{{ $memberIndex }}][answers][{{ $field->id }}]" form="paynowForm" class="voucher-input">
+                                                            <option value="">Pilih {{ $field->label }}</option>
+                                                            @foreach ($field->options ?? [] as $option)
+                                                                <option value="{{ $option }}" @selected((string) data_get($memberAnswers, $field->id) === (string) $option)>{{ $option }}</option>
+                                                            @endforeach
+                                                        </select>
+                                                    @else
+                                                        <input type="{{ $field->type === 'number' ? 'number' : 'text' }}" name="members[{{ $memberIndex }}][answers][{{ $field->id }}]" form="paynowForm" value="{{ data_get($memberAnswers, $field->id) }}" class="voucher-input">
+                                                    @endif
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    @endfor
+                                    </div>
+                                    <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;margin-top:12px;">
+                                        <span id="teamRosterCount" style="font-size:12px;color:var(--muted);"></span>
+                                        <button type="button" id="teamMemberAdd" style="border:0;border-radius:8px;padding:7px 10px;background:rgba(61,217,196,0.16);color:#72eadb;font-size:12px;">Tambah Anggota</button>
+                                    </div>
+                                    <template id="teamMemberTemplate">
+                                        <div class="team-member-card" style="padding:12px;border:1px solid rgba(255,255,255,0.08);border-radius:12px;display:grid;gap:10px;margin-top:10px;">
+                                            <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;">
+                                                <label class="team-member-title" style="font-weight:700;font-size:13px;color:#fff;">Anggota</label>
+                                                <button type="button" class="team-member-remove" style="border:0;border-radius:8px;padding:5px 8px;background:rgba(232,84,122,0.16);color:#f6a1b7;font-size:12px;">Hapus Anggota</button>
+                                            </div>
+                                            <label style="font-size:12px;color:var(--muted);"><input type="checkbox" class="team-member-captain" name="members[__INDEX__][is_captain]" form="paynowForm" value="1"> Kapten tim</label>
+                                            @foreach ($memberFields as $field)
+                                                <div>
+                                                    <label style="display:block;font-size:12px;margin-bottom:6px;color:#fff;">{{ $field->label }}{{ $field->is_required ? ' *' : '' }}</label>
+                                                    @if ($field->type === 'textarea')
+                                                        <textarea name="members[__INDEX__][answers][{{ $field->id }}]" form="paynowForm" class="voucher-input" rows="2"></textarea>
+                                                    @elseif ($field->type === 'select')
+                                                        <select name="members[__INDEX__][answers][{{ $field->id }}]" form="paynowForm" class="voucher-input">
+                                                            <option value="">Pilih {{ $field->label }}</option>
+                                                            @foreach ($field->options ?? [] as $option)
+                                                                <option value="{{ $option }}">{{ $option }}</option>
+                                                            @endforeach
+                                                        </select>
+                                                    @else
+                                                        <input type="{{ $field->type === 'number' ? 'number' : 'text' }}" name="members[__INDEX__][answers][{{ $field->id }}]" form="paynowForm" class="voucher-input">
+                                                    @endif
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    </template>
+                                @endif
+                            </div>
+                        @endif
+                    </div>
+                </div>
+            @endif
+
+            @if ($event->registration_mode === \App\Models\Event::REGISTRATION_MODE_TEAM && !$registrationLocked)
+                <script>
+                    (() => {
+                        const roster = document.getElementById('teamRosterMembers');
+                        const addButton = document.getElementById('teamMemberAdd');
+                        const countLabel = document.getElementById('teamRosterCount');
+                        const template = document.getElementById('teamMemberTemplate');
+
+                        if (!roster || !addButton || !countLabel || !template) {
+                            return;
+                        }
+
+                        const minimum = Number(roster.dataset.minMembers);
+                        const maximum = Number(roster.dataset.maxMembers);
+                        const cards = () => Array.from(roster.querySelectorAll('.team-member-card'));
+                        const reindexCards = () => {
+                            cards().forEach((card, index) => {
+                                card.querySelectorAll('[name]').forEach((input) => {
+                                    input.name = input.name.replace(/^members\[\d+\]/, `members[${index}]`);
+                                });
+                            });
+                        };
+                        const updateControls = () => {
+                            const currentCards = cards();
+                            reindexCards();
+                            countLabel.textContent = `Anggota ${currentCards.length} dari ${minimum}-${maximum}`;
+                            addButton.disabled = currentCards.length >= maximum;
+                            addButton.style.opacity = addButton.disabled ? '0.5' : '1';
+                            currentCards.forEach((card, index) => {
+                                card.querySelector('.team-member-title').textContent = `Anggota ${index + 1}`;
+                                card.querySelector('.team-member-remove').disabled = currentCards.length <= minimum;
+                                card.querySelector('.team-member-remove').style.opacity = currentCards.length <= minimum ? '0.5' : '1';
+                            });
+                        };
+
+                        const ensureCaptain = () => {
+                            const captains = cards().map((card) => card.querySelector('.team-member-captain'));
+                            if (!captains.some((captain) => captain.checked) && captains[0]) {
+                                captains[0].checked = true;
+                            }
+                        };
+
+                        roster.addEventListener('click', (event) => {
+                            const removeButton = event.target.closest('.team-member-remove');
+                            if (!removeButton || cards().length <= minimum) {
+                                return;
+                            }
+
+                            removeButton.closest('.team-member-card').remove();
+                            ensureCaptain();
+                            updateControls();
+                        });
+
+                        roster.addEventListener('change', (event) => {
+                            if (!event.target.classList.contains('team-member-captain') || !event.target.checked) {
+                                return;
+                            }
+
+                            cards().forEach((card) => {
+                                const captain = card.querySelector('.team-member-captain');
+                                if (captain !== event.target) {
+                                    captain.checked = false;
+                                }
+                            });
+                        });
+
+                        addButton.addEventListener('click', () => {
+                            if (cards().length >= maximum) {
+                                return;
+                            }
+
+                            roster.insertAdjacentHTML('beforeend', template.innerHTML.replaceAll('__INDEX__', cards().length));
+                            updateControls();
+                        });
+
+                        updateControls();
+                    })();
+                </script>
+            @endif
+
             <!-- TICKET DETAIL -->
             <div class="card">
                 <div class="card-header">

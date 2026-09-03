@@ -132,6 +132,11 @@ class Cart extends Model
         return $this->belongsTo(PaymentGateway::class);
     }
 
+    public function registration()
+    {
+        return $this->hasOne(EventRegistration::class, 'cart_uid', 'uid');
+    }
+
     public function isReservationExpired(): bool
     {
         return $this->expires_at !== null && $this->expires_at->isPast();
