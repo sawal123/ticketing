@@ -10,6 +10,7 @@ use App\Models\Cash;
 use App\Models\Event;
 use App\Models\EventRegistration;
 use App\Models\EventRegistrationField;
+use App\Models\EventRegistrationMember;
 use App\Models\Harga;
 use App\Models\Talent;
 use App\Services\Agreements\AgreementPreviewService;
@@ -472,6 +473,210 @@ class EventDetail extends Component
         return app(FinancialSnapshotService::class)->collectionTotals($carts);
     }
 
+    public function exportParticipants()
+    {
+        $event = $this->getEventData();
+        if ($event->registration_mode === Event::REGISTRATION_MODE_TICKETING) {
+            session()->flash('error', 'Export peserta tidak tersedia untuk event ticketing.');
+
+            return null;
+        }
+
+        $this->sanitizeFilters();
+
+        $fileName = 'peserta-event-'.Str::slug($event->event).'-'.now()->format('YmdHis').'.csv';
+
+        $headers = [
+            'Content-type' => 'text/csv',
+            'Content-Disposition' => "attachment; filename=$fileName",
+            'Pragma' => 'no-cache',
+            'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
+            'Expires' => '0',
+        ];
+
+        $regFields = $event->registrationFields
+            ->where('scope', EventRegistrationField::SCOPE_REGISTRATION)
+            ->sortBy([['sort_order', 'asc'], ['id', 'asc']])
+            ->values();
+
+        $callback = function () use ($event, $regFields) {
+            $file = fopen('php://output', 'w');
+            fwrite($file, "\xEF\xBB\xBF");
+            fwrite($file, "sep=;\r\n");
+
+            $headers = ['Registration UID', 'Tipe', 'Tim', 'Nama Akun Pendaftar', 'Email Akun', 'Invoice', 'Metode Pembayaran', 'Status Registration', 'Jumlah Anggota', 'Kapten', 'Tanggal Pendaftaran'];
+            foreach ($regFields as $field) {
+                $headers[] = $field->label;
+            }
+            fputcsv($file, ExportSanitizer::csvRow($headers), ';');
+
+            $this->participantExportQuery($event)->latest('created_at')->each(function ($registration) use ($file, $regFields) {
+                $regUser = $registration->user;
+                $regCart = $registration->cart;
+                $isTeam = $registration->registration_mode === Event::REGISTRATION_MODE_TEAM;
+                $memberCount = $isTeam ? $registration->members->count() : null;
+
+                $captain = $isTeam ? $registration->members->firstWhere('is_captain', true) : null;
+                $captainLabel = null;
+                if ($captain) {
+                    $captainIndex = $registration->members->search(fn ($member) => $member->uid === $captain->uid);
+                    $captainLabel = 'Anggota '.((int) $captainIndex + 1);
+                }
+
+                if (! $regCart) {
+                    $paymentLabel = '';
+                } elseif ($regCart->payment_type === 'cash') {
+                    $paymentLabel = 'Cash';
+                } elseif ($regCart->paymentGateway) {
+                    $paymentLabel = $regCart->paymentGateway->payment;
+                } elseif (filled($regCart->payment_type)) {
+                    $paymentLabel = ucwords(str_replace('_', ' ', (string) $regCart->payment_type));
+                } else {
+                    $paymentLabel = '';
+                }
+
+                $answers = $registration->answers ?? [];
+                $row = [
+                    $registration->uid,
+                    $isTeam ? 'Tim' : 'Individu',
+                    $isTeam ? ($registration->team_name ?: '') : '',
+                    $regUser?->name ?? '',
+                    $regUser?->email ?? '',
+                    $registration->invoice ?: '',
+                    $paymentLabel,
+                    $registration->status ?: 'PENDING',
+                    $memberCount ?? '',
+                    $captainLabel ?? '',
+                    $registration->created_at?->format('d M Y, H:i') ?? '',
+                ];
+
+                foreach ($regFields as $field) {
+                    $value = $answers[$field->id] ?? null;
+                    $row[] = is_scalar($value) && filled($value) ? (string) $value : '';
+                }
+
+                fputcsv($file, ExportSanitizer::csvRow($row), ';');
+            });
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
+
+    public function exportRoster()
+    {
+        $event = $this->getEventData();
+        if ($event->registration_mode !== Event::REGISTRATION_MODE_TEAM) {
+            session()->flash('error', 'Export roster hanya tersedia untuk event pendaftaran tim.');
+
+            return null;
+        }
+
+        $this->sanitizeFilters();
+
+        $fileName = 'roster-event-'.Str::slug($event->event).'-'.now()->format('YmdHis').'.csv';
+
+        $headers = [
+            'Content-type' => 'text/csv',
+            'Content-Disposition' => "attachment; filename=$fileName",
+            'Pragma' => 'no-cache',
+            'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
+            'Expires' => '0',
+        ];
+
+        $memberFields = $event->registrationFields
+            ->where('scope', EventRegistrationField::SCOPE_MEMBER)
+            ->sortBy([['sort_order', 'asc'], ['id', 'asc']])
+            ->values();
+
+        $callback = function () use ($event, $memberFields) {
+            $file = fopen('php://output', 'w');
+            fwrite($file, "\xEF\xBB\xBF");
+            fwrite($file, "sep=;\r\n");
+
+            $headers = ['Registration UID', 'Nama Tim', 'Invoice', 'Status Registration', 'Urutan Anggota', 'Kapten'];
+            foreach ($memberFields as $field) {
+                $headers[] = $field->label;
+            }
+            fputcsv($file, ExportSanitizer::csvRow($headers), ';');
+
+            $this->rosterExportQuery($event)->each(function ($member) use ($file, $memberFields) {
+                $registration = $member->registration;
+                $answers = $member->answers ?? [];
+
+                $row = [
+                    $registration?->uid ?? '',
+                    $registration?->team_name ?: '',
+                    $registration?->invoice ?: '',
+                    $registration?->status ?: 'PENDING',
+                    (int) $member->sort_order,
+                    $member->is_captain ? 'Ya' : 'Tidak',
+                ];
+
+                foreach ($memberFields as $field) {
+                    $value = $answers[$field->id] ?? null;
+                    $row[] = is_scalar($value) && filled($value) ? (string) $value : '';
+                }
+
+                fputcsv($file, ExportSanitizer::csvRow($row), ';');
+            });
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
+
+    protected function participantExportQuery(Event $event)
+    {
+        $this->sanitizeFilters();
+
+        return EventRegistration::query()
+            ->where('event_uid', $this->eventUid)
+            ->with(['user', 'cart.paymentGateway', 'members'])
+            ->when($this->filterParticipantStatus !== 'all', fn ($query) => $query->where('event_registrations.status', $this->filterParticipantStatus))
+            ->when($this->searchParticipant !== '', function ($query) {
+                $query->where(function ($sub) {
+                    $sub->where('event_registrations.uid', 'like', '%'.$this->searchParticipant.'%')
+                        ->orWhere('event_registrations.invoice', 'like', '%'.$this->searchParticipant.'%')
+                        ->orWhere('event_registrations.team_name', 'like', '%'.$this->searchParticipant.'%')
+                        ->orWhereHas('user', function ($userQuery) {
+                            $userQuery->where(fn ($inner) => $inner->where('users.name', 'like', '%'.$this->searchParticipant.'%')
+                                ->orWhere('users.email', 'like', '%'.$this->searchParticipant.'%'));
+                        });
+                });
+            });
+    }
+
+    protected function rosterExportQuery(Event $event)
+    {
+        $this->sanitizeFilters();
+
+        $registrationUids = EventRegistration::query()
+            ->where('event_uid', $this->eventUid)
+            ->when($this->filterParticipantStatus !== 'all', fn ($query) => $query->where('event_registrations.status', $this->filterParticipantStatus))
+            ->when($this->searchParticipant !== '', function ($query) {
+                $query->where(function ($sub) {
+                    $sub->where('event_registrations.uid', 'like', '%'.$this->searchParticipant.'%')
+                        ->orWhere('event_registrations.invoice', 'like', '%'.$this->searchParticipant.'%')
+                        ->orWhere('event_registrations.team_name', 'like', '%'.$this->searchParticipant.'%')
+                        ->orWhereHas('user', function ($userQuery) {
+                            $userQuery->where(fn ($inner) => $inner->where('users.name', 'like', '%'.$this->searchParticipant.'%')
+                                ->orWhere('users.email', 'like', '%'.$this->searchParticipant.'%'));
+                        });
+                });
+            })
+            ->pluck('uid');
+
+        return EventRegistrationMember::query()
+            ->whereIn('registration_uid', $registrationUids)
+            ->with(['registration.user', 'registration.cart.paymentGateway'])
+            ->orderBy('registration_uid')
+            ->orderBy('sort_order')
+            ->orderBy('id');
+    }
+
     public function exportExcel()
     {
         $this->sanitizeFilters();
@@ -929,19 +1134,7 @@ class EventDetail extends Component
 
         $participants = [];
         if ($this->activeTab === 'peserta') {
-            $participants = $this->authorizedParticipantQuery()
-                ->when($this->filterParticipantStatus !== 'all', fn ($query) => $query->where('event_registrations.status', $this->filterParticipantStatus))
-                ->when($this->searchParticipant !== '', function ($query) {
-                    $query->where(function ($sub) {
-                        $sub->where('event_registrations.uid', 'like', '%'.$this->searchParticipant.'%')
-                            ->orWhere('event_registrations.invoice', 'like', '%'.$this->searchParticipant.'%')
-                            ->orWhere('event_registrations.team_name', 'like', '%'.$this->searchParticipant.'%')
-                            ->orWhereHas('user', function ($userQuery) {
-                                $userQuery->where(fn ($inner) => $inner->where('users.name', 'like', '%'.$this->searchParticipant.'%')
-                                    ->orWhere('users.email', 'like', '%'.$this->searchParticipant.'%'));
-                            });
-                    });
-                })
+            $participants = $this->participantExportQuery($event)
                 ->latest('created_at')
                 ->paginate($this->perPageParticipant, ['*'], 'pesertaPage');
         }
