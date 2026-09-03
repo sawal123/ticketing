@@ -249,6 +249,51 @@ class TeamRosterTest extends TestCase
         $this->assertSame($regB->uid, $memberB1->registration->uid);
     }
 
+    public function test_validator_rejects_stale_event_when_database_mode_is_no_longer_team(): void
+    {
+        $event = $this->teamEvent($this->tenant(), 1, 3);
+
+        DB::table('events')
+            ->where('uid', $event->uid)
+            ->update(['registration_mode' => Event::REGISTRATION_MODE_INDIVIDUAL]);
+
+        $result = $this->validator()->validateAndNormalize($event, $this->roster('Tim', [
+            $this->rosterMember(true),
+        ]));
+
+        $this->assertFalse($result['valid']);
+        $this->assertArrayHasKey('event', $result['errors']);
+        $this->assertNull($result['data']);
+    }
+
+    public function test_validator_uses_latest_database_min_and_max_instead_of_stale_event_object(): void
+    {
+        $event = $this->teamEvent($this->tenant(), 1, 5);
+
+        DB::table('events')
+            ->where('uid', $event->uid)
+            ->update([
+                'team_min_members' => 3,
+                'team_max_members' => 3,
+            ]);
+
+        $tooSmall = $this->validator()->validateAndNormalize($event, $this->roster('Tim', [
+            $this->rosterMember(true),
+            $this->rosterMember(false),
+        ]));
+
+        $exact = $this->validator()->validateAndNormalize($event, $this->roster('Tim', [
+            $this->rosterMember(true),
+            $this->rosterMember(false),
+            $this->rosterMember(false),
+        ]));
+
+        $this->assertFalse($tooSmall['valid']);
+        $this->assertArrayHasKey('members', $tooSmall['errors']);
+        $this->assertTrue($exact['valid']);
+        $this->assertCount(3, $exact['data']['members']);
+    }
+
     // -------------------------------------------- validator roster size
 
     public function test_roster_below_minimum_is_rejected(): void
@@ -399,6 +444,81 @@ class TeamRosterTest extends TestCase
 
         $this->assertTrue($result['valid']);
         $this->assertArrayNotHasKey('members.0.answers', $result['errors']);
+    }
+
+    public function test_text_field_accepts_string_and_normalizes_it(): void
+    {
+        $event = $this->dynamicFieldEvent();
+        $nick = $this->memberField($event, 'Nickname');
+
+        $result = $this->validator()->validateAndNormalize($event, $this->roster('Tim', [
+            $this->rosterMember(true, [(string) $nick->id => '  Player One  ']),
+        ]));
+
+        $this->assertTrue($result['valid']);
+        $this->assertSame('Player One', $result['data']['members'][0]['answers'][$nick->id]);
+    }
+
+    public function test_text_field_rejects_integer_value(): void
+    {
+        $event = $this->dynamicFieldEvent();
+        $nick = $this->memberField($event, 'Nickname');
+
+        $result = $this->validator()->validateAndNormalize($event, $this->roster('Tim', [
+            $this->rosterMember(true, [(string) $nick->id => 123]),
+        ]));
+
+        $this->assertFalse($result['valid']);
+        $this->assertArrayHasKey("members.0.answers.{$nick->id}", $result['errors']);
+    }
+
+    public function test_text_field_rejects_array_value(): void
+    {
+        $event = $this->dynamicFieldEvent();
+        $nick = $this->memberField($event, 'Nickname');
+
+        $result = $this->validator()->validateAndNormalize($event, $this->roster('Tim', [
+            $this->rosterMember(true, [(string) $nick->id => ['abc']]),
+        ]));
+
+        $this->assertFalse($result['valid']);
+        $this->assertArrayHasKey("members.0.answers.{$nick->id}", $result['errors']);
+    }
+
+    public function test_textarea_field_rejects_non_string_value(): void
+    {
+        $event = $this->dynamicFieldEvent();
+        $nick = $this->memberField($event, 'Nickname');
+        $bio = $this->memberField($event, 'Bio');
+
+        $result = $this->validator()->validateAndNormalize($event, $this->roster('Tim', [
+            $this->rosterMember(true, [
+                (string) $nick->id => 'Captain',
+                (string) $bio->id => true,
+            ]),
+        ]));
+
+        $this->assertFalse($result['valid']);
+        $this->assertArrayHasKey("members.0.answers.{$bio->id}", $result['errors']);
+    }
+
+    public function test_html_string_answer_is_sanitized_without_leaving_raw_html(): void
+    {
+        $event = $this->dynamicFieldEvent();
+        $nick = $this->memberField($event, 'Nickname');
+        $bio = $this->memberField($event, 'Bio');
+
+        $result = $this->validator()->validateAndNormalize($event, $this->roster('Tim', [
+            $this->rosterMember(true, [
+                (string) $nick->id => 'Captain',
+                (string) $bio->id => '  <b>Player</b> <i>One</i>  ',
+            ]),
+        ]));
+
+        $this->assertTrue($result['valid']);
+        $this->assertSame('Player One', $result['data']['members'][0]['answers'][$bio->id]);
+        $this->assertStringNotContainsString('<', $result['data']['members'][0]['answers'][$bio->id]);
+        $this->assertStringNotContainsString('>', $result['data']['members'][0]['answers'][$bio->id]);
     }
 
     public function test_number_field_non_numeric_is_rejected(): void

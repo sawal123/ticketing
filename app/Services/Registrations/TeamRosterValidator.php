@@ -25,6 +25,7 @@ class TeamRosterValidator
     public function validateAndNormalize(Event $event, array $payload): array
     {
         $errors = [];
+        $event = $this->authoritativeEvent($event);
 
         if ($event->registration_mode !== Event::REGISTRATION_MODE_TEAM) {
             $errors['event'][] = 'Roster tim hanya berlaku untuk event dengan mode pendaftaran tim.';
@@ -118,6 +119,13 @@ class TeamRosterValidator
                 'members' => $normalizedMembers,
             ],
         ];
+    }
+
+    private function authoritativeEvent(Event $event): Event
+    {
+        return Event::query()
+            ->where('uid', $event->uid)
+            ->firstOrFail();
     }
 
     /**
@@ -258,6 +266,12 @@ class TeamRosterValidator
 
             case 'textarea':
             case 'text':
+                if (! is_string($value)) {
+                    return ['ok' => false, 'message' => 'Field "'.$field->label.'" harus berupa teks.'];
+                }
+
+                return ['ok' => true, 'value' => trim(strip_tags($value))];
+
             default:
                 return ['ok' => true, 'value' => trim(strip_tags((string) $value))];
         }
