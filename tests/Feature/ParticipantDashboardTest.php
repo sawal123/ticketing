@@ -381,6 +381,107 @@ class ParticipantDashboardTest extends TestCase
             ->assertSee('SUCCESS');
     }
 
+    public function test_team_registration_list_shows_captain_from_authoritative_members(): void
+    {
+        $tenant = $this->tenant();
+        $event = $this->event($tenant, [
+            'registration_mode' => Event::REGISTRATION_MODE_TEAM,
+            'team_min_members' => 2,
+            'team_max_members' => 5,
+        ]);
+        $nickname = $this->field($event, ['label' => 'Nickname', 'type' => 'text', 'scope' => 'member', 'sort_order' => 1]);
+
+        $buyer = $this->buyer();
+        $cart = $this->cart($event, $buyer);
+        $registration = $this->registration($event, $buyer, $cart, ['team_name' => 'Tim Kapten List']);
+        $this->member($registration, ['is_captain' => false, 'sort_order' => 1, 'answers' => [(int) $nickname->id => 'Pertama']]);
+        $this->member($registration, ['is_captain' => true, 'sort_order' => 2, 'answers' => [(int) $nickname->id => 'SangKapten']]);
+        $this->member($registration, ['is_captain' => false, 'sort_order' => 3, 'answers' => [(int) $nickname->id => 'Ketiga']]);
+
+        Livewire::actingAs($tenant)
+            ->test(EventDetail::class, ['uid' => $event->uid])
+            ->call('setTab', 'peserta')
+            ->assertSee('Tim Kapten List')
+            ->assertSeeHtml('data-captain="member"')
+            ->assertSee('Kapten: Anggota 2')
+            ->assertSee('Nickname: SangKapten');
+    }
+
+    public function test_individual_registration_list_has_no_captain(): void
+    {
+        $tenant = $this->tenant();
+        $event = $this->event($tenant, ['registration_mode' => Event::REGISTRATION_MODE_INDIVIDUAL]);
+
+        $buyer = $this->buyer(['name' => 'Individu Tanpa Tim', 'email' => 'individu@example.test']);
+        $cart = $this->cart($event, $buyer);
+        $this->registration($event, $buyer, $cart);
+
+        Livewire::actingAs($tenant)
+            ->test(EventDetail::class, ['uid' => $event->uid])
+            ->call('setTab', 'peserta')
+            ->assertSeeHtml('data-captain="none"')
+            ->assertDontSeeHtml('data-captain="member"')
+            ->assertDontSee('Kapten: Anggota');
+    }
+
+    public function test_team_without_captain_registration_list_shows_dash(): void
+    {
+        $tenant = $this->tenant();
+        $event = $this->event($tenant, [
+            'registration_mode' => Event::REGISTRATION_MODE_TEAM,
+            'team_min_members' => 1,
+            'team_max_members' => 3,
+        ]);
+
+        $buyer = $this->buyer();
+        $cart = $this->cart($event, $buyer);
+        $registration = $this->registration($event, $buyer, $cart, ['team_name' => 'Tim Tanpa Kapten']);
+        $this->member($registration, ['is_captain' => false, 'sort_order' => 1]);
+        $this->member($registration, ['is_captain' => false, 'sort_order' => 2]);
+
+        Livewire::actingAs($tenant)
+            ->test(EventDetail::class, ['uid' => $event->uid])
+            ->call('setTab', 'peserta')
+            ->assertSee('Tim Tanpa Kapten')
+            ->assertSeeHtml('data-captain="none"')
+            ->assertDontSee('Kapten: Anggota');
+    }
+
+    public function test_captain_from_registration_of_another_event_does_not_leak(): void
+    {
+        $tenant = $this->tenant();
+        $eventA = $this->event($tenant, [
+            'registration_mode' => Event::REGISTRATION_MODE_TEAM,
+            'team_min_members' => 1,
+            'team_max_members' => 3,
+        ]);
+        $eventB = $this->event($tenant, [
+            'registration_mode' => Event::REGISTRATION_MODE_TEAM,
+            'team_min_members' => 1,
+            'team_max_members' => 3,
+        ]);
+        $nicknameA = $this->field($eventA, ['label' => 'Nickname', 'type' => 'text', 'scope' => 'member', 'sort_order' => 1]);
+        $nicknameB = $this->field($eventB, ['label' => 'Nickname', 'type' => 'text', 'scope' => 'member', 'sort_order' => 1]);
+
+        $buyerA = $this->buyer();
+        $cartA = $this->cart($eventA, $buyerA);
+        $registrationA = $this->registration($eventA, $buyerA, $cartA, ['team_name' => 'Tim Event A']);
+        $this->member($registrationA, ['is_captain' => true, 'sort_order' => 1, 'answers' => [(int) $nicknameA->id => 'KaptenEventA']]);
+
+        $buyerB = $this->buyer();
+        $cartB = $this->cart($eventB, $buyerB);
+        $registrationB = $this->registration($eventB, $buyerB, $cartB, ['team_name' => 'Tim Rahasia B']);
+        $this->member($registrationB, ['is_captain' => true, 'sort_order' => 1, 'answers' => [(int) $nicknameB->id => 'KaptenRahasiaB']]);
+
+        Livewire::actingAs($tenant)
+            ->test(EventDetail::class, ['uid' => $eventA->uid])
+            ->call('setTab', 'peserta')
+            ->assertSee('Tim Event A')
+            ->assertSee('KaptenEventA')
+            ->assertDontSee('Tim Rahasia B')
+            ->assertDontSee('KaptenRahasiaB');
+    }
+
     private function tenant(array $overrides = []): User
     {
         return User::factory()->create(array_merge([

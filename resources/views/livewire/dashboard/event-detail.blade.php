@@ -350,7 +350,7 @@
                             </div>
                         </div>
 
-                        <x-admin.table title="Daftar Peserta" :headers="['Peserta / Tim', 'Akun Pendaftar', 'Invoice', 'Anggota', 'Pembayaran', 'Status', 'Tanggal', 'Aksi']" :count="$participants->total()">
+                        <x-admin.table title="Daftar Peserta" :headers="['Peserta / Tim', 'Akun Pendaftar', 'Kapten', 'Invoice', 'Anggota', 'Pembayaran', 'Status', 'Tanggal', 'Aksi']" :count="$participants->total()">
                             @forelse($participants as $registration)
                                 @php
                                     $regUser = $registration->user;
@@ -359,6 +359,21 @@
                                     $regMemberCount = $regIsTeam ? $registration->members->count() : null;
                                     $regAccountName = $regUser?->name ?? 'Akun tidak ditemukan';
                                     $regAccountEmail = $regUser?->email ?? '';
+                                    $regCaptain = $regIsTeam ? $registration->members->firstWhere('is_captain', true) : null;
+                                    $regCaptainLabel = null;
+                                    $regCaptainSummary = null;
+                                    if ($regCaptain) {
+                                        $regCaptainIndex = $registration->members->search(fn ($member) => $member->uid === $regCaptain->uid);
+                                        $regCaptainLabel = 'Kapten: Anggota '.((int) $regCaptainIndex + 1);
+                                        $captainBits = [];
+                                        foreach ($event->registrationFields->where('scope', 'member') as $captainField) {
+                                            $captainValue = $regCaptain->answers[$captainField->id] ?? null;
+                                            if (is_scalar($captainValue) && filled($captainValue)) {
+                                                $captainBits[] = $captainField->label.': '.$captainValue;
+                                            }
+                                        }
+                                        $regCaptainSummary = $captainBits ? implode(' • ', $captainBits) : null;
+                                    }
                                     if (! $regCart) {
                                         $regPaymentLabel = '-';
                                     } elseif ($regCart->payment_type === 'cash') {
@@ -395,6 +410,21 @@
                                                 <span class="text-xs text-slate-500">{{ $regAccountEmail }}</span>
                                             </div>
                                         </div>
+                                    </td>
+                                    <td class="px-5 py-4 whitespace-nowrap" data-captain="{{ $regCaptain ? 'member' : 'none' }}">
+                                        @if ($regCaptain)
+                                            <div class="flex flex-col gap-1">
+                                                <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest border border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300">
+                                                    <i data-lucide="star" class="w-3 h-3"></i>
+                                                    {{ $regCaptainLabel }}
+                                                </span>
+                                                @if ($regCaptainSummary)
+                                                    <span class="text-[11px] text-slate-500 dark:text-slate-400 max-w-[16rem] truncate">{{ $regCaptainSummary }}</span>
+                                                @endif
+                                            </div>
+                                        @else
+                                            <span class="text-slate-400">-</span>
+                                        @endif
                                     </td>
                                     <td class="px-5 py-4">
                                         <span class="text-xs font-mono font-bold bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded text-slate-700 dark:text-slate-300">
@@ -444,7 +474,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="8" class="px-5 py-12 text-center">
+                                    <td colspan="9" class="px-5 py-12 text-center">
                                         <div class="flex flex-col items-center justify-center text-slate-400">
                                             <i data-lucide="users" class="w-12 h-12 mb-2 opacity-20"></i>
                                             <p>Tidak ada peserta yang sesuai dengan filter.</p>
