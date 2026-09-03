@@ -150,15 +150,15 @@ Jika full suite atau verification wajib gagal, jangan menyatakan siap merge. Jel
 
 Batasan database:
 
-- DILARANG menjalankan:
-    - php artisan migrate:fresh
-    - php artisan migrate:refresh
-    - php artisan db:wipe
-    - perintah lain yang menghapus/reset seluruh database.
-- Jangan menghapus data lokal existing.
-- Jika migration perlu diverifikasi, gunakan migration/test database sesuai konfigurasi PHPUnit, bukan database development utama.
-- Untuk test, pastikan APP_ENV=testing dan koneksi database test yang terisolasi.
-- Jika environment test tidak terisolasi atau berpotensi menyentuh database development, STOP dan laporkan blocker.
+- DILARANG menjalankan migrate:fresh, migrate:refresh, db:wipe, atau operasi destructive lain terhadap database development/production.
+- Database development `tiketkonser` tidak boleh dihapus/reset oleh test.
+- RefreshDatabase / migrate:fresh BOLEH hanya pada database testing yang benar-benar terisolasi.
+- Sebelum PHPUnit, pastikan:
+    - APP_ENV=testing
+    - DB_CONNECTION=mysql
+    - DB_DATABASE=ticketing_test
+- Jika database aktif bukan `ticketing_test`, STOP dan jangan jalankan test.
+- Jangan pernah menghapus data database `tiketkonser`.
 
 ## Final Output
 
