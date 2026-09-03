@@ -177,7 +177,10 @@
                     $savedMembers = $registration?->members ?? collect();
                     $teamMinMembers = max(1, (int) ($event->team_min_members ?? 1));
                     $teamMaxMembers = max($teamMinMembers, (int) ($event->team_max_members ?? $teamMinMembers));
-                    $memberCount = min($teamMaxMembers, max($teamMinMembers, count(old('members', $savedMembers))));
+                    $oldMembers = old('members');
+                    $hasOldMembers = is_array($oldMembers);
+                    $memberCount = $hasOldMembers ? count($oldMembers) : $savedMembers->count();
+                    $memberCount = min($teamMaxMembers, max($teamMinMembers, $memberCount));
                 @endphp
                 <div class="card">
                     <div class="card-header">
@@ -239,13 +242,22 @@
                                     </div>
                                     <div id="teamRosterMembers" data-min-members="{{ $teamMinMembers }}" data-max-members="{{ $teamMaxMembers }}">
                                     @for ($memberIndex = 0; $memberIndex < $memberCount; $memberIndex++)
-                                        @php $memberAnswers = old("members.{$memberIndex}.answers", data_get($savedMembers->get($memberIndex), 'answers', [])); @endphp
+                                        @php
+                                            $oldMember = $hasOldMembers ? data_get($oldMembers, $memberIndex, []) : null;
+                                            $savedMember = $savedMembers->get($memberIndex);
+                                            $memberAnswers = $hasOldMembers
+                                                ? data_get($oldMember, 'answers', [])
+                                                : data_get($savedMember, 'answers', []);
+                                            $isCaptain = $hasOldMembers
+                                                ? !empty(data_get($oldMember, 'is_captain'))
+                                                : ($savedMember ? (bool) $savedMember->is_captain : $memberIndex === 0);
+                                        @endphp
                                         <div class="team-member-card" style="padding:12px;border:1px solid rgba(255,255,255,0.08);border-radius:12px;display:grid;gap:10px;margin-top:10px;">
                                             <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;">
                                                 <label class="team-member-title" style="font-weight:700;font-size:13px;color:#fff;">Anggota {{ $memberIndex + 1 }}</label>
                                                 <button type="button" class="team-member-remove" style="border:0;border-radius:8px;padding:5px 8px;background:rgba(232,84,122,0.16);color:#f6a1b7;font-size:12px;">Hapus Anggota</button>
                                             </div>
-                                            <label style="font-size:12px;color:var(--muted);"><input type="checkbox" class="team-member-captain" name="members[{{ $memberIndex }}][is_captain]" form="paynowForm" value="1" @checked(old("members.{$memberIndex}.is_captain", $memberIndex === 0))> Kapten tim</label>
+                                            <label style="font-size:12px;color:var(--muted);"><input type="checkbox" class="team-member-captain" name="members[{{ $memberIndex }}][is_captain]" form="paynowForm" value="1" @checked($isCaptain)> Kapten tim</label>
                                             @foreach ($memberFields as $field)
                                                 <div>
                                                     <label style="display:block;font-size:12px;margin-bottom:6px;color:#fff;">{{ $field->label }}{{ $field->is_required ? ' *' : '' }}</label>
@@ -317,11 +329,17 @@
 
                         const minimum = Number(roster.dataset.minMembers);
                         const maximum = Number(roster.dataset.maxMembers);
-                        let nextIndex = roster.querySelectorAll('.team-member-card').length;
-
                         const cards = () => Array.from(roster.querySelectorAll('.team-member-card'));
+                        const reindexCards = () => {
+                            cards().forEach((card, index) => {
+                                card.querySelectorAll('[name]').forEach((input) => {
+                                    input.name = input.name.replace(/^members\[\d+\]/, `members[${index}]`);
+                                });
+                            });
+                        };
                         const updateControls = () => {
                             const currentCards = cards();
+                            reindexCards();
                             countLabel.textContent = `Anggota ${currentCards.length} dari ${minimum}-${maximum}`;
                             addButton.disabled = currentCards.length >= maximum;
                             addButton.style.opacity = addButton.disabled ? '0.5' : '1';
@@ -368,12 +386,10 @@
                                 return;
                             }
 
-                            roster.insertAdjacentHTML('beforeend', template.innerHTML.replaceAll('__INDEX__', nextIndex));
-                            nextIndex++;
+                            roster.insertAdjacentHTML('beforeend', template.innerHTML.replaceAll('__INDEX__', cards().length));
                             updateControls();
                         });
 
-                        ensureCaptain();
                         updateControls();
                     })();
                 </script>

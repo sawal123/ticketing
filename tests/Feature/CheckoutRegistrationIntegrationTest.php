@@ -7,6 +7,7 @@ use App\Models\Cart;
 use App\Models\Event;
 use App\Models\EventRegistration;
 use App\Models\EventRegistrationField;
+use App\Models\EventRegistrationMember;
 use App\Models\HargaCart;
 use App\Models\User;
 use App\Services\Registrations\CheckoutRegistrationService;
@@ -294,9 +295,91 @@ class CheckoutRegistrationIntegrationTest extends TestCase
         $this->assertNull(session()->getOldInput('cart_uid'));
     }
 
+    public function test_team_roster_view_restores_reindexed_old_members_and_non_first_captain(): void
+    {
+        $user = User::create(['uid' => (string) Str::uuid(), 'name' => 'Roster Buyer', 'email' => 'roster@example.test', 'password' => 'secret']);
+        $event = $this->event(Event::REGISTRATION_MODE_TEAM, 2, 5);
+        $nickname = $this->field($event, 'Nickname', 'text', 'member', true);
+        $cart = Cart::create([
+            'uid' => (string) Str::uuid(), 'user_uid' => $user->uid, 'event_uid' => $event->uid,
+            'invoice' => 'INV-ROSTER-OLD', 'status' => Cart::STATUS_RESERVED,
+        ]);
+        session()->put('_old_input', [
+            'team_name' => 'Reindexed Team',
+            'members' => [
+                ['answers' => [(string) $nickname->id => 'First']],
+                ['answers' => [(string) $nickname->id => 'Third']],
+                ['is_captain' => '1', 'answers' => [(string) $nickname->id => 'Fourth']],
+            ],
+        ]);
+        app('request')->setLaravelSession(session());
+
+        $view = $this->actingAs($user)->view('frontend.page.bayartiket', $this->checkoutViewData($event, $cart, $user, collect([$nickname])));
+
+        $view->assertSee('name="members[0][answers]['.$nickname->id.']"', false)
+            ->assertSee('name="members[1][answers]['.$nickname->id.']"', false)
+            ->assertSee('name="members[2][answers]['.$nickname->id.']"', false)
+            ->assertSee('value="Third"', false)
+            ->assertSee('name="members[2][is_captain]" form="paynowForm" value="1" checked', false)
+            ->assertDontSee('name="members[0][is_captain]" form="paynowForm" value="1" checked', false);
+    }
+
+    public function test_team_roster_view_uses_saved_non_first_captain_without_old_input(): void
+    {
+        $user = User::create(['uid' => (string) Str::uuid(), 'name' => 'Saved Buyer', 'email' => 'saved@example.test', 'password' => 'secret']);
+        $event = $this->event(Event::REGISTRATION_MODE_TEAM, 2, 5);
+        $nickname = $this->field($event, 'Nickname', 'text', 'member', true);
+        $cart = Cart::create([
+            'uid' => (string) Str::uuid(), 'user_uid' => $user->uid, 'event_uid' => $event->uid,
+            'invoice' => 'INV-ROSTER-SAVED', 'status' => Cart::STATUS_RESERVED,
+        ]);
+        $registration = EventRegistration::create([
+            'uid' => (string) Str::uuid(), 'cart_uid' => $cart->uid, 'invoice' => $cart->invoice,
+            'event_uid' => $event->uid, 'user_uid' => $user->uid, 'registration_mode' => Event::REGISTRATION_MODE_TEAM,
+            'status' => EventRegistration::STATUS_PENDING, 'team_name' => 'Saved Team', 'answers' => [],
+        ]);
+        EventRegistrationMember::create(['uid' => (string) Str::uuid(), 'registration_uid' => $registration->uid, 'is_captain' => false, 'sort_order' => 1, 'answers' => [$nickname->id => 'First']]);
+        EventRegistrationMember::create(['uid' => (string) Str::uuid(), 'registration_uid' => $registration->uid, 'is_captain' => true, 'sort_order' => 2, 'answers' => [$nickname->id => 'Captain']]);
+
+        $view = $this->actingAs($user)->view('frontend.page.bayartiket', $this->checkoutViewData($event, $cart, $user, collect([$nickname]), $registration->fresh('members')));
+
+        $view->assertSee('name="members[1][is_captain]" form="paynowForm" value="1" checked', false)
+            ->assertDontSee('name="members[0][is_captain]" form="paynowForm" value="1" checked', false);
+    }
+
     private function service(): CheckoutRegistrationService
     {
         return app(CheckoutRegistrationService::class);
+    }
+
+    private function checkoutViewData(Event $event, Cart $cart, User $user, $memberFields, ?EventRegistration $registration = null): array
+    {
+        return [
+            'title' => 'Detail Ticket',
+            'seo' => collect([(object) ['keyword' => '', 'description' => '']]),
+            'logo' => collect([(object) ['icon' => '', 'logo' => '']]),
+            'contact' => collect(),
+            'user' => $user,
+            'event' => $event,
+            'harga' => collect(),
+            'cart' => $cart,
+            'total' => 0,
+            'uid' => $cart->uid,
+            'voucher' => null,
+            'payment' => collect(),
+            'hasAvailablePaymentGateways' => false,
+            'selectInternetFee' => 0,
+            'selectedPaymentGatewayId' => null,
+            'iFee' => null,
+            'diskon' => 0,
+            'pajakPersen' => 0,
+            'nilaiPajak' => 0,
+            'subtotal' => 0,
+            'grandTotal' => 0,
+            'registrationFields' => collect(),
+            'memberFields' => $memberFields,
+            'registration' => $registration,
+        ];
     }
 
     private function event(string $mode, int $min = 1, int $max = 1): Event
