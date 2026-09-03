@@ -13,6 +13,10 @@ class EventRegistrationField extends Model
 
     public const SCOPES = ['registration', 'member'];
 
+    public const SCOPE_REGISTRATION = 'registration';
+
+    public const SCOPE_MEMBER = 'member';
+
     protected $fillable = ['event_uid', 'label', 'type', 'scope', 'is_required', 'options', 'sort_order'];
 
     protected $casts = [

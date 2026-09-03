@@ -335,6 +335,27 @@
                                     class="mb-0.5" title="Reset Filter"></x-admin.button>
                             </div>
                         </div>
+
+                        <div class="mt-4 pt-4 border-t border-slate-100 dark:border-slate-700 flex flex-wrap items-center justify-between gap-4">
+                            <div class="text-xs text-slate-500 font-medium">
+                                <i data-lucide="info" class="w-3.5 h-3.5 inline mr-1 opacity-50"></i>
+                                Export akan mengikuti filter yang aktif di atas.
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <x-admin.button wire:click="exportParticipants" wire:loading.attr="disabled"
+                                    variant="secondary" size="sm" icon="file-spreadsheet">
+                                    <span wire:loading.remove wire:target="exportParticipants">Export Peserta</span>
+                                    <span wire:loading wire:target="exportParticipants">Memproses...</span>
+                                </x-admin.button>
+                                @if ($event->registration_mode === \App\Models\Event::REGISTRATION_MODE_TEAM)
+                                    <x-admin.button wire:click="exportRoster" wire:loading.attr="disabled"
+                                        variant="secondary" size="sm" icon="users">
+                                        <span wire:loading.remove wire:target="exportRoster">Export Roster</span>
+                                        <span wire:loading wire:target="exportRoster">Memproses...</span>
+                                    </x-admin.button>
+                                @endif
+                            </div>
+                        </div>
                     </x-admin.card>
 
                     <div class="relative min-h-[300px]">
