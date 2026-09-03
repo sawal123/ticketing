@@ -11,11 +11,22 @@ class EventRegistration extends Model
 {
     use HasFactory;
 
+    public const STATUS_PENDING = 'PENDING';
+
+    public const STATUS_SUCCESS = 'SUCCESS';
+
+    public const STATUS_CANCELLED = 'CANCELLED';
+
+    public const STATUS_EXPIRED = 'EXPIRED';
+
     protected $fillable = [
         'uid',
+        'cart_uid',
+        'invoice',
         'event_uid',
         'user_uid',
         'registration_mode',
+        'status',
         'team_name',
         'answers',
     ];
@@ -32,6 +43,11 @@ class EventRegistration extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_uid', 'uid');
+    }
+
+    public function cart(): BelongsTo
+    {
+        return $this->belongsTo(Cart::class, 'cart_uid', 'uid');
     }
 
     public function members(): HasMany

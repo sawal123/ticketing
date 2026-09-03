@@ -5,10 +5,12 @@ namespace App\Http\Controllers;
 use App\Jobs\sendEmailETransaksi;
 use App\Models\Cart;
 use App\Models\EventPaymentGateway;
+use App\Models\EventRegistration;
 use App\Models\HargaCart;
 use App\Models\Transaction;
-use App\Services\Payments\CheckoutPaymentOtpService;
 use App\Models\User;
+use App\Services\Payments\CheckoutPaymentOtpService;
+use App\Services\Registrations\CheckoutRegistrationService;
 use App\Services\Tickets\TicketPricingService;
 use App\Services\Tickets\TicketReservationService;
 use Exception;
@@ -62,7 +64,8 @@ class TransactionController extends Controller
         Request $request,
         TicketPricingService $pricingService,
         TicketReservationService $reservationService,
-        CheckoutPaymentOtpService $checkoutPaymentOtpService
+        CheckoutPaymentOtpService $checkoutPaymentOtpService,
+        CheckoutRegistrationService $checkoutRegistrationService
     ) {
         $request->merge([
             'cart_uid' => $request->input('cart_uid', $request->input('cartUid')),
@@ -82,7 +85,7 @@ class TransactionController extends Controller
         }
 
         try {
-            $paymentContext = DB::transaction(function () use ($cartUid, $request, $pricingService, $reservationService, $checkoutPaymentOtpService) {
+            $paymentContext = DB::transaction(function () use ($cartUid, $request, $pricingService, $reservationService, $checkoutPaymentOtpService, $checkoutRegistrationService) {
                 $cart = Cart::where('uid', $cartUid)
                     ->where('user_uid', Auth::user()->uid)
                     ->lockForUpdate()
@@ -162,6 +165,12 @@ class TransactionController extends Controller
                 if (! $pricing['payment_gateway_available']) {
                     throw ValidationException::withMessages(['payment_gateway_id' => 'Metode pembayaran tidak tersedia.']);
                 }
+
+                $checkoutRegistrationService->persist($cart, $request->only([
+                    'registration_answers',
+                    'team_name',
+                    'members',
+                ]));
 
                 $cart->status = Cart::STATUS_PENDING;
                 $cart->payment_type = $gateway->slug;
@@ -258,8 +267,11 @@ class TransactionController extends Controller
         }
     }
 
-    public function callback(Request $request, TicketReservationService $reservationService)
-    {
+    public function callback(
+        Request $request,
+        TicketReservationService $reservationService,
+        CheckoutRegistrationService $checkoutRegistrationService
+    ) {
         $payload = $request->all();
         $orderId = (string) ($payload['order_id'] ?? '');
         $status = (string) ($payload['transaction_status'] ?? '');
@@ -308,22 +320,32 @@ class TransactionController extends Controller
             $fraudStatus,
             $midtransTransactionId,
             $reservationService,
+            $checkoutRegistrationService,
             &$shouldSendEmail
         ) {
             $cart = Cart::where('invoice', $orderId)->lockForUpdate()->firstOrFail();
 
             if ($cart->status === Cart::STATUS_SUCCESS) {
+                $checkoutRegistrationService->syncStatus($cart, EventRegistration::STATUS_SUCCESS);
+
                 return;
             }
 
             if ($this->isSuccessfulMidtransStatus($status, $fraudStatus)) {
                 $shouldSendEmail = $reservationService->settleLockedCart($cart, $paymentType, $midtransTransactionId);
+                $checkoutRegistrationService->syncStatus(
+                    $cart,
+                    $cart->status === Cart::STATUS_SUCCESS
+                        ? EventRegistration::STATUS_SUCCESS
+                        : EventRegistration::STATUS_PENDING
+                );
 
                 return;
             }
 
             if ($status === 'pending' || ($status === 'capture' && $fraudStatus === 'challenge')) {
                 $reservationService->markPendingLockedCart($cart, $paymentType);
+                $checkoutRegistrationService->syncStatus($cart, EventRegistration::STATUS_PENDING);
 
                 return;
             }
@@ -340,6 +362,11 @@ class TransactionController extends Controller
                     'status_transaksi' => $status === 'expire' ? Cart::STATUS_EXPIRED : Cart::STATUS_CANCELLED,
                     'payment_type' => $paymentType,
                 ]);
+
+                $checkoutRegistrationService->syncStatus(
+                    $cart,
+                    $status === 'expire' ? EventRegistration::STATUS_EXPIRED : EventRegistration::STATUS_CANCELLED
+                );
             }
         }, 3);
 

@@ -170,6 +170,102 @@
                 </div>
             </div>
 
+            @if ($event->registration_mode !== \App\Models\Event::REGISTRATION_MODE_TICKETING)
+                @php
+                    $registrationLocked = $hasActivePaymentLink;
+                    $registrationAnswers = old('registration_answers', $registration?->answers ?? []);
+                    $savedMembers = $registration?->members ?? collect();
+                    $memberCount = max(1, (int) ($event->team_min_members ?? 1));
+                @endphp
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-icon" style="background:rgba(245,200,66,0.12);">&#128221;</div>
+                        <div class="card-title">Form Pendaftaran</div>
+                    </div>
+                    <div class="card-body">
+                        @if ($registrationLocked)
+                            <div style="display:grid;gap:12px;">
+                                @foreach ($registrationFields as $field)
+                                    <div class="detail-row">
+                                        <span class="label">{{ $field->label }}</span>
+                                        <span class="value">{{ data_get($registration?->answers, $field->id, '-') }}</span>
+                                    </div>
+                                @endforeach
+                                @if ($event->registration_mode === \App\Models\Event::REGISTRATION_MODE_TEAM)
+                                    <div class="detail-row">
+                                        <span class="label">Nama Tim</span>
+                                        <span class="value">{{ $registration?->team_name ?: '-' }}</span>
+                                    </div>
+                                    @foreach ($savedMembers as $member)
+                                        <div style="padding:12px;border:1px solid rgba(255,255,255,0.08);border-radius:12px;">
+                                            <strong style="font-size:13px;color:#fff;">Anggota {{ $member->sort_order }}{{ $member->is_captain ? ' (Kapten)' : '' }}</strong>
+                                            @foreach ($memberFields as $field)
+                                                <div class="detail-row" style="margin-top:8px;">
+                                                    <span class="label">{{ $field->label }}</span>
+                                                    <span class="value">{{ data_get($member->answers, $field->id, '-') }}</span>
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    @endforeach
+                                @endif
+                                <div style="font-size:12px;color:var(--muted);">Data pendaftaran terkunci setelah link pembayaran aktif.</div>
+                            </div>
+                        @else
+                            <div style="display:grid;gap:14px;">
+                                @foreach ($registrationFields as $field)
+                                    <div>
+                                        <label style="display:block;font-weight:700;font-size:13px;margin-bottom:8px;color:#fff;">{{ $field->label }}{{ $field->is_required ? ' *' : '' }}</label>
+                                        @if ($field->type === 'textarea')
+                                            <textarea name="registration_answers[{{ $field->id }}]" form="paynowForm" class="voucher-input" rows="3">{{ data_get($registrationAnswers, $field->id) }}</textarea>
+                                        @elseif ($field->type === 'select')
+                                            <select name="registration_answers[{{ $field->id }}]" form="paynowForm" class="voucher-input">
+                                                <option value="">Pilih {{ $field->label }}</option>
+                                                @foreach ($field->options ?? [] as $option)
+                                                    <option value="{{ $option }}" @selected((string) data_get($registrationAnswers, $field->id) === (string) $option)>{{ $option }}</option>
+                                                @endforeach
+                                            </select>
+                                        @else
+                                            <input type="{{ $field->type === 'number' ? 'number' : 'text' }}" name="registration_answers[{{ $field->id }}]" form="paynowForm" value="{{ data_get($registrationAnswers, $field->id) }}" class="voucher-input">
+                                        @endif
+                                    </div>
+                                @endforeach
+
+                                @if ($event->registration_mode === \App\Models\Event::REGISTRATION_MODE_TEAM)
+                                    <div>
+                                        <label style="display:block;font-weight:700;font-size:13px;margin-bottom:8px;color:#fff;">Nama Tim *</label>
+                                        <input type="text" name="team_name" form="paynowForm" value="{{ old('team_name', $registration?->team_name) }}" class="voucher-input">
+                                    </div>
+                                    @for ($memberIndex = 0; $memberIndex < $memberCount; $memberIndex++)
+                                        @php $memberAnswers = old("members.{$memberIndex}.answers", data_get($savedMembers->get($memberIndex), 'answers', [])); @endphp
+                                        <div style="padding:12px;border:1px solid rgba(255,255,255,0.08);border-radius:12px;display:grid;gap:10px;">
+                                            <label style="font-weight:700;font-size:13px;color:#fff;">Anggota {{ $memberIndex + 1 }}</label>
+                                            <label style="font-size:12px;color:var(--muted);"><input type="checkbox" name="members[{{ $memberIndex }}][is_captain]" form="paynowForm" value="1" @checked(old("members.{$memberIndex}.is_captain", $memberIndex === 0))> Kapten tim</label>
+                                            @foreach ($memberFields as $field)
+                                                <div>
+                                                    <label style="display:block;font-size:12px;margin-bottom:6px;color:#fff;">{{ $field->label }}{{ $field->is_required ? ' *' : '' }}</label>
+                                                    @if ($field->type === 'textarea')
+                                                        <textarea name="members[{{ $memberIndex }}][answers][{{ $field->id }}]" form="paynowForm" class="voucher-input" rows="2">{{ data_get($memberAnswers, $field->id) }}</textarea>
+                                                    @elseif ($field->type === 'select')
+                                                        <select name="members[{{ $memberIndex }}][answers][{{ $field->id }}]" form="paynowForm" class="voucher-input">
+                                                            <option value="">Pilih {{ $field->label }}</option>
+                                                            @foreach ($field->options ?? [] as $option)
+                                                                <option value="{{ $option }}" @selected((string) data_get($memberAnswers, $field->id) === (string) $option)>{{ $option }}</option>
+                                                            @endforeach
+                                                        </select>
+                                                    @else
+                                                        <input type="{{ $field->type === 'number' ? 'number' : 'text' }}" name="members[{{ $memberIndex }}][answers][{{ $field->id }}]" form="paynowForm" value="{{ data_get($memberAnswers, $field->id) }}" class="voucher-input">
+                                                    @endif
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    @endfor
+                                @endif
+                            </div>
+                        @endif
+                    </div>
+                </div>
+            @endif
+
             <!-- TICKET DETAIL -->
             <div class="card">
                 <div class="card-header">
