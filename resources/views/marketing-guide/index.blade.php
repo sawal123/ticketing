@@ -884,8 +884,13 @@
             <div class="badge">Panduan Privat</div>
             <h1>Cara Kerja Gotik</h1>
             <p class="subtitle">Kelola event, penjualan tiket, pembayaran hingga proses check-in dalam satu platform.</p>
+            @if (! empty($recipientName))
+                <p style="color: var(--text-secondary); margin-bottom: 12px;">
+                    Panduan ini disiapkan untuk {{ $recipientName }}
+                </p>
+            @endif
             <p style="color: var(--text-secondary); margin-bottom: 32px;">
-                <i class="fas fa-calendar-alt"></i> Akses tersedia hingga 11 September 2026
+                <i class="fas fa-calendar-alt"></i> Akses tersedia hingga {{ $expiresAt->locale('id')->translatedFormat('j F Y') }}
             </p>
             <a href="#menjadi-penyelenggara" class="btn btn-primary">
                 <i class="fas fa-arrow-right"></i> Mulai Sekarang

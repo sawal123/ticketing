@@ -29,8 +29,19 @@ class MarketingGuideController extends Controller
 
         $this->accessService->recordAccess($access);
 
+        $recipientName = filled($access->recipient_name)
+            ? trim((string) $access->recipient_name)
+            : null;
+
+        if ($recipientName === '') {
+            $recipientName = null;
+        }
+
         return response()
-            ->view('marketing-guide.index')
+            ->view('marketing-guide.index', [
+                'recipientName' => $recipientName,
+                'expiresAt' => $access->expires_at,
+            ])
             ->header('X-Robots-Tag', 'noindex, nofollow, noarchive');
     }
 }
