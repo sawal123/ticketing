@@ -3,8 +3,10 @@
 namespace App\Livewire\Admin;
 
 use App\Models\MarketingGuideAccess;
+use App\Models\User;
 use App\Services\MarketingGuide\MarketingGuideAccessService;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -34,8 +36,14 @@ class MarketingGuideIndex extends Component
         $this->accessService = $accessService;
     }
 
+    public function mount(): void
+    {
+        $this->ensureAdmin();
+    }
+
     public function openCreateModal(): void
     {
+        $this->ensureAdmin();
         $this->resetCreateForm();
         $this->dispatch('open-modal', name: 'marketing-guide-create-modal');
     }
@@ -49,13 +57,14 @@ class MarketingGuideIndex extends Component
 
     public function generateLink(): void
     {
+        $this->ensureAdmin();
+
         $this->validate([
             'recipient_name' => ['nullable', 'string', 'max:255'],
             'duration_days' => ['required', 'integer', Rule::in(self::DURATION_OPTIONS)],
         ]);
 
-        $creator = Auth::user();
-        abort_unless($creator !== null, 403);
+        $creator = $this->adminUser();
 
         $created = $this->accessService->create(
             $creator,
@@ -75,25 +84,41 @@ class MarketingGuideIndex extends Component
 
     public function regenerateLink(int $accessId): void
     {
-        $existing = MarketingGuideAccess::query()->findOrFail($accessId);
-        $creator = Auth::user();
-        abort_unless($creator !== null, 403);
+        $this->ensureAdmin();
 
-        $created = $this->accessService->create(
-            $creator,
-            now()->addDays(7),
-            $existing->recipient_name
-        );
+        $creator = $this->adminUser();
+
+        $created = DB::transaction(function () use ($accessId, $creator) {
+            $existing = MarketingGuideAccess::query()
+                ->whereKey($accessId)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $this->accessService->revoke($existing);
+
+            return $this->accessService->create(
+                $creator,
+                now()->addDays(7),
+                $existing->recipient_name
+            );
+        });
+
+        if ($this->generatedAccessId === $accessId) {
+            $this->generatedUrl = null;
+            $this->generatedAccessId = null;
+        }
 
         $this->generatedAccessId = $created['access']->id;
         $this->generatedUrl = route('marketing-guide.show', ['token' => $created['token']], absolute: true);
         $this->resetPage();
 
-        session()->flash('success', 'Link baru berhasil digenerate ulang. Salin URL sekarang.');
+        session()->flash('success', 'Link baru berhasil digenerate ulang. Link lama telah di-revoke. Salin URL sekarang.');
     }
 
     public function openExtendModal(int $accessId): void
     {
+        $this->ensureAdmin();
+
         MarketingGuideAccess::query()->findOrFail($accessId);
         $this->extendingAccessId = $accessId;
         $this->extend_days = 7;
@@ -103,6 +128,8 @@ class MarketingGuideIndex extends Component
 
     public function extendLink(): void
     {
+        $this->ensureAdmin();
+
         $this->validate([
             'extendingAccessId' => ['required', 'integer', 'exists:marketing_guide_accesses,id'],
             'extend_days' => ['required', 'integer', Rule::in(self::DURATION_OPTIONS)],
@@ -119,6 +146,8 @@ class MarketingGuideIndex extends Component
 
     public function revokeLink(int $accessId): void
     {
+        $this->ensureAdmin();
+
         $access = MarketingGuideAccess::query()->findOrFail($accessId);
         $this->accessService->revoke($access);
 
@@ -132,12 +161,16 @@ class MarketingGuideIndex extends Component
 
     public function clearGeneratedUrl(): void
     {
+        $this->ensureAdmin();
+
         $this->generatedUrl = null;
         $this->generatedAccessId = null;
     }
 
     public function render()
     {
+        $this->ensureAdmin();
+
         $links = MarketingGuideAccess::query()
             ->latest('id')
             ->paginate(10);
@@ -147,5 +180,24 @@ class MarketingGuideIndex extends Component
             'durationOptions' => self::DURATION_OPTIONS,
             'accessService' => $this->accessService,
         ])->layout('admin.layout', ['title' => 'Marketing Guide']);
+    }
+
+    private function ensureAdmin(): void
+    {
+        abort_unless($this->isAdmin(Auth::user()), 403);
+    }
+
+    private function adminUser(): User
+    {
+        $user = Auth::user();
+        abort_unless($this->isAdmin($user), 403);
+
+        return $user;
+    }
+
+    private function isAdmin(mixed $user): bool
+    {
+        return $user instanceof User
+            && strtolower((string) $user->role) === 'admin';
     }
 }

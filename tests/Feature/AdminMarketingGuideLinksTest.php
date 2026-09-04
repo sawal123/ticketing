@@ -13,6 +13,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Livewire\Livewire;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 use Tests\TestCase;
 
 class AdminMarketingGuideLinksTest extends TestCase
@@ -201,12 +202,22 @@ class AdminMarketingGuideLinksTest extends TestCase
         $this->assertNotSame($oldToken, $newToken);
 
         $this->assertDatabaseCount('marketing_guide_accesses', 2);
+
+        $oldAccess = MarketingGuideAccess::query()->findOrFail($oldId);
+        $this->assertNotNull($oldAccess->revoked_at);
+        $this->assertSame('Revoked', $this->service->displayStatus($oldAccess));
+        $this->assertFalse($oldAccess->isValid());
+
         $newAccess = MarketingGuideAccess::query()->where('id', '!=', $oldId)->first();
+        $this->assertNotNull($newAccess);
         $this->assertSame('Old Recipient', $newAccess->recipient_name);
+        $this->assertNull($newAccess->revoked_at);
+        $this->assertSame('Active', $this->service->displayStatus($newAccess));
         $this->assertSame(hash('sha256', $newToken), $newAccess->getAttributes()['token_hash']);
+        $this->assertNotSame(hash('sha256', $oldToken), $newAccess->getAttributes()['token_hash']);
 
         $this->get(route('marketing-guide.show', ['token' => $newToken]))->assertOk();
-        $this->get(route('marketing-guide.show', ['token' => $oldToken]))->assertOk();
+        $this->get(route('marketing-guide.show', ['token' => $oldToken]))->assertNotFound();
     }
 
     public function test_plain_token_never_persisted_after_admin_generate(): void
@@ -227,6 +238,64 @@ class AdminMarketingGuideLinksTest extends TestCase
         $json = MarketingGuideAccess::query()->first()->toJson();
         $this->assertStringNotContainsString($token, $json);
         $this->assertStringNotContainsString('token_hash', $json);
+    }
+
+    public function test_non_admin_cannot_run_livewire_link_actions(): void
+    {
+        $admin = $this->user('admin');
+        $existing = $this->service->create($admin, now()->addDay(), 'Protected Link');
+        $beforeCount = MarketingGuideAccess::query()->count();
+        $beforeExpiry = $existing['access']->expires_at->copy();
+
+        foreach (['penyewa', 'user', 'staff'] as $role) {
+            $actor = $this->user($role);
+
+            Livewire::actingAs($actor)
+                ->test(MarketingGuideIndex::class)
+                ->assertForbidden();
+
+            $this->assertLivewireActionForbidden($actor, fn (MarketingGuideIndex $component) => $component->generateLink());
+            $this->assertLivewireActionForbidden($actor, fn (MarketingGuideIndex $component) => $component->regenerateLink($existing['access']->id));
+            $this->assertLivewireActionForbidden($actor, fn (MarketingGuideIndex $component) => $component->openExtendModal($existing['access']->id));
+            $this->assertLivewireActionForbidden($actor, function (MarketingGuideIndex $component) use ($existing) {
+                $component->extendingAccessId = $existing['access']->id;
+                $component->extend_days = 7;
+                $component->extendLink();
+            });
+            $this->assertLivewireActionForbidden($actor, fn (MarketingGuideIndex $component) => $component->revokeLink($existing['access']->id));
+        }
+
+        Livewire::test(MarketingGuideIndex::class)->assertForbidden();
+        $this->assertLivewireActionForbidden(null, fn (MarketingGuideIndex $component) => $component->generateLink());
+        $this->assertLivewireActionForbidden(null, fn (MarketingGuideIndex $component) => $component->revokeLink($existing['access']->id));
+        $this->assertLivewireActionForbidden(null, fn (MarketingGuideIndex $component) => $component->extendLink());
+        $this->assertLivewireActionForbidden(null, fn (MarketingGuideIndex $component) => $component->regenerateLink($existing['access']->id));
+
+        $this->assertSame($beforeCount, MarketingGuideAccess::query()->count());
+        $existing['access']->refresh();
+        $this->assertNull($existing['access']->revoked_at);
+        $this->assertTrue($existing['access']->expires_at->equalTo($beforeExpiry));
+        $this->get(route('marketing-guide.show', ['token' => $existing['token']]))->assertOk();
+    }
+
+    private function assertLivewireActionForbidden(?User $actor, callable $action): void
+    {
+        if ($actor) {
+            $this->actingAs($actor);
+        } else {
+            auth()->logout();
+            $this->assertGuest();
+        }
+
+        $component = app(MarketingGuideIndex::class);
+        $component->boot(app(MarketingGuideAccessService::class));
+
+        try {
+            $action($component);
+            $this->fail('Non-admin Livewire action should be forbidden.');
+        } catch (HttpException $exception) {
+            $this->assertSame(403, $exception->getStatusCode());
+        }
     }
 
     private function user(string $role = 'admin', array $overrides = []): User
