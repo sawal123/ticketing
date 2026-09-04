@@ -1,15 +1,15 @@
 <?php
 
+use App\Http\Controllers\AdminEventMouPdfController;
+use App\Http\Controllers\AdminEventReviewFileController;
 use App\Http\Controllers\Api\SlideController;
 use App\Http\Controllers\Auth\GoogleController;
 use App\Http\Controllers\Auth\UserLoginController;
 use App\Http\Controllers\Auth\UserRegisterController;
-use App\Http\Controllers\AdminEventMouPdfController;
-use App\Http\Controllers\AdminEventReviewFileController;
 use App\Http\Controllers\BarcodeController;
 use App\Http\Controllers\BuyTicketController;
-use App\Http\Controllers\Controller;
 use App\Http\Controllers\CheckoutPaymentOtpController;
+use App\Http\Controllers\Controller;
 use App\Http\Controllers\Dashboard\addController;
 use App\Http\Controllers\Dashboard\CashController;
 use App\Http\Controllers\Dashboard\DashboardController;
@@ -21,6 +21,7 @@ use App\Http\Controllers\Dashboard\TController;
 use App\Http\Controllers\Dashboard\TransaksiController;
 use App\Http\Controllers\DashboardAgreementFileController;
 use App\Http\Controllers\landingController;
+use App\Http\Controllers\MarketingGuideController;
 use App\Http\Controllers\PenarikanTransferProofController;
 use App\Http\Controllers\Penyewa\AddController as PenyewaAddController;
 use App\Http\Controllers\Penyewa\Auth\LoginController;
@@ -42,8 +43,8 @@ use App\Livewire\Admin\EventIndex;
 use App\Livewire\Admin\FasilitasIndex;
 use App\Livewire\Admin\MonitoringIndex;
 use App\Livewire\Admin\PaymentGatewayIndex;
-use App\Livewire\Admin\PenyewaDetail;
 use App\Livewire\Admin\PenarikanIndex;
+use App\Livewire\Admin\PenyewaDetail;
 use App\Livewire\Admin\SettingIndex;
 use App\Livewire\Admin\SliderIndex;
 use App\Livewire\Admin\TermIndex;
@@ -58,9 +59,9 @@ use App\Livewire\Dashboard\DemoIndex;
 use App\Livewire\Dashboard\EventCreate;
 use App\Livewire\Dashboard\EventDetail as DashboardEventDetail;
 use App\Livewire\Dashboard\EventIndex as DashboardEventIndex;
+use App\Livewire\Dashboard\HelpCenter;
 use App\Livewire\Dashboard\PartnerIndex;
 use App\Livewire\Dashboard\PenarikanIndex as DashboardPenarikanIndex;
-use App\Livewire\Dashboard\HelpCenter;
 use App\Livewire\Dashboard\SettingsIndex;
 use App\Livewire\Dashboard\StaffIndex;
 use App\Livewire\Dashboard\VoucherIndex;
@@ -87,6 +88,11 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', [landingController::class, 'home'])->name('home');
 Route::get('/ticket/{event}', [landingController::class, 'ticket']);
+
+Route::get('/guide/{token}', [MarketingGuideController::class, 'show'])
+    ->middleware('throttle:30,1')
+    ->where('token', '[A-Za-z0-9_-]{43}')
+    ->name('marketing-guide.show');
 
 Route::get('/register', Register::class)->name('register');
 // Route::post('/registerUser', [UserRegisterController::class, 'create'])->name('register-user');
