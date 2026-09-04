@@ -109,6 +109,36 @@ class MarketingGuideAccessService
         return $access->refresh();
     }
 
+    /**
+     * Extend expires_at only. Never clears revoked_at.
+     */
+    public function extend(MarketingGuideAccess $access, int $days): MarketingGuideAccess
+    {
+        if ($days < 1) {
+            throw new InvalidArgumentException('Perpanjangan minimal 1 hari.');
+        }
+
+        $base = $access->expires_at !== null && $access->expires_at->isFuture()
+            ? $access->expires_at->copy()
+            : now();
+
+        $access->forceFill([
+            'expires_at' => $base->addDays($days),
+        ])->save();
+
+        return $access->refresh();
+    }
+
+    public function displayStatus(MarketingGuideAccess $access): string
+    {
+        return match ($this->resolveStatus($access)) {
+            self::STATUS_REVOKED => 'Revoked',
+            self::STATUS_EXPIRED => 'Expired',
+            self::STATUS_VALID => 'Active',
+            default => 'Invalid',
+        };
+    }
+
     public function recordAccess(MarketingGuideAccess $access): MarketingGuideAccess
     {
         return DB::transaction(function () use ($access) {

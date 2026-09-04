@@ -41,6 +41,7 @@ use App\Livewire\Admin\EmailBlast;
 use App\Livewire\Admin\EventDetail;
 use App\Livewire\Admin\EventIndex;
 use App\Livewire\Admin\FasilitasIndex;
+use App\Livewire\Admin\MarketingGuideIndex;
 use App\Livewire\Admin\MonitoringIndex;
 use App\Livewire\Admin\PaymentGatewayIndex;
 use App\Livewire\Admin\PenarikanIndex;
@@ -283,6 +284,7 @@ Route::prefix('admin')
         Route::get('/category', CategoryIndex::class)->name('admin.category');
         Route::get('/fasilitas', FasilitasIndex::class)->name('admin.fasilitas');
         Route::get('/email-blast', EmailBlast::class)->name('admin.email-blast');
+        Route::get('/marketing-guide', MarketingGuideIndex::class)->name('admin.marketing-guide');
 
         // =========================================================
         // LEGACY ADMIN (MOVED TO /old)
