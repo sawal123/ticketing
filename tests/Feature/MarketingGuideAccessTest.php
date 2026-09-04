@@ -6,9 +6,11 @@ use App\Http\Middleware\GlobalDataMiddleware;
 use App\Http\Middleware\LogActivityMiddleware;
 use App\Models\User;
 use App\Services\MarketingGuide\MarketingGuideAccessService;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -226,6 +228,60 @@ class MarketingGuideAccessTest extends TestCase
         $this->assertTrue($revoked->isRevoked());
         $this->assertFalse($revoked->isValid());
         $this->assertSame(MarketingGuideAccessService::STATUS_REVOKED, $this->service->resolveStatus($revoked));
+    }
+
+    public function test_created_by_foreign_key_references_users_uid(): void
+    {
+        $this->assertTrue(Schema::hasTable('marketing_guide_accesses'));
+        $this->assertTrue(Schema::hasColumn('marketing_guide_accesses', 'created_by'));
+        $this->assertTrue($this->hasForeignKey('marketing_guide_accesses', 'created_by', 'users', 'uid'));
+
+        $this->expectException(QueryException::class);
+
+        DB::table('marketing_guide_accesses')->insert([
+            'token_hash' => hash('sha256', 'invalid-creator-fk-token'),
+            'recipient_name' => null,
+            'expires_at' => now()->addDay(),
+            'revoked_at' => null,
+            'last_accessed_at' => null,
+            'access_count' => 0,
+            'created_by' => 'missing-user-uid-'.Str::uuid(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    }
+
+    public function test_force_deleting_creator_cascades_marketing_guide_access_rows(): void
+    {
+        $creator = $this->user();
+        $created = $this->service->create($creator, now()->addDay(), 'Cascade Check');
+        $accessId = $created['access']->id;
+
+        $this->assertDatabaseHas('marketing_guide_accesses', [
+            'id' => $accessId,
+            'created_by' => $creator->uid,
+        ]);
+
+        $creator->forceDelete();
+
+        $this->assertDatabaseMissing('marketing_guide_accesses', [
+            'id' => $accessId,
+        ]);
+    }
+
+    private function hasForeignKey(string $table, string $column, string $foreignTable, string $foreignColumn): bool
+    {
+        $database = DB::getDatabaseName();
+
+        $row = DB::table('information_schema.KEY_COLUMN_USAGE')
+            ->where('TABLE_SCHEMA', $database)
+            ->where('TABLE_NAME', $table)
+            ->where('COLUMN_NAME', $column)
+            ->where('REFERENCED_TABLE_NAME', $foreignTable)
+            ->where('REFERENCED_COLUMN_NAME', $foreignColumn)
+            ->first();
+
+        return $row !== null;
     }
 
     private function user(array $overrides = []): User

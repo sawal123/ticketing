@@ -16,8 +16,11 @@ return new class extends Migration
             $table->timestamp('revoked_at')->nullable()->index();
             $table->timestamp('last_accessed_at')->nullable();
             $table->unsignedInteger('access_count')->default(0);
-            $table->string('created_by')->index();
+            $table->string('created_by');
             $table->timestamps();
+
+            $table->index('created_by');
+            $table->foreign('created_by')->references('uid')->on('users')->onDelete('cascade');
         });
     }
 
