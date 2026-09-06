@@ -65,6 +65,11 @@
                 <i data-lucide="sparkles" class="w-5 h-5 flex-shrink-0"></i>
                 <span class="text-sm font-medium">Fasilitas</span>
             </a>
+        <a href="{{ route('admin.marketing-guide') }}" wire:navigate
+            class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-all duration-200 {{ request()->routeIs('admin.marketing-guide') ? 'active' : '' }}">
+            <i data-lucide="book" class="w-5 h-5 flex-shrink-0"></i>
+            <span class="text-sm font-medium">Guide Marketing</span>
+        </a>
         </div>
 
         <hr class="border-slate-200 dark:border-slate-700 my-3">
