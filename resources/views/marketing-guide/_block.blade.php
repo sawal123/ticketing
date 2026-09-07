@@ -147,7 +147,11 @@
         <h2>{{ $data['title'] ?? '' }}</h2>
         <p>{{ $data['subtitle'] ?? '' }}</p>
         @if (! empty($data['cta']))
-            <a href="{{ $data['cta']['href'] ?? '#' }}" class="btn btn-large btn-cta">
+            @php
+                $variantClasses = ['primary' => 'btn-primary', 'secondary' => 'btn-secondary', 'cta' => 'btn-cta'];
+                $ctaClass = $variantClasses[$data['cta']['variant'] ?? 'cta'] ?? 'btn-cta';
+            @endphp
+            <a href="{{ $data['cta']['href'] ?? '#' }}" class="btn btn-large {{ $ctaClass }}">
                 @if (! empty($data['cta']['icon']))
                     <i class="fas fa-{{ $data['cta']['icon'] }}"></i>
                 @endif

@@ -35,11 +35,40 @@ class MarketingGuideContentTest extends TestCase
         $this->service = app(MarketingGuideContentService::class);
     }
 
-    public function test_version_sections_and_blocks_tables_exist(): void
+    public function test_integration_public_rendering(): void
     {
-        $this->assertTrue(Schema::hasTable('marketing_guide_versions'));
-        $this->assertTrue(Schema::hasTable('marketing_guide_sections'));
-        $this->assertTrue(Schema::hasTable('marketing_guide_blocks'));
+        // Seed data
+        $this->seed(MarketingGuideContentSeeder::class);
+
+        $response = $this->get(route('marketing-guide.show', ['token' => 'valid_token']));
+        $response->assertOk();
+
+        $html = $response->getContent();
+
+        // Assert draft sections/blocks are excluded
+        $this->assertStringNotContainsString('draft_section_title', $html);
+        $this->assertStringNotContainsString('draft_block_content', $html);
+
+        // Assert inactive entities are excluded
+        $this->assertStringNotContainsString('inactive_section_title', $html);
+        $this->assertStringNotContainsString('inactive_block_content', $html);
+
+        // Assert correct ordering
+        $this->assertStringContainsString('First section', $html);
+        $this->assertStringContainsString('Second section', $html);
+
+        preg_match('/First section.*Second section/s', $html, $matches);
+        $this->assertNotEmpty($matches);
+
+        // Assert fallback static rendered
+        $responseFallback = $this->get(route('marketing-guide.show', ['token' => 'nonexistent']));
+        $responseFallback->assertOk();
+        $responseFallback->assertSee('Static Title', false);
+
+        // Assert CTA class whitelist works
+        $this->assertStringContainsString('btn-primary', $html);
+        $this->assertStringContainsString('btn-secondary', $html);
+        $this->assertStringContainsString('btn-cta', $html);
     }
 
     public function test_version_section_and_block_relationships_are_wired(): void
