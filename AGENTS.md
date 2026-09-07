@@ -13,7 +13,6 @@ Stack utama:
 - MySQL
 - PHPUnit
 
-Ikuti pola dan arsitektur existing repository.
 Jangan mengganti stack atau menambah package tanpa instruksi eksplisit.
 
 ---
@@ -66,12 +65,6 @@ Semua mutation tenant/staff harus menjaga ownership existing.
 
 Resource child harus diverifikasi terhadap parent authoritative.
 
-Contoh prinsip:
-
-requested child
-AND
-child belongs to authorized event/user/parent
-
 Jangan mengandalkan hidden input, disabled field, Livewire state,
 route parameter, atau payload client sebagai authority.
 
@@ -86,14 +79,6 @@ Sebelum mengerjakan task:
 1. Checkout base branch yang disebutkan di prompt.
 2. Pull/fetch base terbaru.
 3. Buat working branch baru dari base tersebut kecuali prompt mengatakan lanjutkan branch existing.
-
-Untuk roadmap Event Registration:
-
-```text
-main
-└── feature/event-registration
-    └── feat/<milestone>
-```
 
 Lanjutkan branch existing hanya bila prompt menyatakannya dengan eksplisit.
 
@@ -122,29 +107,6 @@ Sebelum push:
 - Gunakan test feature/service existing sebagai pola; jangan melemahkan assertion untuk membuat test lulus.
 - Jalankan test secara sequential. Jangan menjalankan PHPUnit paralel.
 - Jalankan targeted test untuk area yang berubah dan regression test terkait.
-- Jalankan existing test payment/OTP/checkout bila perubahan menyentuh checkout atau payment.
-
----
-
-## Verification
-
-Setelah implementasi, jalankan dalam urutan yang sesuai risiko task:
-
-1. Pint untuk seluruh file PHP yang berubah.
-2. Targeted PHPUnit dan regression suite terkait.
-3. Full suite sequential: `php -d memory_limit=512M vendor/bin/phpunit`.
-4. `git diff --check`.
-5. Periksa `git status --short` sebelum commit dan push.
-
-Jika full suite atau verification wajib gagal, jangan menyatakan siap merge. Jelaskan kegagalan yang masih tersisa secara ringkas.
-
----
-
-## Existing Tests
-
-- Existing test adalah kontrak behavior. Jangan menghapus atau menulis ulang assertion unrelated hanya untuk menyesuaikan perubahan baru.
-- Untuk checkout/payment, jaga test OTP, Midtrans callback, recipient snapshot, quantity, dan ticketing tetap hijau.
-- Untuk registration, jaga test mode event, dynamic fields, dan team roster tetap hijau.
 
 ---
 
@@ -159,6 +121,22 @@ Batasan database:
     - DB_DATABASE=ticketing_test
 - Jika database aktif bukan `ticketing_test`, STOP dan jangan jalankan test.
 - Jangan pernah menghapus data database `tiketkonser`.
+
+## Repo Exploration Efficiency
+
+- Maksimal sekitar 8–10 tool calls untuk fase eksplorasi awal.
+- Jangan melakukan recursive scan seluruh repository.
+- Jangan gunakan `find .`, `ls -R`, `grep -R`, atau command setara tanpa path/scope yang spesifik.
+- Prioritaskan file yang disebut di task, route, class, test, atau error terkait.
+- Setelah menemukan 2–3 file dengan relevansi tinggi, mulai implementasi.
+- Baca file tambahan hanya jika dependency, test failure, atau blocker menunjukkan kebutuhan.
+- Jangan membaca ulang file yang sudah dibaca jika konteksnya masih tersedia.
+- Untuk revisi task pada branch yang sama, jangan baca ulang `AGENTS.md` atau file dokumentasi lain kecuali perubahan task memang membutuhkannya.
+- Jika setelah ±10 tool calls eksplorasi akar masalah masih belum cukup jelas, STOP dan laporkan temuan + minta arahan sebelum memperluas pencarian.
+
+- Pertahankan konteks file dan keputusan yang sudah diperoleh selama task.
+- Jangan mengulang pembacaan source hanya untuk memastikan kembali informasi yang sudah jelas.
+- Pada prompt revisi, gunakan konteks task/branch sebelumnya dan baca hanya diff/file yang berubah atau terkait langsung dengan revisi.
 
 ## Final Output
 

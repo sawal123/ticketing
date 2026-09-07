@@ -216,7 +216,9 @@ class MarketingGuideContentEditorTest extends TestCase
         $new = $section->blocks()->reorder()->orderByDesc('position')->orderByDesc('id')->first();
         $this->assertSame('stats', $new->type);
         $this->assertTrue($new->is_active);
-        $this->assertSame([['value' => '1', 'label' => 'Test']], $new->data['stats']);
+        $this->assertCount(1, $new->data['stats']);
+        $this->assertSame('1', $new->data['stats'][0]['value']);
+        $this->assertSame('Test', $new->data['stats'][0]['label']);
 
         Livewire::actingAs($admin)
             ->test(MarketingGuideContentEditor::class)
@@ -408,12 +410,10 @@ class MarketingGuideContentEditorTest extends TestCase
         $this->assertNotNull($block);
         $this->assertSame('Judul CTA Test', $block->data['title']);
         $this->assertSame('Subtitle CTA Test', $block->data['subtitle']);
-        $this->assertSame([
-            'label' => 'Hubungi Tim',
-            'href' => 'mailto:hello@gotik.io',
-            'icon' => 'envelope',
-            'variant' => 'cta',
-        ], $block->data['cta']);
+        $this->assertSame('Hubungi Tim', $block->data['cta']['label']);
+        $this->assertSame('mailto:hello@gotik.io', $block->data['cta']['href']);
+        $this->assertSame('envelope', $block->data['cta']['icon']);
+        $this->assertSame('cta', $block->data['cta']['variant']);
     }
 
     public function test_cta_form_uses_dg1_nested_fields_when_editing(): void
@@ -434,6 +434,60 @@ class MarketingGuideContentEditorTest extends TestCase
             ->assertSee('x-model="data.cta.href"', false)
             ->assertSee('x-model="data.cta.icon"', false)
             ->assertSee('x-model="data.cta.variant"', false);
+    }
+
+    public function test_workflow_and_flow_bind_their_own_item_field(): void
+    {
+        $this->seed(MarketingGuideContentSeeder::class);
+        $admin = $this->makeUser('admin');
+        $draft = $this->makeOrGetDraft($admin);
+
+        // workflow items bind to item.title, never to a combined expression.
+        $workflow = $draft->sections()->where('key', 'cara_kerja')->first()
+            ->blocks()->where('type', 'workflow')->first();
+        Livewire::actingAs($admin)
+            ->test(MarketingGuideContentEditor::class)
+            ->call('openBlockEditor', $workflow->id)
+            ->assertSee('x-model="item.title"', false)
+            ->assertDontSee('item.title || item.label', false);
+
+        // flow items bind to item.label.
+        $flow = $draft->sections()->where('key', 'menjadi_penyelenggara')->first()
+            ->blocks()->where('type', 'flow')->first();
+        Livewire::actingAs($admin)
+            ->test(MarketingGuideContentEditor::class)
+            ->call('openBlockEditor', $flow->id)
+            ->assertSee('x-model="item.label"', false)
+            ->assertDontSee('item.title || item.label', false);
+    }
+
+    public function test_intro_only_text_block_opens_with_cta_guard(): void
+    {
+        $this->seed(MarketingGuideContentSeeder::class);
+        $admin = $this->makeUser('admin');
+        $draft = $this->makeOrGetDraft($admin);
+
+        // Seed text blocks such as the cara_kerja intro only carry `intro`
+        // (no nested cta). They must open without a client-side error, so
+        // the editor normalizes data.cta before binding data.cta.*.
+        $section = $draft->sections()->where('key', 'cara_kerja')->first();
+        $block = $section->blocks()->where('type', 'text')->first();
+        $this->assertArrayHasKey('intro', $block->data);
+        $this->assertArrayNotHasKey('cta', $block->data);
+
+        Livewire::actingAs($admin)
+            ->test(MarketingGuideContentEditor::class)
+            ->call('openBlockEditor', $block->id)
+            ->assertSet('blockType', 'text')
+            // Guard exists and CTA fields are still rendered for text.
+            ->assertSee('ensureCtaDefaults')
+            ->assertSee('x-model="data.cta.label"', false)
+            ->assertSee('x-model="data.cta.href"', false)
+            ->assertSee('x-model="data.cta.icon"', false);
+
+        // Opening the editor must not mutate the stored payload.
+        $this->assertArrayNotHasKey('cta', $block->fresh()->data);
+        $this->assertSame($block->data, $block->fresh()->data);
     }
 
     public function test_existing_block_type_is_locked_while_editing(): void
@@ -570,9 +624,16 @@ class MarketingGuideContentEditorTest extends TestCase
             ->assertHasNoErrors();
 
         $stored = $block->fresh()->data['steps'];
-        $this->assertSame($reordered, $stored);
-        $this->assertNotSame($steps[0], $stored[0]);
-        $this->assertSame($steps[0], end($stored));
+        $this->assertCount(count($reordered), $stored);
+
+        // Compare by semantic value (item order), not by internal JSON
+        // object key order which MySQL may not preserve.
+        $this->assertSame(
+            array_map(fn($item) => $item['title'], $reordered),
+            array_map(fn($item) => $item['title'], $stored),
+        );
+        $this->assertNotSame($steps[0]['title'], $stored[0]['title']);
+        $this->assertSame($steps[0]['title'], $stored[count($stored) - 1]['title']);
     }
 
     public function test_nested_reorder_controls_rendered_for_all_container_types(): void
@@ -596,7 +657,7 @@ class MarketingGuideContentEditorTest extends TestCase
         foreach ($cases as $case) {
             $sec = $draft->sections()->where('key', $case['section'])->first();
             $block = $sec->blocks()->where('type', $case['type'])->first();
-            $this->assertNotNull($block, 'missing '.$case['type'].' block');
+            $this->assertNotNull($block, 'missing ' . $case['type'] . ' block');
             Livewire::actingAs($admin)
                 ->test(MarketingGuideContentEditor::class)
                 ->call('openBlockEditor', $block->id)
@@ -643,7 +704,7 @@ class MarketingGuideContentEditorTest extends TestCase
         $user = new User;
         $user->uid = (string) Str::uuid();
         $user->name = $role === 'admin' ? 'Admin' : 'Penyewa';
-        $user->email = $role.'+'.Str::random(8).'@test.test';
+        $user->email = $role . '+' . Str::random(8) . '@test.test';
         $user->role = $role;
         $user->password = Hash::make('password');
         $user->save();

@@ -393,7 +393,7 @@ class MarketingGuideContentEditor extends Component
                 ->get();
         }
 
-        $grouped = $sections->groupBy(fn ($s) => $s->nav_group ?? 'Tanpa Grup');
+        $grouped = $sections->groupBy(fn($s) => $s->nav_group ?? 'Tanpa Grup');
 
         return view('livewire.admin.marketing-guide-content-editor', [
             'draft' => $draft,

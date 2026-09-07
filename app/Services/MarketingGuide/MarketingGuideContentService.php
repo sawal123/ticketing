@@ -260,8 +260,10 @@ class MarketingGuideContentService
     {
         $message = strtolower($e->getMessage());
 
-        if (str_contains($message, 'duplicate entry')
-            || str_contains($message, 'unique constraint failed')) {
+        if (
+            str_contains($message, 'duplicate entry')
+            || str_contains($message, 'unique constraint failed')
+        ) {
             return true;
         }
 
@@ -297,7 +299,7 @@ class MarketingGuideContentService
     private function cloneVersion(MarketingGuideVersion $source, User $editor): MarketingGuideVersion
     {
         $draft = MarketingGuideVersion::query()->create([
-            'key' => self::DRAFT_VERSION_KEY_PREFIX.$source->key,
+            'key' => self::DRAFT_VERSION_KEY_PREFIX . $source->key,
             'number' => $source->number,
             'title' => $source->title,
             'status' => MarketingGuideVersion::STATUS_DRAFT,
