@@ -5,11 +5,14 @@ namespace Tests\Feature;
 use App\Models\MarketingGuideBlock;
 use App\Models\MarketingGuideSection;
 use App\Models\MarketingGuideVersion;
+use App\Models\User;
+use App\Services\MarketingGuide\MarketingGuideAccessService;
 use App\Services\MarketingGuide\MarketingGuideContentService;
 use Database\Seeders\MarketingGuideContentSeeder;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class MarketingGuideContentTest extends TestCase
@@ -22,7 +25,61 @@ class MarketingGuideContentTest extends TestCase
     {
         parent::setUp();
 
+        \Carbon\Carbon::setTestNow('2026-09-04 12:00:00');
+        $this->withoutMiddleware([
+            \App\Http\Middleware\GlobalDataMiddleware::class,
+            \App\Http\Middleware\LogActivityMiddleware::class,
+        ]);
+
         $this->service = app(MarketingGuideContentService::class);
+    }
+
+    public function test_integration_public_rendering(): void
+    {
+        $creator = User::create([
+            'uid' => (string) Str::uuid(),
+            'name' => 'Integration Creator',
+            'email' => 'integration-'.Str::random(8).'@example.test',
+            'role' => 'admin',
+            'password' => 'Password123',
+        ]);
+        $access = app(MarketingGuideAccessService::class)->create($creator, now()->addDay(), 'Fixture Partner');
+        $token = $access['token'];
+
+        $published = $this->makeVersion(['key' => 'guide.integration.published']);
+        $first = $this->makeSection($published, 'ordered_first', 2);
+        $second = $this->makeSection($published, 'ordered_second', 1);
+        $this->makeBlock($first, 2, MarketingGuideBlock::TYPE_TEXT, ['intro' => 'First block sentinel']);
+        $this->makeBlock($first, 1, MarketingGuideBlock::TYPE_TEXT, ['intro' => 'Second block sentinel']);
+        $this->makeBlock($second, 1, MarketingGuideBlock::TYPE_TEXT, ['intro' => 'Second section sentinel']);
+        $this->makeSection($published, 'inactive_section', 3, false);
+        $this->makeBlock($first, 3, MarketingGuideBlock::TYPE_TEXT, ['intro' => 'inactive block sentinel'], false);
+
+        $draft = $this->makeVersion(['key' => 'guide.draft.integration', 'status' => MarketingGuideVersion::STATUS_DRAFT, 'published_at' => null]);
+        $draftSection = $this->makeSection($draft, 'draft_section', 1);
+        $this->makeBlock($draftSection, 1, MarketingGuideBlock::TYPE_TEXT, ['intro' => 'draft sentinel']);
+
+        $response = $this->get(route('marketing-guide.show', ['token' => $token]));
+        $response->assertOk();
+        $html = $response->getContent();
+        $this->assertStringNotContainsString('draft sentinel', $html);
+        $this->assertStringNotContainsString('inactive_section', $html);
+        $this->assertStringNotContainsString('inactive block sentinel', $html);
+        $this->assertTrue(strpos($html, 'Second section sentinel') < strpos($html, 'Second block sentinel'));
+        $this->assertTrue(strpos($html, 'Second block sentinel') < strpos($html, 'First block sentinel'));
+
+        foreach (['primary' => 'btn-primary', 'secondary' => 'btn-secondary', 'cta' => 'btn-cta', 'invalid' => 'btn-cta'] as $variant => $class) {
+            $cta = $this->makeSection($published, 'cta_'.$variant, 10 + count(MarketingGuideSection::all()));
+            $this->makeBlock($cta, 1, MarketingGuideBlock::TYPE_CTA, ['title' => 'CTA '.$variant, 'cta' => ['label' => 'CTA '.$variant, 'href' => '#', 'variant' => $variant]]);
+        }
+        $ctaHtml = $this->get(route('marketing-guide.show', ['token' => $token]))->getContent();
+        foreach (['primary' => 'btn-primary', 'secondary' => 'btn-secondary', 'cta' => 'btn-cta', 'invalid' => 'btn-cta'] as $variant => $class) {
+            $this->assertMatchesRegularExpression('/CTA '.preg_quote($variant, '/').'.*class="[^"]*'.preg_quote($class, '/').'/s', $ctaHtml);
+        }
+
+        MarketingGuideVersion::query()->update(['status' => MarketingGuideVersion::STATUS_DRAFT, 'published_at' => null]);
+        $this->get(route('marketing-guide.show', ['token' => $token]))->assertOk()->assertSee('Cara Kerja Gotik', false);
+        $this->get(route('marketing-guide.show', ['token' => 'invalid-token']))->assertNotFound();
     }
 
     public function test_version_sections_and_blocks_tables_exist(): void
@@ -383,6 +440,48 @@ class MarketingGuideContentTest extends TestCase
         ] as $needle) {
             $this->assertStringContainsString($needle, $combined, "Missing phrase: {$needle}");
         }
+    }
+
+    public function test_published_version_renders_dynamic_view_with_all_block_types(): void
+    {
+        $this->seed(MarketingGuideContentSeeder::class);
+
+        $creator = User::factory()->create([
+            'uid' => (string) Str::uuid(),
+            'name' => 'Guide Creator',
+            'email' => 'guide-creator-'.Str::random(8).'@example.test',
+            'role' => 'admin',
+            'gambar' => '-',
+            'nomor' => '-',
+            'alamat' => '-',
+            'kota' => '-',
+            'gender' => 'pria',
+            'birthday' => '2000-01-01',
+            'password' => 'Password123',
+        ]);
+
+        $accessService = app(MarketingGuideAccessService::class);
+        $created = $accessService->create($creator, now()->addDay(), 'Partner Demo');
+        $token = $created['token'];
+
+        $response = $this->get(route('marketing-guide.show', ['token' => $token]));
+        $response->assertOk();
+
+        $html = $response->getContent();
+
+        // Dynamic view must render database-backed content, not the static fallback.
+        $this->assertStringContainsString('Cara Kerja Gotik', $html);
+        $this->assertStringContainsString('Daftarkan Event', $html);
+        $this->assertStringContainsString('Hubungi Tim Gotik', $html);
+        $this->assertStringContainsString('E-Wallet', $html);
+        $this->assertStringContainsString('Jakarta Convention Center', $html);
+        $this->assertStringContainsString('Siap Menjalankan Event Bersama Gotik?', $html);
+        $this->assertStringContainsString('Apakah penyelenggara harus memiliki website?', $html);
+        $this->assertStringContainsString('Panduan ini disiapkan untuk Partner Demo', $html);
+
+        // Security headers still applied on the dynamic render.
+        $this->assertStringContainsString('noindex, nofollow, noarchive', $html);
+        $response->assertHeader('X-Robots-Tag', 'noindex, nofollow, noarchive');
     }
 
     private function makeVersion(array $overrides = []): MarketingGuideVersion

@@ -4,13 +4,15 @@ namespace App\Http\Controllers;
 
 use App\Models\MarketingGuideAccess;
 use App\Services\MarketingGuide\MarketingGuideAccessService;
+use App\Services\MarketingGuide\MarketingGuideContentService;
 use Carbon\CarbonInterface;
 use Symfony\Component\HttpFoundation\Response;
 
 class MarketingGuideController extends Controller
 {
     public function __construct(
-        private MarketingGuideAccessService $accessService
+        private MarketingGuideAccessService $accessService,
+        private MarketingGuideContentService $contentService
     ) {}
 
     public function show(string $token): Response
@@ -44,8 +46,22 @@ class MarketingGuideController extends Controller
             );
         }
 
+        $data = $this->safeViewData($access);
+        $version = $this->contentService->currentVersion();
+
+        // Fail-safe: if no published version exists, keep the static view as a
+        // temporary fallback so the public guide never 500s.
+        if ($version === null) {
+            return $this->secureGuideResponse(
+                response()->view('marketing-guide.index', $data)
+            );
+        }
+
+        $data['sections'] = $this->contentService->activeSectionsForVersion($version)
+            ->load('activeBlocks');
+
         return $this->secureGuideResponse(
-            response()->view('marketing-guide.index', $this->safeViewData($access))
+            response()->view('marketing-guide.dynamic', $data)
         );
     }
 
