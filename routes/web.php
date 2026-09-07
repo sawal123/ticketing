@@ -287,6 +287,7 @@ Route::prefix('admin')
         Route::get('/email-blast', EmailBlast::class)->name('admin.email-blast');
         Route::get('/marketing-guide', MarketingGuideIndex::class)->name('admin.marketing-guide');
         Route::get('/marketing-guide/content', MarketingGuideContentEditor::class)->name('admin.marketing-guide.content');
+        Route::get('/marketing-guide/content/preview', [MarketingGuideController::class, 'preview'])->name('admin.marketing-guide.content.preview');
 
         // =========================================================
         // LEGACY ADMIN (MOVED TO /old)

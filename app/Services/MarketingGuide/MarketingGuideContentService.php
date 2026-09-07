@@ -224,6 +224,8 @@ class MarketingGuideContentService
         while (true) {
             try {
                 return DB::transaction(function () use ($editor) {
+                    // Serialize draft creation with publishing before reading either status.
+                    MarketingGuideVersion::query()->orderBy('id')->lockForUpdate()->get();
                     $existingDraft = $this->findDraft();
                     if ($existingDraft !== null) {
                         return $existingDraft;
@@ -291,6 +293,67 @@ class MarketingGuideContentService
             ->first();
     }
 
+    public function publishDraft(User $admin): MarketingGuideVersion
+    {
+        $admin = $admin->fresh();
+        abort_unless($admin !== null && $admin->uid && strtolower((string) $admin->role) === 'admin', 403);
+
+        return DB::transaction(function () use ($admin) {
+            // Use the same lock order as draft creation. Never accept a client version ID.
+            $versions = MarketingGuideVersion::query()->orderBy('id')->lockForUpdate()->get();
+            $draft = $versions->where('status', MarketingGuideVersion::STATUS_DRAFT)->last();
+            if ($draft === null) {
+                throw new InvalidArgumentException('Tidak ada draft untuk dipublish.');
+            }
+
+            $this->validatedDraftSections($draft);
+
+            foreach ($versions->where('status', MarketingGuideVersion::STATUS_PUBLISHED) as $published) {
+                $published->update(['status' => MarketingGuideVersion::STATUS_ARCHIVED]);
+            }
+
+            $draft->update([
+                'status' => MarketingGuideVersion::STATUS_PUBLISHED,
+                'published_at' => now(),
+                'published_by_uid' => $admin->uid,
+            ]);
+
+            return $draft;
+        }, 3);
+    }
+
+    /** Validate the complete active content before exposing it through preview or publish. */
+    public function validatedDraftSections(MarketingGuideVersion $draft): Collection
+    {
+        $allSections = $draft->sections()->orderBy('position')->orderBy('id')->with('activeBlocks')->get();
+        $sections = $allSections->where('is_active', true)->values();
+        if ($sections->isEmpty()) {
+            throw new InvalidArgumentException('Draft harus memiliki setidaknya satu section aktif.');
+        }
+
+        $slugs = [];
+        foreach ($sections as $section) {
+            $slug = $section->slug;
+            if (! is_string($slug) || strlen($slug) > 96 || preg_match('/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/D', $slug) !== 1) {
+                throw new InvalidArgumentException("Slug section #{$section->id} tidak valid.");
+            }
+            if (isset($slugs[$slug])) {
+                throw new InvalidArgumentException("Slug section \"{$slug}\" duplicate.");
+            }
+            $slugs[$slug] = true;
+        }
+
+        // Also validate active blocks in inactive sections so they cannot hide invalid content.
+        foreach ($allSections as $section) {
+            foreach ($section->activeBlocks as $block) {
+                $this->assertValidBlockType($block->type);
+                $this->assertValidPayload($block->type, $block->data);
+            }
+        }
+
+        return $sections;
+    }
+
     /**
      * Deep-clone a version into a new draft row. Returns the new draft
      * with sections and blocks eagerly loaded. Source version is never
@@ -299,8 +362,8 @@ class MarketingGuideContentService
     private function cloneVersion(MarketingGuideVersion $source, User $editor): MarketingGuideVersion
     {
         $draft = MarketingGuideVersion::query()->create([
-            'key' => self::DRAFT_VERSION_KEY_PREFIX . $source->key,
-            'number' => $source->number,
+            'key' => self::DRAFT_VERSION_KEY_PREFIX.$source->id,
+            'number' => $source->number + 1,
             'title' => $source->title,
             'status' => MarketingGuideVersion::STATUS_DRAFT,
             'created_by_uid' => User::query()->where('uid', $editor->uid)->exists() ? $editor->uid : null,
@@ -351,40 +414,44 @@ class MarketingGuideContentService
         array $attributes,
         User $editor,
     ): MarketingGuideSection {
-        $this->assertDraftVersion($section->version, $editor);
+        return DB::transaction(function () use ($section, $attributes, $editor) {
+            $section = $section->fresh();
+            $this->assertDraftVersion($section->version, $editor);
+            $section->refresh();
 
-        if (array_key_exists('title', $attributes)) {
-            $title = $this->scalarString($attributes['title']);
-            if ($title === '' || strlen($title) > 200) {
-                throw new InvalidArgumentException('Title section tidak valid (wajib diisi, maks 200 karakter).');
-            }
-            $section->title = $title;
-        }
-
-        if (array_key_exists('nav_group', $attributes)) {
-            $nav = $attributes['nav_group'];
-            if ($nav !== null && $nav !== '') {
-                $nav = $this->scalarString($nav);
-                if (strlen($nav) > 64) {
-                    throw new InvalidArgumentException('Nav group terlalu panjang (maks 64 karakter).');
+            if (array_key_exists('title', $attributes)) {
+                $title = $this->scalarString($attributes['title']);
+                if ($title === '' || strlen($title) > 200) {
+                    throw new InvalidArgumentException('Title section tidak valid (wajib diisi, maks 200 karakter).');
                 }
-            } else {
-                $nav = null;
+                $section->title = $title;
             }
-            $section->nav_group = $nav === '' ? null : $nav;
-        }
 
-        if (array_key_exists('position', $attributes)) {
-            $section->position = max(0, (int) $attributes['position']);
-        }
+            if (array_key_exists('nav_group', $attributes)) {
+                $nav = $attributes['nav_group'];
+                if ($nav !== null && $nav !== '') {
+                    $nav = $this->scalarString($nav);
+                    if (strlen($nav) > 64) {
+                        throw new InvalidArgumentException('Nav group terlalu panjang (maks 64 karakter).');
+                    }
+                } else {
+                    $nav = null;
+                }
+                $section->nav_group = $nav === '' ? null : $nav;
+            }
 
-        if (array_key_exists('is_active', $attributes)) {
-            $section->is_active = (bool) $attributes['is_active'];
-        }
+            if (array_key_exists('position', $attributes)) {
+                $section->position = max(0, (int) $attributes['position']);
+            }
 
-        $section->save();
+            if (array_key_exists('is_active', $attributes)) {
+                $section->is_active = (bool) $attributes['is_active'];
+            }
 
-        return $section->fresh();
+            $section->save();
+
+            return $section->fresh();
+        });
     }
 
     /**
@@ -399,9 +466,9 @@ class MarketingGuideContentService
         array $orderedIds,
         User $editor,
     ): void {
-        $this->assertDraftVersion($draft, $editor);
+        DB::transaction(function () use ($draft, $orderedIds, $editor) {
+            $this->assertDraftVersion($draft, $editor);
 
-        DB::transaction(function () use ($draft, $orderedIds) {
             $known = $draft->sections()->pluck('id')->all();
             $knownMap = array_flip($known);
 
@@ -475,14 +542,18 @@ class MarketingGuideContentService
         bool $isActive,
         User $editor,
     ): MarketingGuideBlock {
-        $this->assertDraftVersion($block->section->version, $editor);
-        $this->assertValidPayload($block->type, $data);
+        return DB::transaction(function () use ($block, $data, $isActive, $editor) {
+            $block = $block->fresh();
+            $this->assertDraftVersion($block->section->version, $editor);
+            $block->refresh();
+            $this->assertValidPayload($block->type, $data);
 
-        $block->data = $data;
-        $block->is_active = $isActive;
-        $block->save();
+            $block->data = $data;
+            $block->is_active = $isActive;
+            $block->save();
 
-        return $block->fresh('section');
+            return $block->fresh('section');
+        });
     }
 
     /**
@@ -497,19 +568,23 @@ class MarketingGuideContentService
         bool $isActive,
         User $editor,
     ): MarketingGuideBlock {
-        $this->assertDraftVersion($section->version, $editor);
-        $this->assertValidBlockType($type);
-        $this->assertValidPayload($type, $data);
+        return DB::transaction(function () use ($section, $type, $data, $isActive, $editor) {
+            $section = $section->fresh();
+            $this->assertDraftVersion($section->version, $editor);
+            $section->refresh();
+            $this->assertValidBlockType($type);
+            $this->assertValidPayload($type, $data);
 
-        $nextPosition = ((int) $section->blocks()->max('position')) + 1;
+            $nextPosition = ((int) $section->blocks()->max('position')) + 1;
 
-        return MarketingGuideBlock::query()->create([
-            'section_id' => $section->id,
-            'type' => $type,
-            'position' => max(1, $nextPosition),
-            'data' => $data,
-            'is_active' => $isActive,
-        ])->fresh('section');
+            return MarketingGuideBlock::query()->create([
+                'section_id' => $section->id,
+                'type' => $type,
+                'position' => max(1, $nextPosition),
+                'data' => $data,
+                'is_active' => $isActive,
+            ])->fresh('section');
+        });
     }
 
     /**
@@ -520,9 +595,13 @@ class MarketingGuideContentService
      */
     public function removeBlock(MarketingGuideBlock $block, User $editor): void
     {
-        $this->assertDraftVersion($block->section->version, $editor);
-        $block->is_active = false;
-        $block->save();
+        DB::transaction(function () use ($block, $editor) {
+            $block = $block->fresh();
+            $this->assertDraftVersion($block->section->version, $editor);
+            $block->refresh();
+            $block->is_active = false;
+            $block->save();
+        });
     }
 
     /**
@@ -535,9 +614,11 @@ class MarketingGuideContentService
         array $orderedIds,
         User $editor,
     ): void {
-        $this->assertDraftVersion($section->version, $editor);
+        DB::transaction(function () use ($section, $orderedIds, $editor) {
+            $section = $section->fresh();
+            $this->assertDraftVersion($section->version, $editor);
+            $section->refresh();
 
-        DB::transaction(function () use ($section, $orderedIds) {
             $known = $section->blocks()->pluck('id')->all();
             $knownMap = array_flip($known);
 
@@ -560,6 +641,8 @@ class MarketingGuideContentService
      */
     private function assertDraftVersion(MarketingGuideVersion $version, User $editor): void
     {
+        // All callers hold this lock until their mutation commits, including stale editor requests.
+        $version = MarketingGuideVersion::query()->lockForUpdate()->findOrFail($version->id);
         if ($version->status !== MarketingGuideVersion::STATUS_DRAFT) {
             throw new InvalidArgumentException(
                 'Versi ini bukan draft. Clone published ke draft sebelum melakukan perubahan.'
@@ -733,7 +816,10 @@ class MarketingGuideContentService
         }
 
         foreach ($schema['ints'] as $key => $allowed) {
-            if (array_key_exists($key, $data) && ! in_array((int) $data[$key], $allowed, true)) {
+            if (array_key_exists($key, $data) && (
+                (! is_int($data[$key]) && ! (is_string($data[$key]) && ctype_digit($data[$key])))
+                || ! in_array((int) $data[$key], $allowed, true)
+            )) {
                 $allowedList = implode(' atau ', $allowed);
                 throw new InvalidArgumentException(
                     sprintf('%s: field "%s" harus bernilai %s.', $label, $key, $allowedList)
@@ -801,6 +887,9 @@ class MarketingGuideContentService
             foreach ($node as $key => $child) {
                 $childPath = $isList ? "{$path}[{$key}]" : "{$path}.{$key}";
 
+                if (! $isList && in_array($key, ['icon', 'href'], true) && ! $this->isStringable($child)) {
+                    throw new InvalidArgumentException("Field {$childPath} harus berupa teks.");
+                }
                 if (! $isList && $key === 'icon') {
                     $this->assertValidIcon(is_scalar($child) ? (string) $child : null);
                 }
