@@ -158,6 +158,8 @@ class MarketingGuideContentEditor extends Component
         if ($this->blockDataRaw === false) {
             $this->blockDataRaw = '{}';
         }
+        $this->errorMessage = '';
+        $this->successMessage = '';
         $this->resetErrorBag();
         $this->dispatch('open-modal', name: 'mge-block-modal');
     }
@@ -182,6 +184,8 @@ class MarketingGuideContentEditor extends Component
         $this->blockType = MarketingGuideBlock::TYPE_TEXT;
         $this->blockIsActive = true;
         $this->blockDataRaw = $this->defaultDataRawForType($this->blockType);
+        $this->errorMessage = '';
+        $this->successMessage = '';
         $this->resetErrorBag();
         $this->dispatch('open-modal', name: 'mge-block-modal');
     }
@@ -189,6 +193,18 @@ class MarketingGuideContentEditor extends Component
     public function switchBlockType(string $type): void
     {
         $this->ensureAdmin();
+
+        // The block type is a structural anchor for an existing block and
+        // can never change after creation. Only the "add block" flow is
+        // allowed to pick a type; otherwise a payload meant for another
+        // type could be saved onto an existing block.
+        if ($this->editingBlockId !== null) {
+            $this->blockType = (string) ($this->findDraftBlock($this->editingBlockId)?->type ?? $this->blockType);
+            $this->errorMessage = 'Tipe block tidak dapat diubah. Hapus block lalu tambahkan block baru dengan tipe yang diinginkan.';
+
+            return;
+        }
+
         try {
             $this->service->assertValidBlockType($type);
         } catch (\Throwable $e) {
@@ -197,9 +213,7 @@ class MarketingGuideContentEditor extends Component
             return;
         }
         $this->blockType = $type;
-        if ($this->editingBlockId === null) {
-            $this->blockDataRaw = $this->defaultDataRawForType($type);
-        }
+        $this->blockDataRaw = $this->defaultDataRawForType($type);
     }
 
     public function saveBlock(): void
@@ -217,6 +231,10 @@ class MarketingGuideContentEditor extends Component
                 if ($block === null) {
                     return;
                 }
+                // The stored block type is authoritative. Even if the
+                // client tampered with $this->blockType, the payload is
+                // validated against the real type of the row.
+                $this->blockType = (string) $block->type;
                 $this->service->updateBlock($block, $decoded, $this->blockIsActive, $this->adminUser());
                 $this->successMessage = 'Block berhasil diperbarui.';
             } else {
@@ -474,9 +492,14 @@ class MarketingGuideContentEditor extends Component
             ],
             'faq' => ['items' => []],
             'cta' => [
-                'label' => '',
-                'variant' => 'primary',
-                'icon' => 'arrow-right',
+                'title' => '',
+                'subtitle' => '',
+                'cta' => [
+                    'label' => '',
+                    'href' => '',
+                    'icon' => 'arrow-right',
+                    'variant' => 'primary',
+                ],
             ],
         ];
         $payload = $defaults[$type] ?? [];

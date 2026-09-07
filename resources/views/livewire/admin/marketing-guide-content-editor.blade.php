@@ -177,13 +177,20 @@
             <div class="grid grid-cols-2 gap-3">
                 <div>
                     <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 ml-1">Tipe Block</label>
-                    <select wire:change="switchBlockType($event.target.value)"
-                        class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-700/50 border-0 ring-1 ring-slate-200 dark:ring-slate-600 focus:ring-2 focus:ring-indigo-600 rounded-2xl text-slate-900 dark:text-white">
-                        @foreach ($blockTypes as $t)
-                            <option value="{{ $t }}" @selected($blockType === $t)>{{ $t }}</option>
-                        @endforeach
-                    </select>
-                    <p class="mt-1 text-[10px] text-slate-400 ml-1">Tipe tidak dapat diubah setelah block dibuat; gunakan Tambah Block baru jika perlu.</p>
+                    @if ($editingBlockId === null)
+                        <select wire:change="switchBlockType($event.target.value)"
+                            class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-700/50 border-0 ring-1 ring-slate-200 dark:ring-slate-600 focus:ring-2 focus:ring-indigo-600 rounded-2xl text-slate-900 dark:text-white">
+                            @foreach ($blockTypes as $t)
+                                <option value="{{ $t }}" @selected($blockType === $t)>{{ $t }}</option>
+                            @endforeach
+                        </select>
+                        <p class="mt-1 text-[10px] text-slate-400 ml-1">Tipe tidak dapat diubah setelah block dibuat.</p>
+                    @else
+                        <div class="w-full px-4 py-3 bg-slate-100 dark:bg-slate-800 border-0 ring-1 ring-slate-200 dark:ring-slate-600 rounded-2xl text-slate-700 dark:text-slate-300 uppercase tracking-wide text-sm font-semibold">
+                            {{ $blockType }}
+                        </div>
+                        <p class="mt-1 text-[10px] text-amber-600 dark:text-amber-400 ml-1">Tipe terkunci saat edit. Hapus block lalu gunakan "Tambah Block" jika ingin tipe lain.</p>
+                    @endif
                 </div>
                 <div class="flex items-end pb-2">
                     <label class="inline-flex items-center gap-2 cursor-pointer">
@@ -267,7 +274,15 @@
                         <p class="text-xs text-slate-500">Stat cards: nilai dan label pendek.</p>
                         <template x-for="(item, idx) in (data.stats || [])" :key="idx">
                             <div class="flex items-center gap-2 p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/50">
-                                <span class="text-xs font-mono text-slate-400 w-6 text-center" x-text="idx + 1"></span>
+                                <div class="flex items-center gap-0.5">
+                                    <button type="button" @click="moveItemIn(data.stats, idx, -1)" title="Naikkan" class="p-1 rounded text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                                        <i data-lucide="chevron-up" class="w-3 h-3"></i>
+                                    </button>
+                                    <button type="button" @click="moveItemIn(data.stats, idx, 1)" title="Turunkan" class="p-1 rounded text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                                        <i data-lucide="chevron-down" class="w-3 h-3"></i>
+                                    </button>
+                                    <span class="text-xs font-mono text-slate-400 w-4 text-center" x-text="idx + 1"></span>
+                                </div>
                                 <div class="flex-1 grid grid-cols-2 gap-2">
                                     <x-admin.input x-model="item.value" placeholder="2.5 Juta" />
                                     <x-admin.input x-model="item.label" placeholder="Transaksi/Bulan" />
@@ -287,7 +302,15 @@
                         <template x-for="(item, idx) in (data.steps || data.boxes || [])" :key="idx">
                             <div class="p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/50 space-y-2">
                                 <div class="flex items-center justify-between">
-                                    <span class="text-xs font-mono text-slate-400" x-text="(idx + 1)"></span>
+                                    <div class="flex items-center gap-0.5">
+                                        <button type="button" @click="moveItemIn(data.steps || data.boxes, idx, -1)" title="Naikkan" class="p-1 rounded text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                                            <i data-lucide="chevron-up" class="w-3 h-3"></i>
+                                        </button>
+                                        <button type="button" @click="moveItemIn(data.steps || data.boxes, idx, 1)" title="Turunkan" class="p-1 rounded text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                                            <i data-lucide="chevron-down" class="w-3 h-3"></i>
+                                        </button>
+                                        <span class="text-xs font-mono text-slate-400" x-text="(idx + 1)"></span>
+                                    </div>
                                     <button type="button" @click="(data.steps || data.boxes).splice(idx, 1)" class="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20" title="Hapus">
                                         <i data-lucide="x" class="w-3.5 h-3.5"></i>
                                     </button>
@@ -330,7 +353,15 @@
                         <template x-for="(item, idx) in (data.cards || [])" :key="idx">
                             <div class="p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/50 space-y-2">
                                 <div class="flex items-center justify-between">
-                                    <span class="text-xs font-mono text-slate-400" x-text="(idx + 1)"></span>
+                                    <div class="flex items-center gap-0.5">
+                                        <button type="button" @click="moveItemIn(data.cards, idx, -1)" title="Naikkan" class="p-1 rounded text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                                            <i data-lucide="chevron-up" class="w-3 h-3"></i>
+                                        </button>
+                                        <button type="button" @click="moveItemIn(data.cards, idx, 1)" title="Turunkan" class="p-1 rounded text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                                            <i data-lucide="chevron-down" class="w-3 h-3"></i>
+                                        </button>
+                                        <span class="text-xs font-mono text-slate-400" x-text="(idx + 1)"></span>
+                                    </div>
                                     <button type="button" @click="data.cards.splice(idx, 1)" class="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20" title="Hapus">
                                         <i data-lucide="x" class="w-3.5 h-3.5"></i>
                                     </button>
@@ -364,7 +395,15 @@
                         <template x-for="(item, idx) in (data.tickets || [])" :key="idx">
                             <div class="p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/50 space-y-2">
                                 <div class="flex items-center justify-between">
-                                    <span class="text-xs font-mono text-slate-400" x-text="(idx + 1)"></span>
+                                    <div class="flex items-center gap-0.5">
+                                        <button type="button" @click="moveItemIn(data.tickets, idx, -1)" title="Naikkan" class="p-1 rounded text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                                            <i data-lucide="chevron-up" class="w-3 h-3"></i>
+                                        </button>
+                                        <button type="button" @click="moveItemIn(data.tickets, idx, 1)" title="Turunkan" class="p-1 rounded text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                                            <i data-lucide="chevron-down" class="w-3 h-3"></i>
+                                        </button>
+                                        <span class="text-xs font-mono text-slate-400" x-text="(idx + 1)"></span>
+                                    </div>
                                     <button type="button" @click="data.tickets.splice(idx, 1)" class="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20" title="Hapus">
                                         <i data-lucide="x" class="w-3.5 h-3.5"></i>
                                     </button>
@@ -402,7 +441,15 @@
                         <template x-for="(item, idx) in (data.items || [])" :key="idx">
                             <div class="p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/50 space-y-2">
                                 <div class="flex items-center justify-between">
-                                    <span class="text-xs font-mono text-slate-400" x-text="(idx + 1)"></span>
+                                    <div class="flex items-center gap-0.5">
+                                        <button type="button" @click="moveItemIn(data.items, idx, -1)" title="Naikkan" class="p-1 rounded text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                                            <i data-lucide="chevron-up" class="w-3 h-3"></i>
+                                        </button>
+                                        <button type="button" @click="moveItemIn(data.items, idx, 1)" title="Turunkan" class="p-1 rounded text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                                            <i data-lucide="chevron-down" class="w-3 h-3"></i>
+                                        </button>
+                                        <span class="text-xs font-mono text-slate-400" x-text="(idx + 1)"></span>
+                                    </div>
                                     <button type="button" @click="data.items.splice(idx, 1)" class="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20" title="Hapus">
                                         <i data-lucide="x" class="w-3.5 h-3.5"></i>
                                     </button>
@@ -464,33 +511,45 @@
                 @elseif ($blockType === "cta")
                     <div class="space-y-3">
                         <div>
-                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 ml-1">Label</label>
-                            <x-admin.input x-model="data.label" placeholder="Hubungi Gotik" />
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 ml-1">Title</label>
+                            <x-admin.input x-model="data.title" placeholder="Siap Menjalankan Event Bersama Gotik?" />
                         </div>
                         <div>
-                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 ml-1">Variant</label>
-                            <select x-model="data.variant" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-700/50 border-0 ring-1 ring-slate-200 dark:ring-slate-600 focus:ring-2 focus:ring-indigo-600 rounded-xl text-slate-900 dark:text-white text-sm">
-                                <option value="primary">Primary</option>
-                                <option value="secondary">Secondary</option>
-                                <option value="cta">CTA</option>
-                            </select>
+                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 ml-1">Subtitle</label>
+                            <textarea x-model="data.subtitle" rows="2" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-700/50 border-0 ring-1 ring-slate-200 dark:ring-slate-600 focus:ring-2 focus:ring-indigo-600 rounded-2xl text-slate-900 dark:text-white" placeholder="Deskripsi singkat untuk mengajak pembaca bertindak"></textarea>
                         </div>
-                        <div>
-                            <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 ml-1">Icon</label>
-                            <select x-model="data.icon" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-700/50 border-0 ring-1 ring-slate-200 dark:ring-slate-600 focus:ring-2 focus:ring-indigo-600 rounded-xl text-slate-900 dark:text-white text-sm">
-                                <option value="">- tidak ada -</option>
-                                @foreach ($iconWhitelist as $icon)
-                                    <option value="{{ $icon }}">{{ $icon }}</option>
-                                @endforeach
-                            </select>
+                        <div class="border-t border-slate-100 dark:border-slate-700 pt-3">
+                            <p class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 ml-1">Call-to-Action</p>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-[10px] text-slate-400 uppercase mb-1">Label</label>
+                                    <x-admin.input x-model="data.cta.label" placeholder="Hubungi Tim Gotik" />
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] text-slate-400 uppercase mb-1">Href</label>
+                                    <x-admin.input x-model="data.cta.href" placeholder="mailto:hello@gotik.io atau #anchor atau https://..." />
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] text-slate-400 uppercase mb-1">Icon</label>
+                                    <select x-model="data.cta.icon" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-700/50 border-0 ring-1 ring-slate-200 dark:ring-slate-600 focus:ring-2 focus:ring-indigo-600 rounded-xl text-slate-900 dark:text-white text-sm">
+                                        <option value="">- tidak ada -</option>
+                                        @foreach ($iconWhitelist as $icon)
+                                            <option value="{{ $icon }}">{{ $icon }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] text-slate-400 uppercase mb-1">Variant</label>
+                                    <select x-model="data.cta.variant" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-700/50 border-0 ring-1 ring-slate-200 dark:ring-slate-600 focus:ring-2 focus:ring-indigo-600 rounded-xl text-slate-900 dark:text-white text-sm">
+                                        <option value="primary">Primary</option>
+                                        <option value="secondary">Secondary</option>
+                                        <option value="cta">CTA</option>
+                                    </select>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 @endif
-
-                <details class="text-[10px] text-slate-400">
-                    <summary class="cursor-pointer">Lihat JSON mentah (untuk debug)</summary>
-                    <textarea x-model="raw" rows="6" class="mt-2 w-full px-3 py-2 bg-slate-50 dark:bg-slate-700/50 border-0 ring-1 ring-slate-200 dark:ring-slate-600 rounded-xl text-slate-900 dark:text-white text-xs font-mono"></textarea>
-                </details>
             </div>
 
             <div class="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-700">
@@ -529,6 +588,17 @@
                 } catch (e) {
                     // ignore
                 }
+            },
+            moveItemIn(arr, idx, delta) {
+                if (!Array.isArray(arr)) {
+                    return;
+                }
+                const target = idx + delta;
+                if (target < 0 || target >= arr.length) {
+                    return;
+                }
+                const [moved] = arr.splice(idx, 1);
+                arr.splice(target, 0, moved);
             },
             addWorkflowItem() {
                 const key = this.wire ? this.wire.get("blockType") : null;

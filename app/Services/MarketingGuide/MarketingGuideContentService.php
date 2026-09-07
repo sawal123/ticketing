@@ -8,6 +8,7 @@ use App\Models\MarketingGuideVersion;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
@@ -209,24 +210,72 @@ class MarketingGuideContentService
      * exists; otherwise clones the latest published version into a new
      * draft row. The clone is fully transaction-safe and produces a
      * complete copy of every section and block.
+     *
+     * The create is concurrency-safe: when two requests race to create
+     * the very first draft, exactly one wins the insert and the loser
+     * retries in a fresh transaction, picks up the winner's draft and
+     * reuses it. A unique-key error is therefore never surfaced to the
+     * caller.
      */
     public function getOrCreateDraft(User $editor): MarketingGuideVersion
     {
-        return DB::transaction(function () use ($editor) {
-            $existingDraft = $this->findDraft();
-            if ($existingDraft !== null) {
-                return $existingDraft;
-            }
+        $attempts = 0;
 
-            $published = $this->currentVersion();
-            if ($published === null) {
-                throw new InvalidArgumentException(
-                    'Tidak ada versi published untuk di-clone. Jalankan seeder terlebih dahulu.'
-                );
-            }
+        while (true) {
+            try {
+                return DB::transaction(function () use ($editor) {
+                    $existingDraft = $this->findDraft();
+                    if ($existingDraft !== null) {
+                        return $existingDraft;
+                    }
 
-            return $this->cloneVersion($published, $editor);
-        });
+                    $published = $this->currentVersion();
+                    if ($published === null) {
+                        throw new InvalidArgumentException(
+                            'Tidak ada versi published untuk di-clone. Jalankan seeder terlebih dahulu.'
+                        );
+                    }
+
+                    return $this->cloneVersion($published, $editor);
+                });
+            } catch (QueryException $e) {
+                $attempts++;
+
+                // Only a unique-key race is retried. Every attempt runs in
+                // its own fresh transaction, so the retry sees the winner
+                // that committed in between and reuses it instead of
+                // failing with a "duplicate key" error.
+                if (! $this->isUniqueViolation($e) || $attempts >= 3) {
+                    throw $e;
+                }
+            }
+        }
+    }
+
+    /**
+     * Detect the unique-constraint violation raised when two concurrent
+     * requests try to create the first draft with the same stable key.
+     */
+    private function isUniqueViolation(QueryException $e): bool
+    {
+        $message = strtolower($e->getMessage());
+
+        if (str_contains($message, 'duplicate entry')
+            || str_contains($message, 'unique constraint failed')) {
+            return true;
+        }
+
+        $info = $e->errorInfo;
+        if (is_array($info)) {
+            $sqlState = (string) ($info[0] ?? '');
+            $driverCode = (int) ($info[1] ?? 0);
+
+            if ($sqlState === '23000' || $driverCode === 1062 || $driverCode === 19) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -531,7 +580,212 @@ class MarketingGuideContentService
             throw new InvalidArgumentException('Data block harus berupa array.');
         }
 
+        $this->validateTypeStructure($type, $data);
         $this->walkPayload($data);
+    }
+
+    /**
+     * Structural schema used to make sure a payload actually matches its
+     * block type (not only icon/href safety). Only known keys are checked
+     * so forward-compatible extra keys are never a reason to reject a
+     * block that the structured editor already validated.
+     */
+    private function typeSchema(string $type): array
+    {
+        $schemas = [
+            'text' => [
+                'required' => [],
+                'strings' => ['intro', 'intro_spacing', 'badge', 'title', 'subtitle'],
+                'bools' => ['show_recipient', 'show_expiry'],
+                'objects' => ['cta' => ['label', 'href', 'icon']],
+                'lists' => [],
+                'ints' => [],
+            ],
+            'workflow' => [
+                'required' => ['steps'],
+                'strings' => [],
+                'bools' => [],
+                'objects' => [],
+                'lists' => ['steps' => ['icon', 'title', 'description']],
+                'ints' => [],
+            ],
+            'flow' => [
+                'required' => ['boxes'],
+                'strings' => [],
+                'bools' => [],
+                'objects' => [],
+                'lists' => ['boxes' => ['icon', 'label']],
+                'ints' => [],
+            ],
+            'cards' => [
+                'required' => ['columns', 'cards'],
+                'strings' => [],
+                'bools' => [],
+                'objects' => [],
+                'lists' => ['cards' => ['icon', 'title', 'body']],
+                'ints' => ['columns' => [2, 3]],
+            ],
+            'placeholder' => [
+                'required' => [],
+                'strings' => ['icon', 'title', 'caption'],
+                'bools' => [],
+                'objects' => [],
+                'lists' => [],
+                'ints' => [],
+            ],
+            'tickets' => [
+                'required' => ['tickets'],
+                'strings' => ['tip'],
+                'bools' => [],
+                'objects' => [],
+                'lists' => ['tickets' => ['type', 'price', 'quantity', 'description']],
+                'ints' => [],
+            ],
+            'stats' => [
+                'required' => ['stats'],
+                'strings' => [],
+                'bools' => [],
+                'objects' => [],
+                'lists' => ['stats' => ['value', 'label']],
+                'ints' => [],
+            ],
+            'qr' => [
+                'required' => [],
+                'strings' => [
+                    'event_name',
+                    'event_date',
+                    'icon',
+                    'ticket_holder',
+                    'ticket_type',
+                    'ticket_number',
+                    'entry_window',
+                    'footer',
+                ],
+                'bools' => [],
+                'objects' => [],
+                'lists' => [],
+                'ints' => [],
+            ],
+            'faq' => [
+                'required' => ['items'],
+                'strings' => [],
+                'bools' => [],
+                'objects' => [],
+                'lists' => ['items' => ['question', 'answer']],
+                'ints' => [],
+            ],
+            'cta' => [
+                'required' => ['cta'],
+                'strings' => ['title', 'subtitle'],
+                'bools' => [],
+                'objects' => ['cta' => ['label', 'href', 'icon', 'variant']],
+                'lists' => [],
+                'ints' => [],
+            ],
+        ];
+
+        return $schemas[$type] ?? [
+            'required' => [],
+            'strings' => [],
+            'bools' => [],
+            'objects' => [],
+            'lists' => [],
+            'ints' => [],
+        ];
+    }
+
+    /**
+     * Enforce the minimal structure expected by the block type. Container
+     * keys (steps/boxes/cards/tickets/stats/items) must be real lists of
+     * objects, nested objects (cta) must be objects, and every known
+     * scalar field must stay a scalar. This is what stops a payload meant
+     * for another type from silently landing on a block.
+     */
+    private function validateTypeStructure(string $type, array $data): void
+    {
+        $schema = $this->typeSchema($type);
+        $label = sprintf('Payload block "%s"', $type);
+
+        foreach ($schema['required'] as $key) {
+            if (! array_key_exists($key, $data)) {
+                throw new InvalidArgumentException(
+                    sprintf('%s wajib memiliki field "%s".', $label, $key)
+                );
+            }
+        }
+
+        foreach ($schema['strings'] as $key) {
+            if (array_key_exists($key, $data) && ! $this->isStringable($data[$key])) {
+                throw new InvalidArgumentException(
+                    sprintf('%s: field "%s" harus berupa teks.', $label, $key)
+                );
+            }
+        }
+
+        foreach ($schema['bools'] as $key) {
+            if (array_key_exists($key, $data) && ! is_bool($data[$key])) {
+                throw new InvalidArgumentException(
+                    sprintf('%s: field "%s" harus berupa boolean.', $label, $key)
+                );
+            }
+        }
+
+        foreach ($schema['ints'] as $key => $allowed) {
+            if (array_key_exists($key, $data) && ! in_array((int) $data[$key], $allowed, true)) {
+                $allowedList = implode(' atau ', $allowed);
+                throw new InvalidArgumentException(
+                    sprintf('%s: field "%s" harus bernilai %s.', $label, $key, $allowedList)
+                );
+            }
+        }
+
+        foreach ($schema['objects'] as $key => $childKeys) {
+            if (! array_key_exists($key, $data)) {
+                continue;
+            }
+            if (! is_array($data[$key]) || array_is_list($data[$key])) {
+                throw new InvalidArgumentException(
+                    sprintf('%s: field "%s" harus berupa objek.', $label, $key)
+                );
+            }
+            foreach ($childKeys as $child) {
+                if (array_key_exists($child, $data[$key]) && ! $this->isStringable($data[$key][$child])) {
+                    throw new InvalidArgumentException(
+                        sprintf('%s: field "%s.%s" harus berupa teks.', $label, $key, $child)
+                    );
+                }
+            }
+        }
+
+        foreach ($schema['lists'] as $key => $itemScalarKeys) {
+            if (! array_key_exists($key, $data)) {
+                continue;
+            }
+            if (! is_array($data[$key]) || ! array_is_list($data[$key])) {
+                throw new InvalidArgumentException(
+                    sprintf('%s: field "%s" harus berupa daftar.', $label, $key)
+                );
+            }
+            foreach ($data[$key] as $index => $item) {
+                if (! is_array($item) || array_is_list($item)) {
+                    throw new InvalidArgumentException(
+                        sprintf('%s: item ke-%d pada "%s" harus berupa objek.', $label, $index + 1, $key)
+                    );
+                }
+                foreach ($itemScalarKeys as $child) {
+                    if (array_key_exists($child, $item) && ! $this->isStringable($item[$child])) {
+                        throw new InvalidArgumentException(
+                            sprintf('%s: field "%s[%d].%s" harus berupa teks.', $label, $key, $index + 1, $child)
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    private function isStringable(mixed $value): bool
+    {
+        return $value === null || is_string($value) || is_int($value) || is_float($value);
     }
 
     /**
