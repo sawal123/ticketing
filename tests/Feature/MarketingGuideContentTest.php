@@ -5,11 +5,14 @@ namespace Tests\Feature;
 use App\Models\MarketingGuideBlock;
 use App\Models\MarketingGuideSection;
 use App\Models\MarketingGuideVersion;
+use App\Models\User;
+use App\Services\MarketingGuide\MarketingGuideAccessService;
 use App\Services\MarketingGuide\MarketingGuideContentService;
 use Database\Seeders\MarketingGuideContentSeeder;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class MarketingGuideContentTest extends TestCase
@@ -21,6 +24,13 @@ class MarketingGuideContentTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        \Illuminate\Support\Facades\Config::set('database.connections.mysql.database', 'ticketing_test');
+        \Carbon\Carbon::setTestNow('2026-09-04 12:00:00');
+        $this->withoutMiddleware([
+            \App\Http\Middleware\GlobalDataMiddleware::class,
+            \App\Http\Middleware\LogActivityMiddleware::class,
+        ]);
 
         $this->service = app(MarketingGuideContentService::class);
     }
@@ -383,6 +393,48 @@ class MarketingGuideContentTest extends TestCase
         ] as $needle) {
             $this->assertStringContainsString($needle, $combined, "Missing phrase: {$needle}");
         }
+    }
+
+    public function test_published_version_renders_dynamic_view_with_all_block_types(): void
+    {
+        $this->seed(MarketingGuideContentSeeder::class);
+
+        $creator = User::factory()->create([
+            'uid' => (string) Str::uuid(),
+            'name' => 'Guide Creator',
+            'email' => 'guide-creator-'.Str::random(8).'@example.test',
+            'role' => 'admin',
+            'gambar' => '-',
+            'nomor' => '-',
+            'alamat' => '-',
+            'kota' => '-',
+            'gender' => 'pria',
+            'birthday' => '2000-01-01',
+            'password' => 'Password123',
+        ]);
+
+        $accessService = app(MarketingGuideAccessService::class);
+        $created = $accessService->create($creator, now()->addDay(), 'Partner Demo');
+        $token = $created['token'];
+
+        $response = $this->get(route('marketing-guide.show', ['token' => $token]));
+        $response->assertOk();
+
+        $html = $response->getContent();
+
+        // Dynamic view must render database-backed content, not the static fallback.
+        $this->assertStringContainsString('Cara Kerja Gotik', $html);
+        $this->assertStringContainsString('Daftarkan Event', $html);
+        $this->assertStringContainsString('Hubungi Tim Gotik', $html);
+        $this->assertStringContainsString('E-Wallet', $html);
+        $this->assertStringContainsString('Jakarta Convention Center', $html);
+        $this->assertStringContainsString('Siap Menjalankan Event Bersama Gotik?', $html);
+        $this->assertStringContainsString('Apakah penyelenggara harus memiliki website?', $html);
+        $this->assertStringContainsString('Panduan ini disiapkan untuk Partner Demo', $html);
+
+        // Security headers still applied on the dynamic render.
+        $this->assertStringContainsString('noindex, nofollow, noarchive', $html);
+        $response->assertHeader('X-Robots-Tag', 'noindex, nofollow, noarchive');
     }
 
     private function makeVersion(array $overrides = []): MarketingGuideVersion
