@@ -3,9 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Models\MarketingGuideAccess;
+use App\Models\User;
 use App\Services\MarketingGuide\MarketingGuideAccessService;
 use App\Services\MarketingGuide\MarketingGuideContentService;
 use Carbon\CarbonInterface;
+use Illuminate\Support\Facades\Auth;
+use InvalidArgumentException;
 use Symfony\Component\HttpFoundation\Response;
 
 class MarketingGuideController extends Controller
@@ -14,6 +17,29 @@ class MarketingGuideController extends Controller
         private MarketingGuideAccessService $accessService,
         private MarketingGuideContentService $contentService
     ) {}
+
+    public function preview(): Response
+    {
+        $admin = Auth::user();
+        abort_unless($admin instanceof User && $admin->uid && strtolower((string) $admin->fresh()?->role) === 'admin', 403);
+
+        $draft = $this->contentService->findDraft();
+        if ($draft === null) {
+            return $this->secureGuideResponse(response('Tidak ada draft untuk dipreview.', 404));
+        }
+
+        try {
+            $sections = $this->contentService->validatedDraftSections($draft);
+        } catch (InvalidArgumentException $e) {
+            return $this->secureGuideResponse(response(e($e->getMessage()), 422));
+        }
+
+        return $this->secureGuideResponse(response()->view('marketing-guide.dynamic', [
+            'sections' => $sections,
+            'recipientName' => null,
+            'expiresAt' => null,
+        ]));
+    }
 
     public function show(string $token): Response
     {

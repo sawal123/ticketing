@@ -65,6 +65,28 @@ class MarketingGuideContentEditor extends Component
         }
     }
 
+    public function publishDraft(): void
+    {
+        $this->ensureAdmin();
+        $this->errorMessage = '';
+        $this->successMessage = '';
+
+        try {
+            $published = $this->service->publishDraft($this->adminUser());
+            $this->editingSectionId = null;
+            $this->editingBlockId = null;
+            $this->addingBlockForSectionId = null;
+            $this->dispatch('close-modal', name: 'mge-section-modal');
+            $this->dispatch('close-modal', name: 'mge-block-modal');
+            $this->successMessage = "Draft #{$published->id} berhasil dipublish.";
+        } catch (\InvalidArgumentException $e) {
+            $this->errorMessage = $e->getMessage();
+        } catch (\Throwable $e) {
+            report($e);
+            $this->errorMessage = 'Publish gagal. Versi published sebelumnya tetap digunakan. Silakan coba lagi.';
+        }
+    }
+
     public function openSectionEditor(int $sectionId): void
     {
         $this->ensureAdmin();
@@ -393,7 +415,7 @@ class MarketingGuideContentEditor extends Component
                 ->get();
         }
 
-        $grouped = $sections->groupBy(fn($s) => $s->nav_group ?? 'Tanpa Grup');
+        $grouped = $sections->groupBy(fn ($s) => $s->nav_group ?? 'Tanpa Grup');
 
         return view('livewire.admin.marketing-guide-content-editor', [
             'draft' => $draft,

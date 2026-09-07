@@ -11,7 +11,10 @@
                     class="text-indigo-600 dark:text-indigo-400 hover:underline">Kembali ke halaman Marketing Guide</a>
             </p>
         </div>
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2 flex-wrap">
+            @if ($published !== null)
+                <span class="text-xs text-slate-500 dark:text-slate-400">Published v{{ $published->number }} #{{ $published->id }}</span>
+            @endif
             @if ($draft === null)
                 <x-admin.button wire:click="openEditor" variant="primary" icon="edit-3">
                     Siapkan Draft
@@ -19,8 +22,16 @@
             @else
                 <span
                     class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
-                    <i data-lucide="check-circle" class="w-4 h-4"></i> Draft aktif #{{ $draft->id }}
+                    <i data-lucide="check-circle" class="w-4 h-4"></i> Draft aktif v{{ $draft->number }} #{{ $draft->id }}
                 </span>
+                <x-admin.button :href="route('admin.marketing-guide.content.preview')" target="_blank" rel="noopener noreferrer"
+                    variant="secondary" icon="eye">
+                    Preview Draft
+                </x-admin.button>
+                <x-admin.button wire:click="publishDraft" wire:confirm="Publish draft ini? Versi published saat ini akan diarsipkan."
+                    loadingTarget="publishDraft" variant="primary" icon="upload">
+                    Publish
+                </x-admin.button>
             @endif
         </div>
     </div>
