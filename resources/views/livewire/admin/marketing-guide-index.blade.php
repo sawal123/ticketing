@@ -4,7 +4,12 @@
             <h1 class="text-2xl font-bold text-slate-800 dark:text-white">Marketing Guide</h1>
             <p class="text-slate-500 dark:text-slate-400 text-sm">Kelola temporary access link panduan marketing Gotik.</p>
         </div>
-        <div>
+        <div class="flex items-center gap-2">
+            <a href="{{ route('admin.marketing-guide.content') }}" wire:navigate
+                class="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-semibold bg-slate-100 hover:bg-slate-200 dark:bg-slate-700/60 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-colors">
+                <i data-lucide="edit-3" class="w-4 h-4"></i>
+                Editor Konten
+            </a>
             <x-admin.button wire:click="openCreateModal" variant="primary" icon="plus">
                 Buat Link
             </x-admin.button>

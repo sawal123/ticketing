@@ -70,6 +70,11 @@
             <i data-lucide="book" class="w-5 h-5 flex-shrink-0"></i>
             <span class="text-sm font-medium">Guide Marketing</span>
         </a>
+        <a href="{{ route('admin.marketing-guide.content') }}" wire:navigate
+            class="sidebar-link flex items-center gap-3 px-3 py-2.5 pl-11 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-all duration-200 text-xs {{ request()->routeIs('admin.marketing-guide.content') ? 'active' : '' }}">
+            <i data-lucide="edit-3" class="w-4 h-4 flex-shrink-0"></i>
+            <span class="font-medium">Editor Konten</span>
+        </a>
         </div>
 
         <hr class="border-slate-200 dark:border-slate-700 my-3">
