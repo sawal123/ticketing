@@ -24,6 +24,11 @@ return new class extends Migration
                 ->references('uid')
                 ->on('users')
                 ->nullOnDelete();
+            $table->string('published_by_uid')->nullable();
+            $table->foreign('published_by_uid')
+                ->references('uid')
+                ->on('users')
+                ->nullOnDelete();
         });
     }
 

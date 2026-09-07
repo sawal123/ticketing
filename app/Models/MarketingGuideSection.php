@@ -16,6 +16,7 @@ class MarketingGuideSection extends Model
         'key',
         'title',
         'slug',
+        'nav_group',
         'position',
         'is_active',
     ];

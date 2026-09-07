@@ -16,6 +16,7 @@ return new class extends Migration
             $table->string('key', 96);
             $table->string('title');
             $table->string('slug', 96)->nullable();
+            $table->string('nav_group', 64)->nullable();
             $table->unsignedInteger('position')->default(0);
             $table->boolean('is_active')->default(true);
             $table->timestamps();

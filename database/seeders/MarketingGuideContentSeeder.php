@@ -18,13 +18,21 @@ class MarketingGuideContentSeeder extends Seeder
      * Idempotent seed: subsequent runs keep existing sections/blocks stable
      * and update their content in place. Anchor keys: (version_id, key) for
      * sections, (section_id, position) for blocks.
+     *
+     * `published_at` is only stamped on first creation so re-running the
+     * seeder never resets the original publication timestamp.
      */
     public function run(): void
     {
         $service = app(MarketingGuideContentService::class);
-        $now = Carbon::now();
 
-        DB::transaction(function () use ($service, $now) {
+        DB::transaction(function () use ($service) {
+            $now = Carbon::now();
+
+            $existingVersion = MarketingGuideVersion::query()
+                ->where('key', self::VERSION_KEY)
+                ->first();
+
             $version = MarketingGuideVersion::query()->updateOrCreate(
                 ['key' => self::VERSION_KEY],
                 [
@@ -32,7 +40,8 @@ class MarketingGuideContentSeeder extends Seeder
                     'title' => 'Panduan Marketing Gotik v1',
                     'status' => MarketingGuideVersion::STATUS_PUBLISHED,
                     'created_by_uid' => null,
-                    'published_at' => $now,
+                    'published_at' => $existingVersion?->published_at ?? $now,
+                    'published_by_uid' => $existingVersion?->published_by_uid,
                 ]
             );
 
@@ -45,6 +54,7 @@ class MarketingGuideContentSeeder extends Seeder
                     [
                         'title' => $payload['title'],
                         'slug' => $payload['slug'] ?? null,
+                        'nav_group' => $payload['nav_group'] ?? null,
                         'position' => $payload['position'],
                         'is_active' => true,
                     ]
@@ -77,7 +87,7 @@ class MarketingGuideContentSeeder extends Seeder
     }
 
     /**
-     * @return array<string, array{title: string, slug: string, position: int, blocks: array<int, array{type: string, data: array}>}>
+     * @return array<string, array{title: string, slug: string, nav_group: string, position: int, blocks: array<int, array{type: string, data: array}>}>
      */
     private function sections(): array
     {

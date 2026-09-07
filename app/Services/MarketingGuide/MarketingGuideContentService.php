@@ -11,22 +11,14 @@ use InvalidArgumentException;
 class MarketingGuideContentService
 {
     /**
-     * Resolve currently published version, falling back to the most recent active version.
+     * Resolve the currently published version. Returns null when no
+     * published version exists (drafts are intentionally not exposed).
      */
     public function currentVersion(): ?MarketingGuideVersion
     {
-        $published = MarketingGuideVersion::query()
+        return MarketingGuideVersion::query()
             ->published()
             ->orderByDesc('published_at')
-            ->orderByDesc('id')
-            ->first();
-
-        if ($published !== null) {
-            return $published;
-        }
-
-        return MarketingGuideVersion::query()
-            ->active()
             ->orderByDesc('id')
             ->first();
     }

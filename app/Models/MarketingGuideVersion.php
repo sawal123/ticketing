@@ -30,6 +30,7 @@ class MarketingGuideVersion extends Model
         'status',
         'created_by_uid',
         'published_at',
+        'published_by_uid',
     ];
 
     protected $casts = [
@@ -45,6 +46,11 @@ class MarketingGuideVersion extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by_uid', 'uid');
+    }
+
+    public function publisher(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'published_by_uid', 'uid');
     }
 
     public function isPublished(): bool

@@ -64,6 +64,32 @@ class MarketingGuideContentTest extends TestCase
         $this->assertCount(1, $section->blocks);
     }
 
+    public function test_publisher_and_nav_group_columns_round_trip(): void
+    {
+        $version = MarketingGuideVersion::create([
+            'key' => 'guide.v2',
+            'number' => 2,
+            'title' => 'Panduan v2',
+            'status' => MarketingGuideVersion::STATUS_PUBLISHED,
+            'published_at' => now(),
+            'published_by_uid' => null,
+        ]);
+
+        $section = MarketingGuideSection::create([
+            'version_id' => $version->id,
+            'key' => 'pengenalan',
+            'title' => 'Pengenalan',
+            'slug' => 'pengenalan',
+            'nav_group' => 'MENGENAL GOTIK',
+            'position' => 1,
+            'is_active' => true,
+        ]);
+
+        $this->assertSame('MENGENAL GOTIK', $section->fresh()->nav_group);
+        $this->assertNull($version->fresh()->published_by_uid);
+        $this->assertNull($version->fresh()->publisher);
+    }
+
     public function test_blocks_are_ordered_by_position(): void
     {
         $version = $this->makeVersion();
@@ -142,19 +168,117 @@ class MarketingGuideContentTest extends TestCase
         $this->assertSame(MarketingGuideVersion::STATUS_PUBLISHED, $version->status);
 
         $sections = $this->service->activeSectionsForVersion($version);
-        $this->assertSame(12, $sections->count());
-        $this->assertSame(range(1, 12), $sections->pluck('position')->all());
+        $this->assertSame(14, $sections->count());
+        $this->assertSame(range(1, 14), $sections->pluck('position')->all());
 
         $expectedKeys = [
-            'hero', 'cara_kerja', 'menjadi_penyelenggara', 'setup_event',
+            'pengenalan', 'cara_kerja', 'menjadi_penyelenggara', 'setup_event',
             'tiket_harga', 'cara_pembeli_beli', 'pembayaran', 'dashboard_transaksi',
-            'qr_ticket', 'scanner_checkin', 'faq', 'cta',
+            'qr_ticket', 'scanner_checkin', 'laporan', 'penarikan_dana',
+            'faq', 'cta_hubungi',
         ];
         $this->assertSame($expectedKeys, $sections->pluck('key')->all());
+
+        $expectedSlugs = [
+            'pengenalan', 'cara-kerja', 'menjadi-penyelenggara', 'setup-event',
+            'tiket-harga', 'cara-pembeli-beli', 'pembayaran', 'dashboard-transaksi',
+            'qr-ticket', 'scanner-checkin', 'laporan', 'penarikan-dana',
+            'faq', 'hubungi',
+        ];
+        $this->assertSame($expectedSlugs, $sections->pluck('slug')->all());
 
         foreach (MarketingGuideBlock::all() as $block) {
             $this->assertContains($block->type, MarketingGuideBlock::TYPES);
         }
+    }
+
+    public function test_seeder_marks_new_sections_with_all_six_nav_groups(): void
+    {
+        $this->seed(MarketingGuideContentSeeder::class);
+
+        $expectedGroups = [
+            'MENGENAL GOTIK' => ['pengenalan', 'cara_kerja'],
+            'MEMULAI EVENT' => ['menjadi_penyelenggara', 'setup_event', 'tiket_harga'],
+            'PENJUALAN' => ['cara_pembeli_beli', 'pembayaran', 'dashboard_transaksi'],
+            'HARI-H EVENT' => ['qr_ticket', 'scanner_checkin'],
+            'KEUANGAN' => ['laporan', 'penarikan_dana'],
+            'LAINNYA' => ['faq', 'cta_hubungi'],
+        ];
+
+        $version = $this->service->currentVersion();
+        $this->assertNotNull($version);
+
+        foreach ($expectedGroups as $group => $keys) {
+            $actual = $version->sections()
+                ->where('nav_group', $group)
+                ->orderBy('position')
+                ->pluck('key')
+                ->all();
+            $this->assertSame($keys, $actual, "nav_group={$group} should map to those section keys");
+        }
+    }
+
+    public function test_seeder_does_not_reset_published_at_on_rerun(): void
+    {
+        $firstAt = now()->subDays(7);
+        MarketingGuideVersion::query()->updateOrCreate(
+            ['key' => MarketingGuideContentSeeder::VERSION_KEY],
+            [
+                'number' => 1,
+                'title' => 'Panduan Marketing Gotik v1',
+                'status' => MarketingGuideVersion::STATUS_PUBLISHED,
+                'published_at' => $firstAt,
+            ],
+        );
+
+        $this->seed(MarketingGuideContentSeeder::class);
+
+        $version = MarketingGuideVersion::query()
+            ->where('key', MarketingGuideContentSeeder::VERSION_KEY)
+            ->firstOrFail();
+
+        $this->assertNotNull($version->published_at);
+        $this->assertSame(
+            $firstAt->toDateTimeString(),
+            $version->published_at->toDateTimeString(),
+            'Re-running the seeder must not reset published_at.',
+        );
+    }
+
+    public function test_current_version_returns_null_when_only_draft_exists(): void
+    {
+        MarketingGuideVersion::create([
+            'key' => 'guide.draft',
+            'number' => 1,
+            'title' => 'Draft only',
+            'status' => MarketingGuideVersion::STATUS_DRAFT,
+            'published_at' => null,
+        ]);
+
+        $this->assertNull($this->service->currentVersion());
+    }
+
+    public function test_current_version_returns_latest_published_when_mixed_with_older_draft(): void
+    {
+        $draft = MarketingGuideVersion::create([
+            'key' => 'guide.draft',
+            'number' => 2,
+            'title' => 'Newer draft',
+            'status' => MarketingGuideVersion::STATUS_DRAFT,
+            'published_at' => null,
+        ]);
+
+        $published = $this->makeVersion([
+            'key' => 'guide.v0',
+            'status' => MarketingGuideVersion::STATUS_PUBLISHED,
+            'published_at' => now()->subDay(),
+        ]);
+
+        $current = $this->service->currentVersion();
+
+        $this->assertNotNull($current);
+        $this->assertSame($published->id, $current->id);
+        $this->assertNotSame($draft->id, $current->id);
     }
 
     public function test_seeder_orphans_inactive_blocks_when_section_changes(): void
@@ -237,21 +361,27 @@ class MarketingGuideContentTest extends TestCase
 
         $combined = $version->sections->load('blocks')
             ->flatMap(fn ($section) => $section->blocks)
-            ->map(fn ($block) => json_encode($block->data))
+            ->map(fn ($block) => json_encode($block->data, JSON_UNESCAPED_UNICODE))
             ->implode("\n");
 
+        // Phrases lifted directly from resources/views/marketing-guide/index.blade.php.
+        // If any of these are missing, the seeder has drifted from the static view.
         foreach ([
             'Cara Kerja Gotik',
             'Daftarkan Event',
-            'Pencairan dana',
-            'Hubungi Tim',
+            'Hubungi Gotik',
             'E-Wallet',
-            'Histori Transaksi',
+            'Transfer Bank',
             'Jakarta Convention Center',
-            'Aktivasi event biasanya memakan waktu',
-            'Siap Mengelola Event Anda?',
+            'Histori Transaksi',
+            'Siap Menjalankan Event Bersama Gotik?',
+            'Apakah penyelenggara harus memiliki website?',
+            'Berapa biaya platform Gotik?',
+            'Hubungi tim Gotik untuk mendiskusikan kebutuhan',
+            'Penjualan',
+            'Rekap Transaksi',
         ] as $needle) {
-            $this->assertStringContainsString($needle, $combined);
+            $this->assertStringContainsString($needle, $combined, "Missing phrase: {$needle}");
         }
     }
 
