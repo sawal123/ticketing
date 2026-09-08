@@ -196,19 +196,25 @@ class MarketingGuideFinalQaTest extends TestCase
         $this->assertSame($before, $published->fresh()->load('sections.blocks')->toArray());
     }
 
-    public function test_logo_targets_first_active_section_after_hero_is_disabled(): void
+    public function test_logo_targets_next_active_section_after_first_active_section_is_disabled(): void
     {
         $draft = $this->service->getOrCreateDraft($this->admin);
-        $draft->sections()->where('slug', 'hero')->update(['is_active' => false]);
-        $first = $this->service->activeSectionsForVersion($draft)->first();
-        $this->assertNotSame('hero', $first->slug);
+        $initialSection = $this->service->activeSectionsForVersion($draft)->first();
+        $this->assertNotNull($initialSection);
+
+        $initialSection->update(['is_active' => false]);
+        $this->assertFalse($initialSection->fresh()->is_active);
+
+        $nextSection = $this->service->activeSectionsForVersion($draft)->first();
+        $this->assertNotNull($nextSection);
+        $this->assertNotSame($initialSection->id, $nextSection->id);
 
         $this->actingAs($this->admin)->get(route('admin.marketing-guide.content.preview'))
-            ->assertOk()->assertSee('href="#'.$first->slug.'" class="logo"', false);
+            ->assertOk()->assertSee('href="#'.$nextSection->slug.'" class="logo"', false);
 
         $this->service->publishDraft($this->admin);
         $access = app(MarketingGuideAccessService::class)->create($this->admin, now()->addDay());
         $this->get(route('marketing-guide.show', $access['token']))
-            ->assertOk()->assertSee('href="#'.$first->slug.'" class="logo"', false);
+            ->assertOk()->assertSee('href="#'.$nextSection->slug.'" class="logo"', false);
     }
 }

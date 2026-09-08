@@ -14,8 +14,9 @@ until the outstanding verification below is resolved.
    temporary offset and raised a unique-key exception. Temporary positions
    now start beyond the parent's actual maximum. The regression also checks
    final ordering and preservation of block data.
-3. Disabling the hero section left the logo pointing to a missing anchor.
-   The logo now points to the first active section, verified in preview and public.
+3. Disabling the first active section left the logo pointing to a missing anchor.
+   The logo now points to the next active section, verified in preview and public
+   without relying on a specific section slug.
 4. Accepted CTA anchors such as `#missing]` and `#123` caused selector errors.
    Anchor lookup now uses the literal element ID instead of a CSS selector.
 5. Guides shorter than the viewport produced a `NaN%` progress value.
@@ -55,10 +56,10 @@ The first Feature run exhausted PHP's default 128 MB limit in the existing
 | Check | Result |
 | --- | --- |
 | Baseline MarketingGuide tests | PASS — 123 tests, 896 assertions, exit 0 |
-| Final MarketingGuide tests | PASS — 137 tests, 1,233 assertions, exit 0 |
+| Final MarketingGuide tests | PASS — 137 tests, 1,236 assertions, exit 0 |
 | JavaScript regression tests | PASS — 13 tests, exit 0 |
-| All Feature tests | PASS — 1,146 tests, 7,061 assertions, exit 0; peak memory 154 MB |
-| Full PHPUnit | PASS — 1,147 tests, 7,062 assertions, exit 0; peak memory 154 MB |
+| All Feature tests | PASS — 1,146 tests, 7,064 assertions, covered by the final full run; peak memory 154 MB |
+| Full PHPUnit | PASS — 1,147 tests, 7,065 assertions, exit 0; peak memory 154 MB |
 | Pint on changed PHP files | PASS, exit 0 |
 | Repository-wide Pint `--test` | FAIL, exit 1 — existing formatting findings in 132 files; none in the changed PHP files. Left unchanged to preserve scope. |
 | `git diff --check` | PASS, exit 0 |
