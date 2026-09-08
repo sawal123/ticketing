@@ -219,6 +219,9 @@ class MarketingGuideContentService
      */
     public function getOrCreateDraft(User $editor): MarketingGuideVersion
     {
+        $editor = $editor->fresh();
+        abort_unless($editor !== null && $editor->uid && strtolower((string) $editor->role) === 'admin', 403);
+
         $attempts = 0;
 
         while (true) {
@@ -492,8 +495,7 @@ class MarketingGuideContentService
      * parent scope is passed in by the caller so this stays generic.
      *
      * The constraint column is unsigned, so we cannot use negatives.
-     * Instead we set every row's position to its final value + 1000
-     * (offset beyond the maximum realistic count of blocks per parent)
+     * Instead we set every row's position beyond the current maximum
      * in phase one, then write the final value in phase two. This keeps
      * every intermediate state conflict-free.
      *
@@ -504,7 +506,7 @@ class MarketingGuideContentService
         $parent = $relation->getParent();
         $foreignKey = $relation->getQualifiedForeignKeyName();
         $modelClass = $relation->getModel()::class;
-        $offset = 1000;
+        $offset = (int) $relation->max('position');
 
         $finalPositions = [];
         foreach ($orderedIds as $i => $id) {
@@ -512,7 +514,7 @@ class MarketingGuideContentService
         }
 
         // Phase 1: shift every targeted row into a non-conflicting slot
-        // beyond the highest expected position.
+        // beyond the highest stored position.
         foreach ($finalPositions as $id => $pos) {
             $modelClass::query()
                 ->where('id', $id)
@@ -641,6 +643,9 @@ class MarketingGuideContentService
      */
     private function assertDraftVersion(MarketingGuideVersion $version, User $editor): void
     {
+        $editor = $editor->fresh();
+        abort_unless($editor !== null && $editor->uid && strtolower((string) $editor->role) === 'admin', 403);
+
         // All callers hold this lock until their mutation commits, including stale editor requests.
         $version = MarketingGuideVersion::query()->lockForUpdate()->findOrFail($version->id);
         if ($version->status !== MarketingGuideVersion::STATUS_DRAFT) {

@@ -20,7 +20,7 @@
     <!-- Header -->
     <header>
         <div class="header-container">
-            <a href="#hero" class="logo">GOTIK</a>
+            <a href="#{{ $sections->first()?->slug }}" class="logo">GOTIK</a>
             <button class="menu-toggle" id="menuToggle">
                 <i class="fas fa-bars"></i>
             </button>
@@ -125,7 +125,7 @@
         function updateProgressBar() {
             const scrollTop = window.scrollY;
             const docHeight = document.documentElement.scrollHeight - window.innerHeight;
-            const scrolled = (scrollTop / docHeight) * 100;
+            const scrolled = docHeight > 0 ? Math.min(100, Math.max(0, (scrollTop / docHeight) * 100)) : 0;
             document.getElementById('progressBar').style.width = scrolled + '%';
         }
 
@@ -156,7 +156,7 @@
                 if (href === '#' || !href.startsWith('#')) return;
 
                 e.preventDefault();
-                const target = document.querySelector(href);
+                const target = document.getElementById(href.slice(1));
                 if (target) {
                     target.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 }

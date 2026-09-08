@@ -442,6 +442,8 @@ class MarketingGuideContentEditor extends Component
 
     private function isAdmin(mixed $user): bool
     {
+        $user = $user instanceof User ? $user->fresh() : null;
+
         return $user instanceof User
             && strtolower((string) $user->role) === 'admin'
             && $user->uid !== null;
