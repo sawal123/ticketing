@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\MarketingGuide\MarketingGuideContentService;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\On;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
@@ -371,6 +372,12 @@ class MarketingGuideContentEditor extends Component
         } catch (\Throwable $e) {
             $this->errorMessage = $e->getMessage();
         }
+    }
+
+    #[On('mge-content-updated')]
+    public function refreshContent(): void
+    {
+        $this->ensureAdmin();
     }
 
     private function shiftBlock(MarketingGuideBlock $block, int $delta): void

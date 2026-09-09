@@ -21,6 +21,10 @@ until the outstanding verification below is resolved.
    Anchor lookup now uses the literal element ID instead of a CSS selector.
 5. Guides shorter than the viewport produced a `NaN%` progress value.
    Progress now remains finite and within 0–100%.
+6. Opening an editor modal re-rendered and morphed the complete section/block
+   list. The modal is now an isolated Livewire component, so opening it only
+   queries the selected draft resource and morphs the modal DOM. Save continues
+   through `MarketingGuideContentService` and refreshes the list after success.
 
 The regression cases were run against the pre-fix implementation and reproduced
 the defects before the fixes were applied. No packages, migrations, generated
@@ -30,7 +34,7 @@ assets, or unrelated application behavior were changed.
 
 | Area | Automated evidence |
 | --- | --- |
-| Admin editor | Admin access; cloning/reusing the latest published version; section/block editing, activation and ordering; nested content; locked block types; no raw JSON textarea; stale actor and forged published child IDs |
+| Admin editor | Admin access; cloning/reusing the latest published version; section/block editing, activation and ordering; nested content; locked block types; no raw JSON textarea; stale actor and forged published child IDs; scoped modal responses and mutation-free modal open actions |
 | Preview | Admin-only active draft; no clone on missing draft; unchanged temporary access/tracking; private/no-cache/noindex response; 19 invalid draft cases return safe 422 responses |
 | Publish | Atomic archival and publication; audit fields; full rollback after a simulated write failure; current published retained on failure; new drafts clone the latest publication; stale published mutation rejection |
 | Public | All ten block types; published-only rendering; inactive filtering; section/block ordering; sidebar/drawer group and anchor mapping; recipient and expiry from temporary access; safe static fallback with an existing draft |
@@ -40,6 +44,25 @@ assets, or unrelated application behavior were changed.
 JavaScript checks execute the actual inline scripts using Node's built-in test
 runner and a small DOM fixture. They do **not** replace browser rendering,
 Alpine/Livewire integration, console inspection, or responsive layout checks.
+
+## Editor modal performance
+
+Measurements use the same seeded draft with 14 sections and 38 blocks. Duration
+is an observed local request time rather than a test threshold; query and payload
+budgets are enforced by `MarketingGuideEditorPerformanceTest`.
+
+| Action | Request duration | Queries | Response | HTML morphed | Full editor rerender |
+| --- | ---: | ---: | ---: | ---: | --- |
+| Edit Section — before | 67.38 ms | 8 | 282,865 B | 273,124 B | Yes |
+| Edit Section — after | 49.22 ms | 3 | 33,762 B | 31,711 B | No |
+| Edit Block — before | 41.52 ms | 9 | 281,484 B | 270,177 B | Yes |
+| Edit Block — after | 40.53 ms | 4 | 32,115 B | 28,498 B | No |
+| Add Block — before | 32.07 ms | 8 | 283,197 B | 273,390 B | Yes |
+| Add Block — after | 27.21 ms | 3 | 33,828 B | 31,711 B | No |
+
+Modal response size fell by about 88%. Opening a modal executes SELECT queries
+only; edit/add/save persistence and published-content protection are covered
+through the isolated modal component.
 
 ## Verification results
 
@@ -56,11 +79,11 @@ The first Feature run exhausted PHP's default 128 MB limit in the existing
 | Check | Result |
 | --- | --- |
 | Baseline MarketingGuide tests | PASS — 123 tests, 896 assertions, exit 0 |
-| Final MarketingGuide tests | PASS — 137 tests, 1,236 assertions, exit 0 |
+| Final MarketingGuide tests | PASS — 143 tests, 1,288 assertions, exit 0 |
 | JavaScript regression tests | PASS — 13 tests, exit 0 |
-| All Feature tests | PASS — 1,146 tests, 7,064 assertions, covered by the final full run; peak memory 154 MB |
-| Full PHPUnit | PASS — 1,147 tests, 7,065 assertions, exit 0; peak memory 154 MB |
-| Pint on changed PHP files | PASS, exit 0 |
+| All Feature tests | PASS — 1,152 tests, 7,116 assertions, covered by the final full run; peak memory 154 MB |
+| Full PHPUnit | PASS — 1,153 tests, 7,117 assertions, exit 0; peak memory 154 MB |
+| Pint on production and new PHP files | PASS, exit 0 |
 | Repository-wide Pint `--test` | FAIL, exit 1 — existing formatting findings in 132 files; none in the changed PHP files. Left unchanged to preserve scope. |
 | `git diff --check` | PASS, exit 0 |
 
@@ -75,7 +98,7 @@ php -d memory_limit=1G vendor/phpunit/phpunit/phpunit --testsuite Feature
 php -d memory_limit=1G vendor/phpunit/phpunit/phpunit
 node --test tests/MarketingGuideInteractions.test.mjs
 php vendor/bin/pint --test
-php vendor/bin/pint --test app/Livewire/Admin/MarketingGuideContentEditor.php app/Services/MarketingGuide/MarketingGuideContentService.php tests/Feature/MarketingGuideFinalQaTest.php tests/Feature/MarketingGuidePreviewPublishTest.php
+php vendor/bin/pint --test app/Livewire/Admin/MarketingGuideContentEditor.php app/Livewire/Admin/MarketingGuideContentModal.php tests/Feature/MarketingGuideEditorPerformanceTest.php
 git diff --check
 ```
 

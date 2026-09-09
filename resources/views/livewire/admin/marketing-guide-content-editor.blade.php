@@ -1,4 +1,5 @@
 <div class="space-y-6">
+    @if (!($modalOnly ?? false))
     <div class="flex flex-col md:flex-row md:items-start justify-between gap-4">
         <div>
             <h1 class="text-2xl font-bold text-slate-800 dark:text-white">Editor Marketing Guide</h1>
@@ -109,7 +110,7 @@
                                         title="Turunkan urutan">
                                         <i data-lucide="chevron-down" class="w-4 h-4"></i>
                                     </button>
-                                    <button wire:click="openSectionEditor({{ $section->id }})"
+                                    <button wire:click="$dispatchTo('admin.marketing-guide-content-modal', 'mge-open-section-editor', { sectionId: {{ $section->id }} })"
                                         class="p-1.5 rounded-lg text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors"
                                         title="Edit section">
                                         <i data-lucide="edit-3" class="w-4 h-4"></i>
@@ -163,7 +164,7 @@
                                                 title="Turunkan urutan">
                                                 <i data-lucide="chevron-down" class="w-3.5 h-3.5"></i>
                                             </button>
-                                            <button wire:click="openBlockEditor({{ $block->id }})"
+                                            <button wire:click="$dispatchTo('admin.marketing-guide-content-modal', 'mge-open-block-editor', { blockId: {{ $block->id }} })"
                                                 class="p-1.5 rounded-lg text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors"
                                                 title="Edit block">
                                                 <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
@@ -179,7 +180,7 @@
                                         </div>
                                     </div>
                                 @endforeach
-                                <button wire:click="openAddBlock({{ $section->id }})"
+                                <button wire:click="$dispatchTo('admin.marketing-guide-content-modal', 'mge-open-add-block', { sectionId: {{ $section->id }} })"
                                     class="w-full flex items-center justify-center gap-2 p-2.5 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-600 text-slate-500 dark:text-slate-400 hover:border-indigo-400 hover:text-indigo-600 dark:hover:border-indigo-500 dark:hover:text-indigo-400 transition-colors text-xs font-semibold">
                                     <i data-lucide="plus" class="w-4 h-4"></i> Tambah block
                                 </button>
@@ -195,6 +196,8 @@
             </x-admin.card>
         @endforelse
     @endif
+        <livewire:admin.marketing-guide-content-modal />
+    @else
     <x-admin.modal name="mge-section-modal" title="Edit Section">
         <form wire:submit.prevent="saveSection" class="space-y-4">
             <div>
@@ -736,8 +739,10 @@
             </div>
         </form>
     </x-admin.modal>
+    @endif
 </div>
 
+@if ($modalOnly ?? false)
 <script>
     function mgeBlockEditor(initialRaw) {
         return {
@@ -838,3 +843,4 @@
         };
     }
 </script>
+@endif
