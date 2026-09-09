@@ -62,6 +62,14 @@ class MarketingGuideEditorPerformanceTest extends TestCase
         $this->assertStringNotContainsString('Draft aktif', $html);
         $this->assertSame([], $mutationQueries, $action.' mutated the database while opening a modal.');
         $this->assertLessThan(1000, $durationMs, $action.' exceeded the server-side latency budget.');
+        $component->assertDispatched(
+            'mge-modal-loaded',
+            fn ($event, $params): bool => ($params['name'] ?? null) === match ($action) {
+                'openSectionEditor' => 'mge-section-modal',
+                default => 'mge-block-modal',
+            }
+        );
+        $component->assertNotDispatched('open-modal');
 
         match ($action) {
             'openSectionEditor' => $component
@@ -136,11 +144,13 @@ class MarketingGuideEditorPerformanceTest extends TestCase
 
         $component->call('openSectionEditor', $section->id)
             ->assertSet('editingSectionId', null)
+            ->assertDispatched('mge-modal-error')
             ->set('editingSectionId', $section->id)
             ->set('sectionTitle', 'Published tamper')
             ->call('saveSection');
         $component->call('openBlockEditor', $block->id)
             ->assertSet('editingBlockId', null)
+            ->assertDispatched('mge-modal-error')
             ->set('editingBlockId', $block->id)
             ->set('blockDataRaw', json_encode(['intro' => 'Published tamper']))
             ->call('saveBlock');
@@ -150,16 +160,57 @@ class MarketingGuideEditorPerformanceTest extends TestCase
         $this->assertSame($draft->id, app(MarketingGuideContentService::class)->findDraft()->id);
     }
 
-    public function test_editor_page_routes_modal_buttons_to_the_small_modal_component(): void
+    public function test_editor_page_opens_the_isolated_modal_client_side_with_scoped_loading_feedback(): void
     {
         [$admin] = $this->editorFixture();
 
         $this->actingAs($admin)->get(route('admin.marketing-guide.content'))
             ->assertOk()
             ->assertSeeLivewire(MarketingGuideContentModal::class)
-            ->assertSee('mge-open-section-editor', false)
-            ->assertSee('mge-open-block-editor', false)
-            ->assertSee('mge-open-add-block', false);
+            ->assertSee("mgeOpenEditorModal('mge-section-modal', 'Edit Section', 'openSectionEditor'", false)
+            ->assertSee("mgeOpenEditorModal('mge-block-modal', 'Edit Block', 'openBlockEditor'", false)
+            ->assertSee("mgeOpenEditorModal('mge-block-modal', 'Tambah Block', 'openAddBlock'", false)
+            ->assertSee('loading: true', false)
+            ->assertSee('Memuat data editor...', false)
+            ->assertSee('data-mge-modal-component', false)
+            ->assertSee('x-bind:disabled="loading"', false)
+            ->assertSee('style="max-height: calc(100dvh - 1rem);"', false)
+            ->assertSee("document.body.style.overflow = 'hidden'", false);
+    }
+
+    public function test_editor_primary_actions_have_targeted_loading_and_double_submit_guards(): void
+    {
+        $admin = User::factory()->create([
+            'uid' => (string) Str::uuid(),
+            'role' => 'admin',
+            'password' => 'Password123',
+        ]);
+        $this->seed(MarketingGuideContentSeeder::class);
+
+        $this->actingAs($admin)->get(route('admin.marketing-guide.content'))
+            ->assertSee('wire:target="openEditor"', false);
+
+        app(MarketingGuideContentService::class)->getOrCreateDraft($admin);
+
+        $response = $this->actingAs($admin)->get(route('admin.marketing-guide.content'));
+
+        foreach ([
+            'publishDraft',
+            'moveSectionUp(',
+            'moveSectionDown(',
+            'toggleSectionActive(',
+            'moveBlockUp(',
+            'moveBlockDown(',
+            'removeBlock(',
+            'saveSection',
+            'saveBlock',
+        ] as $target) {
+            $response->assertSee('wire:target="'.$target, false);
+        }
+
+        $response
+            ->assertSee('wire:loading.attr="disabled"', false)
+            ->assertSee('border-t-transparent animate-spin', false);
     }
 
     /** @return array{User, MarketingGuideVersion} */

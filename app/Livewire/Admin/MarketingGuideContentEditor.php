@@ -42,6 +42,8 @@ class MarketingGuideContentEditor extends Component
 
     protected MarketingGuideContentService $service;
 
+    protected bool $dispatchesModalOpen = true;
+
     public function boot(MarketingGuideContentService $service): void
     {
         $this->service = $service;
@@ -101,7 +103,9 @@ class MarketingGuideContentEditor extends Component
         $this->sectionIsActive = (bool) $section->is_active;
         $this->sectionPosition = (int) $section->position;
         $this->resetErrorBag();
-        $this->dispatch('open-modal', name: 'mge-section-modal');
+        if ($this->dispatchesModalOpen) {
+            $this->dispatch('open-modal', name: 'mge-section-modal');
+        }
     }
 
     public function closeSectionEditor(): void
@@ -184,7 +188,9 @@ class MarketingGuideContentEditor extends Component
         $this->errorMessage = '';
         $this->successMessage = '';
         $this->resetErrorBag();
-        $this->dispatch('open-modal', name: 'mge-block-modal');
+        if ($this->dispatchesModalOpen) {
+            $this->dispatch('open-modal', name: 'mge-block-modal');
+        }
     }
 
     public function closeBlockEditor(): void
@@ -210,7 +216,9 @@ class MarketingGuideContentEditor extends Component
         $this->errorMessage = '';
         $this->successMessage = '';
         $this->resetErrorBag();
-        $this->dispatch('open-modal', name: 'mge-block-modal');
+        if ($this->dispatchesModalOpen) {
+            $this->dispatch('open-modal', name: 'mge-block-modal');
+        }
     }
 
     public function switchBlockType(string $type): void

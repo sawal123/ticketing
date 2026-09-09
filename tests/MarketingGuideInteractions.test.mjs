@@ -85,6 +85,62 @@ const editorSource = readFileSync(new URL('../resources/views/livewire/admin/mar
 const editorContext = {};
 runInNewContext(editorSource.match(/<script>([\s\S]*?)<\/script>/)[1], editorContext);
 
+test('editor modal shell opens before the isolated Livewire request resolves', async () => {
+    const events = [];
+    const calls = [];
+    let resolveRequest;
+    editorContext.CustomEvent = class {
+        constructor(type, options) {
+            this.type = type;
+            this.detail = options.detail;
+        }
+    };
+    editorContext.document = {
+        querySelector: () => ({ getAttribute: name => name === 'wire:id' ? 'modal-123' : null }),
+    };
+    editorContext.window = {
+        dispatchEvent: event => events.push(event),
+        Livewire: {
+            find: id => ({
+                call(action, resourceId) {
+                    calls.push({ id, action, resourceId });
+                    return new Promise(resolve => { resolveRequest = resolve; });
+                },
+            }),
+        },
+    };
+
+    const request = editorContext.mgeOpenEditorModal('mge-block-modal', 'Edit Block', 'openBlockEditor', 42);
+
+    assert.equal(events[0].detail.name, 'mge-block-modal');
+    assert.equal(events[0].detail.title, 'Edit Block');
+    assert.equal(events[0].detail.loading, true);
+    assert.deepEqual(calls, [{ id: 'modal-123', action: 'openBlockEditor', resourceId: 42 }]);
+
+    resolveRequest();
+    assert.equal(await request, true);
+});
+
+test('editor modal request failure replaces loading with a safe error', async () => {
+    const events = [];
+    editorContext.document = {
+        querySelector: () => ({ getAttribute: () => 'modal-123' }),
+    };
+    editorContext.window = {
+        dispatchEvent: event => events.push(event),
+        Livewire: {
+            find: () => ({ call: () => Promise.reject(new Error('sensitive server detail')) }),
+        },
+    };
+
+    const result = await editorContext.mgeOpenEditorModal('mge-section-modal', 'Edit Section', 'openSectionEditor', 7);
+    const error = events.find(event => event.type === 'mge-modal-error');
+
+    assert.equal(result, false);
+    assert.equal(error.detail.name, 'mge-section-modal');
+    assert.equal(error.detail.message.includes('sensitive server detail'), false);
+});
+
 for (const [type, key, field] of [
     ['workflow', 'steps', 'title'], ['flow', 'boxes', 'label'], ['cards', 'cards', 'title'],
     ['tickets', 'tickets', 'type'], ['stats', 'stats', 'label'], ['faq', 'items', 'question'],

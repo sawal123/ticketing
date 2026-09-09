@@ -25,6 +25,12 @@ until the outstanding verification below is resolved.
    list. The modal is now an isolated Livewire component, so opening it only
    queries the selected draft resource and morphs the modal DOM. Save continues
    through `MarketingGuideContentService` and refreshes the list after success.
+7. The isolated modal still waited for its Livewire response before becoming
+   visible. The click now opens a client-side modal shell and loading skeleton
+   synchronously, then requests the scoped form data. A failed request replaces
+   the skeleton with a safe closable error. Modal panels use one viewport-safe
+   scrollbar and lock background scrolling while open. Editor mutations expose
+   button-scoped loading and duplicate-submit guards.
 
 The regression cases were run against the pre-fix implementation and reproduced
 the defects before the fixes were applied. No packages, migrations, generated
@@ -34,12 +40,12 @@ assets, or unrelated application behavior were changed.
 
 | Area | Automated evidence |
 | --- | --- |
-| Admin editor | Admin access; cloning/reusing the latest published version; section/block editing, activation and ordering; nested content; locked block types; no raw JSON textarea; stale actor and forged published child IDs; scoped modal responses and mutation-free modal open actions |
+| Admin editor | Admin access; cloning/reusing the latest published version; section/block editing, activation and ordering; nested content; locked block types; no raw JSON textarea; stale actor and forged published child IDs; client-first modal loading/error flow; scoped modal responses and mutation-free modal open actions; action-specific loading and duplicate-submit guards |
 | Preview | Admin-only active draft; no clone on missing draft; unchanged temporary access/tracking; private/no-cache/noindex response; 19 invalid draft cases return safe 422 responses |
 | Publish | Atomic archival and publication; audit fields; full rollback after a simulated write failure; current published retained on failure; new drafts clone the latest publication; stale published mutation rejection |
 | Public | All ten block types; published-only rendering; inactive filtering; section/block ordering; sidebar/drawer group and anchor mapping; recipient and expiry from temporary access; safe static fallback with an existing draft |
 | Security | Invalid/revoked 404; expired 410; lock-time status rechecks; tracking; 30/minute throttle; noindex, private/no-store/no-cache, no-referrer, nosniff, DENY and Permissions-Policy; no token/hash or storage API leakage in rendered guide HTML |
-| JavaScript | Drawer open/close and navigation close; active navigation; FAQ toggle; CTA clicks; finite progress; nested reorder for six container types; editing CTA fields on an intro-only text block |
+| JavaScript | Drawer open/close and navigation close; active navigation; FAQ toggle; CTA clicks; finite progress; client-first editor modal shell and safe request failure; nested reorder for six container types; editing CTA fields on an intro-only text block |
 
 JavaScript checks execute the actual inline scripts using Node's built-in test
 runner and a small DOM fixture. They do **not** replace browser rendering,
@@ -62,7 +68,8 @@ budgets are enforced by `MarketingGuideEditorPerformanceTest`.
 
 Modal response size fell by about 88%. Opening a modal executes SELECT queries
 only; edit/add/save persistence and published-content protection are covered
-through the isolated modal component.
+through the isolated modal component. The shell and skeleton now appear before
+that optimized request resolves.
 
 ## Verification results
 
@@ -79,10 +86,11 @@ The first Feature run exhausted PHP's default 128 MB limit in the existing
 | Check | Result |
 | --- | --- |
 | Baseline MarketingGuide tests | PASS — 123 tests, 896 assertions, exit 0 |
-| Final MarketingGuide tests | PASS — 143 tests, 1,288 assertions, exit 0 |
-| JavaScript regression tests | PASS — 13 tests, exit 0 |
-| All Feature tests | PASS — 1,152 tests, 7,116 assertions, covered by the final full run; peak memory 154 MB |
-| Full PHPUnit | PASS — 1,153 tests, 7,117 assertions, exit 0; peak memory 154 MB |
+| Targeted editor performance tests | PASS — 7 tests, 75 assertions, exit 0 |
+| Final MarketingGuide tests | PASS — 144 tests, 1,311 assertions, exit 0 |
+| JavaScript regression tests | PASS — 15 tests, exit 0 |
+| All Feature tests | PASS — 1,153 tests, 7,139 assertions, covered by the final full run; peak memory 152 MB |
+| Full PHPUnit | PASS — 1,154 tests, 7,140 assertions, exit 0; peak memory 152 MB |
 | Pint on production and new PHP files | PASS, exit 0 |
 | Repository-wide Pint `--test` | FAIL, exit 1 — existing formatting findings in 132 files; none in the changed PHP files. Left unchanged to preserve scope. |
 | `git diff --check` | PASS, exit 0 |
@@ -94,6 +102,7 @@ $env:APP_ENV='testing'
 $env:DB_CONNECTION='mysql'
 $env:DB_DATABASE='ticketing_test'
 php vendor/phpunit/phpunit/phpunit --filter MarketingGuide
+php vendor/phpunit/phpunit/phpunit tests/Feature/MarketingGuideEditorPerformanceTest.php
 php -d memory_limit=1G vendor/phpunit/phpunit/phpunit --testsuite Feature
 php -d memory_limit=1G vendor/phpunit/phpunit/phpunit
 node --test tests/MarketingGuideInteractions.test.mjs
@@ -107,6 +116,7 @@ git diff --check
 The configured Browser runtime initialized, but selection returned
 `No browser is available` and browser discovery returned an empty list.
 A later connection retry after continuation returned the same error.
+The current revision session also exposed no callable Browser control runtime.
 Consequently none of the following are marked visually verified:
 
 | Page | Desktop | Mobile |

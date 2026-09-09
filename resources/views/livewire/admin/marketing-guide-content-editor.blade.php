@@ -1,4 +1,4 @@
-<div class="space-y-6">
+<div class="space-y-6" @if ($modalOnly ?? false) data-mge-modal-component @endif>
     @if (!($modalOnly ?? false))
     <div class="flex flex-col md:flex-row md:items-start justify-between gap-4">
         <div>
@@ -17,7 +17,7 @@
                 <span class="text-xs text-slate-500 dark:text-slate-400">Published v{{ $published->number }} #{{ $published->id }}</span>
             @endif
             @if ($draft === null)
-                <x-admin.button wire:click="openEditor" variant="primary" icon="edit-3">
+                <x-admin.button wire:click="openEditor" loadingTarget="openEditor" variant="primary" icon="edit-3">
                     Siapkan Draft
                 </x-admin.button>
             @else
@@ -100,27 +100,33 @@
                                 <div class="flex items-center gap-1.5">
                                     <button wire:click="moveSectionUp({{ $section->id }})"
                                         wire:loading.attr="disabled" wire:target="moveSectionUp({{ $section->id }})"
-                                        class="p-1.5 rounded-lg text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                                        class="p-1.5 rounded-lg text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors disabled:cursor-wait disabled:opacity-70"
                                         title="Naikkan urutan">
-                                        <i data-lucide="chevron-up" class="w-4 h-4"></i>
+                                        <span wire:loading wire:target="moveSectionUp({{ $section->id }})" class="block w-4 h-4 rounded-full border-2 border-current border-t-transparent animate-spin"></span>
+                                        <i wire:loading.remove wire:target="moveSectionUp({{ $section->id }})" data-lucide="chevron-up" class="w-4 h-4"></i>
                                     </button>
                                     <button wire:click="moveSectionDown({{ $section->id }})"
                                         wire:loading.attr="disabled" wire:target="moveSectionDown({{ $section->id }})"
-                                        class="p-1.5 rounded-lg text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                                        class="p-1.5 rounded-lg text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors disabled:cursor-wait disabled:opacity-70"
                                         title="Turunkan urutan">
-                                        <i data-lucide="chevron-down" class="w-4 h-4"></i>
+                                        <span wire:loading wire:target="moveSectionDown({{ $section->id }})" class="block w-4 h-4 rounded-full border-2 border-current border-t-transparent animate-spin"></span>
+                                        <i wire:loading.remove wire:target="moveSectionDown({{ $section->id }})" data-lucide="chevron-down" class="w-4 h-4"></i>
                                     </button>
-                                    <button wire:click="$dispatchTo('admin.marketing-guide-content-modal', 'mge-open-section-editor', { sectionId: {{ $section->id }} })"
-                                        class="p-1.5 rounded-lg text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors"
+                                    <button type="button" x-data="{ loading: false }"
+                                        x-on:click="if (loading) return; loading = true; mgeOpenEditorModal('mge-section-modal', 'Edit Section', 'openSectionEditor', {{ $section->id }}).finally(() => loading = false)"
+                                        x-bind:disabled="loading"
+                                        class="p-1.5 rounded-lg text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors disabled:cursor-wait disabled:opacity-70"
                                         title="Edit section">
-                                        <i data-lucide="edit-3" class="w-4 h-4"></i>
+                                        <span x-show="loading" style="display: none;" class="block w-4 h-4 rounded-full border-2 border-current border-t-transparent animate-spin"></span>
+                                        <i x-show="!loading" data-lucide="edit-3" class="w-4 h-4"></i>
                                     </button>
                                     <button wire:click="toggleSectionActive({{ $section->id }})"
                                         wire:loading.attr="disabled"
                                         wire:target="toggleSectionActive({{ $section->id }})"
-                                        class="p-1.5 rounded-lg transition-colors {{ $section->is_active ? 'text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20' : 'text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20' }}"
+                                        class="p-1.5 rounded-lg transition-colors disabled:cursor-wait disabled:opacity-70 {{ $section->is_active ? 'text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20' : 'text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20' }}"
                                         title="{{ $section->is_active ? 'Nonaktifkan' : 'Aktifkan' }}">
-                                        <i data-lucide="{{ $section->is_active ? 'eye-off' : 'eye' }}"
+                                        <span wire:loading wire:target="toggleSectionActive({{ $section->id }})" class="block w-4 h-4 rounded-full border-2 border-current border-t-transparent animate-spin"></span>
+                                        <i wire:loading.remove wire:target="toggleSectionActive({{ $section->id }})" data-lucide="{{ $section->is_active ? 'eye-off' : 'eye' }}"
                                             class="w-4 h-4"></i>
                                     </button>
                                 </div>
@@ -153,36 +159,45 @@
                                             <button wire:click="moveBlockUp({{ $block->id }})"
                                                 wire:loading.attr="disabled"
                                                 wire:target="moveBlockUp({{ $block->id }})"
-                                                class="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                                                class="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors disabled:cursor-wait disabled:opacity-70"
                                                 title="Naikkan urutan">
-                                                <i data-lucide="chevron-up" class="w-3.5 h-3.5"></i>
+                                                <span wire:loading wire:target="moveBlockUp({{ $block->id }})" class="block w-3.5 h-3.5 rounded-full border-2 border-current border-t-transparent animate-spin"></span>
+                                                <i wire:loading.remove wire:target="moveBlockUp({{ $block->id }})" data-lucide="chevron-up" class="w-3.5 h-3.5"></i>
                                             </button>
                                             <button wire:click="moveBlockDown({{ $block->id }})"
                                                 wire:loading.attr="disabled"
                                                 wire:target="moveBlockDown({{ $block->id }})"
-                                                class="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                                                class="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors disabled:cursor-wait disabled:opacity-70"
                                                 title="Turunkan urutan">
-                                                <i data-lucide="chevron-down" class="w-3.5 h-3.5"></i>
+                                                <span wire:loading wire:target="moveBlockDown({{ $block->id }})" class="block w-3.5 h-3.5 rounded-full border-2 border-current border-t-transparent animate-spin"></span>
+                                                <i wire:loading.remove wire:target="moveBlockDown({{ $block->id }})" data-lucide="chevron-down" class="w-3.5 h-3.5"></i>
                                             </button>
-                                            <button wire:click="$dispatchTo('admin.marketing-guide-content-modal', 'mge-open-block-editor', { blockId: {{ $block->id }} })"
-                                                class="p-1.5 rounded-lg text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors"
+                                            <button type="button" x-data="{ loading: false }"
+                                                x-on:click="if (loading) return; loading = true; mgeOpenEditorModal('mge-block-modal', 'Edit Block', 'openBlockEditor', {{ $block->id }}).finally(() => loading = false)"
+                                                x-bind:disabled="loading"
+                                                class="p-1.5 rounded-lg text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors disabled:cursor-wait disabled:opacity-70"
                                                 title="Edit block">
-                                                <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
+                                                <span x-show="loading" style="display: none;" class="block w-3.5 h-3.5 rounded-full border-2 border-current border-t-transparent animate-spin"></span>
+                                                <i x-show="!loading" data-lucide="edit-3" class="w-3.5 h-3.5"></i>
                                             </button>
                                             <button wire:click="removeBlock({{ $block->id }})"
                                                 wire:loading.attr="disabled"
                                                 wire:target="removeBlock({{ $block->id }})"
                                                 onclick="return confirm('Nonaktifkan block ini di draft?')"
-                                                class="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors"
+                                                class="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors disabled:cursor-wait disabled:opacity-70"
                                                 title="Nonaktifkan block">
-                                                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                                                <span wire:loading wire:target="removeBlock({{ $block->id }})" class="block w-3.5 h-3.5 rounded-full border-2 border-current border-t-transparent animate-spin"></span>
+                                                <i wire:loading.remove wire:target="removeBlock({{ $block->id }})" data-lucide="trash-2" class="w-3.5 h-3.5"></i>
                                             </button>
                                         </div>
                                     </div>
                                 @endforeach
-                                <button wire:click="$dispatchTo('admin.marketing-guide-content-modal', 'mge-open-add-block', { sectionId: {{ $section->id }} })"
-                                    class="w-full flex items-center justify-center gap-2 p-2.5 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-600 text-slate-500 dark:text-slate-400 hover:border-indigo-400 hover:text-indigo-600 dark:hover:border-indigo-500 dark:hover:text-indigo-400 transition-colors text-xs font-semibold">
-                                    <i data-lucide="plus" class="w-4 h-4"></i> Tambah block
+                                <button type="button" x-data="{ loading: false }"
+                                    x-on:click="if (loading) return; loading = true; mgeOpenEditorModal('mge-block-modal', 'Tambah Block', 'openAddBlock', {{ $section->id }}).finally(() => loading = false)"
+                                    x-bind:disabled="loading"
+                                    class="w-full flex items-center justify-center gap-2 p-2.5 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-600 text-slate-500 dark:text-slate-400 hover:border-indigo-400 hover:text-indigo-600 dark:hover:border-indigo-500 dark:hover:text-indigo-400 transition-colors text-xs font-semibold disabled:cursor-wait disabled:opacity-70">
+                                    <span x-show="loading" style="display: none;" class="block w-4 h-4 rounded-full border-2 border-current border-t-transparent animate-spin"></span>
+                                    <i x-show="!loading" data-lucide="plus" class="w-4 h-4"></i> Tambah block
                                 </button>
                             </div>
                         </div>
@@ -236,7 +251,7 @@
             <div class="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-700">
                 <x-admin.button type="button" x-on:click="$dispatch('close-modal', {name: 'mge-section-modal'})"
                     variant="secondary">Batal</x-admin.button>
-                <x-admin.button type="submit" variant="primary">Simpan Section</x-admin.button>
+                <x-admin.button type="submit" loadingTarget="saveSection" variant="primary">Simpan Section</x-admin.button>
             </div>
         </form>
     </x-admin.modal>
@@ -735,7 +750,7 @@
             <div class="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-700">
                 <x-admin.button type="button" x-on:click="$dispatch('close-modal', {name: 'mge-block-modal'})"
                     variant="secondary">Batal</x-admin.button>
-                <x-admin.button type="submit" variant="primary">Simpan Block</x-admin.button>
+                <x-admin.button type="submit" loadingTarget="saveBlock" variant="primary">Simpan Block</x-admin.button>
             </div>
         </form>
     </x-admin.modal>
@@ -744,6 +759,44 @@
 
 @if ($modalOnly ?? false)
 <script>
+    function mgeOpenEditorModal(modalName, title, action, resourceId) {
+        window.dispatchEvent(new CustomEvent("open-modal", {
+            detail: {
+                name: modalName,
+                title,
+                loading: true,
+            },
+        }));
+
+        const modalRoot = document.querySelector("[data-mge-modal-component]");
+        const componentId = modalRoot ? modalRoot.getAttribute("wire:id") : null;
+        const component = componentId && window.Livewire ? window.Livewire.find(componentId) : null;
+
+        if (!component) {
+            window.dispatchEvent(new CustomEvent("mge-modal-error", {
+                detail: {
+                    name: modalName,
+                    message: "Data editor tidak dapat dimuat. Muat ulang halaman lalu coba lagi.",
+                },
+            }));
+
+            return Promise.resolve(false);
+        }
+
+        return component.call(action, resourceId)
+            .then(() => true)
+            .catch(() => {
+                window.dispatchEvent(new CustomEvent("mge-modal-error", {
+                    detail: {
+                        name: modalName,
+                        message: "Data editor tidak dapat dimuat. Silakan coba lagi.",
+                    },
+                }));
+
+                return false;
+            });
+    }
+
     function mgeBlockEditor(initialRaw) {
         return {
             raw: initialRaw || "{}",
