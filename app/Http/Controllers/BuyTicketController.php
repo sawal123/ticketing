@@ -268,23 +268,21 @@ class BuyTicketController extends Controller
             return redirect()->back()->with('error', 'Pendaftaran individual atau tim hanya dapat checkout satu tiket.');
         }
 
-        $activeCart = Cart::where('event_uid', $event->uid)
-            ->where('user_uid', Auth::user()->uid)
-            ->whereIn('status', Cart::ACTIVE_RESERVATION_STATUSES)
-            ->where(function ($query) {
-                $query->whereNull('expires_at')->orWhere('expires_at', '>', now());
-            })
-            ->first();
-
-        if ($activeCart) {
-            return redirect('/detail-ticket/'.$activeCart->uid.'/'.Auth::user()->uid)
-                ->with('error', 'Anda masih memiliki reservation aktif untuk event ini.');
-        }
-
         try {
-            $cart = $reservationService->reserve($event, Auth::user()->uid, $items);
+            $reservation = $reservationService->reserveForUserEvent(
+                $event,
+                Auth::user()->uid,
+                $items
+            );
         } catch (ValidationException $exception) {
             return redirect()->back()->with('error', collect($exception->errors())->flatten()->first());
+        }
+
+        $cart = $reservation['cart'];
+
+        if (! $reservation['created']) {
+            return redirect('/detail-ticket/'.$cart->uid.'/'.Auth::user()->uid)
+                ->with('error', 'Anda masih memiliki reservation aktif untuk event ini.');
         }
 
         return redirect('/detail-ticket/'.$cart->uid.'/'.Auth::user()->uid);

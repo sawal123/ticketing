@@ -8,6 +8,7 @@ use App\Models\Event;
 use App\Models\Harga;
 use App\Models\HargaCart;
 use App\Models\Transaction;
+use App\Models\User;
 use App\Models\Voucher;
 use App\Models\VoucherUsage;
 use Illuminate\Support\Collection;
@@ -18,6 +19,46 @@ use Illuminate\Validation\ValidationException;
 class TicketReservationService
 {
     public const RESERVATION_MINUTES = 15;
+
+    public function reserveForUserEvent(Event $event, string $userUid, array $items): array
+    {
+        return DB::transaction(function () use ($event, $userUid, $items) {
+            User::where('uid', $userUid)->lockForUpdate()->firstOrFail();
+
+            $expiredCarts = Cart::where('event_uid', $event->uid)
+                ->where('user_uid', $userUid)
+                ->whereIn('status', Cart::ACTIVE_RESERVATION_STATUSES)
+                ->whereNotNull('expires_at')
+                ->where('expires_at', '<=', now())
+                ->whereNull('reservation_released_at')
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get();
+
+            foreach ($expiredCarts as $expiredCart) {
+                $this->releaseLockedCart($expiredCart, Cart::STATUS_EXPIRED);
+            }
+
+            $activeCart = Cart::where('event_uid', $event->uid)
+                ->where('user_uid', $userUid)
+                ->whereIn('status', Cart::ACTIVE_RESERVATION_STATUSES)
+                ->where(function ($query) {
+                    $query->whereNull('expires_at')->orWhere('expires_at', '>', now());
+                })
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->first();
+
+            if ($activeCart) {
+                return ['cart' => $activeCart, 'created' => false];
+            }
+
+            return [
+                'cart' => $this->reserve($event, $userUid, $items),
+                'created' => true,
+            ];
+        }, 3);
+    }
 
     public function cancelOwnedReservation(string $cartUid, string $userUid): Cart
     {

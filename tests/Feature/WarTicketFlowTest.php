@@ -64,6 +64,73 @@ class WarTicketFlowTest extends TestCase
         $this->assertSame(2, (int) $harga->fresh()->reserved_qty);
     }
 
+    public function test_same_user_event_reuses_active_checkout_without_reserving_stock_twice(): void
+    {
+        $user = $this->user();
+        $event = $this->event();
+        $harga = $this->harga($event, ['qty' => 5]);
+        $payload = [
+            'event_uid' => $event->uid,
+            'tickets' => [
+                ['harga_id' => $harga->id, 'quantity' => 2],
+            ],
+        ];
+
+        $this->actingAs($user)->post('/checkout', $payload)->assertRedirect();
+        $activeCart = Cart::where('user_uid', $user->uid)
+            ->where('event_uid', $event->uid)
+            ->whereIn('status', Cart::ACTIVE_RESERVATION_STATUSES)
+            ->firstOrFail();
+
+        $this->actingAs($user)
+            ->post('/checkout', $payload)
+            ->assertRedirect('/detail-ticket/'.$activeCart->uid.'/'.$user->uid);
+
+        $this->assertSame(1, Cart::where('user_uid', $user->uid)
+            ->where('event_uid', $event->uid)
+            ->whereIn('status', Cart::ACTIVE_RESERVATION_STATUSES)
+            ->count());
+        $this->assertSame(2, (int) $harga->fresh()->reserved_qty);
+        $this->assertSame(1, DB::table('harga_carts')->where('uid', $activeCart->uid)->count());
+    }
+
+    public function test_same_user_can_checkout_again_after_cancelled_or_expired_cart(): void
+    {
+        $user = $this->user();
+        $event = $this->event();
+        $harga = $this->harga($event, ['qty' => 5]);
+        $cancelled = $this->cart($user, $event, [
+            'status' => Cart::STATUS_CANCELLED,
+            'reservation_released_at' => now(),
+        ]);
+        $this->hargaCart($cancelled, $harga, 1);
+
+        $this->actingAs($user)->post('/checkout', [
+            'event_uid' => $event->uid,
+            'tickets' => [['harga_id' => $harga->id, 'quantity' => 1]],
+        ])->assertRedirect();
+
+        $active = Cart::where('user_uid', $user->uid)
+            ->where('event_uid', $event->uid)
+            ->where('status', Cart::STATUS_RESERVED)
+            ->latest('id')
+            ->firstOrFail();
+        $active->expires_at = now()->subMinute();
+        $active->save();
+
+        $this->actingAs($user)->post('/checkout', [
+            'event_uid' => $event->uid,
+            'tickets' => [['harga_id' => $harga->id, 'quantity' => 1]],
+        ])->assertRedirect();
+
+        $this->assertSame(Cart::STATUS_EXPIRED, $active->fresh()->status);
+        $this->assertSame(1, Cart::where('user_uid', $user->uid)
+            ->where('event_uid', $event->uid)
+            ->whereIn('status', Cart::ACTIVE_RESERVATION_STATUSES)
+            ->count());
+        $this->assertSame(1, (int) $harga->fresh()->reserved_qty);
+    }
+
     public function test_harga_id_from_different_event_is_rejected(): void
     {
         $user = $this->user();
