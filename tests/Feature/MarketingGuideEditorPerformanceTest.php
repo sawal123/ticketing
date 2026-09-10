@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Services\MarketingGuide\MarketingGuideContentService;
 use Database\Seeders\MarketingGuideContentSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Livewire\Livewire;
@@ -176,6 +177,25 @@ class MarketingGuideEditorPerformanceTest extends TestCase
             ->assertSee('x-bind:disabled="loading"', false)
             ->assertSee('style="max-height: calc(100dvh - 1rem);"', false)
             ->assertSee("document.body.style.overflow = 'hidden'", false);
+    }
+
+    public function test_generic_admin_modal_keeps_legacy_behavior_without_editor_opt_in(): void
+    {
+        $html = Blade::render(
+            '<x-admin.modal name="generic-modal" title="Generic Modal">Generic content</x-admin.modal>'
+        );
+
+        $this->assertStringContainsString('x-data="{ show: false }"', $html);
+        $this->assertStringContainsString(
+            "if (\$event.detail.name === 'generic-modal') show = true",
+            $html
+        );
+        $this->assertStringContainsString('class="fixed inset-0 z-[100] flex items-center justify-center p-4', $html);
+        $this->assertStringNotContainsString('Memuat data editor...', $html);
+        $this->assertStringNotContainsString('mge-modal-loaded', $html);
+        $this->assertStringNotContainsString('100dvh', $html);
+        $this->assertStringNotContainsString("document.body.style.overflow = 'hidden'", $html);
+        $this->assertStringNotContainsString('overflow-y-auto overscroll-contain', $html);
     }
 
     public function test_editor_primary_actions_have_targeted_loading_and_double_submit_guards(): void

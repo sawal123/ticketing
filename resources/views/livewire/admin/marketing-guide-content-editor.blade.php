@@ -213,7 +213,7 @@
     @endif
         <livewire:admin.marketing-guide-content-modal />
     @else
-    <x-admin.modal name="mge-section-modal" title="Edit Section">
+    <x-admin.modal name="mge-section-modal" title="Edit Section" :client-loading="true" :viewport-scroll="true">
         <form wire:submit.prevent="saveSection" class="space-y-4">
             <div>
                 <label class="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 ml-1">Title</label>
@@ -255,7 +255,8 @@
             </div>
         </form>
     </x-admin.modal>
-    <x-admin.modal name="mge-block-modal" title="{{ $editingBlockId ? 'Edit Block' : 'Tambah Block' }}">
+    <x-admin.modal name="mge-block-modal" title="{{ $editingBlockId ? 'Edit Block' : 'Tambah Block' }}"
+        :client-loading="true" :viewport-scroll="true">
         <form wire:submit.prevent="saveBlock" class="space-y-4">
             <div class="grid grid-cols-2 gap-3">
                 <div>

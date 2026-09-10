@@ -1,9 +1,17 @@
-@props(['name', 'title', 'icon' => 'info', 'maxWidth' => 'md'])
+@props([
+    'name',
+    'title',
+    'icon' => 'info',
+    'maxWidth' => 'md',
+    'clientLoading' => false,
+    'viewportScroll' => false,
+])
 
 @php
     $titleId = $name . '-title';
 @endphp
 
+@if ($clientLoading || $viewportScroll)
 <div
     x-data="{
         show: false,
@@ -33,17 +41,21 @@
             }
         },
     }"
-    x-init="$watch('show', value => lockBackground(value))"
+    @if ($viewportScroll)
+        x-init="$watch('show', value => lockBackground(value))"
+    @endif
     x-on:open-modal.window="open($event.detail)"
     x-on:close-modal.window="if ($event.detail.name === '{{ $name }}') close()"
-    x-on:mge-modal-loaded.window="if ($event.detail.name === '{{ $name }}') { loading = false; loadError = ''; displayTitle = $event.detail.title || displayTitle }"
-    x-on:mge-modal-error.window="if ($event.detail.name === '{{ $name }}') { loading = false; loadError = $event.detail.message || 'Data editor tidak dapat dimuat. Silakan coba lagi.' }"
+    @if ($clientLoading)
+        x-on:mge-modal-loaded.window="if ($event.detail.name === '{{ $name }}') { loading = false; loadError = ''; displayTitle = $event.detail.title || displayTitle }"
+        x-on:mge-modal-error.window="if ($event.detail.name === '{{ $name }}') { loading = false; loadError = $event.detail.message || 'Data editor tidak dapat dimuat. Silakan coba lagi.' }"
+    @endif
 >
     <template x-teleport="body">
         <div 
             x-show="show"
             x-on:keydown.escape.window="close()"
-            class="fixed inset-0 z-[100] flex items-start sm:items-center justify-center p-2 sm:p-4 bg-slate-900/60 backdrop-blur-sm transition-all duration-300 overflow-hidden"
+            class="fixed inset-0 z-[100] flex {{ $viewportScroll ? 'items-start sm:items-center p-2 sm:p-4 overflow-hidden' : 'items-center p-4' }} justify-center bg-slate-900/60 backdrop-blur-sm transition-all duration-300"
             style="display: none;"
             x-transition:enter="transition ease-out duration-300"
             x-transition:enter-start="opacity-0"
@@ -57,12 +69,16 @@
         
             <!-- Modal Card -->
             <div 
-                class="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl w-full max-w-{{ $maxWidth }} p-6 relative z-10 border border-slate-200 dark:border-slate-700 overflow-y-auto overscroll-contain"
-                style="max-height: calc(100dvh - 1rem);"
+                class="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl w-full max-w-{{ $maxWidth }} p-6 relative z-10 border border-slate-200 dark:border-slate-700 {{ $viewportScroll ? 'overflow-y-auto overscroll-contain' : '' }}"
+                @if ($viewportScroll)
+                    style="max-height: calc(100dvh - 1rem);"
+                @endif
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="{{ $titleId }}"
-                x-bind:aria-busy="loading ? 'true' : 'false'"
+                @if ($clientLoading)
+                    x-bind:aria-busy="loading ? 'true' : 'false'"
+                @endif
                 x-transition:enter="transition ease-out duration-300 transform"
                 x-transition:enter-start="opacity-0 scale-95 translate-y-4"
                 x-transition:enter-end="opacity-100 scale-100 translate-y-0"
@@ -79,6 +95,7 @@
                 </h3>
         
                 <div class="modal-content text-slate-600 dark:text-slate-400">
+                    @if ($clientLoading)
                     <div x-show="loading" class="space-y-4" role="status" aria-live="polite">
                         <div class="flex items-center gap-3 text-sm font-medium text-indigo-600 dark:text-indigo-400">
                             <span class="w-5 h-5 rounded-full border-2 border-current border-t-transparent animate-spin"></span>
@@ -101,8 +118,62 @@
                     <div x-show="!loading && !loadError">
                         {{ $slot }}
                     </div>
+                    @else
+                        {{ $slot }}
+                    @endif
                 </div>
             </div>
         </div>
     </template>
 </div>
+@else
+<div
+    x-data="{ show: false }"
+    x-on:open-modal.window="if ($event.detail.name === '{{ $name }}') show = true"
+    x-on:close-modal.window="if ($event.detail.name === '{{ $name }}') show = false"
+>
+    <template x-teleport="body">
+        <div
+            x-show="show"
+            x-on:keydown.escape.window="show = false"
+            class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm transition-all duration-300"
+            style="display: none;"
+            x-transition:enter="transition ease-out duration-300"
+            x-transition:enter-start="opacity-0"
+            x-transition:enter-end="opacity-100"
+            x-transition:leave="transition ease-in duration-200"
+            x-transition:leave-start="opacity-100"
+            x-transition:leave-end="opacity-0"
+        >
+            <!-- Modal Backdrop -->
+            <div class="absolute inset-0" x-on:click="show = false"></div>
+
+            <!-- Modal Card -->
+            <div
+                class="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl w-full max-w-{{ $maxWidth }} p-6 relative z-10 border border-slate-200 dark:border-slate-700"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="{{ $titleId }}"
+                x-transition:enter="transition ease-out duration-300 transform"
+                x-transition:enter-start="opacity-0 scale-95 translate-y-4"
+                x-transition:enter-end="opacity-100 scale-100 translate-y-0"
+            >
+                <button x-on:click="show = false" type="button" aria-label="Tutup dialog" title="Tutup dialog" class="absolute top-4 right-4 p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400 transition-colors">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+
+                <h3 id="{{ $titleId }}" class="text-xl font-bold text-slate-800 dark:text-white mb-6 flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center">
+                        <i data-lucide="{{ $icon }}" class="w-5 h-5 text-indigo-600 dark:text-indigo-400"></i>
+                    </div>
+                    {{ $title }}
+                </h3>
+
+                <div class="modal-content text-slate-600 dark:text-slate-400">
+                    {{ $slot }}
+                </div>
+            </div>
+        </div>
+    </template>
+</div>
+@endif

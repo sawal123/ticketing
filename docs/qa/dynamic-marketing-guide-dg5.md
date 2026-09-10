@@ -30,7 +30,9 @@ until the outstanding verification below is resolved.
    synchronously, then requests the scoped form data. A failed request replaces
    the skeleton with a safe closable error. Modal panels use one viewport-safe
    scrollbar and lock background scrolling while open. Editor mutations expose
-   button-scoped loading and duplicate-submit guards.
+   button-scoped loading and duplicate-submit guards. These modal behaviors are
+   opt-in on the two Marketing Guide editor dialogs; generic admin modals retain
+   their existing markup and behavior.
 
 The regression cases were run against the pre-fix implementation and reproduced
 the defects before the fixes were applied. No packages, migrations, generated
@@ -86,11 +88,11 @@ The first Feature run exhausted PHP's default 128 MB limit in the existing
 | Check | Result |
 | --- | --- |
 | Baseline MarketingGuide tests | PASS — 123 tests, 896 assertions, exit 0 |
-| Targeted editor performance tests | PASS — 7 tests, 75 assertions, exit 0 |
-| Final MarketingGuide tests | PASS — 144 tests, 1,311 assertions, exit 0 |
+| Targeted editor performance tests | PASS — 8 tests, 83 assertions, exit 0 |
+| Final MarketingGuide tests | PASS — 145 tests, 1,319 assertions, exit 0 |
 | JavaScript regression tests | PASS — 15 tests, exit 0 |
-| All Feature tests | PASS — 1,153 tests, 7,139 assertions, covered by the final full run; peak memory 152 MB |
-| Full PHPUnit | PASS — 1,154 tests, 7,140 assertions, exit 0; peak memory 152 MB |
+| All Feature tests | PASS — 1,154 tests, 7,147 assertions, covered by the final full run; peak memory 156 MB |
+| Full PHPUnit | PASS — 1,155 tests, 7,148 assertions, exit 0; peak memory 156 MB |
 | Pint on production and new PHP files | PASS, exit 0 |
 | Repository-wide Pint `--test` | FAIL, exit 1 — existing formatting findings in 132 files; none in the changed PHP files. Left unchanged to preserve scope. |
 | `git diff --check` | PASS, exit 0 |
