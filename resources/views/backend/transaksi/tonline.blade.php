@@ -193,21 +193,17 @@
                                         <td>
                                             <div class="g-2">
 
-                                                <button type="submit" class="btn text-primary btn-sm"
-                                                    data-bs-original-title="Edit" data-bs-target="#editTransaksi"
-                                                    data-bs-effect="effect-sign" data-bs-toggle="modal"
-                                                    data-uid="{{ $carts->uid }}" data-inv="{{ $carts->invoice }}"
-                                                    data-name="@foreach ($use as $users)
+                                                @if ($carts->status === \App\Models\Cart::STATUS_PENDING)
+                                                    <button type="submit" class="btn text-primary btn-sm"
+                                                        data-bs-original-title="Konfirmasi Pembayaran" data-bs-target="#editTransaksi"
+                                                        data-bs-effect="effect-sign" data-bs-toggle="modal"
+                                                        data-uid="{{ $carts->uid }}" data-inv="{{ $carts->invoice }}"
+                                                        data-name="@foreach ($use as $users)
                                                     @if ($users->uid == $carts->user_uid)
                                                         {{ $users->name }}
                                                     @endif @endforeach"
-                                                    data-status="{{ $carts->status }}"><span
-                                                        class="fe fe-edit fs-14"></span></button>
-                                                @if ($carts->status !== 'SUCCESS')
-                                                    <a href="{{ url('admin/deleteTransksi/' . $carts->uid) }}"
-                                                        class="btn text-danger btn-sm delete" data-bs-toggle="tooltip"
-                                                        data-bs-original-title="Delete"><span
-                                                            class="fe fe-trash-2 fs-14"></span></a>
+                                                        data-status="{{ $carts->status }}"><span
+                                                            class="fe fe-check fs-14"></span></button>
                                                 @endif
                                             </div>
                                         </td>

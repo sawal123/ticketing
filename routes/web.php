@@ -331,17 +331,18 @@ Route::prefix('admin')
                 Route::post('/editIcon', [editController::class, 'editIcon']);
                 Route::post('/edit/seoDeskripsi', [editController::class, 'editDeskripis']);
                 Route::post('/edit/seoKeyword', [editController::class, 'editKeyword']);
-                Route::post('/editTransaksi', [editController::class, 'editTransaksi']);
+                Route::post('/editTransaksi', [editController::class, 'editTransaksi'])
+                    ->name('old.transactions.status.update');
+                Route::post('/transactions/settle', [editController::class, 'settleTransaksi'])
+                    ->name('old.transactions.settle');
                 Route::post('/editPro', [editController::class, 'editPro']);
                 Route::post('/editRekening', [editController::class, 'editRekening']);
                 Route::get('/delete/{id}', [DeleteController::class, 'deleteTalent']);
-                Route::get('/deleteTransksi/{uid}', [DeleteController::class, 'deleteTransaksi']);
                 Route::get('/landing/delete/{uid}', [DeleteController::class, 'deleteSlide']);
                 Route::get('/events/delete/{uid}', [DeleteController::class, 'deleteEvent']);
                 Route::get('/hargas/delete/{id}', [DeleteController::class, 'deleteHarga']);
                 Route::get('/term/delete/{id}', [DeleteController::class, 'deleteTerm']);
                 Route::get('/user/delete/{id}', [DeleteController::class, 'deleteUser']);
-                Route::get('/cashes/delete/{id}', [DeleteController::class, 'deleteCashes']);
                 Route::get('/deletePen/{data}', [DeleteController::class, 'deletePenarikan']);
                 Route::get('/delete/contact/{data}', [DeleteController::class, 'deleteContact']);
                 Route::get('/payment-gateway', [PaymentGatewayController::class, 'index'])->name('old.payments');

@@ -4,17 +4,13 @@ namespace App\Http\Controllers\Dashboard;
 
 use App\Http\Controllers\Controller;
 use App\Models\Agreement;
-use App\Models\Cart;
-use App\Models\Cash;
 use App\Models\Contact;
 use App\Models\Event;
 use App\Models\Harga;
-use App\Models\HargaCart;
 use App\Models\Penarikan;
 use App\Models\Slider;
 use App\Models\Talent;
 use App\Models\Term;
-use App\Models\Transaction;
 use App\Models\User;
 use App\Models\Voucher;
 use App\Services\SecureImageStorage;
@@ -141,32 +137,6 @@ class DeleteController extends Controller
         return redirect()->back()->with('deleteUser', 'User Berhasil Dihapus');
     }
 
-    public function deleteCashes($uid)
-    {
-
-        $cashes = Cash::where('uid', $uid)->first();
-        $cart = Cart::where('uid', $uid)->first();
-        $transaksi = Transaction::where('uid', $uid)->first();
-        $hargaCart = HargaCart::where('uid', $uid)->get();
-        $cashes->delete();
-        if ($hargaCart) {
-            foreach ($hargaCart as $hc) {
-                $hc->delete();
-            }
-        }
-        if ($transaksi) {
-            $transaksi->delete();
-        }
-        if ($cart) {
-            $cart->delete();
-        }
-        if ($cashes) {
-            $cashes->delete();
-        }
-
-        return redirect()->back()->with('success', 'Cashes Berhasil Dihapus');
-    }
-
     public function deleteVoucher($uid)
     {
         $voucher = Voucher::where('uid', $uid)->first();
@@ -192,23 +162,5 @@ class DeleteController extends Controller
         $contact->delete();
 
         return redirect()->back()->with('delete', 'Data berhasil dihapus');
-    }
-
-    public function deleteTransaksi($uid)
-    {
-        $transaksi = Transaction::where('uid', $uid)->first();
-        $cart = Cart::where('uid', $uid)->first();
-        $h_cart = HargaCart::where('uid', $uid)->first();
-        if ($transaksi) {
-            $transaksi->delete();
-        }
-        if ($cart) {
-            $cart->delete();
-        }
-        if ($h_cart) {
-            $h_cart->delete();
-        }
-
-        return redirect()->back()->with('delete', 'Transaksi berhasil dihapus');
     }
 }
