@@ -13,6 +13,8 @@ use App\Models\PaymentGateway;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Models\Voucher;
+use App\Models\VoucherReservation;
+use App\Services\Tickets\TicketReservationService;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
@@ -61,6 +63,7 @@ class WarTicketFlowTest extends TestCase
             'harga_ticket' => 150000,
             'kategori_harga' => $harga->kategori,
         ]);
+        $this->assertDatabaseCount('voucher_reservations', 0);
         $this->assertSame(2, (int) $harga->fresh()->reserved_qty);
     }
 
@@ -129,6 +132,154 @@ class WarTicketFlowTest extends TestCase
             ->whereIn('status', Cart::ACTIVE_RESERVATION_STATUSES)
             ->count());
         $this->assertSame(1, (int) $harga->fresh()->reserved_qty);
+    }
+
+    public function test_active_voucher_reservation_reduces_available_quota(): void
+    {
+        $firstUser = $this->user();
+        $secondUser = $this->user(['email' => 'voucher-second@example.test']);
+        $event = $this->event();
+        $harga = $this->harga($event);
+        $voucher = $this->voucher($event, ['limit' => 1]);
+        $firstCart = $this->cart($firstUser, $event);
+        $secondCart = $this->cart($secondUser, $event);
+        $this->hargaCart($firstCart, $harga, 1);
+        $this->hargaCart($secondCart, $harga, 1);
+
+        $this->actingAs($firstUser)->post('/checkVoucer', [
+            'cartUid' => $firstCart->uid,
+            'code' => $voucher->code,
+        ])->assertSessionHas('voucher');
+        $this->actingAs($secondUser)->post('/checkVoucer', [
+            'cartUid' => $secondCart->uid,
+            'code' => $voucher->code,
+        ])->assertSessionHas('vError');
+
+        $this->assertSame(0, (int) $voucher->fresh()->digunakan);
+        $this->assertSame(1, VoucherReservation::where('voucher_id', $voucher->id)
+            ->where('status', VoucherReservation::STATUS_ACTIVE)
+            ->count());
+        $this->assertDatabaseMissing('cart_vouchers', ['uid' => $secondCart->uid]);
+    }
+
+    public function test_cancelled_cart_releases_voucher_reservation(): void
+    {
+        $user = $this->user();
+        $nextUser = $this->user(['email' => 'voucher-after-cancel@example.test']);
+        $event = $this->event();
+        $harga = $this->harga($event, ['reserved_qty' => 1]);
+        $voucher = $this->voucher($event, ['limit' => 1]);
+        $cart = $this->cart($user, $event);
+        $nextCart = $this->cart($nextUser, $event);
+        $this->hargaCart($cart, $harga, 1);
+        $this->hargaCart($nextCart, $harga, 1);
+        app(TicketReservationService::class)->reserveVoucherForCart($cart->uid, $user->uid, $voucher->code);
+
+        $this->actingAs($user)->deleteJson(route('transactions.cancel', $cart->uid))->assertOk();
+        app(TicketReservationService::class)->reserveVoucherForCart($nextCart->uid, $nextUser->uid, $voucher->code);
+
+        $this->assertDatabaseHas('voucher_reservations', [
+            'cart_uid' => $cart->uid,
+            'status' => VoucherReservation::STATUS_RELEASED,
+        ]);
+        $this->assertDatabaseHas('voucher_reservations', [
+            'cart_uid' => $nextCart->uid,
+            'status' => VoucherReservation::STATUS_ACTIVE,
+        ]);
+        $this->assertSame(1, VoucherReservation::where('voucher_id', $voucher->id)
+            ->where('status', VoucherReservation::STATUS_ACTIVE)
+            ->count());
+    }
+
+    public function test_expired_cart_releases_voucher_reservation(): void
+    {
+        $user = $this->user();
+        $nextUser = $this->user(['email' => 'voucher-after-expiry@example.test']);
+        $event = $this->event();
+        $harga = $this->harga($event, ['reserved_qty' => 1]);
+        $voucher = $this->voucher($event, ['limit' => 1]);
+        $cart = $this->cart($user, $event);
+        $nextCart = $this->cart($nextUser, $event);
+        $this->hargaCart($cart, $harga, 1);
+        $this->hargaCart($nextCart, $harga, 1);
+        app(TicketReservationService::class)->reserveVoucherForCart($cart->uid, $user->uid, $voucher->code);
+        $cart->expires_at = now()->subMinute();
+        $cart->save();
+
+        $this->artisan('tickets:release-expired')->assertExitCode(0);
+        app(TicketReservationService::class)->reserveVoucherForCart($nextCart->uid, $nextUser->uid, $voucher->code);
+
+        $this->assertSame(Cart::STATUS_EXPIRED, $cart->fresh()->status);
+        $this->assertDatabaseHas('voucher_reservations', [
+            'cart_uid' => $cart->uid,
+            'status' => VoucherReservation::STATUS_RELEASED,
+        ]);
+        $this->assertDatabaseHas('voucher_reservations', [
+            'cart_uid' => $nextCart->uid,
+            'status' => VoucherReservation::STATUS_ACTIVE,
+        ]);
+    }
+
+    public function test_late_settlement_cannot_reclaim_released_voucher_over_quota(): void
+    {
+        Queue::fake();
+
+        $user = $this->user();
+        $nextUser = $this->user(['email' => 'voucher-late-next@example.test']);
+        $event = $this->event();
+        $harga = $this->harga($event, ['reserved_qty' => 1]);
+        $voucher = $this->voucher($event, ['limit' => 1]);
+        $cart = $this->cart($user, $event, ['gross_amount' => 150000]);
+        $nextCart = $this->cart($nextUser, $event);
+        $this->hargaCart($cart, $harga, 1);
+        $this->hargaCart($nextCart, $harga, 1);
+        $this->transaction($cart, Cart::STATUS_PENDING);
+        app(TicketReservationService::class)->reserveVoucherForCart($cart->uid, $user->uid, $voucher->code);
+        $cart->expires_at = now()->subMinute();
+        $cart->save();
+
+        $this->artisan('tickets:release-expired')->assertExitCode(0);
+        app(TicketReservationService::class)->reserveVoucherForCart($nextCart->uid, $nextUser->uid, $voucher->code);
+        $this->postJson('/api/callback', $this->midtransPayload($cart, 'settlement', '150000.00'))->assertOk();
+
+        $this->assertSame(Cart::STATUS_PAYMENT_REVIEW, $cart->fresh()->status);
+        $this->assertSame(0, (int) $voucher->fresh()->digunakan);
+        $this->assertDatabaseCount('voucher_usages', 0);
+        $this->assertSame(1, VoucherReservation::where('voucher_id', $voucher->id)
+            ->where('status', VoucherReservation::STATUS_ACTIVE)
+            ->count());
+    }
+
+    public function test_unlimited_voucher_can_hold_multiple_active_reservations(): void
+    {
+        Queue::fake();
+
+        $firstUser = $this->user();
+        $secondUser = $this->user(['email' => 'voucher-unlimited@example.test']);
+        $event = $this->event();
+        $harga = $this->harga($event, ['reserved_qty' => 1]);
+        $voucher = $this->voucher($event, ['limit' => 0]);
+        $firstCart = $this->cart($firstUser, $event, [
+            'status' => Cart::STATUS_PENDING,
+            'gross_amount' => 150000,
+        ]);
+        $secondCart = $this->cart($secondUser, $event);
+        $this->hargaCart($firstCart, $harga, 1);
+        $this->hargaCart($secondCart, $harga, 1);
+        $this->transaction($firstCart, Cart::STATUS_PENDING);
+
+        app(TicketReservationService::class)->reserveVoucherForCart($firstCart->uid, $firstUser->uid, $voucher->code);
+        app(TicketReservationService::class)->reserveVoucherForCart($secondCart->uid, $secondUser->uid, $voucher->code);
+        $this->postJson('/api/callback', $this->midtransPayload($firstCart, 'settlement', '150000.00'))->assertOk();
+
+        $this->assertSame(1, VoucherReservation::where('voucher_id', $voucher->id)
+            ->where('status', VoucherReservation::STATUS_ACTIVE)
+            ->count());
+        $this->assertSame(1, VoucherReservation::where('voucher_id', $voucher->id)
+            ->where('status', VoucherReservation::STATUS_COMMITTED)
+            ->count());
+        $this->assertSame(1, (int) $voucher->fresh()->digunakan);
+        $this->assertDatabaseCount('voucher_usages', 1);
     }
 
     public function test_harga_id_from_different_event_is_rejected(): void
@@ -602,15 +753,7 @@ class WarTicketFlowTest extends TestCase
             'status_transaksi' => Cart::STATUS_PENDING,
         ]);
         $voucher = $this->voucher($event);
-        DB::table('cart_vouchers')->insert([
-            'uid' => $cart->uid,
-            'uid_vouchers' => $voucher->uid,
-            'user_uid' => $user->uid,
-            'event_uid' => $event->uid,
-            'code' => $voucher->code,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        app(TicketReservationService::class)->reserveVoucherForCart($cart->uid, $user->uid, $voucher->code);
 
         $payload = $this->midtransPayload($cart, 'settlement', '300000.00');
 
@@ -625,6 +768,10 @@ class WarTicketFlowTest extends TestCase
         $this->assertNotNull($cart->fresh()->gate_manual_code_hash);
         $this->assertSame(1, (int) $voucher->fresh()->digunakan);
         $this->assertDatabaseCount('voucher_usages', 1);
+        $this->assertDatabaseHas('voucher_reservations', [
+            'cart_uid' => $cart->uid,
+            'status' => VoucherReservation::STATUS_COMMITTED,
+        ]);
         Queue::assertPushed(sendEmailETransaksi::class, 1);
     }
 
@@ -826,6 +973,20 @@ class WarTicketFlowTest extends TestCase
             $table->timestamps();
         });
 
+        Schema::create('voucher_reservations', function ($table) {
+            $table->id();
+            $table->unsignedBigInteger('voucher_id')->nullable();
+            $table->string('voucher_uid')->nullable();
+            $table->string('cart_uid')->unique();
+            $table->string('invoice')->nullable();
+            $table->string('code');
+            $table->string('status')->default(VoucherReservation::STATUS_ACTIVE);
+            $table->timestamp('reserved_at')->nullable();
+            $table->timestamp('released_at')->nullable();
+            $table->timestamp('committed_at')->nullable();
+            $table->timestamps();
+        });
+
         Schema::create('voucher_usages', function ($table) {
             $table->id();
             $table->unsignedBigInteger('voucher_id')->nullable();
@@ -936,9 +1097,9 @@ class WarTicketFlowTest extends TestCase
         ]);
     }
 
-    protected function voucher(Event $event)
+    protected function voucher(Event $event, array $attributes = []): Voucher
     {
-        return DB::table('vouchers')->insertGetId([
+        return Voucher::create(array_merge([
             'uid' => 'voucher-1',
             'user_uid' => 'owner',
             'event_uid' => $event->uid,
@@ -950,9 +1111,7 @@ class WarTicketFlowTest extends TestCase
             'digunakan' => 0,
             'limit' => 10,
             'status' => 'active',
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]) ? Voucher::where('code', 'PROMO')->first() : null;
+        ], $attributes));
     }
 
     protected function midtransPayload(Cart $cart, string $status, string $grossAmount): array
