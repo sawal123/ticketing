@@ -156,7 +156,8 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/checkout-payment-otp/resend', [CheckoutPaymentOtpController::class, 'resend'])->name('checkout-payment-otp.resend');
     Route::post('/checkout-payment-otp/verify', [CheckoutPaymentOtpController::class, 'verify'])->name('checkout-payment-otp.verify');
     Route::post('/paynow', [TransactionController::class, 'paynow'])->middleware('throttle:paynow');
-    Route::get('/detail-ticket/delete/{uid}/{user_uid}', [DeleteController::class, 'deteleListTransaksi']);
+    Route::delete('/transactions/{uid}/cancel', [DeleteController::class, 'cancelListTransaksi'])
+        ->name('transactions.cancel');
     Route::post('/profile/update-password', [editController::class, 'updateProfilePassword'])->name('profile.password.update');
     Route::post('/profile/email/request-otp', [editController::class, 'requestEmailChangeOtp'])->name('profile.email.request-otp');
     Route::post('/profile/email/verify-otp', [editController::class, 'verifyEmailChangeOtp'])->name('profile.email.verify-otp');

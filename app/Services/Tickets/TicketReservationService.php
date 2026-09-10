@@ -19,6 +19,30 @@ class TicketReservationService
 {
     public const RESERVATION_MINUTES = 15;
 
+    public function cancelOwnedReservation(string $cartUid, string $userUid): Cart
+    {
+        return DB::transaction(function () use ($cartUid, $userUid) {
+            $cart = Cart::where('uid', $cartUid)
+                ->where('user_uid', $userUid)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if ($cart->status !== Cart::STATUS_RESERVED || $cart->hasActivePaymentLink()) {
+                throw ValidationException::withMessages([
+                    'transaction' => 'Transaksi pada status ini tidak dapat dibatalkan.',
+                ]);
+            }
+
+            $this->releaseLockedCart($cart, Cart::STATUS_CANCELLED);
+
+            Transaction::where('invoice', $cart->invoice)->update([
+                'status_transaksi' => Cart::STATUS_CANCELLED,
+            ]);
+
+            return $cart;
+        }, 3);
+    }
+
     public function reserve(Event $event, string $userUid, array $items): Cart
     {
         if ($event->status !== 'active' || (string) $event->konfirmasi !== '1') {

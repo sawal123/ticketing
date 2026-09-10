@@ -35,34 +35,23 @@ class DeleteController extends Controller
         return redirect()->back()->with('hapus', 'Talent Berhasil dihapus');
     }
 
-    public function deteleListTransaksi($uid, $user_uid, TicketReservationService $reservationService)
+    public function cancelListTransaksi($uid, TicketReservationService $reservationService)
     {
-        $cart = Cart::where('uid', $uid)
-            ->where('user_uid', Auth::user()->uid)
-            ->first();
-
-        if (! $cart) {
-            return redirect()->back()->with('error', 'Transaksi tidak ditemukan');
-        }
-
-        DB::transaction(function () use ($cart, $reservationService) {
-            $lockedCart = Cart::where('uid', $cart->uid)->lockForUpdate()->first();
-
-            if ($lockedCart && in_array($lockedCart->status, Cart::ACTIVE_RESERVATION_STATUSES, true)) {
-                $reservationService->releaseLockedCart($lockedCart, Cart::STATUS_CANCELLED);
+        try {
+            $reservationService->cancelOwnedReservation($uid, Auth::user()->uid);
+        } catch (ValidationException $exception) {
+            if (request()->expectsJson()) {
+                throw $exception;
             }
-        }, 3);
 
-        $transaction = Transaction::where('invoice', $cart->invoice)->first();
-        if ($transaction) {
-            $transaction->delete();
+            return redirect()->back()->with('error', collect($exception->errors())->flatten()->first());
         }
 
-        HargaCart::where('uid', $cart->uid)->get()->each->delete();
+        if (request()->expectsJson()) {
+            return response()->json(['message' => 'Transaksi berhasil dibatalkan.']);
+        }
 
-        $cart->delete();
-
-        return redirect()->back()->with('deleteList', 'Check Out Berhasil dihapus');
+        return redirect()->back()->with('deleteList', 'Transaksi berhasil dibatalkan');
     }
 
     public function deleteSlide($uid)
