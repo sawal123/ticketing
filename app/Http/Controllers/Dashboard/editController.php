@@ -12,6 +12,7 @@ use App\Models\Cart;
 use App\Models\Cash;
 use App\Models\Contact;
 use App\Models\Event;
+use App\Models\EventRegistration;
 use App\Models\Harga;
 use App\Models\Landing;
 use App\Models\Penarikan;
@@ -21,9 +22,11 @@ use App\Models\Talent;
 use App\Models\Term;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Services\Agreements\AgreementVersioningService;
 use App\Services\Events\EventActivationGuardService;
+use App\Services\Registrations\CheckoutRegistrationService;
 use App\Services\SecureImageStorage;
-use App\Services\Tickets\GateTokenService;
+use App\Services\Tickets\TicketReservationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -35,6 +38,7 @@ use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class editController extends Controller
 {
@@ -56,7 +60,7 @@ class editController extends Controller
             try {
                 app(EventActivationGuardService::class)->activateForEvent($event, (string) Auth::user()?->uid, true);
             } catch (\Throwable $e) {
-                return redirect('/admin/event/eventDetail/' . $request->uid)
+                return redirect('/admin/event/eventDetail/'.$request->uid)
                     ->with('error', $e->getMessage());
             }
 
@@ -88,10 +92,10 @@ class editController extends Controller
         $event->save();
         $this->images->delete('cover', $oldCover);
 
-        app(\App\Services\Agreements\AgreementVersioningService::class)
+        app(AgreementVersioningService::class)
             ->checkForContractualChanges($event, (string) Auth::user()?->uid);
 
-        return redirect('/admin/event/eventDetail/' . $request->uid)->with('success', 'Berhasil di Update');
+        return redirect('/admin/event/eventDetail/'.$request->uid)->with('success', 'Berhasil di Update');
     }
 
     public function editTalent(Request $request)
@@ -353,7 +357,7 @@ class editController extends Controller
             ActivityLog::safeCreate([
                 'user_uid' => $lockedUser->uid,
                 'activity' => 'Profile Email Changed',
-                'description' => 'Email profile diubah dari ' . $oldEmail . ' ke ' . $newEmail,
+                'description' => 'Email profile diubah dari '.$oldEmail.' ke '.$newEmail,
                 'impact_level' => 'Medium',
                 'ip_address' => request()->ip(),
                 'user_agent' => request()->userAgent(),
@@ -374,7 +378,7 @@ class editController extends Controller
 
     private function emailOtpRateLimitKey(User $user, string $newEmail, Request $request): string
     {
-        return 'profile-email-otp:' . sha1($user->uid . '|' . $newEmail . '|' . $request->ip());
+        return 'profile-email-otp:'.sha1($user->uid.'|'.$newEmail.'|'.$request->ip());
     }
 
     public function editLogo(Request $request)
@@ -593,53 +597,111 @@ class editController extends Controller
 
     public function editTransaksi(Request $request)
     {
-        $uid = $request->uid;
+        $request->validate([
+            'uid' => ['required', 'string'],
+            'status' => ['required', 'string'],
+        ]);
 
-        $transaksis = Transaction::where('uid', $request->uid)->first();
-        $carts = Cart::where('uid', $request->uid)->first();
+        throw ValidationException::withMessages([
+            'status' => 'Perubahan status transaksi langsung sudah dinonaktifkan.',
+        ]);
+    }
 
-        if (! $carts) {
-            return redirect()->back()->with('error', 'Transaksi tidak ditemukan.');
-        }
+    public function settleTransaksi(
+        Request $request,
+        TicketReservationService $reservationService,
+        CheckoutRegistrationService $registrationService
+    ) {
+        $validated = $request->validate([
+            'uid' => ['required', 'string'],
+        ]);
 
-        $carts->status = $request->status;
-        if ($transaksis) {
-            $transaksis->status_transaksi = $request->status;
-            $transaksis->save();
-        }
-        $carts->save();
+        $result = DB::transaction(function () use ($validated, $reservationService, $registrationService) {
+            $cart = Cart::where('uid', $validated['uid'])->lockForUpdate()->firstOrFail();
 
-        if ($request->status === 'SUCCESS') {
-            app(GateTokenService::class)->issueIfEnabled($carts);
-
-            try {
-                if ($carts->payment_type === 'cash') {
-                    $cash = Cash::where('uid', $uid)->first();
-                    if (! $cash || ! filter_var($cash->email, FILTER_VALIDATE_EMAIL)) {
-                        return redirect()->back()->with('success', 'Transaksi Berhasil di Ubah. Email pembeli cash perlu diperiksa sebelum dikirim ulang.');
-                    }
-
-                    dispatch(new sendEmailTrnsaksi($cash->email, $cash->name, $carts->uid));
-                } else {
-                    $user = User::where('uid', $carts->user_uid)->first();
-                    if (! $user) {
-                        return redirect()->back()->with('success', 'Transaksi Berhasil di Ubah. Data pembeli tidak ditemukan untuk pengiriman email.');
-                    }
-
-                    dispatch(new sendEmailETransaksi($user, $carts));
-                }
-            } catch (\Throwable $e) {
-                Log::error('Gagal menjadwalkan email setelah edit transaksi.', [
-                    'cart_uid' => $carts->uid,
-                    'payment_type' => $carts->payment_type,
-                    'error' => $e->getMessage(),
-                ]);
-
-                return redirect()->back()->with('success', 'Transaksi Berhasil di Ubah. Email barcode perlu dikirim ulang.');
+            if ($cart->status === Cart::STATUS_SUCCESS) {
+                return ['cart' => $cart, 'transitioned' => false, 'successful' => true];
             }
+
+            if ($cart->status !== Cart::STATUS_PENDING) {
+                throw ValidationException::withMessages([
+                    'transaction' => 'Hanya transaksi PENDING yang dapat dikonfirmasi berhasil.',
+                ]);
+            }
+
+            $transaction = Transaction::where('invoice', $cart->invoice)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $transaction || $transaction->status_transaksi !== Cart::STATUS_PENDING) {
+                throw ValidationException::withMessages([
+                    'transaction' => 'Data pembayaran PENDING tidak ditemukan.',
+                ]);
+            }
+
+            $transitioned = $reservationService->settleLockedCart(
+                $cart,
+                $cart->payment_type ?: $transaction->payment_type ?: 'manual'
+            );
+
+            $registrationService->syncStatus(
+                $cart,
+                $cart->status === Cart::STATUS_SUCCESS
+                    ? EventRegistration::STATUS_SUCCESS
+                    : EventRegistration::STATUS_PENDING
+            );
+
+            return [
+                'cart' => $cart,
+                'transitioned' => $transitioned,
+                'successful' => $cart->status === Cart::STATUS_SUCCESS,
+            ];
+        }, 3);
+
+        if (! $result['successful']) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'Transaksi memerlukan pemeriksaan pembayaran.'], 422);
+            }
+
+            return redirect()->back()->with('error', 'Transaksi memerlukan pemeriksaan pembayaran.');
         }
 
-        return redirect()->back()->with('success', 'Transaksi Berhasil di Ubah');
+        if ($result['transitioned']) {
+            $this->dispatchTransactionTicketEmail($result['cart']);
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json(['message' => 'Transaksi berhasil dikonfirmasi.']);
+        }
+
+        return redirect()->back()->with('success', 'Transaksi berhasil dikonfirmasi.');
+    }
+
+    private function dispatchTransactionTicketEmail(Cart $cart): void
+    {
+        try {
+            if ($cart->payment_type === 'cash') {
+                $cash = Cash::where('uid', $cart->uid)->first();
+
+                if ($cash && filter_var($cash->email, FILTER_VALIDATE_EMAIL)) {
+                    dispatch(new sendEmailTrnsaksi($cash->email, $cash->name, $cart->uid));
+                }
+
+                return;
+            }
+
+            $user = User::where('uid', $cart->user_uid)->first();
+
+            if ($user) {
+                dispatch(new sendEmailETransaksi($user, $cart));
+            }
+        } catch (\Throwable $exception) {
+            Log::error('Gagal menjadwalkan email setelah konfirmasi transaksi.', [
+                'cart_uid' => $cart->uid,
+                'payment_type' => $cart->payment_type,
+                'error' => $exception->getMessage(),
+            ]);
+        }
     }
 
     public function editPro(Request $request)

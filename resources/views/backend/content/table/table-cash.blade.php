@@ -77,10 +77,6 @@
                             data-email="{{ $ca->email }}"><span
                                 class="fa fa-pencil fs-14"></span></button>
 
-                        <a href="{{ url('admin/deleteTransksi/' . $ca->uid) }}"
-                            class="btn text-danger btn-sm delete" data-bs-toggle="tooltip"
-                            data-bs-original-title="Delete"><span
-                                class="fe fe-trash-2 fs-14"></span></a>
                     </div>
                 </td>
             </tr>

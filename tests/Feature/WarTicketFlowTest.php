@@ -7,6 +7,7 @@ use App\Http\Middleware\LogActivityMiddleware;
 use App\Jobs\sendEmailETransaksi;
 use App\Models\Cart;
 use App\Models\Event;
+use App\Models\EventRegistration;
 use App\Models\Harga;
 use App\Models\PaymentGateway;
 use App\Models\Transaction;
@@ -287,6 +288,142 @@ class WarTicketFlowTest extends TestCase
         $this->assertDatabaseHas('harga_carts', ['uid' => $cart->uid, 'deleted_at' => null]);
     }
 
+    public function test_legacy_admin_status_action_rejects_arbitrary_status_and_direct_success(): void
+    {
+        $admin = $this->user(['role' => 'admin']);
+        $buyer = $this->user();
+        $event = $this->event();
+        $harga = $this->harga($event, ['reserved_qty' => 1]);
+        $cart = $this->cart($buyer, $event, ['status' => Cart::STATUS_PENDING]);
+        $this->hargaCart($cart, $harga, 1);
+        $transaction = $this->transaction($cart, Cart::STATUS_PENDING);
+
+        $this->actingAs($admin)->postJson(route('old.transactions.status.update'), [
+            'uid' => $cart->uid,
+            'status' => 'ADMIN_INJECTED',
+        ])->assertUnprocessable();
+
+        $this->actingAs($admin)->postJson(route('old.transactions.status.update'), [
+            'uid' => $cart->uid,
+            'status' => Cart::STATUS_SUCCESS,
+        ])->assertUnprocessable();
+
+        $this->assertSame(Cart::STATUS_PENDING, $cart->fresh()->status);
+        $this->assertSame(Cart::STATUS_PENDING, $transaction->fresh()->status_transaksi);
+        $this->assertSame(1, (int) $harga->fresh()->reserved_qty);
+        $this->assertSame(0, (int) $harga->fresh()->sold_qty);
+    }
+
+    public function test_admin_success_settlement_preserves_lifecycle_and_is_idempotent(): void
+    {
+        Queue::fake();
+
+        $admin = $this->user(['role' => 'admin']);
+        $buyer = $this->user();
+        $event = $this->event();
+        $harga = $this->harga($event, ['reserved_qty' => 2]);
+        $cart = $this->cart($buyer, $event, [
+            'status' => Cart::STATUS_PENDING,
+            'gross_amount' => 300000,
+            'payment_type' => 'bca',
+        ]);
+        $this->hargaCart($cart, $harga, 2);
+        $transaction = $this->transaction($cart, Cart::STATUS_PENDING);
+        $voucher = $this->voucher($event);
+        DB::table('cart_vouchers')->insert([
+            'uid' => $cart->uid,
+            'uid_vouchers' => 'voucher-1',
+            'user_uid' => $buyer->uid,
+            'event_uid' => $event->uid,
+            'code' => 'PROMO',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        DB::table('event_registrations')->insert([
+            'uid' => (string) Str::uuid(),
+            'cart_uid' => $cart->uid,
+            'invoice' => $cart->invoice,
+            'event_uid' => $event->uid,
+            'user_uid' => $buyer->uid,
+            'registration_mode' => 'individual',
+            'status' => EventRegistration::STATUS_PENDING,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->actingAs($admin)
+            ->postJson(route('old.transactions.settle'), ['uid' => $cart->uid])
+            ->assertOk();
+        $this->actingAs($admin)
+            ->postJson(route('old.transactions.settle'), ['uid' => $cart->uid])
+            ->assertOk();
+
+        $cart->refresh();
+        $this->assertSame(Cart::STATUS_SUCCESS, $cart->status);
+        $this->assertNotNull($cart->paid_at);
+        $this->assertNotNull($cart->reservation_released_at);
+        $this->assertNotNull($cart->gate_token_hash);
+        $this->assertNotNull($cart->gate_manual_code_hash);
+        $this->assertSame(0, (int) $harga->fresh()->reserved_qty);
+        $this->assertSame(2, (int) $harga->fresh()->sold_qty);
+        $this->assertSame(Cart::STATUS_SUCCESS, $transaction->fresh()->status_transaksi);
+        $this->assertNotNull($transaction->fresh()->paid_at);
+        $this->assertSame(1, (int) $voucher->fresh()->digunakan);
+        $this->assertDatabaseCount('voucher_usages', 1);
+        $this->assertDatabaseHas('event_registrations', [
+            'cart_uid' => $cart->uid,
+            'status' => EventRegistration::STATUS_SUCCESS,
+        ]);
+        $this->assertDatabaseHas('carts', ['id' => $cart->id, 'deleted_at' => null]);
+        $this->assertDatabaseHas('transactions', ['id' => $transaction->id, 'deleted_at' => null]);
+        $this->assertDatabaseHas('harga_carts', ['uid' => $cart->uid, 'deleted_at' => null]);
+        Queue::assertPushed(sendEmailETransaksi::class, 1);
+    }
+
+    public function test_success_and_payment_review_cannot_be_changed_by_legacy_admin_action(): void
+    {
+        $admin = $this->user(['role' => 'admin']);
+        $buyer = $this->user();
+        $event = $this->event();
+        $success = $this->cart($buyer, $event, ['status' => Cart::STATUS_SUCCESS]);
+        $review = $this->cart($buyer, $event, ['status' => Cart::STATUS_PAYMENT_REVIEW]);
+
+        $this->actingAs($admin)->postJson(route('old.transactions.status.update'), [
+            'uid' => $success->uid,
+            'status' => Cart::STATUS_CANCELLED,
+        ])->assertUnprocessable();
+        $this->actingAs($admin)->postJson(route('old.transactions.status.update'), [
+            'uid' => $review->uid,
+            'status' => Cart::STATUS_SUCCESS,
+        ])->assertUnprocessable();
+
+        $this->assertSame(Cart::STATUS_SUCCESS, $success->fresh()->status);
+        $this->assertSame(Cart::STATUS_PAYMENT_REVIEW, $review->fresh()->status);
+    }
+
+    public function test_legacy_admin_delete_route_cannot_delete_financial_records(): void
+    {
+        $admin = $this->user(['role' => 'admin']);
+        $buyer = $this->user();
+        $event = $this->event();
+        $harga = $this->harga($event, ['reserved_qty' => 1]);
+        $cart = $this->cart($buyer, $event, ['status' => Cart::STATUS_PENDING]);
+        $this->hargaCart($cart, $harga, 1);
+        $transaction = $this->transaction($cart, Cart::STATUS_PENDING);
+
+        $this->actingAs($admin)
+            ->get('/admin/old/deleteTransksi/'.$cart->uid)
+            ->assertNotFound();
+        $this->actingAs($admin)
+            ->get('/admin/old/cashes/delete/'.$cart->uid)
+            ->assertNotFound();
+
+        $this->assertDatabaseHas('carts', ['id' => $cart->id, 'deleted_at' => null]);
+        $this->assertDatabaseHas('transactions', ['id' => $transaction->id, 'deleted_at' => null]);
+        $this->assertDatabaseHas('harga_carts', ['uid' => $cart->uid, 'deleted_at' => null]);
+        $this->assertSame(1, (int) $harga->fresh()->reserved_qty);
+    }
+
     public function test_user_cannot_pay_another_users_cart(): void
     {
         $owner = $this->user();
@@ -467,6 +604,7 @@ class WarTicketFlowTest extends TestCase
             $table->string('name');
             $table->string('email');
             $table->string('password');
+            $table->string('role')->nullable();
             $table->timestamps();
             $table->softDeletes();
         });
@@ -570,6 +708,20 @@ class WarTicketFlowTest extends TestCase
             $table->softDeletes();
         });
 
+        Schema::create('event_registrations', function ($table) {
+            $table->id();
+            $table->string('uid');
+            $table->string('cart_uid');
+            $table->string('invoice');
+            $table->string('event_uid');
+            $table->string('user_uid');
+            $table->string('registration_mode');
+            $table->string('status');
+            $table->string('team_name')->nullable();
+            $table->json('answers')->nullable();
+            $table->timestamps();
+        });
+
         Schema::create('payment_gateways', function ($table) {
             $table->id();
             $table->string('payment');
@@ -628,6 +780,7 @@ class WarTicketFlowTest extends TestCase
             'name' => 'Test User',
             'email' => Str::random(6).'@example.test',
             'password' => bcrypt('password'),
+            'role' => 'user',
         ], $attributes));
     }
 
