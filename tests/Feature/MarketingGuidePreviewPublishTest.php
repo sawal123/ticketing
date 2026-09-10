@@ -183,6 +183,11 @@ class MarketingGuidePreviewPublishTest extends TestCase
         $old = $this->published->getAttributes();
         $access = app(MarketingGuideAccessService::class)->create($this->admin, now()->addDay());
 
+        $preview = $this->actingAs($this->admin)->get(route('admin.marketing-guide.content.preview'));
+        $preview->assertStatus(422)->assertDontSee('<script>', false);
+        $this->assertPrivateResponse($preview);
+        $this->assertSame(0, $access['access']->fresh()->access_count);
+
         Livewire::actingAs($this->admin)->test(MarketingGuideContentEditor::class)
             ->call('publishDraft')->assertSet('successMessage', '')
             ->assertSet('errorMessage', fn ($message) => $message !== '');

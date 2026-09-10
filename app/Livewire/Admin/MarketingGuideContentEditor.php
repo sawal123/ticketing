@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\MarketingGuide\MarketingGuideContentService;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\On;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
@@ -40,6 +41,8 @@ class MarketingGuideContentEditor extends Component
     public string $successMessage = '';
 
     protected MarketingGuideContentService $service;
+
+    protected bool $dispatchesModalOpen = true;
 
     public function boot(MarketingGuideContentService $service): void
     {
@@ -100,7 +103,9 @@ class MarketingGuideContentEditor extends Component
         $this->sectionIsActive = (bool) $section->is_active;
         $this->sectionPosition = (int) $section->position;
         $this->resetErrorBag();
-        $this->dispatch('open-modal', name: 'mge-section-modal');
+        if ($this->dispatchesModalOpen) {
+            $this->dispatch('open-modal', name: 'mge-section-modal');
+        }
     }
 
     public function closeSectionEditor(): void
@@ -183,7 +188,9 @@ class MarketingGuideContentEditor extends Component
         $this->errorMessage = '';
         $this->successMessage = '';
         $this->resetErrorBag();
-        $this->dispatch('open-modal', name: 'mge-block-modal');
+        if ($this->dispatchesModalOpen) {
+            $this->dispatch('open-modal', name: 'mge-block-modal');
+        }
     }
 
     public function closeBlockEditor(): void
@@ -209,7 +216,9 @@ class MarketingGuideContentEditor extends Component
         $this->errorMessage = '';
         $this->successMessage = '';
         $this->resetErrorBag();
-        $this->dispatch('open-modal', name: 'mge-block-modal');
+        if ($this->dispatchesModalOpen) {
+            $this->dispatch('open-modal', name: 'mge-block-modal');
+        }
     }
 
     public function switchBlockType(string $type): void
@@ -373,6 +382,12 @@ class MarketingGuideContentEditor extends Component
         }
     }
 
+    #[On('mge-content-updated')]
+    public function refreshContent(): void
+    {
+        $this->ensureAdmin();
+    }
+
     private function shiftBlock(MarketingGuideBlock $block, int $delta): void
     {
         $ordered = $block->section->blocks()
@@ -442,6 +457,8 @@ class MarketingGuideContentEditor extends Component
 
     private function isAdmin(mixed $user): bool
     {
+        $user = $user instanceof User ? $user->fresh() : null;
+
         return $user instanceof User
             && strtolower((string) $user->role) === 'admin'
             && $user->uid !== null;

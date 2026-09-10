@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Livewire\Admin\MarketingGuideContentEditor;
+use App\Livewire\Admin\MarketingGuideContentModal;
 use App\Models\MarketingGuideBlock;
 use App\Models\MarketingGuideVersion;
 use App\Models\User;
@@ -425,7 +426,7 @@ class MarketingGuideContentEditorTest extends TestCase
         $block = $section->blocks()->where('type', 'cta')->first();
 
         Livewire::actingAs($admin)
-            ->test(MarketingGuideContentEditor::class)
+            ->test(MarketingGuideContentModal::class)
             ->call('openBlockEditor', $block->id)
             ->assertSet('blockType', 'cta')
             ->assertSee('x-model="data.title"', false)
@@ -446,7 +447,7 @@ class MarketingGuideContentEditorTest extends TestCase
         $workflow = $draft->sections()->where('key', 'cara_kerja')->first()
             ->blocks()->where('type', 'workflow')->first();
         Livewire::actingAs($admin)
-            ->test(MarketingGuideContentEditor::class)
+            ->test(MarketingGuideContentModal::class)
             ->call('openBlockEditor', $workflow->id)
             ->assertSee('x-model="item.title"', false)
             ->assertDontSee('item.title || item.label', false);
@@ -455,7 +456,7 @@ class MarketingGuideContentEditorTest extends TestCase
         $flow = $draft->sections()->where('key', 'menjadi_penyelenggara')->first()
             ->blocks()->where('type', 'flow')->first();
         Livewire::actingAs($admin)
-            ->test(MarketingGuideContentEditor::class)
+            ->test(MarketingGuideContentModal::class)
             ->call('openBlockEditor', $flow->id)
             ->assertSee('x-model="item.label"', false)
             ->assertDontSee('item.title || item.label', false);
@@ -476,7 +477,7 @@ class MarketingGuideContentEditorTest extends TestCase
         $this->assertArrayNotHasKey('cta', $block->data);
 
         Livewire::actingAs($admin)
-            ->test(MarketingGuideContentEditor::class)
+            ->test(MarketingGuideContentModal::class)
             ->call('openBlockEditor', $block->id)
             ->assertSet('blockType', 'text')
             // Guard exists and CTA fields are still rendered for text.
@@ -499,7 +500,7 @@ class MarketingGuideContentEditorTest extends TestCase
         $block = $section->blocks()->where('type', 'workflow')->first();
 
         Livewire::actingAs($admin)
-            ->test(MarketingGuideContentEditor::class)
+            ->test(MarketingGuideContentModal::class)
             ->call('openBlockEditor', $block->id)
             ->assertSet('blockType', 'workflow')
             // The type selector must not be offered while editing.
@@ -615,7 +616,7 @@ class MarketingGuideContentEditorTest extends TestCase
         $reordered[] = $moved;
 
         Livewire::actingAs($admin)
-            ->test(MarketingGuideContentEditor::class)
+            ->test(MarketingGuideContentModal::class)
             ->call('openBlockEditor', $block->id)
             ->assertSee('moveItemIn(data.steps')
             ->set('blockDataRaw', json_encode(['steps' => $reordered]))
@@ -659,13 +660,13 @@ class MarketingGuideContentEditorTest extends TestCase
             $block = $sec->blocks()->where('type', $case['type'])->first();
             $this->assertNotNull($block, 'missing ' . $case['type'] . ' block');
             Livewire::actingAs($admin)
-                ->test(MarketingGuideContentEditor::class)
+                ->test(MarketingGuideContentModal::class)
                 ->call('openBlockEditor', $block->id)
                 ->assertSee($case['expr']);
         }
 
         Livewire::actingAs($admin)
-            ->test(MarketingGuideContentEditor::class)
+            ->test(MarketingGuideContentModal::class)
             ->call('openBlockEditor', $cards->id)
             ->assertSee('moveItemIn(data.cards');
     }
