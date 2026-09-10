@@ -11,6 +11,7 @@ use App\Models\Harga;
 use App\Models\PaymentGateway;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Models\Voucher;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
@@ -148,6 +149,142 @@ class WarTicketFlowTest extends TestCase
 
         $this->assertSame(0, (int) $harga->fresh()->reserved_qty);
         $this->assertSame(Cart::STATUS_EXPIRED, $cart->fresh()->status);
+    }
+
+    public function test_user_can_cancel_owned_reserved_cart_without_deleting_transaction_data(): void
+    {
+        $user = $this->user();
+        $event = $this->event();
+        $harga = $this->harga($event, ['reserved_qty' => 2]);
+        $cart = $this->cart($user, $event);
+        $this->hargaCart($cart, $harga, 2);
+        $transaction = $this->transaction($cart);
+
+        $this->actingAs($user)
+            ->deleteJson(route('transactions.cancel', $cart->uid))
+            ->assertOk();
+
+        $this->assertSame(Cart::STATUS_CANCELLED, $cart->fresh()->status);
+        $this->assertNotNull($cart->fresh()->reservation_released_at);
+        $this->assertSame(0, (int) $harga->fresh()->reserved_qty);
+        $this->assertSame(Cart::STATUS_CANCELLED, $transaction->fresh()->status_transaksi);
+        $this->assertDatabaseHas('carts', ['id' => $cart->id, 'deleted_at' => null]);
+        $this->assertDatabaseHas('transactions', ['id' => $transaction->id, 'deleted_at' => null]);
+        $this->assertDatabaseHas('harga_carts', ['uid' => $cart->uid, 'deleted_at' => null]);
+    }
+
+    public function test_user_cannot_cancel_another_users_cart_and_legacy_get_does_not_mutate(): void
+    {
+        $owner = $this->user();
+        $intruder = $this->user(['uid' => 'cancel-intruder', 'email' => 'cancel-intruder@example.test']);
+        $event = $this->event();
+        $harga = $this->harga($event, ['reserved_qty' => 1]);
+        $cart = $this->cart($owner, $event);
+        $this->hargaCart($cart, $harga, 1);
+
+        $this->actingAs($intruder)
+            ->deleteJson(route('transactions.cancel', $cart->uid))
+            ->assertNotFound();
+
+        $this->actingAs($owner)
+            ->get('/detail-ticket/delete/'.$cart->uid.'/'.$owner->uid)
+            ->assertNotFound();
+
+        $this->assertSame(Cart::STATUS_RESERVED, $cart->fresh()->status);
+        $this->assertSame(1, (int) $harga->fresh()->reserved_qty);
+        $this->assertNull($cart->fresh()->deleted_at);
+    }
+
+    public function test_pending_cart_with_active_payment_link_cannot_be_cancelled(): void
+    {
+        Queue::fake();
+
+        $user = $this->user();
+        $event = $this->event();
+        $harga = $this->harga($event, ['reserved_qty' => 1]);
+        $cart = $this->cart($user, $event, [
+            'status' => Cart::STATUS_PENDING,
+            'link' => 'https://pay.example.test/active',
+            'payment_link_expires_at' => now()->addMinutes(10),
+        ]);
+        $this->hargaCart($cart, $harga, 1);
+        $transaction = $this->transaction($cart, Cart::STATUS_PENDING);
+
+        $this->actingAs($user)
+            ->deleteJson(route('transactions.cancel', $cart->uid))
+            ->assertUnprocessable();
+
+        $this->assertSame(Cart::STATUS_PENDING, $cart->fresh()->status);
+        $this->assertSame(1, (int) $harga->fresh()->reserved_qty);
+        $this->assertNull($cart->fresh()->deleted_at);
+        $this->assertNull($transaction->fresh()->deleted_at);
+
+        $this->postJson('/api/callback', $this->midtransPayload($cart, 'settlement', '150000.00'))->assertOk();
+
+        $this->assertSame(Cart::STATUS_SUCCESS, $cart->fresh()->status);
+        $this->assertSame(Cart::STATUS_SUCCESS, $transaction->fresh()->status_transaksi);
+        $this->assertNull($transaction->fresh()->deleted_at);
+    }
+
+    public function test_success_cart_cannot_be_cancelled(): void
+    {
+        $user = $this->user();
+        $event = $this->event();
+        $harga = $this->harga($event, ['sold_qty' => 1]);
+        $cart = $this->cart($user, $event, [
+            'status' => Cart::STATUS_SUCCESS,
+            'reservation_released_at' => now(),
+        ]);
+        $this->hargaCart($cart, $harga, 1);
+        $transaction = $this->transaction($cart, Cart::STATUS_SUCCESS);
+
+        $this->actingAs($user)
+            ->deleteJson(route('transactions.cancel', $cart->uid))
+            ->assertUnprocessable();
+
+        $this->assertSame(Cart::STATUS_SUCCESS, $cart->fresh()->status);
+        $this->assertSame(1, (int) $harga->fresh()->sold_qty);
+        $this->assertNull($cart->fresh()->deleted_at);
+        $this->assertNull($transaction->fresh()->deleted_at);
+    }
+
+    public function test_payment_review_cart_cannot_be_cancelled(): void
+    {
+        $user = $this->user();
+        $event = $this->event();
+        $harga = $this->harga($event);
+        $cart = $this->cart($user, $event, [
+            'status' => Cart::STATUS_PAYMENT_REVIEW,
+            'reservation_released_at' => now(),
+        ]);
+        $this->hargaCart($cart, $harga, 1);
+        $transaction = $this->transaction($cart, Cart::STATUS_PAYMENT_REVIEW);
+
+        $this->actingAs($user)
+            ->deleteJson(route('transactions.cancel', $cart->uid))
+            ->assertUnprocessable();
+
+        $this->assertSame(Cart::STATUS_PAYMENT_REVIEW, $cart->fresh()->status);
+        $this->assertNull($cart->fresh()->deleted_at);
+        $this->assertNull($transaction->fresh()->deleted_at);
+        $this->assertDatabaseHas('harga_carts', ['uid' => $cart->uid, 'deleted_at' => null]);
+    }
+
+    public function test_repeated_cancellation_does_not_release_stock_twice_or_delete_history(): void
+    {
+        $user = $this->user();
+        $event = $this->event();
+        $harga = $this->harga($event, ['reserved_qty' => 1]);
+        $cart = $this->cart($user, $event);
+        $this->hargaCart($cart, $harga, 1);
+
+        $this->actingAs($user)->deleteJson(route('transactions.cancel', $cart->uid))->assertOk();
+        $this->actingAs($user)->deleteJson(route('transactions.cancel', $cart->uid))->assertUnprocessable();
+
+        $this->assertSame(0, (int) $harga->fresh()->reserved_qty);
+        $this->assertSame(Cart::STATUS_CANCELLED, $cart->fresh()->status);
+        $this->assertNull($cart->fresh()->deleted_at);
+        $this->assertDatabaseHas('harga_carts', ['uid' => $cart->uid, 'deleted_at' => null]);
     }
 
     public function test_user_cannot_pay_another_users_cart(): void
@@ -566,6 +703,19 @@ class WarTicketFlowTest extends TestCase
         ]);
     }
 
+    protected function transaction(Cart $cart, string $status = Cart::STATUS_PENDING): Transaction
+    {
+        return Transaction::create([
+            'uid' => $cart->uid,
+            'user_uid' => $cart->user_uid,
+            'event_uid' => $cart->event_uid,
+            'amount' => '150000',
+            'gross_amount' => 150000,
+            'invoice' => $cart->invoice,
+            'status_transaksi' => $status,
+        ]);
+    }
+
     protected function voucher(Event $event)
     {
         return DB::table('vouchers')->insertGetId([
@@ -582,7 +732,7 @@ class WarTicketFlowTest extends TestCase
             'status' => 'active',
             'created_at' => now(),
             'updated_at' => now(),
-        ]) ? \App\Models\Voucher::where('code', 'PROMO')->first() : null;
+        ]) ? Voucher::where('code', 'PROMO')->first() : null;
     }
 
     protected function midtransPayload(Cart $cart, string $status, string $grossAmount): array

@@ -111,13 +111,15 @@
                                 Detail
                             </a>
 
-                            {{-- DELETE --}}
-                            @if ($item->status === 'UNPAID' || $item->status === 'CANCELLED')
-                                <a href="javascript:void(0)"
-                                    onclick="confirmDelete('{{ url('/detail-ticket/delete/' . $item->uid . '/' . Auth::user()->uid) }}')"
-                                    class="btn-delete">
-                                    Hapus
-                                </a>
+                            {{-- CANCEL --}}
+                            @if ($item->status === \App\Models\Cart::STATUS_RESERVED && ! $item->hasActivePaymentLink())
+                                <form method="POST" action="{{ route('transactions.cancel', $item->uid) }}">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="button" onclick="confirmCancel(this.form)" class="btn-delete">
+                                        Batalkan
+                                    </button>
+                                </form>
                             @endif
 
                         </div>
@@ -185,22 +187,22 @@
         }
 
 
-        // ================= DELETE =================
-        function confirmDelete(url) {
+        // ================= CANCEL =================
+        function confirmCancel(form) {
             Swal.fire({
-                title: 'Hapus Transaksi?',
-                text: "Data transaksi yang dihapus tidak dapat dikembalikan!",
+                title: 'Batalkan Transaksi?',
+                text: "Reservasi tiket akan dilepas dan transaksi tetap tersimpan di riwayat.",
                 icon: 'warning',
                 showCancelButton: true,
                 confirmButtonColor: '#ff4d4d',
                 cancelButtonColor: '#6c757d',
-                confirmButtonText: 'Ya, Hapus!',
+                confirmButtonText: 'Ya, Batalkan',
                 cancelButtonText: 'Batal',
                 background: '#1a1625',
                 color: '#ffffff'
             }).then((result) => {
                 if (result.isConfirmed) {
-                    window.location.href = url;
+                    form.submit();
                 }
             })
         }

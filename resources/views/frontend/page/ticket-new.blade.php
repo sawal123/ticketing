@@ -508,7 +508,7 @@
         // 🛡️ PENGECEKAN TRANSAKSI UNPAID
         const hasUnpaid = {{ $hasUnpaid ? 'true' : 'false' }};
         const unpaidUid = "{{ $unpaidUid }}";
-        const userUid = "{{ Auth::check() ? Auth::user()->uid : '' }}";
+        const csrfToken = @json(csrf_token());
 
         const checkoutForms = document.querySelectorAll('.ticket-purchase-form');
         const checkBtns = document.querySelectorAll('.checkButton');
@@ -527,7 +527,7 @@
                     showDenyButton: true,
                     showCancelButton: true,
                     confirmButtonText: 'Lanjut Bayar Tiket Lama',
-                    denyButtonText: 'Hapus & Buat Baru',
+                    denyButtonText: 'Batalkan & Buat Baru',
                     cancelButtonText: 'Tutup',
                     confirmButtonColor: '#6366f1', // Indigo
                     denyButtonColor: '#ef4444', // Rose
@@ -543,10 +543,10 @@
                         // Lanjut ke riwayat transaksi
                         window.location.href = '/transaksi';
                     } else if (result.isDenied) {
-                        // Hapus transaksi lama & Lanjut checkout baru
+                        // Batalkan transaksi lama & lanjut checkout baru setelah server mengonfirmasi.
                         Swal.fire({
                             title: 'Memproses...',
-                            html: 'Menghapus transaksi lama Anda',
+                            html: 'Membatalkan transaksi lama Anda',
                             allowOutsideClick: false,
                             didOpen: () => {
                                 Swal.showLoading();
@@ -555,9 +555,20 @@
                             color: '#fff'
                         });
 
-                        fetch(`/detail-ticket/delete/${unpaidUid}/${userUid}`)
-                            .then(() => {
-                                // Submit form yang sekarang setelah hapus berhasil
+                        fetch(`/transactions/${encodeURIComponent(unpaidUid)}/cancel`, {
+                            method: 'DELETE',
+                            headers: {
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': csrfToken
+                            }
+                        })
+                            .then(async response => {
+                                const payload = await response.json().catch(() => ({}));
+
+                                if (!response.ok) {
+                                    throw new Error(payload.message || 'Transaksi tidak dapat dibatalkan');
+                                }
+
                                 if (currentForm) {
                                     if (markCheckoutSubmitting(currentForm)) {
                                         currentForm.submit();
@@ -565,8 +576,7 @@
                                 }
                             })
                             .catch(err => {
-                                console.error('Gagal menghapus:', err);
-                                Swal.fire('Error', 'Gagal menghapus transaksi lama', 'error');
+                                Swal.fire('Tidak dapat dibatalkan', err.message, 'error');
                             });
                     }
                 });
