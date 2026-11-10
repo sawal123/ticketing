@@ -145,71 +145,14 @@ class BuyTicketController extends Controller
             'cartUid' => 'required',
         ]);
         $code = Str::upper(trim((string) $request->code));
-        $cart = $request->cartUid;
-
-        $cartModel = Cart::where('uid', $cart)
-            ->where('user_uid', Auth::user()->uid)
-            ->whereIn('status', [Cart::STATUS_RESERVED, Cart::STATUS_PENDING, Cart::STATUS_UNPAID])
-            ->first();
-
-        if (! $cartModel || $cartModel->isReservationExpired()) {
-            return redirect()->back()->with('vError', 'Reservation sudah expired atau cart tidak valid.');
-        }
-
-        $voucher = Voucher::where('code', $code)
-            ->where('event_uid', $cartModel->event_uid)
-            ->where('status', 'active')
-            ->first();
-
-        if (! $voucher) {
-            return redirect()->back()->with('vError', 'Voucher '.$code.' Invalid');
-        }
-
-        $pricing = app(TicketPricingService::class)->calculateCart($cartModel);
-        if ($pricing['ticket_total'] < (int) $voucher->min_beli) {
-            return redirect()->back()->with('vError', 'Minimal pembelian voucher belum terpenuhi.');
-        }
-
-        if ((int) $voucher->digunakan >= (int) $voucher->limit) {
-            return redirect()->back()->with('vError', 'Voucher Expired');
-        }
-
-        $cVoucher = CartVoucher::where('uid', $cart)
-            ->where('event_uid', $cartModel->event_uid)
-            ->first();
-        $carts = HargaCart::where('uid', $cart)->orderBy('id')->first();
-
-        if ($code === null && $cVoucher) {
-            $cVoucher->code = '';
-            if ($carts) {
-                $carts->voucher = null;
-                $carts->disc = 0;
-                $carts->save();
-            }
-            $cVoucher->save();
-
-            return redirect()->back()->with('voucher', 'Voucher dihapus');
-        }
-
-        if ($cVoucher) {
-            $cVoucher->code = $code;
-            $cVoucher->uid_vouchers = $voucher->uid;
-            $cVoucher->event_uid = $cartModel->event_uid;
-            $cVoucher->save();
-        } else {
-            CartVoucher::create([
-                'uid' => $cart,
-                'uid_vouchers' => $voucher->uid,
-                'user_uid' => Auth::user()->uid,
-                'event_uid' => $cartModel->event_uid,
-                'code' => $code,
-            ]);
-        }
-
-        if ($carts) {
-            $carts->voucher = $code;
-            $carts->disc = app(TicketPricingService::class)->calculateVoucherDiscount($cartModel, $pricing['ticket_total']);
-            $carts->save();
+        try {
+            app(TicketReservationService::class)->reserveVoucherForCart(
+                (string) $request->cartUid,
+                Auth::user()->uid,
+                $code
+            );
+        } catch (ValidationException $exception) {
+            return redirect()->back()->with('vError', collect($exception->errors())->flatten()->first());
         }
 
         return redirect()->back()->with('voucher', 'Voucher berhasil digunakan');
@@ -221,27 +164,14 @@ class BuyTicketController extends Controller
             'cartUid' => 'required',
         ]);
 
-        $cart = Cart::where('uid', $request->cartUid)
-            ->where('user_uid', Auth::user()->uid)
-            ->whereIn('status', [Cart::STATUS_RESERVED, Cart::STATUS_PENDING, Cart::STATUS_UNPAID])
-            ->first();
-
-        if (! $cart || $cart->isReservationExpired()) {
-            return redirect()->back()->with('vError', 'Reservation sudah expired atau cart tidak valid.');
+        try {
+            app(TicketReservationService::class)->releaseVoucherForCart(
+                (string) $request->cartUid,
+                Auth::user()->uid
+            );
+        } catch (ValidationException $exception) {
+            return redirect()->back()->with('vError', collect($exception->errors())->flatten()->first());
         }
-
-        $cVoucher = CartVoucher::where('uid', $cart->uid)
-            ->where('event_uid', $cart->event_uid)
-            ->first();
-        if ($cVoucher) {
-            $cVoucher->code = '';
-            $cVoucher->save();
-        }
-
-        HargaCart::where('uid', $cart->uid)->update([
-            'voucher' => null,
-            'disc' => 0,
-        ]);
 
         return redirect()->back()->with('voucher', 'Voucher berhasil dihapus!');
     }

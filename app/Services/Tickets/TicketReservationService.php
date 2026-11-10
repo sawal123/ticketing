@@ -10,9 +10,11 @@ use App\Models\HargaCart;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Models\Voucher;
+use App\Models\VoucherReservation;
 use App\Models\VoucherUsage;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -57,6 +59,151 @@ class TicketReservationService
                 'cart' => $this->reserve($event, $userUid, $items),
                 'created' => true,
             ];
+        }, 3);
+    }
+
+    public function reserveVoucherForCart(string $cartUid, string $userUid, string $code): array
+    {
+        return DB::transaction(function () use ($cartUid, $userUid, $code) {
+            $cart = Cart::where('uid', $cartUid)
+                ->where('user_uid', $userUid)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $cart
+                || ! in_array($cart->status, Cart::ACTIVE_RESERVATION_STATUSES, true)
+                || $cart->isReservationExpired()) {
+                throw ValidationException::withMessages([
+                    'voucher' => 'Reservation sudah expired atau cart tidak valid.',
+                ]);
+            }
+
+            $cartVoucher = CartVoucher::where('uid', $cart->uid)
+                ->where('event_uid', $cart->event_uid)
+                ->lockForUpdate()
+                ->first();
+            $reservation = VoucherReservation::where('cart_uid', $cart->uid)
+                ->lockForUpdate()
+                ->first();
+            $candidate = Voucher::where('code', $code)
+                ->where('event_uid', $cart->event_uid)
+                ->first();
+
+            if (! $candidate) {
+                throw ValidationException::withMessages(['voucher' => 'Voucher '.$code.' Invalid']);
+            }
+
+            $voucherIds = collect([$candidate->id, $reservation?->voucher_id])
+                ->filter()
+                ->unique()
+                ->sort()
+                ->values();
+            $lockedVouchers = Voucher::whereIn('id', $voucherIds)
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get()
+                ->keyBy('id');
+            $voucher = $lockedVouchers->get($candidate->id);
+
+            if (! $voucher
+                || $voucher->status !== 'active'
+                || $voucher->event_uid !== $cart->event_uid
+                || $voucher->code !== $code) {
+                throw ValidationException::withMessages(['voucher' => 'Voucher '.$code.' Invalid']);
+            }
+
+            $ticketTotal = (int) $cart->hargaCarts()->sum(DB::raw('quantity * harga_ticket'));
+            if ($ticketTotal < (int) $voucher->min_beli) {
+                throw ValidationException::withMessages([
+                    'voucher' => 'Minimal pembelian voucher belum terpenuhi.',
+                ]);
+            }
+
+            $alreadyHeld = $reservation
+                && $reservation->status === VoucherReservation::STATUS_ACTIVE
+                && (int) $reservation->voucher_id === (int) $voucher->id;
+
+            if (! $alreadyHeld && $this->voucherIsLimited($voucher)) {
+                $activeReservations = VoucherReservation::where('voucher_id', $voucher->id)
+                    ->where('status', VoucherReservation::STATUS_ACTIVE)
+                    ->lockForUpdate()
+                    ->get()
+                    ->count();
+
+                if (($this->committedVoucherUsageCount($voucher) + $activeReservations) >= (int) $voucher->limit) {
+                    throw ValidationException::withMessages(['voucher' => 'Voucher Expired']);
+                }
+            }
+
+            if ($reservation && $reservation->status === VoucherReservation::STATUS_COMMITTED) {
+                throw ValidationException::withMessages([
+                    'voucher' => 'Voucher pada transaksi ini sudah digunakan.',
+                ]);
+            }
+
+            $reservation ??= new VoucherReservation(['cart_uid' => $cart->uid]);
+            $reservation->fill([
+                'voucher_id' => $voucher->id,
+                'voucher_uid' => $voucher->uid,
+                'invoice' => $cart->invoice,
+                'code' => $voucher->code,
+                'status' => VoucherReservation::STATUS_ACTIVE,
+                'reserved_at' => $alreadyHeld ? $reservation->reserved_at : now(),
+                'released_at' => null,
+                'committed_at' => null,
+            ]);
+            $reservation->save();
+
+            $cartVoucher ??= new CartVoucher([
+                'uid' => $cart->uid,
+                'event_uid' => $cart->event_uid,
+            ]);
+            $cartVoucher->fill([
+                'uid_vouchers' => $voucher->uid,
+                'user_uid' => $cart->user_uid,
+                'code' => $voucher->code,
+            ]);
+            $cartVoucher->save();
+
+            $discount = app(TicketPricingService::class)->calculateVoucherDiscount($cart, $ticketTotal);
+            HargaCart::where('uid', $cart->uid)->update(['voucher' => null, 'disc' => 0]);
+            $firstItem = HargaCart::where('uid', $cart->uid)->orderBy('id')->first();
+
+            if ($firstItem) {
+                $firstItem->voucher = $voucher->code;
+                $firstItem->disc = $discount;
+                $firstItem->save();
+            }
+
+            return ['voucher' => $voucher, 'discount' => $discount];
+        }, 3);
+    }
+
+    public function releaseVoucherForCart(string $cartUid, string $userUid): void
+    {
+        DB::transaction(function () use ($cartUid, $userUid) {
+            $cart = Cart::where('uid', $cartUid)
+                ->where('user_uid', $userUid)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $cart
+                || ! in_array($cart->status, Cart::ACTIVE_RESERVATION_STATUSES, true)
+                || $cart->isReservationExpired()) {
+                throw ValidationException::withMessages([
+                    'voucher' => 'Reservation sudah expired atau cart tidak valid.',
+                ]);
+            }
+
+            $this->releaseVoucherReservationLocked($cart);
+
+            CartVoucher::where('uid', $cart->uid)
+                ->where('event_uid', $cart->event_uid)
+                ->update(['code' => '', 'uid_vouchers' => null]);
+            HargaCart::where('uid', $cart->uid)->update([
+                'voucher' => null,
+                'disc' => 0,
+            ]);
         }, 3);
     }
 
@@ -212,6 +359,8 @@ class TicketReservationService
             $harga->save();
         }
 
+        $this->releaseVoucherReservationLocked($cart);
+
         $cart->status = $status;
         $cart->reservation_released_at = now();
 
@@ -251,6 +400,8 @@ class TicketReservationService
             if ($reservedIsStillHeld) {
                 $this->releaseStockRows($items);
             }
+
+            $this->releaseVoucherReservationLocked($cart);
 
             $cart->status = Cart::STATUS_PAYMENT_REVIEW;
             $cart->reservation_released_at = $cart->reservation_released_at ?: now();
@@ -405,20 +556,50 @@ class TicketReservationService
             return true;
         }
 
+        if (! Schema::hasTable('voucher_reservations')) {
+            return $this->markLegacyVoucherUsage($cart, $cartVoucher);
+        }
+
+        $reservation = VoucherReservation::where('cart_uid', $cart->uid)
+            ->lockForUpdate()
+            ->first();
+
         $voucher = Voucher::where('code', $cartVoucher->code)
             ->where('event_uid', $cart->event_uid)
             ->lockForUpdate()
             ->first();
 
-        if (! $voucher || $voucher->status !== 'active') {
+        if (! $voucher) {
             return false;
         }
 
-        if ((int) $voucher->digunakan >= (int) $voucher->limit) {
-            return false;
+        $holdsReservation = $reservation
+            && $reservation->status === VoucherReservation::STATUS_ACTIVE
+            && (int) $reservation->voucher_id === (int) $voucher->id;
+        $alreadyCommitted = $reservation
+            && $reservation->status === VoucherReservation::STATUS_COMMITTED
+            && (int) $reservation->voucher_id === (int) $voucher->id;
+
+        if (! $holdsReservation && ! $alreadyCommitted) {
+            if ($voucher->status !== 'active') {
+                return false;
+            }
+
+            if ($this->voucherIsLimited($voucher)) {
+                $activeReservations = VoucherReservation::where('voucher_id', $voucher->id)
+                    ->where('status', VoucherReservation::STATUS_ACTIVE)
+                    ->lockForUpdate()
+                    ->get()
+                    ->count();
+
+                if (($this->committedVoucherUsageCount($voucher) + $activeReservations) >= (int) $voucher->limit) {
+                    return false;
+                }
+            }
         }
 
         $discount = app(TicketPricingService::class)->calculateVoucherDiscount($cart, (int) $cart->hargaCarts()->sum(DB::raw('quantity * harga_ticket')));
+        $committedUsage = $this->committedVoucherUsageCount($voucher);
 
         VoucherUsage::create([
             'voucher_id' => $voucher->id,
@@ -430,7 +611,98 @@ class TicketReservationService
             'used_at' => now(),
         ]);
 
-        $voucher->digunakan = (int) $voucher->digunakan + 1;
+        if (! $alreadyCommitted) {
+            $voucher->digunakan = $committedUsage + 1;
+            $voucher->save();
+        }
+
+        $reservation ??= new VoucherReservation(['cart_uid' => $cart->uid]);
+        $reservation->fill([
+            'voucher_id' => $voucher->id,
+            'voucher_uid' => $voucher->uid,
+            'invoice' => $cart->invoice,
+            'code' => $voucher->code,
+            'status' => VoucherReservation::STATUS_COMMITTED,
+            'reserved_at' => $reservation->reserved_at ?: now(),
+            'released_at' => null,
+            'committed_at' => now(),
+        ]);
+        $reservation->save();
+
+        return true;
+    }
+
+    protected function releaseVoucherReservationLocked(Cart $cart): void
+    {
+        if (! Schema::hasTable('voucher_reservations')) {
+            return;
+        }
+
+        $reservation = VoucherReservation::where('cart_uid', $cart->uid)
+            ->lockForUpdate()
+            ->first();
+
+        if (! $reservation || $reservation->status !== VoucherReservation::STATUS_ACTIVE) {
+            return;
+        }
+
+        if ($reservation->voucher_id) {
+            Voucher::whereKey($reservation->voucher_id)->lockForUpdate()->first();
+        }
+
+        $reservation->status = VoucherReservation::STATUS_RELEASED;
+        $reservation->released_at = now();
+        $reservation->save();
+    }
+
+    protected function voucherIsLimited(Voucher $voucher): bool
+    {
+        return (int) $voucher->limit > 0;
+    }
+
+    protected function committedVoucherUsageCount(Voucher $voucher): int
+    {
+        $recordedUsage = VoucherUsage::where(function ($query) use ($voucher) {
+            $query->where('voucher_id', $voucher->id)
+                ->orWhere('voucher_uid', $voucher->uid);
+        })->count();
+
+        return max((int) $voucher->digunakan, $recordedUsage);
+    }
+
+    protected function markLegacyVoucherUsage(Cart $cart, CartVoucher $cartVoucher): bool
+    {
+        $voucher = Voucher::where('code', $cartVoucher->code)
+            ->where('event_uid', $cart->event_uid)
+            ->lockForUpdate()
+            ->first();
+
+        if (! $voucher || $voucher->status !== 'active') {
+            return false;
+        }
+
+        if ($this->voucherIsLimited($voucher)
+            && $this->committedVoucherUsageCount($voucher) >= (int) $voucher->limit) {
+            return false;
+        }
+
+        $discount = app(TicketPricingService::class)->calculateVoucherDiscount(
+            $cart,
+            (int) $cart->hargaCarts()->sum(DB::raw('quantity * harga_ticket'))
+        );
+        $committedUsage = $this->committedVoucherUsageCount($voucher);
+
+        VoucherUsage::create([
+            'voucher_id' => $voucher->id,
+            'voucher_uid' => $voucher->uid,
+            'cart_uid' => $cart->uid,
+            'invoice' => $cart->invoice,
+            'code' => $voucher->code,
+            'discount_amount' => $discount,
+            'used_at' => now(),
+        ]);
+
+        $voucher->digunakan = $committedUsage + 1;
         $voucher->save();
 
         return true;
