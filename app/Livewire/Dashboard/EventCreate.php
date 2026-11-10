@@ -298,7 +298,7 @@ class EventCreate extends Component
             'fee' => $this->fee,
             'start_sale' => Carbon::parse($this->start_sale)->format('Y-m-d H:i:s'),
             'deskripsi' => $this->deskripsi,
-            'map' => $this->map,
+            'map' => $this->map ?? '',
             'cover' => $coverName,
             'registration_mode' => $requestedRegistrationMode,
         ];

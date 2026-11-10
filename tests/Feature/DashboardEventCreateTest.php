@@ -465,6 +465,47 @@ class DashboardEventCreateTest extends TestCase
             ]);
     }
 
+    public function test_create_event_succeeds_when_map_url_is_left_empty(): void
+    {
+        $tenant = $this->tenant();
+        $category = Category::create(['name' => 'Fun Run', 'slug' => 'fun-run']);
+
+        Livewire::actingAs($tenant)
+            ->test(EventCreate::class)
+            ->set('event', 'Fun Run Karo')
+            ->set('fee', 0)
+            ->set('start_sale', '2026-11-10 11:37')
+            ->set('event_start', '2026-12-12 07:00')
+            ->set('event_end', '2026-12-12 10:00')
+            ->set('venue_name', 'Lapangan Kantor DPRD Kab.Karo')
+            ->set('venue_address', 'Jl.Veteran Kabanjahe, Karo')
+            ->set('venue_city', 'Karo')
+            ->set('venue_province', 'Sumatera Utara')
+            ->set('cover', UploadedFile::fake()->image('cover.jpg'))
+            ->set('deskripsi', '<div>Fun Run</div>')
+            ->set('category_id', $category->id)
+            ->set('organizer_name', 'Organizer Fun Run')
+            ->set('responsible_name', 'Penanggung Jawab Fun Run')
+            ->set('responsible_position', 'Ketua')
+            ->set('phone', '081234567890')
+            ->set('email', 'funrun@example.test')
+            ->set('address', 'Alamat penyelenggara fun run')
+            ->set('bank_name', 'Bank Sumut')
+            ->set('account_number', '1234567890')
+            ->set('account_holder_name', 'Organizer Fun Run')
+            ->set('bank_book', UploadedFile::fake()->create('bank-book.pdf', 128, 'application/pdf'))
+            ->set('document_number', '001/FR/2026')
+            ->set('document_date', '2026-11-01')
+            ->set('organizer_letter', UploadedFile::fake()->create('organizer-letter.pdf', 128, 'application/pdf'))
+            ->set('responsible_identity', UploadedFile::fake()->create('responsible-identity.pdf', 128, 'application/pdf'))
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $event = Event::where('event', 'Fun Run Karo')->firstOrFail();
+
+        $this->assertSame('', $event->map);
+    }
+
     public function test_update_organizer_only_affects_selected_event(): void
     {
         $tenant = $this->tenant();
