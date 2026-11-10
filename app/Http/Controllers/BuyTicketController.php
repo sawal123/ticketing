@@ -123,6 +123,8 @@ class BuyTicketController extends Controller
             'voucher' => $voucher,
             'payment' => $this->data_pay,
             'hasAvailablePaymentGateways' => $this->data_pay->isNotEmpty(),
+            'canChangePaymentMethod' => in_array($cart->status, Cart::ACTIVE_RESERVATION_STATUSES, true)
+                && ! $cart->isReservationExpired(),
             'selectInternetFee' => $selectInternetFee,
             'selectedPaymentGatewayId' => $selectedPaymentGatewayId,
             'iFee' => $iFee,
