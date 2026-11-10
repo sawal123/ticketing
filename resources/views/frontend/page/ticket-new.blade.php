@@ -45,7 +45,7 @@
                 <input type="hidden" name="event_uid" value="{{ $ticket->uid }}">
 
                 @if ($list->count() > 0)
-                    <div class="panel-body" style="overflow-y: scroll; max-height: 300px;">
+                    <div class="panel-body" style="overflow-y: auto; max-height: 430px; padding-right: 6px;">
                         @foreach ($list as $key => $hargaItem)
                             @php
                                 $kategori = $hargaItem->kategori;
@@ -309,7 +309,7 @@
                                         {{ $hargaItemMobile->kategori }}
                                     </div>
                                     @if (!empty($hargaItemMobile->description))
-                                        <div class="tier-description" style="font-size:12px;opacity:0.7;">
+                                        <div class="tier-description">
                                             {{ $hargaItemMobile->description }}
                                         </div>
                                     @endif

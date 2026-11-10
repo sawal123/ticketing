@@ -87,45 +87,71 @@
 }
 
 .ticket-tier {
-    padding: 18px 0;
-    border-bottom: 1px solid var(--border);
+    padding: 16px;
+    margin-bottom: 10px;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.035) 0%, rgba(255, 255, 255, 0.015) 100%);
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
-    transition: all 0.2s;
+    gap: 14px;
+    transition: border-color 0.2s, background 0.2s;
+}
+
+.ticket-tier:hover {
+    border-color: rgba(108, 92, 231, 0.45);
+    background: rgba(108, 92, 231, 0.08);
 }
 
 .ticket-tier:last-of-type {
-    border-bottom: none;
+    margin-bottom: 0;
 }
 
 .tier-info {
     flex: 1;
+    min-width: 0;
 }
 
 .tier-name {
-    font-family: "Space Mono", monospace;
-    font-size: 12px;
-    font-weight: 700;
-    color: var(--text);
-    letter-spacing: 1px;
-    text-transform: uppercase;
+    font-family: "DM Sans", sans-serif;
+    font-size: 14px;
+    font-weight: 800;
+    color: #ffffff;
+    letter-spacing: 0.2px;
+    line-height: 1.4;
+    text-transform: none;
     margin-bottom: 6px;
+    overflow-wrap: anywhere;
+}
+
+.tier-name::before {
+    content: "";
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--teal);
+    margin-right: 8px;
+    vertical-align: middle;
 }
 
 .tier-description {
-    font-size: 13px;
-    color: rgba(240, 236, 255, 0.78);
-    line-height: 1.5;
-    margin-bottom: 8px;
+    font-size: 12.5px;
+    color: #b9b3cc;
+    line-height: 1.6;
+    margin-bottom: 10px;
+    padding-left: 10px;
+    border-left: 2px solid rgba(61, 217, 196, 0.45);
 }
 
 .tier-price {
     font-family: "Playfair Display", serif;
-    font-size: 22px;
+    font-size: 24px;
     font-weight: 700;
     color: var(--text);
-    margin-top: 2px;
+    line-height: 1.1;
+    margin-top: 0;
 }
 
 .tier-price .currency {
@@ -144,6 +170,9 @@
     border: 1px solid var(--border);
     border-radius: 50px;
     padding: 4px;
+    flex-shrink: 0;
+    align-self: flex-start;
+    margin-top: 2px;
 }
 
 .qty-btn {
@@ -176,15 +205,19 @@
 }
 
 .sold-out-badge {
-    background: rgba(139, 132, 168, 0.15);
-    border: 1px solid rgba(139, 132, 168, 0.3);
+    flex-shrink: 0;
+    align-self: flex-start;
+    margin-top: 2px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.16);
     border-radius: 50px;
-    padding: 6px 18px;
+    padding: 6px 14px;
     font-family: "Space Mono", monospace;
-    font-size: 10px;
-    color: var(--muted);
-    letter-spacing: 1px;
+    font-size: 9.5px;
+    color: #c3bdd6;
+    letter-spacing: 1.2px;
     text-transform: uppercase;
+    white-space: nowrap;
 }
 
 .panel-total {
@@ -712,12 +745,19 @@
 }
 
 .sheet-tier {
-    padding: 18px 0;
-    border-bottom: 1px solid var(--border);
+    padding: 14px;
+    margin-bottom: 10px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.025);
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
     gap: 12px;
+}
+
+.sheet-tier:last-of-type {
+    margin-bottom: 0;
 }
 
 .sheet-total {
