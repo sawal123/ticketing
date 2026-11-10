@@ -12,8 +12,10 @@ use App\Models\User;
 use App\Models\Voucher;
 use App\Models\VoucherReservation;
 use App\Models\VoucherUsage;
+use App\Services\Payments\MidtransPaymentLinkService;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -215,10 +217,29 @@ class TicketReservationService
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            if ($cart->status !== Cart::STATUS_RESERVED || $cart->hasActivePaymentLink()) {
+            if (! in_array($cart->status, Cart::ACTIVE_RESERVATION_STATUSES, true)) {
                 throw ValidationException::withMessages([
                     'transaction' => 'Transaksi pada status ini tidak dapat dibatalkan.',
                 ]);
+            }
+
+            if ($cart->hasActivePaymentLink()) {
+                try {
+                    app(MidtransPaymentLinkService::class)->expire($cart->invoice);
+                } catch (\Throwable $exception) {
+                    Log::warning('Gagal expire link pembayaran saat pembatalan', [
+                        'cart_uid' => $cart->uid,
+                        'invoice' => $cart->invoice,
+                        'error' => $exception->getMessage(),
+                    ]);
+
+                    throw ValidationException::withMessages([
+                        'transaction' => 'Transaksi tidak dapat dibatalkan karena pembayaran sedang diproses.',
+                    ]);
+                }
+
+                $cart->link = null;
+                $cart->payment_link_expires_at = null;
             }
 
             $this->releaseLockedCart($cart, Cart::STATUS_CANCELLED);

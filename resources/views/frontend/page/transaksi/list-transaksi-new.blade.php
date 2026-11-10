@@ -112,7 +112,7 @@
                             </a>
 
                             {{-- CANCEL --}}
-                            @if ($item->status === \App\Models\Cart::STATUS_RESERVED && ! $item->hasActivePaymentLink())
+                            @if (in_array($item->status, \App\Models\Cart::ACTIVE_RESERVATION_STATUSES, true))
                                 <form method="POST" action="{{ route('transactions.cancel', $item->uid) }}">
                                     @csrf
                                     @method('DELETE')

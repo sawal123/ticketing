@@ -12,6 +12,7 @@ use App\Models\Harga;
 use App\Models\PaymentGateway;
 use App\Models\User;
 use App\Services\Payments\CheckoutPaymentOtpService;
+use App\Services\Payments\MidtransPaymentLinkService;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -289,6 +290,50 @@ class CheckoutRecipientSnapshotTest extends TestCase
         $this->assertSame('Nama Kedua', $cart->ticket_holder_name);
         $this->assertSame('buyer@example.test', $cart->ticket_recipient_email);
         $this->assertSame('https://pay.example.test/recovered', $cart->link);
+    }
+
+    public function test_unpaid_cart_can_switch_payment_gateway_during_payment_window(): void
+    {
+        $user = $this->user(['email' => 'switch@example.test']);
+        $event = $this->event();
+        $harga = $this->harga($event, ['reserved_qty' => 1]);
+        $firstGateway = $this->gateway(['payment' => 'BCA', 'slug' => 'bca', 'midtrans_code' => 'bca_va']);
+        $secondGateway = $this->gateway(['payment' => 'Mandiri', 'slug' => 'mandiri', 'midtrans_code' => 'echannel']);
+        $cart = $this->cart($user, $event, [
+            'status' => Cart::STATUS_PENDING,
+            'ticket_holder_name' => 'Switch Holder',
+            'ticket_recipient_email' => $user->email,
+            'link' => 'https://pay.example.test/old',
+            'payment_link_expires_at' => now()->addMinutes(10),
+            'payment_gateway_id' => $firstGateway->id,
+            'payment_type' => 'bca',
+        ]);
+
+        $this->hargaCart($cart, $harga, 1);
+        $this->eventGateway($event, $firstGateway);
+        $this->eventGateway($event, $secondGateway);
+
+        $this->mock(MidtransPaymentLinkService::class)
+            ->shouldReceive('expire')
+            ->once()
+            ->with($cart->invoice);
+
+        Mockery::mock('alias:Midtrans\Snap')
+            ->shouldReceive('createTransaction')
+            ->once()
+            ->andReturn((object) ['redirect_url' => 'https://pay.example.test/new']);
+
+        $this->actingAs($user)->post('/paynow', [
+            'cart_uid' => $cart->uid,
+            'payment_gateway_id' => $secondGateway->id,
+        ])->assertRedirect('https://pay.example.test/new');
+
+        $cart->refresh();
+
+        $this->assertSame(Cart::STATUS_PENDING, $cart->status);
+        $this->assertSame((int) $secondGateway->id, (int) $cart->payment_gateway_id);
+        $this->assertSame('mandiri', $cart->payment_type);
+        $this->assertSame('https://pay.example.test/new', $cart->link);
     }
 
     public function test_verified_checkout_payment_otp_flow_still_works_with_account_email_snapshot(): void

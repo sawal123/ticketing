@@ -61,7 +61,7 @@
                                         {{ $hargaItem->kategori }}
                                     </div>
                                     @if (!empty($hargaItem->description))
-                                        <div class="tier-description" style="font-size:12px;opacity:0.7;">
+                                        <div class="tier-description">
                                             {{ $hargaItem->description }}
                                         </div>
                                     @endif

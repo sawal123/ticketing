@@ -10,6 +10,7 @@ use App\Models\HargaCart;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Services\Payments\CheckoutPaymentOtpService;
+use App\Services\Payments\MidtransPaymentLinkService;
 use App\Services\Registrations\CheckoutRegistrationService;
 use App\Services\Tickets\TicketPricingService;
 use App\Services\Tickets\TicketReservationService;
@@ -65,7 +66,8 @@ class TransactionController extends Controller
         TicketPricingService $pricingService,
         TicketReservationService $reservationService,
         CheckoutPaymentOtpService $checkoutPaymentOtpService,
-        CheckoutRegistrationService $checkoutRegistrationService
+        CheckoutRegistrationService $checkoutRegistrationService,
+        MidtransPaymentLinkService $paymentLinkService
     ) {
         $request->merge([
             'cart_uid' => $request->input('cart_uid', $request->input('cartUid')),
@@ -85,7 +87,7 @@ class TransactionController extends Controller
         }
 
         try {
-            $paymentContext = DB::transaction(function () use ($cartUid, $request, $pricingService, $reservationService, $checkoutPaymentOtpService, $checkoutRegistrationService) {
+            $paymentContext = DB::transaction(function () use ($cartUid, $request, $pricingService, $reservationService, $checkoutPaymentOtpService, $checkoutRegistrationService, $paymentLinkService) {
                 $cart = Cart::where('uid', $cartUid)
                     ->where('user_uid', Auth::user()->uid)
                     ->lockForUpdate()
@@ -108,29 +110,14 @@ class TransactionController extends Controller
                     ];
                 }
 
-                if ($cart->hasActivePaymentLink()) {
+                if ($cart->hasActivePaymentLink() && $this->requestedGatewayMatchesCart($cart, $request->input('payment_gateway_id'))) {
                     return ['redirect_url' => $cart->link, 'expired' => false];
-                }
-
-                if ($cart->recipientSnapshotLocked()) {
-                    $this->assertRecipientSnapshotExists($cart);
-                } elseif ($cart->hasRecipientSnapshot() && ! $this->requestIncludesRecipientSnapshot($request)) {
-                    // Existing carts can continue using their stored snapshot when paynow is posted directly.
-                } else {
-                    $recipientSnapshot = $this->resolveRecipientSnapshot($request);
-                    $cart->ticket_holder_name = $recipientSnapshot['ticket_holder_name'];
-                    $cart->ticket_recipient_email = $recipientSnapshot['ticket_recipient_email'];
                 }
 
                 $event = $cart->event;
 
                 if (! $event) {
                     throw ValidationException::withMessages(['cart_uid' => 'Event tidak tersedia.']);
-                }
-
-                if ($event->payment_otp_enabled) {
-                    $checkoutPaymentOtpService->assertOtpEligible($cart, Auth::user(), $event);
-                    $checkoutPaymentOtpService->assertVerifiedOtp($cart, Auth::user(), $event);
                 }
 
                 $eventGateway = EventPaymentGateway::query()
@@ -154,6 +141,40 @@ class TransactionController extends Controller
                     throw ValidationException::withMessages([
                         'payment_gateway_id' => 'Metode pembayaran belum dikonfigurasi dengan benar.',
                     ]);
+                }
+
+                if ($cart->recipientSnapshotLocked()) {
+                    $this->assertRecipientSnapshotExists($cart);
+                } elseif ($cart->hasRecipientSnapshot() && ! $this->requestIncludesRecipientSnapshot($request)) {
+                    // Existing carts can continue using their stored snapshot when paynow is posted directly.
+                } else {
+                    $recipientSnapshot = $this->resolveRecipientSnapshot($request);
+                    $cart->ticket_holder_name = $recipientSnapshot['ticket_holder_name'];
+                    $cart->ticket_recipient_email = $recipientSnapshot['ticket_recipient_email'];
+                }
+
+                if ($event->payment_otp_enabled) {
+                    $checkoutPaymentOtpService->assertOtpEligible($cart, Auth::user(), $event);
+                    $checkoutPaymentOtpService->assertVerifiedOtp($cart, Auth::user(), $event);
+                }
+
+                if ($cart->hasActivePaymentLink()) {
+                    try {
+                        $paymentLinkService->expire($cart->invoice);
+                    } catch (Exception $exception) {
+                        Log::warning('Gagal expire link pembayaran lama', [
+                            'cart_uid' => $cart->uid,
+                            'invoice' => $cart->invoice,
+                            'error' => $exception->getMessage(),
+                        ]);
+
+                        throw ValidationException::withMessages([
+                            'payment_gateway_id' => 'Metode pembayaran tidak dapat diubah karena transaksi lama masih diproses.',
+                        ]);
+                    }
+
+                    $cart->link = null;
+                    $cart->payment_link_expires_at = null;
                 }
 
                 if (HargaCart::where('uid', $cart->uid)->count() === 0) {
@@ -462,6 +483,15 @@ class TransactionController extends Controller
         $slug = Str::lower((string) $gateway->slug);
 
         return self::LEGACY_MIDTRANS_PAYMENT_CODE_MAP[$slug] ?? null;
+    }
+
+    protected function requestedGatewayMatchesCart(Cart $cart, $requestedGatewayId): bool
+    {
+        if ($cart->payment_gateway_id === null) {
+            return true;
+        }
+
+        return (int) $cart->payment_gateway_id === (int) $requestedGatewayId;
     }
 
     protected function resolveRecipientSnapshot(Request $request): array

@@ -14,6 +14,7 @@ use App\Models\Transaction;
 use App\Models\User;
 use App\Models\Voucher;
 use App\Models\VoucherReservation;
+use App\Services\Payments\MidtransPaymentLinkService;
 use App\Services\Tickets\TicketReservationService;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
@@ -414,7 +415,7 @@ class WarTicketFlowTest extends TestCase
         $this->assertNull($cart->fresh()->deleted_at);
     }
 
-    public function test_pending_cart_with_active_payment_link_cannot_be_cancelled(): void
+    public function test_pending_cart_with_active_payment_link_can_be_cancelled_within_reservation_window(): void
     {
         Queue::fake();
 
@@ -429,19 +430,49 @@ class WarTicketFlowTest extends TestCase
         $this->hargaCart($cart, $harga, 1);
         $transaction = $this->transaction($cart, Cart::STATUS_PENDING);
 
+        $this->mock(MidtransPaymentLinkService::class)
+            ->shouldReceive('expire')
+            ->once()
+            ->with($cart->invoice);
+
+        $this->actingAs($user)
+            ->deleteJson(route('transactions.cancel', $cart->uid))
+            ->assertOk();
+
+        $this->assertSame(Cart::STATUS_CANCELLED, $cart->fresh()->status);
+        $this->assertNotNull($cart->fresh()->reservation_released_at);
+        $this->assertNull($cart->fresh()->link);
+        $this->assertSame(0, (int) $harga->fresh()->reserved_qty);
+        $this->assertSame(Cart::STATUS_CANCELLED, $transaction->fresh()->status_transaksi);
+        $this->assertNull($cart->fresh()->deleted_at);
+        $this->assertNull($transaction->fresh()->deleted_at);
+    }
+
+    public function test_pending_cart_cancel_is_rejected_when_payment_link_cannot_be_expired(): void
+    {
+        $user = $this->user();
+        $event = $this->event();
+        $harga = $this->harga($event, ['reserved_qty' => 1]);
+        $cart = $this->cart($user, $event, [
+            'status' => Cart::STATUS_PENDING,
+            'link' => 'https://pay.example.test/active',
+            'payment_link_expires_at' => now()->addMinutes(10),
+        ]);
+        $this->hargaCart($cart, $harga, 1);
+        $transaction = $this->transaction($cart, Cart::STATUS_PENDING);
+
+        $this->mock(MidtransPaymentLinkService::class)
+            ->shouldReceive('expire')
+            ->once()
+            ->andThrow(new \RuntimeException('Transaction is already paid'));
+
         $this->actingAs($user)
             ->deleteJson(route('transactions.cancel', $cart->uid))
             ->assertUnprocessable();
 
         $this->assertSame(Cart::STATUS_PENDING, $cart->fresh()->status);
+        $this->assertSame('https://pay.example.test/active', $cart->fresh()->link);
         $this->assertSame(1, (int) $harga->fresh()->reserved_qty);
-        $this->assertNull($cart->fresh()->deleted_at);
-        $this->assertNull($transaction->fresh()->deleted_at);
-
-        $this->postJson('/api/callback', $this->midtransPayload($cart, 'settlement', '150000.00'))->assertOk();
-
-        $this->assertSame(Cart::STATUS_SUCCESS, $cart->fresh()->status);
-        $this->assertSame(Cart::STATUS_SUCCESS, $transaction->fresh()->status_transaksi);
         $this->assertNull($transaction->fresh()->deleted_at);
     }
 

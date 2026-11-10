@@ -451,13 +451,18 @@
             </div>
 
             <!-- PAYMENT METHOD -->
-            @if (!$hasActivePaymentLink)
+            @if ($canChangePaymentMethod)
                 <div class="card">
                     <div class="card-header">
                         <div class="card-icon" style="background:rgba(108,92,231,0.12);">💳</div>
                         <div class="card-title">Metode Pembayaran</div>
                     </div>
                     <div class="card-body" style="padding-top:0;">
+                        @if ($hasActivePaymentLink)
+                            <div style="margin:0 0 14px;font-size:12px;color:var(--muted);line-height:1.5;">
+                                Transaksi belum dibayar. Anda masih dapat mengganti metode pembayaran selama masa pembayaran belum berakhir.
+                            </div>
+                        @endif
                         <div class="pay-accordion">
                             <div class="pay-accordion-header" onclick="toggleAccordion(this)">
                                 <span class="pay-accordion-label">Pilih Metode</span>
@@ -677,6 +682,12 @@
                                     <span>🔐</span>
                                     <span>Lanjutkan Pembayaran</span>
                                 </a>
+                                <button type="button" class="btn-pay" style="margin-top:10px;"
+                                    onclick="showConfirmModal(event)"
+                                    {{ $hasAvailablePaymentGateways ? '' : 'disabled' }}>
+                                    <span>🔐</span>
+                                    <span>Ubah Metode &amp; Bayar</span>
+                                </button>
                             @endif
                         </form>
                     @else
