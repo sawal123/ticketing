@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\User;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
@@ -109,6 +110,26 @@ class LandingPageThemeTest extends TestCase
             $table->string('email')->unique();
             $table->string('password')->nullable();
             $table->string('role')->default('user');
+            $table->timestamps();
+            $table->softDeletes();
+        });
+
+        Schema::create('carts', function ($table) {
+            $table->id();
+            $table->string('uid')->nullable();
+            $table->string('user_uid')->nullable();
+            $table->string('event_uid')->nullable();
+            $table->string('invoice')->nullable();
+            $table->string('status')->default('PAID');
+            $table->timestamps();
+            $table->softDeletes();
+        });
+
+        Schema::create('harga_carts', function ($table) {
+            $table->id();
+            $table->string('uid')->nullable();
+            $table->string('harga_uid')->nullable();
+            $table->integer('quantity')->default(1);
             $table->timestamps();
             $table->softDeletes();
         });
@@ -290,5 +311,67 @@ class LandingPageThemeTest extends TestCase
         // Form labels do not have hardcoded white text overriding theme
         $this->assertStringNotContainsString('Nama Lengkap sesuai KTP</label>', $bayarBlade);
         $this->assertStringContainsString('color:var(--text);', $bayarBlade);
+    }
+
+    public function test_transaksi_page_renders_with_theme_and_refined_fonts(): void
+    {
+        DB::table('landings')->insert([
+            'description' => 'Gotik description',
+            'keyword' => 'ticket',
+            'logo' => 'logo.png',
+            'icon' => 'icon.png',
+        ]);
+
+        $userId = DB::table('users')->insertGetId([
+            'uid' => 'user-tx-1',
+            'name' => 'Sawalinto',
+            'email' => 'sawalinto@example.com',
+            'role' => 'user',
+        ]);
+        $user = User::find($userId);
+
+        DB::table('events')->insert([
+            'uid' => 'event-tx-1',
+            'user_uid' => 'org-2',
+            'event' => 'Festival Musik Gotik',
+            'alamat' => 'Medan, SUMUT',
+            'tanggal' => '2026-12-16 12:00:00',
+            'status' => 'active',
+            'slug' => 'festival-musik-gotik',
+            'konfirmasi' => '1',
+            'cover' => 'sample.jpg',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        DB::table('carts')->insert([
+            'uid' => 'cart-tx-1',
+            'user_uid' => 'user-tx-1',
+            'event_uid' => 'event-tx-1',
+            'invoice' => 'INV-2026-001',
+            'status' => 'PAID',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $response = $this->actingAs($user)->get('/transaksi');
+
+        $response->assertStatus(200);
+        $response->assertSee('Riwayat Transaksi');
+        $response->assertSee('page-eyebrow');
+        $response->assertSee('filter-chips');
+        $response->assertSee('list-transaksi.css');
+        $response->assertSee('Festival Musik Gotik');
+        $response->assertSee('INV-2026-001');
+    }
+
+    public function test_transaksi_css_uses_theme_variables_and_refined_fonts(): void
+    {
+        $txCss = file_get_contents(public_path('landing/css/list-transaksi.css'));
+
+        $this->assertStringContainsString('[data-theme="light"]', $txCss);
+        $this->assertStringContainsString('[data-theme="dark"]', $txCss);
+        $this->assertStringNotContainsString('Playfair Display', $txCss);
+        $this->assertStringNotContainsString('Space Mono', $txCss);
     }
 }

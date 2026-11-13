@@ -189,6 +189,7 @@
 
         // ================= CANCEL =================
         function confirmCancel(form) {
+            const isLight = document.documentElement.getAttribute('data-theme') === 'light';
             Swal.fire({
                 title: 'Batalkan Transaksi?',
                 text: "Reservasi tiket akan dilepas dan transaksi tetap tersimpan di riwayat.",
@@ -198,8 +199,8 @@
                 cancelButtonColor: '#6c757d',
                 confirmButtonText: 'Ya, Batalkan',
                 cancelButtonText: 'Batal',
-                background: '#1a1625',
-                color: '#ffffff'
+                background: isLight ? '#ffffff' : '#1a1625',
+                color: isLight ? '#171324' : '#ffffff'
             }).then((result) => {
                 if (result.isConfirmed) {
                     form.submit();
@@ -214,14 +215,15 @@
 
             // Session Success Handler
             @if (session('deleteList') || session('delete') || session('success'))
+                const isLight = document.documentElement.getAttribute('data-theme') === 'light';
                 Swal.fire({
                     icon: 'success',
                     title: 'Berhasil',
                     text: "{{ session('deleteList') ?? (session('delete') ?? session('success')) }}",
                     showConfirmButton: false,
                     timer: 2000,
-                    background: '#1a1625',
-                    color: '#ffffff'
+                    background: isLight ? '#ffffff' : '#1a1625',
+                    color: isLight ? '#171324' : '#ffffff'
                 });
             @endif
         });

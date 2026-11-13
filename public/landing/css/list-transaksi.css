@@ -1,17 +1,42 @@
-:root {
+:root,
+[data-theme="dark"] {
     --bg: #0a0612;
+    --bg2: #13111c;
     --surface: #110e1d;
     --surface2: #1a1530;
     --surface3: #221d3a;
+    --border: rgba(108, 92, 231, 0.18);
+    --border2: rgba(255, 255, 255, 0.08);
+    --accent: #a78bfa;
+    --text: #f0ecff;
+    --muted: #8b84a8;
+    --dim: #56516e;
     --gold: #f5c842;
     --rose: #e8547a;
     --teal: #3dd9c4;
     --indigo: #6c5ce7;
     --green: #2ecc71;
-    --text: #f0ecff;
-    --muted: #8b84a8;
-    --border: rgba(108, 92, 231, 0.18);
-    --border2: rgba(255, 255, 255, 0.06);
+    --font: 'Public Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+[data-theme="light"] {
+    --bg: #f8f9fc;
+    --bg2: #ffffff;
+    --surface: #ffffff;
+    --surface2: #f1f3f9;
+    --surface3: #e8ebf4;
+    --border: rgba(108, 92, 231, 0.14);
+    --border2: rgba(0, 0, 0, 0.08);
+    --accent: #6c5ce7;
+    --text: #171324;
+    --muted: #64748b;
+    --dim: #94a3b8;
+    --gold: #d97706;
+    --rose: #e11d48;
+    --teal: #0d9488;
+    --indigo: #6c5ce7;
+    --green: #16a34a;
+    --font: 'Public Sans', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
 *,
@@ -30,11 +55,15 @@ html {
 body {
     background: var(--bg);
     color: var(--text);
-    font-family: "DM Sans", sans-serif;
+    font-family: var(--font), sans-serif;
     min-height: 100vh;
     overflow-x: hidden;
     word-break: break-word;
     overflow-wrap: break-word;
+}
+
+[data-theme="light"] body::before {
+    opacity: 0.05;
 }
 
 /* Noise texture */
@@ -57,7 +86,7 @@ nav {
     align-items: center;
     padding: 0 48px;
     height: 64px;
-    background: rgba(10, 6, 18, 0.92);
+    background: var(--surface);
     backdrop-filter: blur(24px);
     border-bottom: 1px solid var(--border);
     gap: 20px;
@@ -65,11 +94,11 @@ nav {
 }
 
 .logo {
-    font-family: "Space Mono", monospace;
-    font-weight: 700;
+    font-family: var(--font), sans-serif;
+    font-weight: 800;
     font-size: 22px;
     color: var(--gold);
-    letter-spacing: -1px;
+    letter-spacing: -0.5px;
     flex-shrink: 0;
 }
 .logo span {
@@ -290,10 +319,11 @@ nav {
 }
 
 .page-eyebrow {
-    font-family: "Space Mono", monospace;
-    font-size: 10px;
-    color: var(--indigo);
-    letter-spacing: 2px;
+    font-family: var(--font), sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--accent);
+    letter-spacing: 0.5px;
     text-transform: uppercase;
     margin-bottom: 8px;
     display: flex;
@@ -306,14 +336,12 @@ nav {
 }
 
 .page-title {
-    font-family: "Playfair Display", serif;
-    font-size: 38px;
-    font-weight: 900;
-    line-height: 1.05;
-    background: linear-gradient(135deg, var(--text) 0%, var(--gold) 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    font-family: var(--font), sans-serif;
+    font-size: 28px;
+    font-weight: 800;
+    line-height: 1.2;
+    color: var(--text);
+    letter-spacing: -0.5px;
 }
 
 .header-meta {
@@ -327,12 +355,13 @@ nav {
     border: 1px solid var(--border);
     border-radius: 50px;
     padding: 6px 16px;
-    font-family: "Space Mono", monospace;
-    font-size: 11px;
+    font-family: var(--font), sans-serif;
+    font-size: 12.5px;
+    font-weight: 600;
     color: var(--muted);
 }
 .count-pill strong {
-    color: var(--gold);
+    color: var(--accent);
 }
 
 /* ── FILTER BAR ── */
@@ -345,10 +374,11 @@ nav {
 }
 
 .filter-label {
-    font-family: "Space Mono", monospace;
-    font-size: 9px;
+    font-family: var(--font), sans-serif;
+    font-size: 11.5px;
+    font-weight: 700;
     color: var(--muted);
-    letter-spacing: 2px;
+    letter-spacing: 0.5px;
     text-transform: uppercase;
     flex-shrink: 0;
 }
@@ -363,13 +393,13 @@ nav {
     background: var(--surface2);
     border: 1px solid var(--border);
     border-radius: 50px;
-    padding: 6px 16px;
-    font-size: 12px;
+    padding: 7px 18px;
+    font-size: 13px;
     color: var(--muted);
     cursor: pointer;
     transition: all 0.18s;
-    font-family: "DM Sans", sans-serif;
-    font-weight: 500;
+    font-family: var(--font), sans-serif;
+    font-weight: 600;
     white-space: nowrap;
 }
 .chip:hover {
@@ -382,17 +412,17 @@ nav {
     color: var(--text);
 }
 .chip.all.active {
-    background: rgba(245, 200, 66, 0.1);
+    background: rgba(245, 200, 66, 0.12);
     border-color: rgba(245, 200, 66, 0.4);
     color: var(--gold);
 }
 .chip.paid.active {
-    background: rgba(46, 204, 113, 0.1);
+    background: rgba(46, 204, 113, 0.12);
     border-color: rgba(46, 204, 113, 0.4);
     color: var(--green);
 }
 .chip.unpaid.active {
-    background: rgba(232, 84, 122, 0.1);
+    background: rgba(232, 84, 122, 0.12);
     border-color: rgba(232, 84, 122, 0.4);
     color: var(--rose);
 }
@@ -409,9 +439,11 @@ nav {
     border: 1px solid var(--border);
     border-radius: 20px;
     overflow: hidden;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
     transition:
         border-color 0.2s,
-        transform 0.2s;
+        transform 0.2s,
+        box-shadow 0.2s;
     min-width: 0;
     width: 100%;
     animation: fadeUp 0.4s ease both;
@@ -419,6 +451,7 @@ nav {
 .tx-card:hover {
     border-color: rgba(108, 92, 231, 0.35);
     transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
 }
 
 .tx-card-inner {
@@ -449,10 +482,9 @@ nav {
     opacity: 0.3;
 }
 .tx-thumb-city {
-    font-family: "Playfair Display", serif;
+    font-family: var(--font), sans-serif;
     font-size: 11px;
-    font-weight: 900;
-    font-style: italic;
+    font-weight: 800;
     color: var(--gold);
     z-index: 1;
     text-align: center;
@@ -477,22 +509,24 @@ nav {
 }
 
 .tx-event-name {
-    font-family: "Playfair Display", serif;
-    font-size: 16px;
+    font-family: var(--font), sans-serif;
+    font-size: 16.5px;
     font-weight: 700;
+    color: var(--text);
+    letter-spacing: -0.2px;
     word-break: break-word;
 }
 
 .tx-status {
     display: inline-flex;
     align-items: center;
-    gap: 5px;
+    gap: 6px;
     border-radius: 50px;
     padding: 3px 12px;
-    font-family: "Space Mono", monospace;
-    font-size: 9px;
+    font-family: var(--font), sans-serif;
+    font-size: 11px;
     font-weight: 700;
-    letter-spacing: 1px;
+    letter-spacing: 0.3px;
     text-transform: uppercase;
     flex-shrink: 0;
 }
@@ -528,28 +562,31 @@ nav {
     gap: 2px;
 }
 .tx-meta-label {
-    font-family: "Space Mono", monospace;
-    font-size: 9px;
+    font-family: var(--font), sans-serif;
+    font-size: 11px;
+    font-weight: 600;
     color: var(--muted);
-    letter-spacing: 1px;
+    letter-spacing: 0.3px;
     text-transform: uppercase;
 }
 .tx-meta-value {
-    font-size: 13px;
+    font-family: var(--font), sans-serif;
+    font-size: 13.5px;
     font-weight: 500;
     color: var(--text);
     word-break: break-all;
 }
 .tx-meta-value.invoice {
-    font-family: "Space Mono", monospace;
-    font-size: 11px;
-    color: var(--teal);
+    font-family: var(--font), monospace;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--accent);
 }
 .tx-meta-value.total {
-    font-family: "Playfair Display", serif;
-    font-size: 18px;
-    font-weight: 700;
-    color: var(--gold);
+    font-family: var(--font), sans-serif;
+    font-size: 17px;
+    font-weight: 800;
+    color: var(--rose);
 }
 
 /* Right — actions */
@@ -562,58 +599,62 @@ nav {
 }
 
 .btn-detail {
-    background: linear-gradient(135deg, var(--indigo), #5a4ad1);
-    border: none;
-    color: #fff;
-    padding: 10px 22px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 9px 20px;
     border-radius: 12px;
-    font-family: "Space Mono", monospace;
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 1px;
-    text-transform: uppercase;
+    font-family: var(--font), sans-serif;
+    font-size: 12.5px;
+    font-weight: 600;
+    letter-spacing: 0.2px;
+    text-transform: none;
+    text-decoration: none;
     cursor: pointer;
     transition: all 0.2s;
     white-space: nowrap;
     text-align: center;
 }
 .btn-detail:hover {
-    opacity: 0.85;
+    border-color: var(--accent);
+    color: var(--accent);
     transform: translateY(-1px);
 }
 
 .btn-pay {
-    background: linear-gradient(135deg, var(--gold), #f09040);
+    background: linear-gradient(135deg, var(--rose) 0%, #ff6b8b 100%);
     border: none;
-    color: #0a0612;
-    padding: 10px 22px;
+    color: #ffffff;
+    padding: 9px 20px;
     border-radius: 12px;
-    font-family: "Space Mono", monospace;
-    font-size: 10px;
+    font-family: var(--font), sans-serif;
+    font-size: 12.5px;
     font-weight: 700;
-    letter-spacing: 1px;
-    text-transform: uppercase;
+    letter-spacing: 0.2px;
+    text-transform: none;
+    text-decoration: none;
     cursor: pointer;
     transition: all 0.2s;
     white-space: nowrap;
     text-align: center;
+    box-shadow: 0 4px 12px rgba(232, 84, 122, 0.35);
 }
 .btn-pay:hover {
     transform: translateY(-1px);
-    box-shadow: 0 6px 18px rgba(245, 200, 66, 0.35);
+    box-shadow: 0 6px 18px rgba(232, 84, 122, 0.5);
 }
 
 .btn-delete {
     background: none;
     border: 1px solid rgba(232, 84, 122, 0.3);
     color: var(--rose);
-    padding: 10px 22px;
+    padding: 9px 20px;
     border-radius: 12px;
-    font-family: "Space Mono", monospace;
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 1px;
-    text-transform: uppercase;
+    font-family: var(--font), sans-serif;
+    font-size: 12.5px;
+    font-weight: 600;
+    letter-spacing: 0.2px;
+    text-transform: none;
     cursor: pointer;
     transition: all 0.2s;
     white-space: nowrap;
@@ -638,10 +679,10 @@ nav {
     opacity: 0.4;
 }
 .empty-title {
-    font-family: "Playfair Display", serif;
-    font-size: 22px;
+    font-family: var(--font), sans-serif;
+    font-size: 20px;
     font-weight: 700;
-    color: var(--muted);
+    color: var(--text);
 }
 .empty-sub {
     font-size: 14px;
@@ -703,10 +744,11 @@ footer {
 }
 
 .footer-col-title {
-    font-family: "Space Mono", monospace;
-    font-size: 10px;
-    color: var(--gold);
-    letter-spacing: 2px;
+    font-family: var(--font), sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: 0.5px;
     text-transform: uppercase;
     margin-bottom: 16px;
 }
@@ -739,7 +781,7 @@ footer {
     gap: 10px;
     font-size: 12px;
     color: var(--muted);
-    font-family: "Space Mono", monospace;
+    font-family: var(--font), sans-serif;
 }
 
 /* ANIMATIONS */
