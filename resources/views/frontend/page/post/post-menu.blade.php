@@ -66,23 +66,30 @@
                             <div>
                                 <div class="price-from">Start From</div>
 
-                                @php $found = false; @endphp
+                                @if ($events->harga)
+                                    <div class="price-val">
+                                        Rp {{ number_format($events->harga->harga, 0, ',', '.') }}
+                                    </div>
+                                @elseif (isset($harga))
+                                    @php $found = false; @endphp
+                                    @foreach ($harga as $hargas)
+                                        @if ($hargas->uid === $events->uid)
+                                            <div class="price-val">
+                                                Rp {{ number_format($hargas->harga, 0, ',', '.') }}
+                                            </div>
+                                            @php $found = true; @endphp
+                                            @break
+                                        @endif
+                                    @endforeach
 
-                                @foreach ($harga as $hargas)
-                                    @if ($hargas->uid === $events->uid)
-                                        <div class="price-val">
-                                            Rp {{ number_format($hargas->harga, 0, ',', '.') }}
-                                        </div>
-                                        @php $found = true; @endphp
-                                        @break
+                                    @if (!$found)
+                                        <div class="price-na">Ticket Belum Tersedia</div>
                                     @endif
-                                @endforeach
-
-                                @if (!$found)
+                                @else
                                     <div class="price-na">Ticket Belum Tersedia</div>
                                 @endif
 
-                                <div class="card-by">By: {{ $events->name }}</div>
+                                <div class="card-by">By: {{ $events->user?->name ?? $events->name ?? 'Organizer' }}</div>
                             </div>
 
                             <span
@@ -97,8 +104,9 @@
             @endforeach
         </div>
     @else
-        <div style="text-align:center;">
-            <img src="{{ asset('/storage/setting/nodata.svg') }}" style="max-width:700px;">
+        <div style="text-align:center; padding: 60px 20px;">
+            <img src="{{ asset('/storage/setting/nodata.svg') }}" style="max-width:420px; width: 100%; opacity: 0.85;" alt="Tidak ada data">
+            <p style="margin-top: 24px; font-size: 15px; color: var(--muted); font-weight: 500;">Tidak ada event yang ditemukan</p>
         </div>
     @endif
 </section>

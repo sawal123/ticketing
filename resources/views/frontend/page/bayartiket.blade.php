@@ -126,7 +126,7 @@
                         <div style="display:grid;gap:16px;">
                             <div>
                                 <label for="ticketHolderName"
-                                    style="display:block;font-weight:700;font-size:13px;margin-bottom:8px;color:#fff;">
+                                    style="display:block;font-weight:700;font-size:13px;margin-bottom:8px;color:var(--text);">
                                     Nama Lengkap sesuai KTP *
                                 </label>
                                 <input type="text" id="ticketHolderName" name="ticket_holder_name"
@@ -138,14 +138,13 @@
                             </div>
 
                             <div>
-                                <div style="display:block;font-weight:700;font-size:13px;margin-bottom:10px;color:#fff;">
+                                <div style="display:block;font-weight:700;font-size:13px;margin-bottom:10px;color:var(--text);">
                                     Email Penerima Tiket
                                 </div>
 
-                                <div
-                                    style="display:grid;gap:4px;padding:12px 14px;border-radius:14px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.03);">
-                                    <span style="font-size:13px;color:#fff;">Gunakan email akun saat ini</span>
-                                    <span style="font-size:12px;color:var(--muted);">{{ Auth::user()->email }}</span>
+                                <div class="ticket-email-box">
+                                    <span class="email-box-label">Gunakan email akun saat ini</span>
+                                    <span class="email-box-email">{{ Auth::user()->email }}</span>
                                 </div>
                                 <div style="margin-top:8px;font-size:12px;color:var(--muted);line-height:1.6;">
                                     Tiket akan dikirim ke email akun yang digunakan saat mendaftar.
@@ -202,8 +201,8 @@
                                         <span class="value">{{ $registration?->team_name ?: '-' }}</span>
                                     </div>
                                     @foreach ($savedMembers as $member)
-                                        <div style="padding:12px;border:1px solid rgba(255,255,255,0.08);border-radius:12px;">
-                                            <strong style="font-size:13px;color:#fff;">Anggota {{ $member->sort_order }}{{ $member->is_captain ? ' (Kapten)' : '' }}</strong>
+                                        <div style="padding:12px;border:1px solid var(--border);border-radius:12px;">
+                                            <strong style="font-size:13px;color:var(--text);">Anggota {{ $member->sort_order }}{{ $member->is_captain ? ' (Kapten)' : '' }}</strong>
                                             @foreach ($memberFields as $field)
                                                 <div class="detail-row" style="margin-top:8px;">
                                                     <span class="label">{{ $field->label }}</span>
@@ -219,7 +218,7 @@
                             <div style="display:grid;gap:14px;">
                                 @foreach ($registrationFields as $field)
                                     <div>
-                                        <label style="display:block;font-weight:700;font-size:13px;margin-bottom:8px;color:#fff;">{{ $field->label }}{{ $field->is_required ? ' *' : '' }}</label>
+                                        <label style="display:block;font-weight:700;font-size:13px;margin-bottom:8px;color:var(--text);">{{ $field->label }}{{ $field->is_required ? ' *' : '' }}</label>
                                         @if ($field->type === 'textarea')
                                             <textarea name="registration_answers[{{ $field->id }}]" form="paynowForm" class="voucher-input" rows="3">{{ data_get($registrationAnswers, $field->id) }}</textarea>
                                         @elseif ($field->type === 'select')
@@ -237,7 +236,7 @@
 
                                 @if ($event->registration_mode === \App\Models\Event::REGISTRATION_MODE_TEAM)
                                     <div>
-                                        <label style="display:block;font-weight:700;font-size:13px;margin-bottom:8px;color:#fff;">Nama Tim *</label>
+                                        <label style="display:block;font-weight:700;font-size:13px;margin-bottom:8px;color:var(--text);">Nama Tim *</label>
                                         <input type="text" name="team_name" form="paynowForm" value="{{ old('team_name', $registration?->team_name) }}" class="voucher-input">
                                     </div>
                                     <div id="teamRosterMembers" data-min-members="{{ $teamMinMembers }}" data-max-members="{{ $teamMaxMembers }}">
@@ -252,15 +251,15 @@
                                                 ? !empty(data_get($oldMember, 'is_captain'))
                                                 : ($savedMember ? (bool) $savedMember->is_captain : $memberIndex === 0);
                                         @endphp
-                                        <div class="team-member-card" style="padding:12px;border:1px solid rgba(255,255,255,0.08);border-radius:12px;display:grid;gap:10px;margin-top:10px;">
+                                        <div class="team-member-card" style="padding:12px;border:1px solid var(--border);border-radius:12px;display:grid;gap:10px;margin-top:10px;">
                                             <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;">
-                                                <label class="team-member-title" style="font-weight:700;font-size:13px;color:#fff;">Anggota {{ $memberIndex + 1 }}</label>
+                                                <label class="team-member-title" style="font-weight:700;font-size:13px;color:var(--text);">Anggota {{ $memberIndex + 1 }}</label>
                                                 <button type="button" class="team-member-remove" style="border:0;border-radius:8px;padding:5px 8px;background:rgba(232,84,122,0.16);color:#f6a1b7;font-size:12px;">Hapus Anggota</button>
                                             </div>
                                             <label style="font-size:12px;color:var(--muted);"><input type="checkbox" class="team-member-captain" name="members[{{ $memberIndex }}][is_captain]" form="paynowForm" value="1" @checked($isCaptain)> Kapten tim</label>
                                             @foreach ($memberFields as $field)
                                                 <div>
-                                                    <label style="display:block;font-size:12px;margin-bottom:6px;color:#fff;">{{ $field->label }}{{ $field->is_required ? ' *' : '' }}</label>
+                                                    <label style="display:block;font-size:12px;margin-bottom:6px;color:var(--text);">{{ $field->label }}{{ $field->is_required ? ' *' : '' }}</label>
                                                     @if ($field->type === 'textarea')
                                                         <textarea name="members[{{ $memberIndex }}][answers][{{ $field->id }}]" form="paynowForm" class="voucher-input" rows="2">{{ data_get($memberAnswers, $field->id) }}</textarea>
                                                     @elseif ($field->type === 'select')
@@ -283,15 +282,15 @@
                                         <button type="button" id="teamMemberAdd" style="border:0;border-radius:8px;padding:7px 10px;background:rgba(61,217,196,0.16);color:#72eadb;font-size:12px;">Tambah Anggota</button>
                                     </div>
                                     <template id="teamMemberTemplate">
-                                        <div class="team-member-card" style="padding:12px;border:1px solid rgba(255,255,255,0.08);border-radius:12px;display:grid;gap:10px;margin-top:10px;">
+                                        <div class="team-member-card" style="padding:12px;border:1px solid var(--border);border-radius:12px;display:grid;gap:10px;margin-top:10px;">
                                             <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;">
-                                                <label class="team-member-title" style="font-weight:700;font-size:13px;color:#fff;">Anggota</label>
+                                                <label class="team-member-title" style="font-weight:700;font-size:13px;color:var(--text);">Anggota</label>
                                                 <button type="button" class="team-member-remove" style="border:0;border-radius:8px;padding:5px 8px;background:rgba(232,84,122,0.16);color:#f6a1b7;font-size:12px;">Hapus Anggota</button>
                                             </div>
                                             <label style="font-size:12px;color:var(--muted);"><input type="checkbox" class="team-member-captain" name="members[__INDEX__][is_captain]" form="paynowForm" value="1"> Kapten tim</label>
                                             @foreach ($memberFields as $field)
                                                 <div>
-                                                    <label style="display:block;font-size:12px;margin-bottom:6px;color:#fff;">{{ $field->label }}{{ $field->is_required ? ' *' : '' }}</label>
+                                                    <label style="display:block;font-size:12px;margin-bottom:6px;color:var(--text);">{{ $field->label }}{{ $field->is_required ? ' *' : '' }}</label>
                                                     @if ($field->type === 'textarea')
                                                         <textarea name="members[__INDEX__][answers][{{ $field->id }}]" form="paynowForm" class="voucher-input" rows="2"></textarea>
                                                     @elseif ($field->type === 'select')

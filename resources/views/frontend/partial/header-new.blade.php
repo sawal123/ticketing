@@ -7,21 +7,31 @@
     @if ($user)
    
 
-        <div class="nav-search-wrap">
+        <button type="button" class="nav-search-trigger" onclick="openSearchModal()" aria-label="Buka pencarian (Ctrl + K)" title="Buka pencarian (Ctrl + K)">
             <span class="nav-search-icon">⌕</span>
-
-            <form action="{{ url('/cari') }}" method="GET" style="display:flex; align-items:center; flex:1; ">
-                <input type="text" placeholder="Cari event, konser, festival…" name="cari"
-                    value="{{ old('cari') }}">
-
-                <button type="submit" class="btn-search">Search</button>
-            </form>
-
-
-        </div>
+            <span class="nav-search-placeholder">Cari event, konser, festival…</span>
+            <kbd class="nav-search-kbd">
+                <span class="kbd-label">Ctrl K</span>
+            </kbd>
+        </button>
 
         <div class="nav-right">
-            {{-- <a href="{{ url('/transaksi') }}" class="nav-transaksi-pill">🛒 Transaksi</a> --}}
+            <button type="button" class="theme-toggle-btn" onclick="toggleGotikTheme()" aria-label="Ganti Tema" title="Ganti Tema">
+                <svg class="theme-icon-dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                </svg>
+                <svg class="theme-icon-light" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="5"></circle>
+                    <line x1="12" y1="1" x2="12" y2="3"></line>
+                    <line x1="12" y1="21" x2="12" y2="23"></line>
+                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                    <line x1="1" y1="12" x2="3" y2="12"></line>
+                    <line x1="21" y1="12" x2="23" y2="12"></line>
+                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                </svg>
+            </button>
             <div class="nav-avatar-wrap">
                 <div class="nav-avatar-btn" id="avatarBtn" onclick="toggleDropdown()">
                     <div class="nav-avatar"> {{ strtoupper(substr($user->name, 0, 1)) }}</div>
@@ -29,26 +39,26 @@
                     <span class="nav-chevron">▾</span>
                 </div>
 
-                <div class="user-dropdown " id="userDropdown">
+                <div class="user-dropdown" id="userDropdown">
                     <div class="dropdown-user-info">
                         <div class="dropdown-name">{{ $user->name }}</div>
                         <div class="dropdown-email">{{ $user->email }}</div>
                     </div>
                     @if (Auth::user()->role === 'penyewa')
-                        <a class="dropdown-item  text-white" href="{{ url('/dashboard') }}">
-                            <div class="di-icon " style="background:rgba(108,92,231,0.12);">👤</div>Dashboard
+                        <a class="dropdown-item" href="{{ url('/dashboard') }}">
+                            <div class="di-icon" style="background:rgba(108,92,231,0.12);">👤</div>Dashboard
                         </a>
                     @endif
                     @if (Auth::user()->role === 'admin')
-                        <a class="dropdown-item text-white" href="{{ url('/admin') }}">
-                            <div class="di-icon " style="background:rgba(108,92,231,0.12);">👤</div>Dashboard
+                        <a class="dropdown-item" href="{{ url('/admin') }}">
+                            <div class="di-icon" style="background:rgba(108,92,231,0.12);">👤</div>Dashboard
                         </a>
                     @endif
-                    <a href="{{ url('/profile') }}" class="dropdown-item text-white ">
-                        <div class="di-icon " style="background:rgba(108,92,231,0.12);">👤</div>Profil Saya
+                    <a href="{{ url('/profile') }}" class="dropdown-item">
+                        <div class="di-icon" style="background:rgba(108,92,231,0.12);">👤</div>Profil Saya
                     </a>
-                    <a href="{{ url('/transaksi') }}" class="dropdown-item text-white ">
-                        <div class="di-icon " style="background:rgba(61,217,196,0.12);">🛒</div>Transaksi
+                    <a href="{{ url('/transaksi') }}" class="dropdown-item">
+                        <div class="di-icon" style="background:rgba(61,217,196,0.12);">🛒</div>Transaksi
                     </a>
                     {{-- <a href="#"  class="dropdown-item text-white ">
                         <div class="di-icon " style="background:rgba(245,200,66,0.12);">🎫</div>Tiket Saya
@@ -69,28 +79,142 @@
             </div>
         </div>
     @else
-        <div class="nav-search-wrap">
+        <button type="button" class="nav-search-trigger" onclick="openSearchModal()" aria-label="Buka pencarian (Ctrl + K)" title="Buka pencarian (Ctrl + K)">
             <span class="nav-search-icon">⌕</span>
-            <form action="{{ url('/cari') }}" method="GET" style="display:flex; align-items:center; flex:1;">
-                <input type="text" placeholder="Cari event, konser, festival…" name="cari"
-                    value="{{ old('cari') }}">
-
-                <button type="submit" class="btn-search">Search</button>
-            </form>
-        </div>
-        <div class="gap-2">
-            <a href="{{ url('/login') }}" class="btn-masuk ">
+            <span class="nav-search-placeholder">Cari event, konser, festival…</span>
+            <kbd class="nav-search-kbd">
+                <span class="kbd-label">Ctrl K</span>
+            </kbd>
+        </button>
+        <div class="nav-right" style="display:flex; align-items:center; gap:10px;">
+            <button type="button" class="theme-toggle-btn" onclick="toggleGotikTheme()" aria-label="Ganti Tema" title="Ganti Tema">
+                <svg class="theme-icon-dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                </svg>
+                <svg class="theme-icon-light" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="5"></circle>
+                    <line x1="12" y1="1" x2="12" y2="3"></line>
+                    <line x1="12" y1="21" x2="12" y2="23"></line>
+                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                    <line x1="1" y1="12" x2="3" y2="12"></line>
+                    <line x1="21" y1="12" x2="23" y2="12"></line>
+                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                </svg>
+            </button>
+            <a href="{{ url('/login') }}" class="btn-masuk">
                 <svg viewBox="0 0 24 24" fill="none">
                     <circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="1.7" />
                     <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke="currentColor" stroke-width="1.7"
                         stroke-linecap="round" />
                 </svg>
-               <span class="btn-text">Sign In</span> 
+                <span class="btn-text">Sign In</span>
             </a>
-
         </div>
     @endif
 
-
-
 </header>
+
+<!-- SEARCH MODAL -->
+<div id="searchModal" class="search-modal" aria-hidden="true">
+    <div class="search-modal-backdrop" onclick="closeSearchModal()"></div>
+    <div class="search-modal-container" role="dialog" aria-modal="true" aria-labelledby="searchModalTitle">
+        <div class="search-modal-header">
+            <span class="search-modal-icon">⌕</span>
+            <form action="{{ url('/cari') }}" method="GET" class="search-modal-form" id="searchModalForm">
+                <input type="text" name="cari" id="searchModalInput" class="search-modal-input"
+                    placeholder="Cari event, konser, festival, atau kota…" autocomplete="off">
+            </form>
+            <button type="button" class="search-modal-close" onclick="closeSearchModal()" aria-label="Tutup pencarian">
+                <span class="search-modal-close-icon">✕</span>
+                <kbd class="search-modal-close-kbd">ESC</kbd>
+            </button>
+        </div>
+
+        <div class="search-modal-body">
+            <div class="search-modal-label">Pencarian Populer</div>
+            <div class="search-modal-tags">
+                <a href="{{ url('/cari?cari=konser') }}" class="search-tag">
+                    <span class="tag-icon">🎵</span> Konser Musik
+                </a>
+                <a href="{{ url('/cari?cari=festival') }}" class="search-tag">
+                    <span class="tag-icon">🎪</span> Festival
+                </a>
+                <a href="{{ url('/cari?cari=wisata') }}" class="search-tag">
+                    <span class="tag-icon">🏖️</span> Wisata
+                </a>
+                <a href="{{ url('/cari?cari=medan') }}" class="search-tag">
+                    <span class="tag-icon">📍</span> Medan
+                </a>
+                <a href="{{ url('/search') }}" class="search-tag featured">
+                    <span class="tag-icon">✨</span> Semua Event
+                </a>
+            </div>
+        </div>
+
+        <div class="search-modal-footer">
+            <div class="search-modal-hint">
+                <kbd>↵ Enter</kbd> untuk mencari
+            </div>
+            <div class="search-modal-hint">
+                <kbd>Esc</kbd> untuk keluar
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function openSearchModal(e) {
+        if (e && typeof e.stopPropagation === 'function') {
+            e.stopPropagation();
+        }
+        const modal = document.getElementById('searchModal');
+        if (!modal) return;
+        modal.classList.add('is-open');
+        modal.setAttribute('aria-hidden', 'false');
+        document.body.style.overflow = 'hidden';
+
+        const input = document.getElementById('searchModalInput');
+        if (input) {
+            setTimeout(function() {
+                input.focus();
+                input.select();
+            }, 60);
+        }
+    }
+
+    function closeSearchModal() {
+        const modal = document.getElementById('searchModal');
+        if (!modal) return;
+        modal.classList.remove('is-open');
+        modal.setAttribute('aria-hidden', 'true');
+        document.body.style.overflow = '';
+    }
+
+    function handleNavSearchClick(e) {
+        if (window.innerWidth <= 768) {
+            if (e && typeof e.preventDefault === 'function') {
+                e.preventDefault();
+            }
+            openSearchModal(e);
+        }
+    }
+
+    document.addEventListener('keydown', function(e) {
+        if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
+            e.preventDefault();
+            const modal = document.getElementById('searchModal');
+            if (modal && modal.classList.contains('is-open')) {
+                closeSearchModal();
+            } else {
+                openSearchModal(e);
+            }
+        } else if (e.key === 'Escape') {
+            const modal = document.getElementById('searchModal');
+            if (modal && modal.classList.contains('is-open')) {
+                closeSearchModal();
+            }
+        }
+    });
+</script>
