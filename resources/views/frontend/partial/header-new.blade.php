@@ -7,24 +7,13 @@
     @if ($user)
    
 
-        <div class="nav-search-wrap" onclick="handleNavSearchClick(event)">
+        <button type="button" class="nav-search-trigger" onclick="openSearchModal()" aria-label="Buka pencarian (Ctrl + K)" title="Buka pencarian (Ctrl + K)">
             <span class="nav-search-icon">⌕</span>
-
-            <form action="{{ url('/cari') }}" method="GET" style="display:flex; align-items:center; flex:1;">
-                <input type="text" placeholder="Cari event, konser, festival…" name="cari"
-                    class="nav-search-input"
-                    value="{{ old('cari') }}"
-                    onclick="handleNavSearchClick(event)">
-
-                <button type="button" class="nav-search-kbd" onclick="openSearchModal(event)" title="Buka pencarian (Ctrl + K)">
-                    <span class="kbd-label">Ctrl K</span>
-                </button>
-
-                <button type="submit" class="btn-search">Search</button>
-            </form>
-
-
-        </div>
+            <span class="nav-search-placeholder">Cari event, konser, festival…</span>
+            <kbd class="nav-search-kbd">
+                <span class="kbd-label">Ctrl K</span>
+            </kbd>
+        </button>
 
         <div class="nav-right">
             <button type="button" class="theme-toggle-btn" onclick="toggleGotikTheme()" aria-label="Ganti Tema" title="Ganti Tema">
@@ -90,21 +79,13 @@
             </div>
         </div>
     @else
-        <div class="nav-search-wrap" onclick="handleNavSearchClick(event)">
+        <button type="button" class="nav-search-trigger" onclick="openSearchModal()" aria-label="Buka pencarian (Ctrl + K)" title="Buka pencarian (Ctrl + K)">
             <span class="nav-search-icon">⌕</span>
-            <form action="{{ url('/cari') }}" method="GET" style="display:flex; align-items:center; flex:1;">
-                <input type="text" placeholder="Cari event, konser, festival…" name="cari"
-                    class="nav-search-input"
-                    value="{{ old('cari') }}"
-                    onclick="handleNavSearchClick(event)">
-
-                <button type="button" class="nav-search-kbd" onclick="openSearchModal(event)" title="Buka pencarian (Ctrl + K)">
-                    <span class="kbd-label">Ctrl K</span>
-                </button>
-
-                <button type="submit" class="btn-search">Search</button>
-            </form>
-        </div>
+            <span class="nav-search-placeholder">Cari event, konser, festival…</span>
+            <kbd class="nav-search-kbd">
+                <span class="kbd-label">Ctrl K</span>
+            </kbd>
+        </button>
         <div class="nav-right" style="display:flex; align-items:center; gap:10px;">
             <button type="button" class="theme-toggle-btn" onclick="toggleGotikTheme()" aria-label="Ganti Tema" title="Ganti Tema">
                 <svg class="theme-icon-dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

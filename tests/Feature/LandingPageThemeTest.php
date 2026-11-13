@@ -316,6 +316,19 @@ class LandingPageThemeTest extends TestCase
         // Form labels do not have hardcoded white text overriding theme
         $this->assertStringNotContainsString('Nama Lengkap sesuai KTP</label>', $bayarBlade);
         $this->assertStringContainsString('color:var(--text);', $bayarBlade);
+        $this->assertStringContainsString('ticket-email-box', $bayarBlade);
+        $this->assertStringContainsString('.ticket-email-box', $bayarCss);
+        $this->assertStringContainsString('[data-theme="light"] .email-alert-inner', $bayarCss);
+        $this->assertStringNotContainsString('font-family: "DM Sans"', $bayarCss);
+    }
+
+    public function test_typography_stack_uses_plus_jakarta_sans(): void
+    {
+        $indexBlade = file_get_contents(resource_path('views/frontend/index.blade.php'));
+        $mainCss = file_get_contents(public_path('landing/css/main-new.css'));
+
+        $this->assertStringContainsString('family=Plus+Jakarta+Sans', $indexBlade);
+        $this->assertStringContainsString('--font: \'Plus Jakarta Sans\'', $mainCss);
     }
 
     public function test_transaksi_page_renders_with_theme_and_refined_fonts(): void
@@ -440,18 +453,23 @@ class LandingPageThemeTest extends TestCase
         $response = $this->get('/');
 
         $response->assertStatus(200);
+        $response->assertSee('nav-search-trigger');
+        $response->assertSee('nav-search-placeholder');
         $response->assertSee('id="searchModal"', false);
         $response->assertSee('id="searchModalInput"', false);
         $response->assertSee('openSearchModal');
         $response->assertSee('closeSearchModal');
-        $response->assertSee('handleNavSearchClick');
         $response->assertSee('Ctrl K');
+
+        // Navbar has no search input anymore; typing input is inside the search modal only
+        $response->assertDontSee('<input type="text" placeholder="Cari event', false);
     }
 
     public function test_main_css_contains_search_modal_and_mobile_responsive_rules(): void
     {
         $mainCss = file_get_contents(public_path('landing/css/main-new.css'));
 
+        $this->assertStringContainsString('.nav-search-trigger', $mainCss);
         $this->assertStringContainsString('.search-modal', $mainCss);
         $this->assertStringContainsString('.search-modal.is-open', $mainCss);
         $this->assertStringContainsString('.search-modal-backdrop', $mainCss);

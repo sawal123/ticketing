@@ -142,10 +142,9 @@
                                     Email Penerima Tiket
                                 </div>
 
-                                <div
-                                    style="display:grid;gap:4px;padding:12px 14px;border-radius:14px;border:1px solid var(--border);background:var(--surface2);">
-                                    <span style="font-size:13px;color:var(--text);">Gunakan email akun saat ini</span>
-                                    <span style="font-size:12px;color:var(--muted);">{{ Auth::user()->email }}</span>
+                                <div class="ticket-email-box">
+                                    <span class="email-box-label">Gunakan email akun saat ini</span>
+                                    <span class="email-box-email">{{ Auth::user()->email }}</span>
                                 </div>
                                 <div style="margin-top:8px;font-size:12px;color:var(--muted);line-height:1.6;">
                                     Tiket akan dikirim ke email akun yang digunakan saat mendaftar.
