@@ -71,9 +71,27 @@ class LandingPageThemeTest extends TestCase
             $table->id();
             $table->string('uid')->nullable();
             $table->string('event_uid')->nullable();
+            $table->string('kategori')->nullable();
             $table->string('name')->nullable();
             $table->string('harga')->nullable();
+            $table->integer('qty')->default(100);
+            $table->integer('sold_qty')->default(0);
+            $table->integer('reserved_qty')->default(0);
             $table->string('status')->default('active');
+            $table->timestamps();
+        });
+
+        Schema::create('fasilitas', function ($table) {
+            $table->id();
+            $table->string('name');
+            $table->string('icon')->nullable();
+            $table->timestamps();
+        });
+
+        Schema::create('event_fasilitas', function ($table) {
+            $table->id();
+            $table->string('event_uid');
+            $table->unsignedBigInteger('fasilitas_id');
             $table->timestamps();
         });
 
@@ -180,5 +198,75 @@ class LandingPageThemeTest extends TestCase
         $response->assertSee('Rp 150.000');
         $response->assertSee('event-card');
         $response->assertSee('theme-toggle-btn');
+    }
+
+    public function test_login_page_renders_password_eye_toggle(): void
+    {
+        DB::table('landings')->insert([
+            'description' => 'Gotik description',
+            'keyword' => 'ticket',
+            'logo' => 'logo.png',
+            'icon' => 'icon.png',
+        ]);
+
+        $response = $this->get('/login');
+
+        $response->assertStatus(200);
+        $response->assertSee('showPassword');
+        $response->assertSee('id="password"', false);
+        $response->assertSee(':type="showPassword ? \'text\' : \'password\'"', false);
+    }
+
+    public function test_ticket_detail_page_renders_with_refined_typography(): void
+    {
+        DB::table('landings')->insert([
+            'description' => 'Gotik description',
+            'keyword' => 'ticket',
+            'logo' => 'logo.png',
+            'icon' => 'icon.png',
+        ]);
+
+        DB::table('users')->insert([
+            'uid' => 'org-2',
+            'name' => 'Krakatau Park Organizer',
+            'email' => 'krakatau@example.com',
+            'role' => 'penyewa',
+        ]);
+
+        DB::table('events')->insert([
+            'uid' => 'event-krakatau-1',
+            'user_uid' => 'org-2',
+            'event' => 'Krakatau Park',
+            'alamat' => 'Krakatau Park, Indonesia',
+            'tanggal' => '2026-12-01 10:00:00',
+            'status' => 'active',
+            'deskripsi' => 'Berlibur ke Lampung rasanya belum lengkap jika belum mengunjungi Krakatau Park Lampung.',
+            'slug' => 'krakatau-park',
+            'konfirmasi' => '1',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        DB::table('hargas')->insert([
+            'uid' => 'event-krakatau-1',
+            'event_uid' => 'event-krakatau-1',
+            'kategori' => 'Tiket Masuk',
+            'name' => 'Tiket Masuk',
+            'harga' => '60000',
+            'qty' => 100,
+            'sold_qty' => 0,
+            'reserved_qty' => 0,
+            'status' => 'active',
+        ]);
+
+        $response = $this->get('/ticket/krakatau-park');
+
+        $response->assertStatus(200);
+        $response->assertSee('Krakatau Park');
+        $response->assertSee('Berlibur ke Lampung');
+        $response->assertSee('event-title');
+        $response->assertSee('ticket-panel');
+        $response->assertSee('tier-name');
+        $response->assertSee('description-text');
     }
 }

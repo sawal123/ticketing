@@ -77,13 +77,13 @@
 }
 
 .panel-header {
-    font-family: "Space Mono", monospace;
-    font-size: 12px;
+    font-family: var(--font), sans-serif;
+    font-size: 13px;
     font-weight: 700;
-    color: var(--teal);
-    letter-spacing: 1.5px;
+    color: var(--accent);
+    letter-spacing: 0.8px;
     text-transform: uppercase;
-    margin-bottom: 20px;
+    margin-bottom: 16px;
 }
 
 .ticket-tier {
@@ -91,7 +91,7 @@
     margin-bottom: 10px;
     border: 1px solid var(--border);
     border-radius: 16px;
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.035) 0%, rgba(255, 255, 255, 0.015) 100%);
+    background: var(--surface2);
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
@@ -100,8 +100,7 @@
 }
 
 .ticket-tier:hover {
-    border-color: rgba(108, 92, 231, 0.45);
-    background: rgba(108, 92, 231, 0.08);
+    border-color: var(--accent);
 }
 
 .ticket-tier:last-of-type {
@@ -114,14 +113,14 @@
 }
 
 .tier-name {
-    font-family: "DM Sans", sans-serif;
-    font-size: 14px;
-    font-weight: 800;
-    color: #ffffff;
-    letter-spacing: 0.2px;
+    font-family: var(--font), sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: -0.2px;
     line-height: 1.4;
     text-transform: none;
-    margin-bottom: 6px;
+    margin-bottom: 4px;
     overflow-wrap: anywhere;
 }
 
@@ -137,28 +136,28 @@
 }
 
 .tier-description {
-    font-size: 12.5px;
-    color: #b9b3cc;
+    font-size: 13px;
+    color: var(--muted);
     line-height: 1.6;
-    margin-bottom: 10px;
+    margin-bottom: 8px;
     padding-left: 10px;
-    border-left: 2px solid rgba(61, 217, 196, 0.45);
+    border-left: 2px solid var(--accent);
 }
 
 .tier-price {
-    font-family: "Playfair Display", serif;
-    font-size: 24px;
-    font-weight: 700;
+    font-family: var(--font), sans-serif;
+    font-size: 20px;
+    font-weight: 800;
     color: var(--text);
     line-height: 1.1;
-    margin-top: 0;
+    margin-top: 2px;
 }
 
 .tier-price .currency {
-    font-size: 13px;
+    font-size: 12px;
     color: var(--muted);
-    font-family: "DM Sans", sans-serif;
-    font-weight: 400;
+    font-family: var(--font), sans-serif;
+    font-weight: 500;
     margin-right: 2px;
 }
 
@@ -239,30 +238,31 @@
 }
 
 .total-amount {
-    font-family: "Playfair Display", serif;
-    font-size: 28px;
-    font-weight: 700;
-    color: var(--gold);
+    font-family: var(--font), sans-serif;
+    font-size: 24px;
+    font-weight: 800;
+    color: var(--text);
 }
 
 .btn-checkout {
-    background: linear-gradient(135deg, var(--gold) 0%, #f09040 100%);
-    color: #0a0612;
+    background: linear-gradient(135deg, var(--rose) 0%, #ff6b8b 100%);
+    color: #ffffff;
     border: none;
     border-radius: 50px;
     padding: 14px 28px;
-    font-family: "Space Mono", monospace;
-    font-size: 12px;
+    font-family: var(--font), sans-serif;
+    font-size: 14px;
     font-weight: 700;
-    letter-spacing: 1px;
-    text-transform: uppercase;
+    letter-spacing: 0.2px;
+    text-transform: none;
     cursor: pointer;
+    box-shadow: 0 4px 16px rgba(232, 84, 122, 0.35);
     transition: all 0.2s;
 }
 
 .btn-checkout:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(245, 200, 66, 0.4);
+    box-shadow: 0 8px 24px rgba(232, 84, 122, 0.5);
 }
 
 .btn-checkout:disabled {
@@ -293,15 +293,13 @@
 }
 
 .event-title {
-    font-family: "Playfair Display", serif;
-    font-size: 52px;
-    font-weight: 900;
-    line-height: 1.05;
-    margin-bottom: 16px;
-    background: linear-gradient(135deg, var(--text) 0%, var(--gold) 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    font-family: var(--font), sans-serif;
+    font-size: 28px;
+    font-weight: 800;
+    line-height: 1.25;
+    margin-bottom: 12px;
+    color: var(--text);
+    letter-spacing: -0.5px;
 }
 
 .event-meta {
@@ -349,13 +347,13 @@
 .btn-location {
     background: var(--surface2);
     border: 1px solid var(--border);
-    color: var(--teal);
-    padding: 10px 20px;
+    color: var(--accent);
+    padding: 8px 18px;
     border-radius: 50px;
     cursor: pointer;
-    font-family: "DM Sans", sans-serif;
+    font-family: var(--font), sans-serif;
     font-size: 13px;
-    font-weight: 500;
+    font-weight: 600;
     display: inline-flex;
     align-items: center;
     gap: 6px;
@@ -364,54 +362,45 @@
 
 .btn-location:hover {
     background: var(--surface);
-    border-color: var(--teal);
+    border-color: var(--accent);
+    color: var(--text);
 }
 
 /* DESCRIPTION */
 .section-label {
-    font-family: "Space Mono", monospace;
-    font-size: 10px;
-    color: var(--indigo);
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    margin-bottom: 14px;
+    font-family: var(--font), sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: -0.3px;
+    text-transform: none;
+    margin-bottom: 12px;
 }
 
-/* .description-text {
-            font-size: 15px;
-            line-height: 1.75;
-            color: rgba(240, 236, 255, 0.75);
-            margin-bottom: 16px;
+.description-text {
+    font-size: 14.5px;
+    line-height: 1.7;
+    color: var(--event-card-secondary);
+    margin-bottom: 14px;
 
-        } */
+    /* Membatasi teks menjadi 3 baris */
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: all 0.3s ease;
+}
 
-        
-                .description-text {
-                      font-size: 15px;
-            line-height: 1.75;
-            color: rgba(240, 236, 255, 0.75);
-            margin-bottom: 16px;
-
-                    /* Membatasi teks menjadi 3 baris */
-                    display: -webkit-box;
-                    -webkit-line-clamp: 3;
-                    -webkit-box-orient: vertical;
-                    overflow: hidden;
-                    text-overflow: ellipsis;
-                    transition: all 0.3s ease;
-                    /* Memberikan efek halus (opsional) */
-                }
-
-                /* Class tambahan yang akan diaktifkan oleh JavaScript */
-                .description-text.expanded {
-                    -webkit-line-clamp: unset;
-                }
-
+/* Class tambahan yang akan diaktifkan oleh JavaScript */
+.description-text.expanded {
+    -webkit-line-clamp: unset;
+}
 
 .description-highlight {
     font-weight: 600;
     color: var(--text);
-    font-size: 16px;
+    font-size: 15px;
     line-height: 1.6;
     margin-bottom: 12px;
 }
@@ -419,14 +408,20 @@
 .read-more {
     background: none;
     border: none;
-    color: var(--teal);
-    font-family: "DM Sans", sans-serif;
-    font-size: 13px;
+    color: var(--rose);
+    font-family: var(--font), sans-serif;
+    font-size: 13.5px;
     cursor: pointer;
-    font-weight: 500;
-    text-decoration: underline;
-    text-underline-offset: 3px;
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
     padding: 0;
+}
+
+.read-more:hover {
+    text-decoration: underline;
 }
 
 /* TALENT */
@@ -618,7 +613,7 @@
     left: 0;
     right: 0;
     z-index: 200;
-    background: rgba(10, 6, 18, 0.92);
+    background: var(--header-bg);
     backdrop-filter: blur(20px);
     border-top: 1px solid var(--border);
     padding: 14px 20px;
@@ -632,39 +627,39 @@
 }
 
 .mobile-buy-bar .price-from {
-    font-family: "Space Mono", monospace;
-    font-size: 9px;
+    font-family: var(--font), sans-serif;
+    font-size: 11px;
     color: var(--muted);
-    letter-spacing: 1px;
-    text-transform: uppercase;
+    font-weight: 500;
+    margin-bottom: 2px;
 }
 
 .mobile-buy-bar .price-value {
-    font-family: "Playfair Display", serif;
-    font-size: 20px;
-    font-weight: 700;
-    color: var(--gold);
+    font-family: var(--font), sans-serif;
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--text);
 }
 
 .btn-beli {
-    background: linear-gradient(135deg, var(--gold), #f09040);
-    color: #0a0612;
+    background: linear-gradient(135deg, var(--rose) 0%, #ff6b8b 100%);
+    color: #ffffff;
     border: none;
     border-radius: 50px;
-    padding: 14px 32px;
-    font-family: "Space Mono", monospace;
-    font-size: 12px;
+    padding: 12px 28px;
+    font-family: var(--font), sans-serif;
+    font-size: 14px;
     font-weight: 700;
-    letter-spacing: 1px;
-    text-transform: uppercase;
+    letter-spacing: 0.2px;
     cursor: pointer;
+    box-shadow: 0 4px 16px rgba(232, 84, 122, 0.35);
     transition: all 0.2s;
     white-space: nowrap;
 }
 
 .btn-beli:hover {
     transform: translateY(-1px);
-    box-shadow: 0 6px 20px rgba(245, 200, 66, 0.4);
+    box-shadow: 0 6px 20px rgba(232, 84, 122, 0.45);
 }
 
 /* ========= BOTTOM SHEET MODAL ========= */
@@ -719,9 +714,10 @@
 }
 
 .sheet-title {
-    font-family: "Playfair Display", serif;
-    font-size: 22px;
+    font-family: var(--font), sans-serif;
+    font-size: 20px;
     font-weight: 700;
+    color: var(--text);
 }
 
 .sheet-close {
@@ -749,7 +745,7 @@
     margin-bottom: 10px;
     border: 1px solid var(--border);
     border-radius: 14px;
-    background: rgba(255, 255, 255, 0.025);
+    background: var(--surface2);
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
@@ -770,19 +766,19 @@
 }
 
 .sheet-total-label {
-    font-family: "Space Mono", monospace;
-    font-size: 9px;
+    font-family: var(--font), sans-serif;
+    font-size: 12px;
     color: var(--muted);
-    letter-spacing: 2px;
+    font-weight: 600;
     text-transform: uppercase;
     margin-bottom: 4px;
 }
 
 .sheet-total-amount {
-    font-family: "Playfair Display", serif;
-    font-size: 26px;
-    font-weight: 700;
-    color: var(--gold);
+    font-family: var(--font), sans-serif;
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--text);
 }
 
 /* ========= HAMBURGER MENU ========= */
