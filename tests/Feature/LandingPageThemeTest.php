@@ -6,6 +6,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
@@ -110,6 +111,10 @@ class LandingPageThemeTest extends TestCase
             $table->string('email')->unique();
             $table->string('password')->nullable();
             $table->string('role')->default('user');
+            $table->string('nomor')->nullable();
+            $table->string('gambar')->default('');
+            $table->string('gender')->nullable();
+            $table->string('birthday')->nullable();
             $table->timestamps();
             $table->softDeletes();
         });
@@ -373,5 +378,53 @@ class LandingPageThemeTest extends TestCase
         $this->assertStringContainsString('[data-theme="dark"]', $txCss);
         $this->assertStringNotContainsString('Playfair Display', $txCss);
         $this->assertStringNotContainsString('Space Mono', $txCss);
+    }
+
+    public function test_profile_page_renders_with_refined_fonts_and_theme_support(): void
+    {
+        Http::fake([
+            'https://www.emsifa.com/*' => Http::response([], 200),
+        ]);
+
+        DB::table('landings')->insert([
+            'description' => 'Gotik description',
+            'keyword' => 'ticket',
+            'logo' => 'logo.png',
+            'icon' => 'icon.png',
+        ]);
+
+        $userId = DB::table('users')->insertGetId([
+            'uid' => 'user-prof-1',
+            'name' => 'Sawalinto Gotik',
+            'email' => 'sawalinto.profile@example.com',
+            'nomor' => '08123456789',
+            'gender' => 'pria',
+            'birthday' => '1995-05-20',
+            'role' => 'user',
+        ]);
+        $user = User::find($userId);
+
+        $response = $this->actingAs($user)->get('/profile');
+
+        $response->assertStatus(200);
+        $response->assertSee('Data Profile');
+        $response->assertSee('Akun & Keamanan', false);
+        $response->assertSee('profile-name');
+        $response->assertSee('profile-handle');
+        $response->assertSee('Sawalinto Gotik');
+        $response->assertSee('sawalinto.profile@example.com');
+    }
+
+    public function test_main_css_and_profile_view_use_refined_fonts_without_legacy_serif(): void
+    {
+        $mainCss = file_get_contents(public_path('landing/css/main-new.css'));
+        $profileBlade = file_get_contents(resource_path('views/frontend/page/editProfile.blade.php'));
+
+        $this->assertStringNotContainsString('Playfair Display', $mainCss);
+        $this->assertStringNotContainsString('Space Mono', $mainCss);
+        $this->assertStringNotContainsString('Playfair Display', $profileBlade);
+        $this->assertStringNotContainsString('Space Mono', $profileBlade);
+        $this->assertStringNotContainsString('.security-email {
+            color: #ffffff;', $profileBlade);
     }
 }

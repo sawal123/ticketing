@@ -256,7 +256,8 @@
         }
 
         .security-email {
-            color: #ffffff;
+            color: var(--text);
+            font-family: var(--font), sans-serif;
             font-size: 15px;
             font-weight: 700;
             margin-top: 8px;
@@ -290,8 +291,8 @@
         }
 
         .profile-modal__dialog {
-            background: #16152a;
-            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: var(--surface);
+            border: 1px solid var(--border);
             border-radius: 22px;
             box-shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
             max-height: calc(100vh - 40px);
@@ -299,6 +300,7 @@
             overflow-y: auto;
             position: relative;
             width: 100%;
+            font-family: var(--font), sans-serif;
         }
 
         .profile-modal__head {
@@ -310,24 +312,26 @@
         }
 
         .profile-modal__head h3 {
-            color: #ffffff;
-            font-size: 22px;
+            color: var(--text);
+            font-family: var(--font), sans-serif;
+            font-size: 20px;
             font-weight: 800;
             margin: 0 0 8px;
         }
 
         .profile-modal__head p {
-            color: #b7b5ca;
+            color: var(--muted);
+            font-family: var(--font), sans-serif;
             font-size: 13px;
             line-height: 1.5;
             margin: 0;
         }
 
         .profile-modal__close {
-            background: rgba(255, 255, 255, 0.08);
-            border: 0;
+            background: var(--surface2);
+            border: 1px solid var(--border);
             border-radius: 999px;
-            color: #ffffff;
+            color: var(--text);
             cursor: pointer;
             flex: 0 0 auto;
             height: 34px;
@@ -341,7 +345,7 @@
         }
 
         .modal-step {
-            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            border-top: 1px solid var(--border);
             display: grid;
             gap: 14px;
             padding-top: 18px;
@@ -353,7 +357,8 @@
         }
 
         .modal-step__label {
-            color: #f5a524;
+            color: var(--accent);
+            font-family: var(--font), sans-serif;
             font-size: 12px;
             font-weight: 800;
             text-transform: uppercase;

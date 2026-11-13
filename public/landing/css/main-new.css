@@ -1007,11 +1007,11 @@ nav {
 }
 
 .logo {
-    font-family: "Space Mono", monospace;
-    font-weight: 700;
+    font-family: var(--font), sans-serif;
+    font-weight: 800;
     font-size: 22px;
     color: var(--gold);
-    letter-spacing: -1px;
+    letter-spacing: -0.5px;
     flex-shrink: 0;
 }
 
@@ -1339,9 +1339,9 @@ nav {
     border: none;
     cursor: pointer;
     color: var(--teal);
-    font-size: 12px;
+    font-size: 12.5px;
     font-weight: 600;
-    font-family: "DM Sans", sans-serif;
+    font-family: var(--font), sans-serif;
     margin-top: 4px;
     margin-bottom: 16px;
     transition: color 0.2s;
@@ -1355,15 +1355,17 @@ nav {
 }
 
 .profile-name {
-    font-family: "Playfair Display", serif;
-    font-size: 20px;
-    font-weight: 700;
+    font-family: var(--font), sans-serif;
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--text);
+    letter-spacing: -0.3px;
     margin-bottom: 4px;
 }
 
 .profile-handle {
-    font-family: "Space Mono", monospace;
-    font-size: 11px;
+    font-family: var(--font), sans-serif;
+    font-size: 13px;
     color: var(--muted);
     margin-bottom: 16px;
 }
@@ -1381,10 +1383,10 @@ nav {
     gap: 4px;
     border-radius: 50px;
     padding: 4px 12px;
-    font-family: "Space Mono", monospace;
-    font-size: 9px;
+    font-family: var(--font), sans-serif;
+    font-size: 10.5px;
     font-weight: 700;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.3px;
     text-transform: uppercase;
 }
 
@@ -1507,22 +1509,28 @@ nav {
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 16px;
+    font-size: 15px;
     flex-shrink: 0;
+    background: var(--surface3);
+    color: var(--accent);
+    font-weight: 700;
 }
 
 .card-head-title {
-    font-family: "Playfair Display", serif;
+    font-family: var(--font), sans-serif;
     font-size: 17px;
     font-weight: 700;
+    color: var(--text);
+    letter-spacing: -0.2px;
     flex: 1;
 }
 
 .card-head-badge {
-    font-family: "Space Mono", monospace;
-    font-size: 9px;
+    font-family: var(--font), sans-serif;
+    font-size: 10px;
+    font-weight: 600;
     color: var(--muted);
-    letter-spacing: 1px;
+    letter-spacing: 0.5px;
     text-transform: uppercase;
 }
 
@@ -1548,12 +1556,13 @@ nav {
     grid-column: 1 / -1;
 }
 
+.form-group label,
 .form-label {
-    font-family: "Space Mono", monospace;
-    font-size: 9px;
+    font-family: var(--font), sans-serif;
+    font-size: 12px;
+    font-weight: 600;
     color: var(--muted);
-    letter-spacing: 2px;
-    text-transform: uppercase;
+    letter-spacing: 0.3px;
 }
 
 .form-input {
@@ -1562,7 +1571,7 @@ nav {
     border-radius: 14px;
     padding: 13px 16px;
     color: var(--text);
-    font-family: "DM Sans", sans-serif;
+    font-family: var(--font), sans-serif;
     font-size: 14px;
     outline: none;
     transition:
@@ -1662,15 +1671,16 @@ select.form-input option {
 }
 
 .btn-cancel {
-    background: none;
+    background: var(--surface2);
     border: 1px solid var(--border);
     color: var(--muted);
-    padding: 13px 24px;
+    padding: 12px 24px;
     border-radius: 14px;
-    font-family: "Space Mono", monospace;
-    font-size: 10px;
-    letter-spacing: 1px;
-    text-transform: uppercase;
+    font-family: var(--font), sans-serif;
+    font-size: 12.5px;
+    font-weight: 600;
+    letter-spacing: 0.2px;
+    text-transform: none;
     cursor: pointer;
     transition: all 0.2s;
 }
@@ -1681,23 +1691,24 @@ select.form-input option {
 }
 
 .btn-save {
-    background: linear-gradient(135deg, var(--gold), #f09040);
-    color: #0a0612;
+    background: linear-gradient(135deg, var(--rose) 0%, #ff6b8b 100%);
+    color: #ffffff;
     border: none;
-    padding: 13px 32px;
+    padding: 12px 28px;
     border-radius: 14px;
-    font-family: "Space Mono", monospace;
-    font-size: 11px;
+    font-family: var(--font), sans-serif;
+    font-size: 12.5px;
     font-weight: 700;
-    letter-spacing: 1px;
-    text-transform: uppercase;
+    letter-spacing: 0.2px;
+    text-transform: none;
     cursor: pointer;
     transition: all 0.2s;
+    box-shadow: 0 4px 12px rgba(232, 84, 122, 0.35);
 }
 
 .btn-save:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(245, 200, 66, 0.35);
+    box-shadow: 0 6px 18px rgba(232, 84, 122, 0.5);
 }
 
 .btn-save:active {
@@ -1725,20 +1736,21 @@ select.form-input option {
 }
 
 .stat-num {
-    font-family: "Playfair Display", serif;
-    font-size: 28px;
-    font-weight: 900;
-    background: linear-gradient(135deg, var(--text), var(--gold));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    font-family: var(--font), sans-serif;
+    font-size: 26px;
+    font-weight: 800;
+    color: var(--text);
     margin-bottom: 4px;
 }
 
 .stat-label {
-    font-family: "Space Mono", monospace;
-    font-size: 9px;
+    font-family: var(--font), sans-serif;
+    font-size: 11px;
+    font-weight: 600;
     color: var(--muted);
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
     letter-spacing: 1px;
     text-transform: uppercase;
 }
@@ -1757,10 +1769,11 @@ select.form-input option {
 }
 
 .danger-title {
-    font-family: "Space Mono", monospace;
-    font-size: 10px;
+    font-family: var(--font), sans-serif;
+    font-size: 12px;
+    font-weight: 700;
     color: var(--rose);
-    letter-spacing: 2px;
+    letter-spacing: 0.5px;
     text-transform: uppercase;
     margin-bottom: 4px;
 }
@@ -1774,13 +1787,13 @@ select.form-input option {
     background: none;
     border: 1px solid rgba(232, 84, 122, 0.4);
     color: var(--rose);
-    padding: 11px 20px;
+    padding: 10px 20px;
     border-radius: 12px;
-    font-family: "Space Mono", monospace;
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 1px;
-    text-transform: uppercase;
+    font-family: var(--font), sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.2px;
+    text-transform: none;
     cursor: pointer;
     transition: all 0.2s;
     white-space: nowrap;
@@ -1848,10 +1861,11 @@ footer {
 }
 
 .footer-col-title {
-    font-family: "Space Mono", monospace;
-    font-size: 10px;
-    color: var(--gold);
-    letter-spacing: 2px;
+    font-family: var(--font), sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: 0.5px;
     text-transform: uppercase;
     margin-bottom: 16px;
 }
@@ -1886,7 +1900,7 @@ footer {
     gap: 10px;
     font-size: 11px;
     color: var(--muted);
-    font-family: "Space Mono", monospace;
+    font-family: var(--font), sans-serif;
 }
 
 @keyframes fadeUp {
