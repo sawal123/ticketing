@@ -69,10 +69,18 @@ class LandingPageThemeTest extends TestCase
 
         Schema::create('hargas', function ($table) {
             $table->id();
-            $table->string('event_uid');
+            $table->string('uid')->nullable();
+            $table->string('event_uid')->nullable();
             $table->string('name')->nullable();
             $table->string('harga')->nullable();
             $table->string('status')->default('active');
+            $table->timestamps();
+        });
+
+        Schema::create('talent', function ($table) {
+            $table->id();
+            $table->string('uid')->nullable();
+            $table->string('talent')->nullable();
             $table->timestamps();
         });
 
@@ -84,6 +92,7 @@ class LandingPageThemeTest extends TestCase
             $table->string('password')->nullable();
             $table->string('role')->default('user');
             $table->timestamps();
+            $table->softDeletes();
         });
     }
 
@@ -105,5 +114,71 @@ class LandingPageThemeTest extends TestCase
         $response->assertSee('theme-toggle-btn');
         $response->assertSee('theme-icon-dark');
         $response->assertSee('theme-icon-light');
+    }
+
+    public function test_search_page_renders_with_theme_tokens_and_toggle(): void
+    {
+        DB::table('landings')->insert([
+            'description' => 'Gotik description',
+            'keyword' => 'ticket',
+            'logo' => 'logo.png',
+            'icon' => 'icon.png',
+        ]);
+
+        $response = $this->get('/search');
+
+        $response->assertStatus(200);
+        $response->assertSee('search-page-wrap');
+        $response->assertSee('var(--bg)');
+        $response->assertSee('theme-toggle-btn');
+        $response->assertSee('gotik_theme');
+        $response->assertSee('Tidak ada event yang ditemukan');
+    }
+
+    public function test_search_page_renders_events_with_dynamic_theme_cards(): void
+    {
+        DB::table('landings')->insert([
+            'description' => 'Gotik description',
+            'keyword' => 'ticket',
+            'logo' => 'logo.png',
+            'icon' => 'icon.png',
+        ]);
+
+        DB::table('users')->insert([
+            'uid' => 'org-1',
+            'name' => 'GoTik Organizer',
+            'email' => 'org@example.com',
+            'role' => 'penyewa',
+        ]);
+
+        DB::table('events')->insert([
+            'uid' => 'event-konser-1',
+            'user_uid' => 'org-1',
+            'event' => 'Konser Musik Keren',
+            'alamat' => 'Jakarta Convention Center',
+            'tanggal' => '2026-12-01 19:00:00',
+            'status' => 'active',
+            'slug' => 'konser-musik-keren',
+            'konfirmasi' => '1',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        DB::table('hargas')->insert([
+            'uid' => 'event-konser-1',
+            'event_uid' => 'event-konser-1',
+            'name' => 'VIP',
+            'harga' => '150000',
+            'status' => 'active',
+        ]);
+
+        $response = $this->get('/search/Konser');
+
+        $response->assertStatus(200);
+        $response->assertSee('Konser Musik Keren');
+        $response->assertSee('Jakarta Convention Center');
+        $response->assertSee('Rp 150.000');
+        $response->assertSee('event-card');
+        $response->assertSee('theme-toggle-btn');
     }
 }
