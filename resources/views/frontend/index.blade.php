@@ -11,6 +11,15 @@
     <title>@yield('title', 'GOTIK ' . $title)</title>
     <link rel="shortcut icon" href="{{ asset('storage/icon/' . ($logo[0]->icon ?? '')) }}" type="image/x-icon">
 
+    <script>
+        (function() {
+            var saved = localStorage.getItem('gotik_theme');
+            var preferred = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+            var activeTheme = saved ? saved : preferred;
+            document.documentElement.setAttribute('data-theme', activeTheme);
+        })();
+    </script>
+
     {{-- <link rel="stylesheet" href="{{ asset('assets/css/styleMore.css') }}"> --}}
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Public+Sans:wght@500;600;700;800&display=swap"
@@ -74,6 +83,15 @@
     <script src="{{ asset('assets/plugins/sweetalert2/dist/sweetalert2.min.js') }}"></script>
 
     <script src="{{ asset('landing/js/menu/togle.js') }}"></script>
+    <script>
+        function toggleGotikTheme() {
+            var current = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+            var next = current === 'light' ? 'dark' : 'light';
+            document.documentElement.setAttribute('data-theme', next);
+            localStorage.setItem('gotik_theme', next);
+            window.dispatchEvent(new CustomEvent('gotik-theme-changed', { detail: { theme: next } }));
+        }
+    </script>
     <!-- <script src="{{ asset('landing/js/app.js') }}"></script> -->
     {{-- <script src="{{ asset('penyewa/js/styleMore.js') }}"></script> --}}
 
