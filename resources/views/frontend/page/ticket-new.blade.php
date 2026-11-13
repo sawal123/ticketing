@@ -15,7 +15,7 @@
 @endpush
 
 @section('content')
-    <link rel="stylesheet" href="{{ asset('landing/css/ticket.css') }}">
+    <link rel="stylesheet" href="{{ asset('landing/css/ticket.css') }}?v={{ file_exists(public_path('landing/css/ticket.css')) ? filemtime(public_path('landing/css/ticket.css')) : '1.0' }}">
 
     <div style="height:50px;"></div>
     <!-- HERO -->

@@ -117,7 +117,7 @@
 </header>
 
 <!-- SEARCH MODAL -->
-<div id="searchModal" class="search-modal" aria-hidden="true">
+<div id="searchModal" class="search-modal" aria-hidden="true" style="display:none;">
     <div class="search-modal-backdrop" onclick="closeSearchModal()"></div>
     <div class="search-modal-container" role="dialog" aria-modal="true" aria-labelledby="searchModalTitle">
         <div class="search-modal-header">
@@ -164,6 +164,102 @@
     </div>
 </div>
 
+<style>
+/* Critical defensive styling for header search trigger, modal, & controls */
+.search-modal:not(.is-open) {
+    display: none !important;
+}
+.nav-search-trigger {
+    flex: 1;
+    max-width: 480px;
+    display: inline-flex;
+    align-items: center;
+    background: var(--surface2, #1a1530);
+    border: 1px solid var(--border, rgba(108, 92, 231, 0.2));
+    border-radius: 50px;
+    padding: 0 10px 0 16px;
+    height: 42px;
+    color: var(--text, #f0ecff);
+    cursor: pointer;
+    box-sizing: border-box;
+    font-family: inherit;
+    text-align: left;
+    transition: all 0.2s ease;
+}
+.nav-search-trigger:focus,
+.nav-search-trigger:hover {
+    border-color: rgba(108, 92, 231, 0.45);
+}
+.nav-search-icon {
+    font-size: 17px;
+    color: var(--muted, #8b84a8);
+    margin-right: 10px;
+    line-height: 1;
+    flex-shrink: 0;
+}
+.nav-search-placeholder {
+    flex: 1;
+    font-size: 13.5px;
+    color: var(--muted, #8b84a8);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.nav-search-kbd {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--surface3, #221d3a);
+    border: 1px solid var(--border, rgba(108, 92, 231, 0.2));
+    border-radius: 8px;
+    padding: 3px 8px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--muted, #8b84a8);
+    flex-shrink: 0;
+    line-height: 1;
+}
+.theme-toggle-btn {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    border: 1px solid var(--border, rgba(108, 92, 231, 0.2));
+    background: var(--surface2, #1a1530);
+    color: var(--text, #f0ecff);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-sizing: border-box;
+    padding: 0;
+    flex-shrink: 0;
+}
+.theme-toggle-btn svg {
+    width: 18px;
+    height: 18px;
+}
+[data-theme="light"] .nav-search-trigger {
+    background: #ffffff;
+    border-color: rgba(108, 92, 231, 0.16);
+    color: #171324;
+}
+[data-theme="light"] .nav-search-kbd {
+    background: #f1f3f9;
+    border-color: rgba(0, 0, 0, 0.08);
+    color: #64748b;
+}
+[data-theme="light"] .theme-toggle-btn {
+    background: #ffffff;
+    border-color: rgba(108, 92, 231, 0.16);
+    color: #171324;
+}
+@media (max-width: 768px) {
+    .nav-search-kbd {
+        display: none !important;
+    }
+}
+</style>
+
 <script>
     function openSearchModal(e) {
         if (e && typeof e.stopPropagation === 'function') {
@@ -171,6 +267,7 @@
         }
         const modal = document.getElementById('searchModal');
         if (!modal) return;
+        modal.style.display = 'flex';
         modal.classList.add('is-open');
         modal.setAttribute('aria-hidden', 'false');
         document.body.style.overflow = 'hidden';
@@ -189,6 +286,7 @@
         if (!modal) return;
         modal.classList.remove('is-open');
         modal.setAttribute('aria-hidden', 'true');
+        modal.style.display = 'none';
         document.body.style.overflow = '';
     }
 

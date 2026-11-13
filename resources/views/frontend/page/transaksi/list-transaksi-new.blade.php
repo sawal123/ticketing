@@ -1,6 +1,6 @@
 @extends('frontend.index')
 @section('content')
-<link rel="stylesheet" href="{{ asset('landing/css/list-transaksi.css') }}">
+<link rel="stylesheet" href="{{ asset('landing/css/list-transaksi.css') }}?v={{ file_exists(public_path('landing/css/list-transaksi.css')) ? filemtime(public_path('landing/css/list-transaksi.css')) : '1.0' }}">
 
     <div class="" style="height: 150px; "></div>
     <!-- PAGE -->

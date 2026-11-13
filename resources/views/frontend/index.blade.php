@@ -36,7 +36,7 @@
     <link rel="stylesheet" href="{{ asset('landing/css/bootstrap.min.css') }}" />
     <link rel="stylesheet" href="{{ asset('assets/plugins/sweetalert2/dist/sweetalert2.min.css') }}">
     <link href="{{ asset('/assets/css/icons.css') }}" rel="stylesheet">
-    <link rel="stylesheet" href="{{ asset('landing/css/main-new.css') }}" />
+    <link rel="stylesheet" href="{{ asset('landing/css/main-new.css') }}?v={{ file_exists(public_path('landing/css/main-new.css')) ? filemtime(public_path('landing/css/main-new.css')) : '1.0' }}" />
     <style>
         a {
             text-decoration: none;

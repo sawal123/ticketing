@@ -2,7 +2,7 @@
 
 @section('content')
 
-    <link rel="stylesheet" href="{{ asset('landing/css/bayartiket.css') }}">
+    <link rel="stylesheet" href="{{ asset('landing/css/bayartiket.css') }}?v={{ file_exists(public_path('landing/css/bayartiket.css')) ? filemtime(public_path('landing/css/bayartiket.css')) : '1.0' }}">
 
     <div class="" style="height: 50px; "></div>
 
