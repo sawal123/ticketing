@@ -427,4 +427,35 @@ class LandingPageThemeTest extends TestCase
         $this->assertStringNotContainsString('.security-email {
             color: #ffffff;', $profileBlade);
     }
+
+    public function test_header_renders_search_modal_and_keyboard_shortcuts(): void
+    {
+        DB::table('landings')->insert([
+            'description' => 'Gotik description',
+            'keyword' => 'ticket',
+            'logo' => 'logo.png',
+            'icon' => 'icon.png',
+        ]);
+
+        $response = $this->get('/');
+
+        $response->assertStatus(200);
+        $response->assertSee('id="searchModal"', false);
+        $response->assertSee('id="searchModalInput"', false);
+        $response->assertSee('openSearchModal');
+        $response->assertSee('closeSearchModal');
+        $response->assertSee('handleNavSearchClick');
+        $response->assertSee('Ctrl K');
+    }
+
+    public function test_main_css_contains_search_modal_and_mobile_responsive_rules(): void
+    {
+        $mainCss = file_get_contents(public_path('landing/css/main-new.css'));
+
+        $this->assertStringContainsString('.search-modal', $mainCss);
+        $this->assertStringContainsString('.search-modal.is-open', $mainCss);
+        $this->assertStringContainsString('.search-modal-backdrop', $mainCss);
+        $this->assertStringContainsString('.nav-search-kbd', $mainCss);
+        $this->assertStringContainsString('@media (max-width: 768px)', $mainCss);
+    }
 }

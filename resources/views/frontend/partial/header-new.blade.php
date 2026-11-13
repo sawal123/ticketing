@@ -7,12 +7,18 @@
     @if ($user)
    
 
-        <div class="nav-search-wrap">
+        <div class="nav-search-wrap" onclick="handleNavSearchClick(event)">
             <span class="nav-search-icon">⌕</span>
 
-            <form action="{{ url('/cari') }}" method="GET" style="display:flex; align-items:center; flex:1; ">
+            <form action="{{ url('/cari') }}" method="GET" style="display:flex; align-items:center; flex:1;">
                 <input type="text" placeholder="Cari event, konser, festival…" name="cari"
-                    value="{{ old('cari') }}">
+                    class="nav-search-input"
+                    value="{{ old('cari') }}"
+                    onclick="handleNavSearchClick(event)">
+
+                <button type="button" class="nav-search-kbd" onclick="openSearchModal(event)" title="Buka pencarian (Ctrl + K)">
+                    <span class="kbd-label">Ctrl K</span>
+                </button>
 
                 <button type="submit" class="btn-search">Search</button>
             </form>
@@ -84,11 +90,17 @@
             </div>
         </div>
     @else
-        <div class="nav-search-wrap">
+        <div class="nav-search-wrap" onclick="handleNavSearchClick(event)">
             <span class="nav-search-icon">⌕</span>
             <form action="{{ url('/cari') }}" method="GET" style="display:flex; align-items:center; flex:1;">
                 <input type="text" placeholder="Cari event, konser, festival…" name="cari"
-                    value="{{ old('cari') }}">
+                    class="nav-search-input"
+                    value="{{ old('cari') }}"
+                    onclick="handleNavSearchClick(event)">
+
+                <button type="button" class="nav-search-kbd" onclick="openSearchModal(event)" title="Buka pencarian (Ctrl + K)">
+                    <span class="kbd-label">Ctrl K</span>
+                </button>
 
                 <button type="submit" class="btn-search">Search</button>
             </form>
@@ -121,6 +133,107 @@
         </div>
     @endif
 
-
-
 </header>
+
+<!-- SEARCH MODAL -->
+<div id="searchModal" class="search-modal" aria-hidden="true">
+    <div class="search-modal-backdrop" onclick="closeSearchModal()"></div>
+    <div class="search-modal-container" role="dialog" aria-modal="true" aria-labelledby="searchModalTitle">
+        <div class="search-modal-header">
+            <span class="search-modal-icon">⌕</span>
+            <form action="{{ url('/cari') }}" method="GET" class="search-modal-form" id="searchModalForm">
+                <input type="text" name="cari" id="searchModalInput" class="search-modal-input"
+                    placeholder="Cari event, konser, festival, atau kota…" autocomplete="off">
+            </form>
+            <button type="button" class="search-modal-close" onclick="closeSearchModal()" aria-label="Tutup pencarian">
+                <span class="search-modal-close-icon">✕</span>
+                <kbd class="search-modal-close-kbd">ESC</kbd>
+            </button>
+        </div>
+
+        <div class="search-modal-body">
+            <div class="search-modal-label">Pencarian Populer</div>
+            <div class="search-modal-tags">
+                <a href="{{ url('/cari?cari=konser') }}" class="search-tag">
+                    <span class="tag-icon">🎵</span> Konser Musik
+                </a>
+                <a href="{{ url('/cari?cari=festival') }}" class="search-tag">
+                    <span class="tag-icon">🎪</span> Festival
+                </a>
+                <a href="{{ url('/cari?cari=wisata') }}" class="search-tag">
+                    <span class="tag-icon">🏖️</span> Wisata
+                </a>
+                <a href="{{ url('/cari?cari=medan') }}" class="search-tag">
+                    <span class="tag-icon">📍</span> Medan
+                </a>
+                <a href="{{ url('/search') }}" class="search-tag featured">
+                    <span class="tag-icon">✨</span> Semua Event
+                </a>
+            </div>
+        </div>
+
+        <div class="search-modal-footer">
+            <div class="search-modal-hint">
+                <kbd>↵ Enter</kbd> untuk mencari
+            </div>
+            <div class="search-modal-hint">
+                <kbd>Esc</kbd> untuk keluar
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function openSearchModal(e) {
+        if (e && typeof e.stopPropagation === 'function') {
+            e.stopPropagation();
+        }
+        const modal = document.getElementById('searchModal');
+        if (!modal) return;
+        modal.classList.add('is-open');
+        modal.setAttribute('aria-hidden', 'false');
+        document.body.style.overflow = 'hidden';
+
+        const input = document.getElementById('searchModalInput');
+        if (input) {
+            setTimeout(function() {
+                input.focus();
+                input.select();
+            }, 60);
+        }
+    }
+
+    function closeSearchModal() {
+        const modal = document.getElementById('searchModal');
+        if (!modal) return;
+        modal.classList.remove('is-open');
+        modal.setAttribute('aria-hidden', 'true');
+        document.body.style.overflow = '';
+    }
+
+    function handleNavSearchClick(e) {
+        if (window.innerWidth <= 768) {
+            if (e && typeof e.preventDefault === 'function') {
+                e.preventDefault();
+            }
+            openSearchModal(e);
+        }
+    }
+
+    document.addEventListener('keydown', function(e) {
+        if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
+            e.preventDefault();
+            const modal = document.getElementById('searchModal');
+            if (modal && modal.classList.contains('is-open')) {
+                closeSearchModal();
+            } else {
+                openSearchModal(e);
+            }
+        } else if (e.key === 'Escape') {
+            const modal = document.getElementById('searchModal');
+            if (modal && modal.classList.contains('is-open')) {
+                closeSearchModal();
+            }
+        }
+    });
+</script>
