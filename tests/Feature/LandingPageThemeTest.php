@@ -269,4 +269,26 @@ class LandingPageThemeTest extends TestCase
         $response->assertSee('tier-name');
         $response->assertSee('description-text');
     }
+
+    public function test_detail_ticket_checkout_page_assets_use_refined_fonts_and_theme_variables(): void
+    {
+        $bayarCss = file_get_contents(public_path('landing/css/bayartiket.css'));
+        $bayarBlade = file_get_contents(resource_path('views/frontend/page/bayartiket.blade.php'));
+
+        // Breadcrumb, event name, and card title use clean sans-serif instead of serif / monospace
+        $this->assertStringNotContainsString('.event-name {
+    font-family: "Playfair Display"', $bayarCss);
+        $this->assertStringNotContainsString('.card-title {
+    font-family: "Playfair Display"', $bayarCss);
+        $this->assertStringNotContainsString('.total-row .total-value {
+    font-family: "Playfair Display"', $bayarCss);
+
+        // Alert text has readable color in both modes
+        $this->assertStringContainsString('.alert-text {
+    color: var(--text);', $bayarCss);
+
+        // Form labels do not have hardcoded white text overriding theme
+        $this->assertStringNotContainsString('Nama Lengkap sesuai KTP</label>', $bayarBlade);
+        $this->assertStringContainsString('color:var(--text);', $bayarBlade);
+    }
 }

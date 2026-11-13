@@ -328,19 +328,24 @@ nav {
 /* BREADCRUMB */
 .breadcrumb {
     max-width: 1100px;
-    margin: 28px auto 0;
+    margin: 24px auto 0;
     padding: 0 24px;
     display: flex;
     align-items: center;
     gap: 8px;
-    font-family: "Space Mono", monospace;
-    font-size: 10px;
+    font-family: var(--font), sans-serif;
+    font-size: 12.5px;
     color: var(--muted);
-    letter-spacing: 1px;
-    text-transform: uppercase;
+    font-weight: 500;
+    letter-spacing: 0;
+    text-transform: none;
 }
 .breadcrumb span {
-    color: var(--indigo);
+    color: var(--muted);
+}
+.breadcrumb span:last-child {
+    color: var(--accent);
+    font-weight: 600;
 }
 .breadcrumb-sep {
     color: var(--border);
@@ -353,24 +358,26 @@ nav {
     padding: 0 24px;
 }
 .email-alert-inner {
-    background: rgba(245, 200, 66, 0.07);
-    border: 1px solid rgba(245, 200, 66, 0.25);
+    background: rgba(245, 200, 66, 0.1);
+    border: 1px solid rgba(245, 200, 66, 0.35);
     border-radius: 14px;
     padding: 14px 20px;
     display: flex;
     align-items: center;
     gap: 12px;
-    font-size: 13px;
+    font-size: 13.5px;
+    color: var(--text);
 }
 .alert-icon {
     font-size: 16px;
 }
 .alert-text {
-    color: rgba(240, 236, 255, 0.8);
+    color: var(--text);
+    font-weight: 500;
 }
 .alert-email {
     color: var(--gold);
-    font-weight: 600;
+    font-weight: 700;
 }
 
 /* MAIN LAYOUT */
@@ -426,25 +433,23 @@ nav {
     padding: 16px;
 }
 .banner-city {
-    font-family: "Playfair Display", serif;
-    font-size: 42px;
-    font-weight: 900;
-    font-style: italic;
-    color: var(--gold);
-    line-height: 1;
-    text-shadow: 0 0 40px rgba(245, 200, 66, 0.6);
+    font-family: var(--font), sans-serif;
+    font-size: 32px;
+    font-weight: 800;
+    color: var(--text);
+    line-height: 1.1;
 }
 .banner-sub {
-    font-size: 10px;
-    color: rgba(255, 255, 255, 0.6);
-    letter-spacing: 3px;
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 1px;
     text-transform: uppercase;
     margin: 4px 0;
 }
 .banner-date {
-    font-family: "Playfair Display", serif;
-    font-size: 14px;
-    font-style: italic;
+    font-family: var(--font), sans-serif;
+    font-size: 13px;
+    font-weight: 600;
     color: var(--rose);
 }
 
@@ -453,9 +458,11 @@ nav {
     border-top: 1px solid var(--border);
 }
 .event-name {
-    font-family: "Playfair Display", serif;
-    font-size: 18px;
-    font-weight: 700;
+    font-family: var(--font), sans-serif;
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--text);
+    letter-spacing: -0.3px;
     margin-bottom: 8px;
 }
 .event-meta-row {
@@ -464,7 +471,8 @@ nav {
     gap: 6px;
     font-size: 13px;
     color: var(--muted);
-    margin-bottom: 4px;
+    margin-bottom: 5px;
+    font-family: var(--font), sans-serif;
 }
 
 /* INVOICE TAG */
@@ -472,8 +480,8 @@ nav {
     margin-top: 14px;
     background: var(--surface2);
     border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 10px 14px;
+    border-radius: 12px;
+    padding: 12px 14px;
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
@@ -484,17 +492,19 @@ nav {
     flex: 1;
 }
 .invoice-label {
-    font-family: "Space Mono", monospace;
-    font-size: 9px;
+    font-family: var(--font), sans-serif;
+    font-size: 10.5px;
     color: var(--muted);
-    letter-spacing: 1px;
+    letter-spacing: 0.5px;
     text-transform: uppercase;
-    margin-bottom: 3px;
+    margin-bottom: 4px;
+    font-weight: 600;
 }
 .invoice-value {
-    font-family: "Space Mono", monospace;
-    font-size: 11px;
-    color: var(--teal);
+    font-family: var(--font), monospace;
+    font-size: 12.5px;
+    color: var(--accent);
+    font-weight: 700;
     word-break: break-word;
 }
 .invoice-meta {
@@ -567,9 +577,11 @@ nav {
     font-size: 15px;
 }
 .card-title {
-    font-family: "Playfair Display", serif;
-    font-size: 17px;
+    font-family: var(--font), sans-serif;
+    font-size: 16px;
     font-weight: 700;
+    color: var(--text);
+    letter-spacing: -0.2px;
 }
 .card-body {
     padding: 20px 24px;
@@ -581,10 +593,11 @@ nav {
     border-collapse: collapse;
 }
 .ticket-detail-table th {
-    font-family: "Space Mono", monospace;
-    font-size: 9px;
+    font-family: var(--font), sans-serif;
+    font-size: 11px;
+    font-weight: 600;
     color: var(--muted);
-    letter-spacing: 2px;
+    letter-spacing: 0.5px;
     text-transform: uppercase;
     padding: 0 0 14px;
     text-align: left;
@@ -603,10 +616,11 @@ nav {
     border: 1px solid rgba(108, 92, 231, 0.3);
     border-radius: 6px;
     padding: 2px 10px;
-    font-family: "Space Mono", monospace;
-    font-size: 9px;
+    font-family: var(--font), sans-serif;
+    font-size: 10.5px;
+    font-weight: 600;
     color: var(--indigo);
-    letter-spacing: 1px;
+    letter-spacing: 0.3px;
     text-transform: uppercase;
     margin-bottom: 6px;
 }
@@ -622,10 +636,10 @@ nav {
 }
 .ticket-total-cell {
     text-align: right;
-    font-family: "Playfair Display", serif;
-    font-size: 22px;
-    font-weight: 700;
-    color: var(--gold);
+    font-family: var(--font), sans-serif;
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--text);
 }
 
 .ticket-summary-row {
@@ -641,10 +655,11 @@ nav {
     border: 1px solid rgba(61, 217, 196, 0.3);
     border-radius: 50px;
     padding: 4px 14px;
-    font-family: "Space Mono", monospace;
-    font-size: 10px;
+    font-family: var(--font), sans-serif;
+    font-size: 11px;
+    font-weight: 600;
     color: var(--teal);
-    letter-spacing: 1px;
+    letter-spacing: 0.3px;
 }
 
 /* PAYMENT METHOD */
@@ -666,10 +681,11 @@ nav {
     background: var(--surface3);
 }
 .pay-accordion-label {
-    font-family: "Space Mono", monospace;
-    font-size: 11px;
+    font-family: var(--font), sans-serif;
+    font-size: 12px;
+    font-weight: 600;
     color: var(--muted);
-    letter-spacing: 2px;
+    letter-spacing: 0.5px;
     text-transform: uppercase;
 }
 .pay-chevron {
@@ -752,8 +768,8 @@ nav {
     margin-bottom: 3px;
 }
 .pay-fee {
-    font-family: "Space Mono", monospace;
-    font-size: 10px;
+    font-family: var(--font), sans-serif;
+    font-size: 11px;
     color: var(--muted);
 }
 
@@ -792,10 +808,10 @@ nav {
     color: #fff;
     padding: 14px 24px;
     border-radius: 14px;
-    font-family: "Space Mono", monospace;
-    font-size: 11px;
+    font-family: var(--font), sans-serif;
+    font-size: 12px;
     font-weight: 700;
-    letter-spacing: 1px;
+    letter-spacing: 0.5px;
     text-transform: uppercase;
     cursor: pointer;
     transition: all 0.2s;
@@ -849,32 +865,33 @@ nav {
     align-items: center;
 }
 .total-row .total-label {
-    font-family: "Space Mono", monospace;
-    font-size: 11px;
+    font-family: var(--font), sans-serif;
+    font-size: 13px;
+    font-weight: 700;
     color: var(--muted);
-    letter-spacing: 2px;
+    letter-spacing: 0.5px;
     text-transform: uppercase;
 }
 .total-row .total-value {
-    font-family: "Playfair Display", serif;
-    font-size: 28px;
-    font-weight: 900;
-    color: var(--gold);
+    font-family: var(--font), sans-serif;
+    font-size: 24px;
+    font-weight: 800;
+    color: var(--text);
 }
 
 /* PAY BUTTON */
 .btn-pay {
     width: 100%;
-    background: linear-gradient(135deg, var(--gold) 0%, #f09040 100%);
-    color: #0a0612;
+    background: linear-gradient(135deg, var(--rose) 0%, #ff6b8b 100%);
+    color: #ffffff;
     border: none;
     border-radius: 16px;
-    padding: 18px;
-    font-family: "Space Mono", monospace;
-    font-size: 13px;
+    padding: 16px;
+    font-family: var(--font), sans-serif;
+    font-size: 14px;
     font-weight: 700;
-    letter-spacing: 1.5px;
-    text-transform: uppercase;
+    letter-spacing: 0.2px;
+    text-transform: none;
     cursor: pointer;
     transition: all 0.2s;
     display: flex;
@@ -882,10 +899,11 @@ nav {
     justify-content: center;
     gap: 10px;
     margin-top: 20px;
+    box-shadow: 0 4px 16px rgba(232, 84, 122, 0.35);
 }
 .btn-pay:hover {
     transform: translateY(-2px);
-    box-shadow: 0 10px 32px rgba(245, 200, 66, 0.4);
+    box-shadow: 0 8px 24px rgba(232, 84, 122, 0.5);
 }
 .btn-pay:active {
     transform: translateY(0);
@@ -898,11 +916,10 @@ nav {
     justify-content: center;
     gap: 6px;
     margin-top: 12px;
-    font-family: "Space Mono", monospace;
-    font-size: 9px;
+    font-family: var(--font), sans-serif;
+    font-size: 11px;
     color: var(--muted);
-    letter-spacing: 1px;
-    text-transform: uppercase;
+    letter-spacing: 0.3px;
 }
 
 /* ANIMATIONS */
@@ -1155,8 +1172,8 @@ nav {
 }
 
 .success-title {
-    font-family: "Playfair Display", serif;
-    font-size: 24px;
+    font-family: var(--font), sans-serif;
+    font-size: 22px;
     font-weight: 800;
     color: var(--teal);
     margin-bottom: 8px;
@@ -1165,7 +1182,7 @@ nav {
 .success-desc {
     font-size: 14px;
     line-height: 1.6;
-    color: rgba(240, 236, 255, 0.8);
+    color: var(--event-card-secondary, var(--text));
 }
 
 .success-desc strong {
@@ -1184,10 +1201,11 @@ nav {
     color: var(--text);
     padding: 12px 24px;
     border-radius: 12px;
-    font-family: "Space Mono", monospace;
-    font-size: 11px;
+    font-family: var(--font), sans-serif;
+    font-size: 13px;
     font-weight: 700;
-    text-transform: uppercase;
+    letter-spacing: 0.2px;
+    text-transform: none;
     text-decoration: none;
     transition: all 0.2s;
     display: flex;
