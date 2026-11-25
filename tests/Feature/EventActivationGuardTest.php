@@ -397,6 +397,65 @@ class EventActivationGuardTest extends TestCase
         $this->assertSame('1', $event->fresh()->konfirmasi);
     }
 
+    public function test_tenant_can_reactivate_own_confirmed_closed_event_when_prerequisites_valid(): void
+    {
+        $tenant = $this->tenant();
+        $event = $this->event($tenant, [
+            'status' => 'close',
+            'konfirmasi' => '1',
+        ]);
+        $this->seedActivationReadyState($tenant, $event);
+
+        Livewire::actingAs($tenant)
+            ->test(DashboardEventIndex::class)
+            ->call('toggleStatus', $event->uid)
+            ->assertDispatched('event-status-updated');
+
+        $this->assertSame('active', $event->fresh()->status);
+        $this->assertSame('1', $event->fresh()->konfirmasi);
+    }
+
+    public function test_tenant_reactivating_confirmed_event_still_enforces_activation_guard(): void
+    {
+        $tenant = $this->tenant();
+        $event = $this->event($tenant, [
+            'status' => 'close',
+            'konfirmasi' => '1',
+        ]);
+        $this->seedActivationReadyState($tenant, $event, [
+            'agreement' => ['status' => Agreement::STATUS_READY],
+        ]);
+
+        Livewire::actingAs($tenant)
+            ->test(DashboardEventIndex::class)
+            ->call('toggleStatus', $event->uid)
+            ->assertNotDispatched('event-status-updated');
+
+        $this->assertSame('close', $event->fresh()->status);
+    }
+
+    public function test_staff_still_cannot_reactivate_confirmed_closed_event(): void
+    {
+        $tenant = $this->tenant();
+        $staff = $this->user([
+            'email' => 'staff-reactivation@example.test',
+            'role' => 'staff',
+            'parent_uid' => $tenant->uid,
+        ]);
+        $event = $this->event($tenant, [
+            'status' => 'close',
+            'konfirmasi' => '1',
+        ]);
+        $this->seedActivationReadyState($tenant, $event);
+
+        Livewire::actingAs($staff)
+            ->test(DashboardEventIndex::class)
+            ->call('toggleStatus', $event->uid)
+            ->assertForbidden();
+
+        $this->assertSame('close', $event->fresh()->status);
+    }
+
     public function test_existing_active_legacy_event_is_not_changed_automatically(): void
     {
         $tenant = $this->tenant();
@@ -559,7 +618,7 @@ class EventActivationGuardTest extends TestCase
                 'map' => $event->map,
             ]);
 
-        $response->assertRedirect('/admin/event/eventDetail/' . $event->uid);
+        $response->assertRedirect('/admin/event/eventDetail/'.$event->uid);
         $event->refresh();
         $this->assertSame('inactive', $event->status);
         $this->assertNull($event->konfirmasi);
@@ -589,7 +648,7 @@ class EventActivationGuardTest extends TestCase
                 'map' => $event->map,
             ]);
 
-        $response->assertRedirect('/admin/event/eventDetail/' . $event->uid);
+        $response->assertRedirect('/admin/event/eventDetail/'.$event->uid);
         $event->refresh();
         $this->assertSame('active', $event->status);
         $this->assertSame('1', $event->konfirmasi);
@@ -606,7 +665,7 @@ class EventActivationGuardTest extends TestCase
         ]);
 
         $this->actingAs($admin)
-            ->get('/admin/old/setujuiEvent/' . $event->uid);
+            ->get('/admin/old/setujuiEvent/'.$event->uid);
 
         $event->refresh();
         $this->assertSame('inactive', $event->status);
@@ -616,7 +675,7 @@ class EventActivationGuardTest extends TestCase
         $this->seedActivationReadyState($tenant, $eventReady);
 
         $this->actingAs($admin)
-            ->get('/admin/old/setujuiEvent/' . $eventReady->uid);
+            ->get('/admin/old/setujuiEvent/'.$eventReady->uid);
 
         $eventReady->refresh();
         $this->assertSame('active', $eventReady->status);

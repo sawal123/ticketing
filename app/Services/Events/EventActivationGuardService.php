@@ -69,7 +69,6 @@ class EventActivationGuardService
     public function activateForEvent(Event $event, string $actorUid, bool $confirm = false): Event
     {
         return DB::transaction(function () use ($event, $actorUid, $confirm) {
-            $admin = $this->resolveAdmin($actorUid);
             $lockedEvent = Event::query()
                 ->whereKey($event->getKey())
                 ->lockForUpdate()
@@ -86,6 +85,8 @@ class EventActivationGuardService
                 throw new LogicException('Event tidak ditemukan.');
             }
 
+            $actor = $this->resolveAuthorizedActor($actorUid, $lockedEvent);
+
             if (strtolower((string) $lockedEvent->status) === 'active') {
                 return $lockedEvent;
             }
@@ -98,7 +99,7 @@ class EventActivationGuardService
 
             $lockedEvent->status = 'active';
 
-            if ($confirm) {
+            if ($confirm && strtolower((string) $actor->role) === 'admin') {
                 $lockedEvent->konfirmasi = '1';
             }
 
@@ -108,17 +109,29 @@ class EventActivationGuardService
         });
     }
 
-    private function resolveAdmin(string $actorUid): User
+    private function resolveAuthorizedActor(string $actorUid, Event $event): User
     {
-        $admin = User::query()
+        $actor = User::query()
             ->where('uid', $actorUid)
             ->first();
 
-        if (! $admin || strtolower((string) $admin->role) !== 'admin') {
+        if (! $actor) {
             throw new LogicException('Hanya admin yang dapat mengaktifkan event.');
         }
 
-        return $admin;
+        $role = strtolower((string) $actor->role);
+
+        if ($role === 'admin') {
+            return $actor;
+        }
+
+        if ($role !== 'staff'
+            && (string) $event->user_uid === (string) $actor->uid
+            && $event->konfirmasi !== null) {
+            return $actor;
+        }
+
+        throw new LogicException('Hanya admin yang dapat mengaktifkan event.');
     }
 
     /**
