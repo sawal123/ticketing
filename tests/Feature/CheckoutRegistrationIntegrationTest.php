@@ -312,7 +312,7 @@ class CheckoutRegistrationIntegrationTest extends TestCase
                 ['is_captain' => '1', 'answers' => [(string) $nickname->id => 'Fourth']],
             ],
         ]);
-        app('request')->setLaravelSession(session());
+        app('request')->setLaravelSession(app('session.store'));
 
         $view = $this->actingAs($user)->view('frontend.page.bayartiket', $this->checkoutViewData($event, $cart, $user, collect([$nickname])));
 

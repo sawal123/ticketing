@@ -30,13 +30,6 @@ class ReportExportFilterSecurityTest extends TestCase
 
     protected function setUp(): void
     {
-        putenv('DB_CONNECTION=sqlite');
-        putenv('DB_DATABASE=:memory:');
-        $_ENV['DB_CONNECTION'] = 'sqlite';
-        $_ENV['DB_DATABASE'] = ':memory:';
-        $_SERVER['DB_CONNECTION'] = 'sqlite';
-        $_SERVER['DB_DATABASE'] = ':memory:';
-
         parent::setUp();
 
         $this->withoutMiddleware([GlobalDataMiddleware::class, LogActivityMiddleware::class]);
@@ -163,7 +156,7 @@ class ReportExportFilterSecurityTest extends TestCase
         ])->get();
 
         $this->assertTrue($cashRows->isNotEmpty());
-        $this->assertTrue($cashRows->every(fn($row) => $row->payment_type === 'cash'));
+        $this->assertTrue($cashRows->every(fn ($row) => $row->payment_type === 'cash'));
 
         $rangeRows = $exportQuery->invoke($controller, $event->uid, [
             'payment' => 'all',
@@ -200,7 +193,7 @@ class ReportExportFilterSecurityTest extends TestCase
         [$tenant, $event, $harga] = $this->successfulCashSnapshot();
 
         foreach (range(1, 40) as $index) {
-            $cart = $this->cart($tenant, $event, ['invoice' => 'INV-CHUNK-' . $index]);
+            $cart = $this->cart($tenant, $event, ['invoice' => 'INV-CHUNK-'.$index]);
             $this->hargaCart($cart, $event, $harga, ['quantity' => 1, 'harga_ticket' => 100000]);
         }
 
@@ -227,7 +220,7 @@ class ReportExportFilterSecurityTest extends TestCase
         $this->assertSame(3, substr_count($html, 'class="page-block'));
         $this->assertStringContainsString('table-layout: fixed', $html);
         $this->assertStringContainsString('page-break-after: always', $html);
-        $this->assertStringNotContainsString('tr {' . "\n" . '            page-break-inside', $html);
+        $this->assertStringNotContainsString('tr {'."\n".'            page-break-inside', $html);
         $this->assertSame(1, substr_count($html, 'TOTAL PAJAK'));
         $this->assertSame(1, substr_count($html, 'TOTAL OMZET SELURUH DATA'));
         $this->assertStringContainsString('Rp 18.000', $html);
@@ -239,7 +232,7 @@ class ReportExportFilterSecurityTest extends TestCase
         [$tenant, $event, $harga] = $this->successfulCashSnapshot();
 
         foreach (range(1, 120) as $index) {
-            $cart = $this->cart($tenant, $event, ['invoice' => 'INV-BIG-' . $index]);
+            $cart = $this->cart($tenant, $event, ['invoice' => 'INV-BIG-'.$index]);
             $this->hargaCart($cart, $event, $harga, ['quantity' => 1, 'harga_ticket' => 100000]);
         }
 
@@ -293,11 +286,11 @@ class ReportExportFilterSecurityTest extends TestCase
         $this->assertStringNotContainsString('TOTAL OMZET SNAPSHOT', $html);
         $this->assertStringContainsString('Ringkasan Laporan', $html);
         $this->assertSame(1, substr_count($html, 'TOTAL PAJAK'));
-        $this->assertStringContainsString('Rp ' . number_format((int) $totals['tax_total'], 0, ',', '.'), $html);
+        $this->assertStringContainsString('Rp '.number_format((int) $totals['tax_total'], 0, ',', '.'), $html);
         $this->assertStringContainsString('Pajak sudah termasuk dalam Total Omzet.', $html);
         $this->assertStringContainsString('TOTAL OMZET SELURUH DATA', $html);
         $this->assertSame(1, substr_count($html, 'TOTAL OMZET SELURUH DATA'));
-        $this->assertStringContainsString('Rp ' . number_format((int) $totals['owner_revenue'], 0, ',', '.'), $html);
+        $this->assertStringContainsString('Rp '.number_format((int) $totals['owner_revenue'], 0, ',', '.'), $html);
         $this->assertStringContainsString('Seluruh transaksi SUCCESS sesuai filter laporan.', $html);
         $this->assertStringContainsString('Omzet sudah termasuk pajak.', $html);
     }
@@ -385,7 +378,7 @@ class ReportExportFilterSecurityTest extends TestCase
             ->test(DashboardEventDetail::class, ['uid' => $event->uid])
             ->set('activeTab', 'transaksi')
             ->set('filterRange', '2026-02-01 to 2026-02-01')
-            ->assertViewHas('metrics', fn($metrics) => (int) $metrics['total_revenue'] === 220000);
+            ->assertViewHas('metrics', fn ($metrics) => (int) $metrics['total_revenue'] === 220000);
     }
 
     public function test_admin_transaction_filters_are_sanitized(): void
@@ -446,13 +439,13 @@ class ReportExportFilterSecurityTest extends TestCase
         View::share('user', $tenantA);
 
         $this->actingAs($tenantA)
-            ->get('/dashboard/old/cash?uid=' . $eventB->uid)
+            ->get('/dashboard/old/cash?uid='.$eventB->uid)
             ->assertOk()
             ->assertViewHas('event', null)
             ->assertViewHas('totalHargaCart', 0);
 
         $this->actingAs($tenantA)
-            ->get('/dashboard/old/transaksi?uid=' . $eventB->uid)
+            ->get('/dashboard/old/transaksi?uid='.$eventB->uid)
             ->assertOk()
             ->assertViewHas('event', null)
             ->assertViewHas('totalPenjualan', 0);
@@ -641,7 +634,7 @@ class ReportExportFilterSecurityTest extends TestCase
             'map' => 'https://example.test/map',
             'pajak' => 0,
             'start_sale' => now()->format('Y-m-d H:i:s'),
-            'slug' => 'report-filter-event-' . $uid,
+            'slug' => 'report-filter-event-'.$uid,
             'konfirmasi' => '1',
         ], $overrides));
     }
@@ -679,7 +672,7 @@ class ReportExportFilterSecurityTest extends TestCase
     private function cart(User $tenant, Event $event, array $overrides = []): Cart
     {
         $uid = (string) Str::uuid();
-        $invoice = $overrides['invoice'] ?? 'INV-' . $uid;
+        $invoice = $overrides['invoice'] ?? 'INV-'.$uid;
         unset($overrides['invoice']);
 
         $cart = Cart::create(array_merge([
@@ -732,8 +725,8 @@ class ReportExportFilterSecurityTest extends TestCase
         $csv = preg_replace('/^\xEF\xBB\xBF/', '', $csv);
 
         return array_values(array_filter(array_map(
-            fn($line) => str_getcsv($line, ';'),
+            fn ($line) => str_getcsv($line, ';'),
             preg_split('/\r\n|\n|\r/', trim($csv))
-        ), fn($row) => $row !== [null] && $row !== false));
+        ), fn ($row) => $row !== [null] && $row !== false));
     }
 }
