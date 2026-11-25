@@ -10,6 +10,7 @@ use App\Models\EventRegistrationField;
 use App\Models\HargaCart;
 use App\Models\PaymentGateway;
 use App\Models\Voucher;
+use App\Services\Partners\PartnerReferralService;
 use App\Services\Tickets\CartOwnershipService;
 use App\Services\Tickets\GateTokenService;
 use App\Services\Tickets\TicketPricingService;
@@ -189,6 +190,8 @@ class BuyTicketController extends Controller
             'selectedPaymentGatewayId' => $selectedPaymentGatewayId,
             'iFee' => $iFee,
             'diskon' => $pricing['discount'],
+            'partnerDiscount' => $pricing['partner_discount'] ?? 0,
+            'cartPartner' => filled($cart->partner_uid ?? null) ? $cart->partner : null,
             'pajakPersen' => $pricing['tax_percent'],
             'nilaiPajak' => $pricing['tax_amount'],
             'subtotal' => $pricing['subtotal'],
@@ -312,6 +315,20 @@ class BuyTicketController extends Controller
         if (! $reservation['created']) {
             return redirect($ownershipService->detailUrl($cart))
                 ->with('error', 'Anda masih memiliki reservation aktif untuk event ini.');
+        }
+
+        if (Schema::hasColumn('carts', 'partner_uid')) {
+            $partner = app(PartnerReferralService::class)->resolveForEvent($request, $event);
+            if ($partner) {
+                $cart->partner_uid = $partner->uid;
+                $cart->setRelation('partner', $partner);
+                $pricing = app(TicketPricingService::class)->calculateCart($cart);
+                $cart->partner_discount_amount = (int) ($pricing['partner_discount'] ?? 0);
+                $cart->partner_commission_type = $partner->hasActiveCommission() ? $partner->commission_type : null;
+                $cart->partner_commission_value = $partner->hasActiveCommission() ? $partner->commission_value : null;
+                $cart->partner_commission_amount = (int) ($pricing['partner_commission'] ?? 0);
+                $cart->save();
+            }
         }
 
         return redirect($ownershipService->detailUrl($cart));

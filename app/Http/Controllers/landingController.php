@@ -7,6 +7,7 @@ use App\Models\Event;
 use App\Models\Harga;
 use App\Models\Slider;
 use App\Models\Term;
+use App\Services\Partners\PartnerReferralService;
 use App\Services\Tickets\CartOwnershipService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -38,10 +39,11 @@ class landingController extends Controller
         ]);
     }
 
-    public function ticket($slug)
+    public function ticket(Request $request, $slug)
     {
         // 1. Hapus filter query 'active' agar tiket inactive tetap dikirim ke view
         $ticket = Event::with(['talents', 'hargas', 'fasilitas'])->where('slug', $slug)->firstOrFail();
+        $activePartner = app(PartnerReferralService::class)->captureFromRequest($request, $ticket);
 
         $hargas = $ticket->hargas
             ->sortBy(fn ($harga) => $harga->effectivePrice())
@@ -84,6 +86,7 @@ class landingController extends Controller
             'hasUnpaid' => $unpaidTx ? true : false,
             'unpaidUid' => $unpaidTx->uid ?? null,
             'unpaidUrl' => $unpaidUrl,
+            'activePartner' => $activePartner,
         ]);
     }
 

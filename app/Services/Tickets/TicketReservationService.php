@@ -182,6 +182,16 @@ class TicketReservationService
             throw ValidationException::withMessages(['voucher' => 'Voucher '.$code.' Invalid']);
         }
 
+        if (filled($cart->partner_uid ?? null)) {
+            $partner = $cart->partner;
+            if ($partner && $partner->hasActiveDiscount()
+                && ((bool) ($partner->allow_promo_tickets ?? false) || ! app(TicketPricingService::class)->cartHasPromoTickets($cart))) {
+                throw ValidationException::withMessages([
+                    'voucher' => 'Transaksi dengan potongan khusus partner tidak dapat digabung dengan kode voucher.',
+                ]);
+            }
+        }
+
         if (! (bool) ($voucher->allow_promo_tickets ?? false)
             && app(TicketPricingService::class)->cartHasPromoTickets($cart)) {
             throw ValidationException::withMessages([

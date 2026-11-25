@@ -44,6 +44,21 @@
                 @csrf
                 <input type="hidden" name="event_uid" value="{{ $ticket->uid }}">
 
+                @if (! empty($activePartner))
+                    <div style="margin:0 16px 14px;padding:12px 14px;border-radius:12px;background:rgba(79,70,229,0.1);border:1px solid rgba(79,70,229,0.28);font-size:13px;">
+                        <div style="font-weight:800;color:#4f46e5;">
+                            🤝 Link Resmi Partner: {{ $activePartner->name }}
+                        </div>
+                        @if ($activePartner->hasActiveDiscount())
+                            <div style="font-size:12px;opacity:0.85;margin-top:2px;">
+                                Potongan khusus
+                                <strong>{{ $activePartner->discount_type === 'persen' ? $activePartner->discount_value . '%' : 'Rp ' . number_format($activePartner->discount_value, 0, ',', '.') }}</strong>
+                                otomatis diterapkan saat checkout.
+                            </div>
+                        @endif
+                    </div>
+                @endif
+
                 @if ($list->count() > 0)
                     <div class="panel-body" style="overflow-y: auto; max-height: 430px; padding-right: 6px;">
                         @foreach ($list as $key => $hargaItem)

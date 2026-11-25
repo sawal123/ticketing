@@ -65,6 +65,20 @@
         </div>
     @endif
 
+    @if (! empty($cartPartner))
+        <div class="email-alert" style="margin-top:10px;">
+            <div class="email-alert-inner" style="background:rgba(79,70,229,0.09);border:1px solid rgba(79,70,229,0.28);color:var(--text, #312e81);">
+                <span class="alert-icon">🤝</span>
+                <span class="alert-text" style="color:inherit;">
+                    Transaksi melalui Partner <strong>{{ $cartPartner->name }}</strong>
+                    @if (($partnerDiscount ?? 0) > 0)
+                        — Potongan khusus <strong style="color:#4f46e5;">Rp {{ number_format($partnerDiscount, 0, ',', '.') }}</strong> otomatis diterapkan.
+                    @endif
+                </span>
+            </div>
+        </div>
+    @endif
+
     <!-- MAIN -->
     <div class="checkout-layout">
         @if (session('success') && !str_contains(session('success'), 'Pembayaran Berhasil'))

@@ -28,8 +28,12 @@ class TicketPricingService
             return (int) $item->quantity * $price;
         });
 
-        $discount = $this->calculateVoucherDiscount($cart, $ticketTotal);
+        $partnerDiscount = $this->calculatePartnerDiscount($cart, $ticketTotal);
+        $voucherDiscount = $partnerDiscount > 0 ? 0 : $this->calculateVoucherDiscount($cart, $ticketTotal);
+        $discount = $partnerDiscount > 0 ? $partnerDiscount : $voucherDiscount;
         $subtotal = max(0, $ticketTotal - $discount);
+        $totalQty = (int) $items->sum('quantity');
+        $partnerCommission = $this->calculatePartnerCommission($cart, $subtotal, $totalQty);
         $currentTax = $this->tax($cart->event, $subtotal);
         $hasCompleteFinancialSnapshot = $this->hasCompleteFinancialSnapshot($cart);
         $storedFinancialSnapshot = ($hasCompleteFinancialSnapshot || ! $paymentGateway)
@@ -64,6 +68,9 @@ class TicketPricingService
         return [
             'ticket_total' => $ticketTotal,
             'discount' => $discount,
+            'voucher_discount' => $voucherDiscount,
+            'partner_discount' => $partnerDiscount,
+            'partner_commission' => $partnerCommission,
             'subtotal' => $subtotal,
             'tax_percent' => $taxPercent,
             'tax_amount' => $taxAmount,
@@ -123,6 +130,49 @@ class TicketPricingService
             return $item->masterHarga
                 && (int) $item->harga_ticket < (int) $item->masterHarga->harga;
         });
+    }
+
+    public function calculatePartnerDiscount(Cart $cart, int $ticketTotal): int
+    {
+        if (! filled($cart->partner_uid ?? null) || $ticketTotal <= 0) {
+            return 0;
+        }
+
+        if (in_array($cart->status, [Cart::STATUS_PENDING, Cart::STATUS_SUCCESS], true)
+            && array_key_exists('partner_discount_amount', $cart->getAttributes())) {
+            return min((int) ($cart->partner_discount_amount ?? 0), $ticketTotal);
+        }
+
+        $partner = $cart->partner;
+        if (! $partner || ! $partner->hasActiveDiscount()) {
+            return 0;
+        }
+
+        if (! (bool) ($partner->allow_promo_tickets ?? false) && $this->cartHasPromoTickets($cart)) {
+            return 0;
+        }
+
+        return $partner->calculateDiscount($ticketTotal);
+    }
+
+    public function calculatePartnerCommission(Cart $cart, int $netSubtotal, int $totalQty): int
+    {
+        if (! filled($cart->partner_uid ?? null) || $totalQty <= 0) {
+            return 0;
+        }
+
+        if (in_array($cart->status, [Cart::STATUS_PENDING, Cart::STATUS_SUCCESS], true)
+            && array_key_exists('partner_commission_amount', $cart->getAttributes())
+            && (int) ($cart->partner_commission_amount ?? 0) > 0) {
+            return (int) $cart->partner_commission_amount;
+        }
+
+        $partner = $cart->partner;
+        if (! $partner || ! $partner->hasActiveCommission()) {
+            return 0;
+        }
+
+        return $partner->calculateCommission($netSubtotal, $totalQty);
     }
 
     public function taxPercent(?Event $event): int

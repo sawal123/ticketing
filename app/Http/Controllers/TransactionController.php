@@ -214,6 +214,13 @@ class TransactionController extends Controller
                 $cart->pajak_persen = $pricing['tax_percent'];
                 $cart->gross_amount = $pricing['gross_amount'];
                 $cart->payment_link_expires_at = $cart->expires_at;
+                if (Schema::hasColumn('carts', 'partner_uid') && filled($cart->partner_uid ?? null)) {
+                    $partner = $cart->partner;
+                    $cart->partner_discount_amount = (int) ($pricing['partner_discount'] ?? 0);
+                    $cart->partner_commission_type = $partner && $partner->hasActiveCommission() ? $partner->commission_type : null;
+                    $cart->partner_commission_value = $partner && $partner->hasActiveCommission() ? $partner->commission_value : null;
+                    $cart->partner_commission_amount = (int) ($pricing['partner_commission'] ?? 0);
+                }
                 $cart->save();
 
                 Transaction::updateOrCreate(
