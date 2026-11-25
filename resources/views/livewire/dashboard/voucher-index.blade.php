@@ -195,6 +195,19 @@
             <x-admin.input label="Limit Penggunaan" type="number" wire:model.live="limit" min="1" placeholder="100"
                 error="{{ $errors->first('limit') }}" />
 
+            <label class="flex items-start gap-3 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 cursor-pointer">
+                <input type="checkbox" wire:model="allow_promo_tickets"
+                    class="mt-0.5 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+                <div>
+                    <span class="block text-xs font-bold text-slate-700 dark:text-slate-200">
+                        Voucher dapat digunakan untuk harga promo
+                    </span>
+                    <span class="block text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                        Jika tidak dicentang, voucher hanya berlaku untuk tiket dengan harga normal.
+                    </span>
+                </div>
+            </label>
+
             <div class="flex justify-end gap-3 pt-4">
                 <x-admin.button type="button" variant="secondary" x-on:click="show = false">
                     Batal

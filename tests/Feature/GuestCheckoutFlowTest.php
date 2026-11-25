@@ -463,7 +463,7 @@ class GuestCheckoutFlowTest extends TestCase
         // Simulate cross-site Midtrans redirect with lost session & spoofed settlement query string while DB is still PENDING
         $this->flushSession();
 
-        $pendingPage = $this->get(route('checkout.guest.finish', [
+        $tokenRedirect = $this->get(route('checkout.guest.finish', [
             'uid' => $cart->uid,
             'token' => $plainToken,
             'order_id' => $cart->invoice,
@@ -471,7 +471,15 @@ class GuestCheckoutFlowTest extends TestCase
             'transaction_status' => 'settlement',
         ]));
 
+        // Must strip secret token from URL by redirecting to clean finish URL with security headers
+        $tokenRedirect->assertRedirect(route('checkout.guest.finish', ['uid' => $cart->uid]));
+        $tokenRedirect->assertHeader('Referrer-Policy', 'no-referrer');
+        $this->assertStringContainsString('no-store', (string) $tokenRedirect->headers->get('Cache-Control'));
+
+        $pendingPage = $this->get(route('checkout.guest.finish', ['uid' => $cart->uid]));
         $pendingPage->assertOk();
+        $pendingPage->assertHeader('Referrer-Policy', 'no-referrer');
+        $this->assertStringContainsString('no-store', (string) $pendingPage->headers->get('Cache-Control'));
         $pendingPage->assertSee('Menunggu Konfirmasi Pembayaran');
         $pendingPage->assertDontSee('Pembayaran Berhasil!');
         $pendingPage->assertSee($cart->invoice);
@@ -492,15 +500,17 @@ class GuestCheckoutFlowTest extends TestCase
 
         $this->flushSession();
 
-        $paidPage = $this->get(route('checkout.guest.finish', [
+        $this->get(route('checkout.guest.finish', [
             'uid' => $cart->uid,
             'token' => $plainToken,
             'order_id' => $cart->invoice,
             'status_code' => '200',
             'transaction_status' => 'settlement',
-        ]));
+        ]))->assertRedirect(route('checkout.guest.finish', ['uid' => $cart->uid]));
 
+        $paidPage = $this->get(route('checkout.guest.finish', ['uid' => $cart->uid]));
         $paidPage->assertOk();
+        $paidPage->assertHeader('Referrer-Policy', 'no-referrer');
         $paidPage->assertSee('Pembayaran Berhasil!');
         $paidPage->assertSee('Buka E-Ticket &amp; Barcode', false);
         $paidPage->assertSee('tamu.token@example.com');

@@ -76,12 +76,27 @@
                     </div>
 
                     <div class="card-footer">
+                        @php
+                            $displayHarga = ($event->relationLoaded('hargas') && $event->hargas->isNotEmpty())
+                                ? $event->hargas->sortBy(fn ($h) => $h->effectivePrice())->first()
+                                : $event->harga;
+                        @endphp
                         <div>
                             <div class="price-from">Start From</div>
 
-                            @if ($event->harga)
+                            @if ($displayHarga)
+                                @if ($displayHarga->hasActivePromo())
+                                    <div style="display:flex;align-items:center;gap:6px;margin-top:2px;">
+                                        <span style="font-size:12px;text-decoration:line-through;opacity:0.6;">
+                                            Rp {{ number_format($displayHarga->harga, 0, ',', '.') }}
+                                        </span>
+                                        <span style="display:inline-flex;align-items:center;padding:2px 7px;border-radius:999px;background:#ef4444;color:#ffffff;font-size:10px;font-weight:800;line-height:1.2;">
+                                            -{{ $displayHarga->promoDiscountPercent() }}%
+                                        </span>
+                                    </div>
+                                @endif
                                 <div class="price-val">
-                                    Rp {{ number_format($event->harga->harga, 0, ',', '.') }}
+                                    Rp {{ number_format($displayHarga->effectivePrice(), 0, ',', '.') }}
                                 </div>
                             @else
                                 <div class="price-na">Ticket Belum Tersedia</div>

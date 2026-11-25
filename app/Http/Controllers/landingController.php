@@ -3,24 +3,25 @@
 namespace App\Http\Controllers;
 
 use App\Models\Cart;
-use App\Models\Term;
 use App\Models\Event;
 use App\Models\Harga;
 use App\Models\Slider;
-use App\Models\HargaCart;
+use App\Models\Term;
+use App\Services\Partners\PartnerReferralService;
 use App\Services\Tickets\CartOwnershipService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 
 class landingController extends Controller
 {
     public function home()
     {
-        // AJAIBNYA ELOQUENT: Cukup panggil with(['harga', 'user']) 
+        // AJAIBNYA ELOQUENT: Cukup panggil with(['harga', 'user'])
         // Tidak perlu lagi join manual ke tabel users!
         $events = Event::with(['harga' => function ($query) {
             $query->where('status', 'active')->orderByRaw('CAST(harga AS UNSIGNED) ASC');
+        }, 'hargas' => function ($query) {
+            $query->where('status', 'active');
         }, 'user'])
             ->where('konfirmasi', '1')
             ->orderBy('created_at', 'desc')
@@ -34,22 +35,23 @@ class landingController extends Controller
         return view('frontend.page.home', [
             'title' => 'Tiket',
             'events' => $events,
-            'slide' => $slide
+            'slide' => $slide,
         ]);
     }
 
-    public function ticket($slug)
+    public function ticket(Request $request, $slug)
     {
         // 1. Hapus filter query 'active' agar tiket inactive tetap dikirim ke view
         $ticket = Event::with(['talents', 'hargas', 'fasilitas'])->where('slug', $slug)->firstOrFail();
+        $activePartner = app(PartnerReferralService::class)->captureFromRequest($request, $ticket);
 
         $hargas = $ticket->hargas
-            ->sortBy(fn ($harga) => (int) $harga->harga)
+            ->sortBy(fn ($harga) => $harga->effectivePrice())
             ->values();
 
         $lowestTicketPrice = $hargas
             ->where('status', 'active')
-            ->min('harga') ?? $hargas->min('harga');
+            ->min(fn ($harga) => $harga->effectivePrice()) ?? $hargas->min(fn ($harga) => $harga->effectivePrice());
 
         $reservedAndSoldTickets = $hargas
             ->mapWithKeys(fn ($harga) => [
@@ -84,6 +86,7 @@ class landingController extends Controller
             'hasUnpaid' => $unpaidTx ? true : false,
             'unpaidUid' => $unpaidTx->uid ?? null,
             'unpaidUrl' => $unpaidUrl,
+            'activePartner' => $activePartner,
         ]);
     }
 
@@ -112,19 +115,21 @@ class landingController extends Controller
 
         return view('frontend.page.transaksi.list-transaksi-new', [
             'title' => 'Transaksi',
-            'transaksi' => $transaksi
+            'transaksi' => $transaksi,
         ]);
     }
 
     public function search($search = null)
     {
         // Siapkan query dasar
-        $query = Event::with(['harga', 'user'])->where('konfirmasi', '1');
+        $query = Event::with(['harga', 'hargas' => function ($q) {
+            $q->where('status', 'active');
+        }, 'user'])->where('konfirmasi', '1');
 
         if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('event', 'LIKE', "%$search%")
-                   
+
                     ->orWhere('alamat', 'LIKE', "%$search%")
                     ->orWhere('slug', 'LIKE', "%$search%")
                     // Mencari berdasarkan nama talent menggunakan nama relasi yang baru: talents
@@ -145,19 +150,20 @@ class landingController extends Controller
     public function cari(Request $request)
     {
 
-    
         // Best practice Laravel: gunakan class Request daripada $_GET native php
         $cari = $request->input('cari');
+
         // dd($cari);
-        return redirect('/search/' . $cari)->withInput();
+        return redirect('/search/'.$cari)->withInput();
     }
 
     public function term()
     {
         $term = Term::all();
+
         return view('frontend.page.term', [
             'title' => 'Term and Condition',
-            'term' => $term
+            'term' => $term,
         ]);
     }
 

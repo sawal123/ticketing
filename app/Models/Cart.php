@@ -50,6 +50,11 @@ class Cart extends Model
         'user_uid',
         'is_guest',
         'event_uid',
+        'partner_uid',
+        'partner_discount_amount',
+        'partner_commission_type',
+        'partner_commission_value',
+        'partner_commission_amount',
         'invoice',
         'ticket_holder_name',
         'ticket_recipient_email',
@@ -132,6 +137,11 @@ class Cart extends Model
     public function event()
     {
         return $this->belongsTo(Event::class, 'event_uid', 'uid');
+    }
+
+    public function partner()
+    {
+        return $this->belongsTo(Partner::class, 'partner_uid', 'uid');
     }
 
     public function transaction()

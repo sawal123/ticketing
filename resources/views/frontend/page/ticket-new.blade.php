@@ -44,6 +44,21 @@
                 @csrf
                 <input type="hidden" name="event_uid" value="{{ $ticket->uid }}">
 
+                @if (! empty($activePartner))
+                    <div style="margin:0 16px 14px;padding:12px 14px;border-radius:12px;background:rgba(79,70,229,0.1);border:1px solid rgba(79,70,229,0.28);font-size:13px;">
+                        <div style="font-weight:800;color:#4f46e5;">
+                            🤝 Link Resmi Partner: {{ $activePartner->name }}
+                        </div>
+                        @if ($activePartner->hasActiveDiscount())
+                            <div style="font-size:12px;opacity:0.85;margin-top:2px;">
+                                Potongan khusus
+                                <strong>{{ $activePartner->discount_type === 'persen' ? $activePartner->discount_value . '%' : 'Rp ' . number_format($activePartner->discount_value, 0, ',', '.') }}</strong>
+                                otomatis diterapkan saat checkout.
+                            </div>
+                        @endif
+                    </div>
+                @endif
+
                 @if ($list->count() > 0)
                     <div class="panel-body" style="overflow-y: auto; max-height: 430px; padding-right: 6px;">
                         @foreach ($list as $key => $hargaItem)
@@ -65,16 +80,26 @@
                                             {{ $hargaItem->description }}
                                         </div>
                                     @endif
+                                    @if ($hargaItem->hasActivePromo())
+                                        <div class="tier-promo-meta" style="display:flex;align-items:center;gap:6px;margin-top:4px;">
+                                            <span class="tier-price-original" style="font-size:12px;text-decoration:line-through;opacity:0.6;">
+                                                Rp {{ number_format($hargaItem->harga, 0, ',', '.') }}
+                                            </span>
+                                            <span class="tier-promo-badge" style="display:inline-flex;align-items:center;padding:2px 7px;border-radius:999px;background:#ef4444;color:#ffffff;font-size:11px;font-weight:800;line-height:1.2;">
+                                                -{{ $hargaItem->promoDiscountPercent() }}%
+                                            </span>
+                                        </div>
+                                    @endif
                                     <div class="tier-price">
                                         <span class="currency">Rp</span>
-                                        {{ number_format($hargaItem->harga, 0, ',', '.') }}
+                                        {{ number_format($hargaItem->effectivePrice(), 0, ',', '.') }}
                                     </div>
                                 </div>
 
 
                                 @if ($sold < $qty && $hargaItem->status === 'active' && $ticket->status === 'active')
                                     <div class="qty-control ticket-quantity-control input-wrapper"
-                                        data-target="quantity{{ $loop->index }}" data-price="{{ $hargaItem->harga }}"
+                                        data-target="quantity{{ $loop->index }}" data-price="{{ $hargaItem->effectivePrice() }}"
                                         data-max="{{ $effectiveMax }}">
 
                                         <input type="hidden" name="tickets[{{ $loop->index }}][harga_id]"
@@ -313,16 +338,26 @@
                                             {{ $hargaItemMobile->description }}
                                         </div>
                                     @endif
+                                    @if ($hargaItemMobile->hasActivePromo())
+                                        <div class="tier-promo-meta" style="display:flex;align-items:center;gap:6px;margin-top:4px;">
+                                            <span class="tier-price-original" style="font-size:12px;text-decoration:line-through;opacity:0.6;">
+                                                Rp {{ number_format($hargaItemMobile->harga, 0, ',', '.') }}
+                                            </span>
+                                            <span class="tier-promo-badge" style="display:inline-flex;align-items:center;padding:2px 7px;border-radius:999px;background:#ef4444;color:#ffffff;font-size:11px;font-weight:800;line-height:1.2;">
+                                                -{{ $hargaItemMobile->promoDiscountPercent() }}%
+                                            </span>
+                                        </div>
+                                    @endif
                                     <div class="tier-price">
                                         <span class="currency">Rp</span>
-                                        {{ number_format($hargaItemMobile->harga, 0, ',', '.') }}
+                                        {{ number_format($hargaItemMobile->effectivePrice(), 0, ',', '.') }}
                                     </div>
                                 </div>
 
                                 @if ($soldMob < $qtyMob && $hargaItemMobile->status === 'active' && $ticket->status === 'active')
                                     <div class="qty-control ticket-quantity-control input-wrapper"
                                         data-target="quantity{{ $loop->index }}"
-                                        data-price="{{ $hargaItemMobile->harga }}" data-max="{{ $effectiveMaxMob }}">
+                                        data-price="{{ $hargaItemMobile->effectivePrice() }}" data-max="{{ $effectiveMaxMob }}">
 
                                         <input type="hidden" name="tickets[{{ $loop->index }}][harga_id]"
                                             value="{{ $hargaItemMobile->id }}">

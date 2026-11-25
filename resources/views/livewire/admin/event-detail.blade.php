@@ -1228,6 +1228,7 @@
                     <x-admin.input type="number" wire:model="editingHarga.harga" required />
                 </div>
             </div>
+            @include('livewire.partials.ticket-promo-fields', ['modelPrefix' => 'editingHarga'])
             <div class="flex justify-end gap-3 mt-6">
                 <x-admin.button type="button" x-on:click="show = false" variant="ghost"
                     wire:loading.attr="disabled" wire:target="updateTicket"

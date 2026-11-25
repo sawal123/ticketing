@@ -539,9 +539,25 @@
                                 </div>
                             </td>
                             <td class="px-5 py-4">
-                                <span class="text-lg font-extrabold text-indigo-600 dark:text-indigo-400">
-                                    Rp {{ number_format($harga->harga, 0, ',', '.') }}
-                                </span>
+                                @if ($harga->hasActivePromo())
+                                    <div class="flex flex-col">
+                                        <div class="flex items-center gap-1.5">
+                                            <span class="text-xs text-slate-400 line-through">
+                                                Rp {{ number_format($harga->harga, 0, ',', '.') }}
+                                            </span>
+                                            <span class="px-1.5 py-0.5 rounded-full bg-rose-500/15 text-rose-600 dark:text-rose-400 text-[10px] font-extrabold">
+                                                -{{ $harga->promoDiscountPercent() }}%
+                                            </span>
+                                        </div>
+                                        <span class="text-lg font-extrabold text-indigo-600 dark:text-indigo-400">
+                                            Rp {{ number_format($harga->effectivePrice(), 0, ',', '.') }}
+                                        </span>
+                                    </div>
+                                @else
+                                    <span class="text-lg font-extrabold text-indigo-600 dark:text-indigo-400">
+                                        Rp {{ number_format($harga->harga, 0, ',', '.') }}
+                                    </span>
+                                @endif
                             </td>
                             <td class="px-5 py-4" x-data="{ active: @js($harga->status === 'active') }">
                                 <!-- Toggle Status (Optimistic UI with Alpine) -->
@@ -1112,6 +1128,7 @@
                         :error="$errors->first('newHarga.max_order_qty')" />
                 </div>
             </div>
+            @include('livewire.partials.ticket-promo-fields', ['modelPrefix' => 'newHarga'])
             <div>
                 <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Deskripsi
                     Tiket</label>
@@ -1159,6 +1176,7 @@
                         :error="$errors->first('editingHarga.max_order_qty')" />
                 </div>
             </div>
+            @include('livewire.partials.ticket-promo-fields', ['modelPrefix' => 'editingHarga'])
             <div>
                 <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Deskripsi
                     Tiket</label>

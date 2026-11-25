@@ -148,6 +148,7 @@ Route::get('/checkout/{uid}', [BuyTicketController::class, 'showGuest'])
     ->name('checkout.guest.show');
 Route::get('/checkout/{uid}/selesai', [BuyTicketController::class, 'showGuestFinish'])
     ->whereUuid('uid')
+    ->middleware('throttle:60,1')
     ->name('checkout.guest.finish');
 Route::get('/detail-ticket/{uid}/{user?}', [BuyTicketController::class, 'index']);
 Route::post('/checkVoucer', [BuyTicketController::class, 'checkVoucher']);

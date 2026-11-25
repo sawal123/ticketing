@@ -14,6 +14,8 @@ use App\Services\Agreements\AgreementFinalizationService;
 use App\Services\Agreements\AgreementPreviewService;
 use App\Services\Agreements\AgreementReviewService;
 use App\Services\Agreements\AgreementSignedVerificationService;
+use App\Services\Agreements\AgreementVersioningService;
+use App\Services\Events\EventActivationGuardService;
 use App\Services\Payments\PaymentConfigurationAuditService;
 use App\Services\Reports\FinancialSnapshotService;
 use App\Services\Tickets\GateTokenService;
@@ -299,13 +301,13 @@ class EventDetail extends Component
             })
             ->when($this->searchTransaction, function ($q) {
                 $q->where(function ($sub) {
-                    $sub->where('carts.invoice', 'like', '%' . $this->searchTransaction . '%')
+                    $sub->where('carts.invoice', 'like', '%'.$this->searchTransaction.'%')
                         ->orWhere(function ($online) {
                             $online->where('carts.payment_type', '!=', 'cash')
                                 ->whereHas('users', function ($u) {
                                     $u->where(function ($userQuery) {
-                                        $userQuery->where('name', 'like', '%' . $this->searchTransaction . '%')
-                                            ->orWhere('email', 'like', '%' . $this->searchTransaction . '%');
+                                        $userQuery->where('name', 'like', '%'.$this->searchTransaction.'%')
+                                            ->orWhere('email', 'like', '%'.$this->searchTransaction.'%');
                                     });
                                 });
                         })
@@ -313,8 +315,8 @@ class EventDetail extends Component
                             $cashCart->where('carts.payment_type', 'cash')
                                 ->whereHas('cashBuyer', function ($cash) {
                                     $cash->where(function ($cashQuery) {
-                                        $cashQuery->where('name', 'like', '%' . $this->searchTransaction . '%')
-                                            ->orWhere('email', 'like', '%' . $this->searchTransaction . '%');
+                                        $cashQuery->where('name', 'like', '%'.$this->searchTransaction.'%')
+                                            ->orWhere('email', 'like', '%'.$this->searchTransaction.'%');
                                     });
                                 });
                         });
@@ -372,18 +374,18 @@ class EventDetail extends Component
     {
         PaymentGateway::findOrFail($gatewayId);
 
-        $mode = data_get($this->paymentGatewayConfigs, $gatewayId . '.fee_mode', EventPaymentGateway::FEE_MODE_GLOBAL);
+        $mode = data_get($this->paymentGatewayConfigs, $gatewayId.'.fee_mode', EventPaymentGateway::FEE_MODE_GLOBAL);
         $rules = [
-            'paymentGatewayConfigs.' . $gatewayId . '.fee_mode' => 'required|in:global,manual',
-            'paymentGatewayConfigs.' . $gatewayId . '.is_active' => 'required|boolean',
+            'paymentGatewayConfigs.'.$gatewayId.'.fee_mode' => 'required|in:global,manual',
+            'paymentGatewayConfigs.'.$gatewayId.'.is_active' => 'required|boolean',
         ];
 
         if ($mode === EventPaymentGateway::FEE_MODE_MANUAL) {
-            $rules['paymentGatewayConfigs.' . $gatewayId . '.fee_fixed'] = [
+            $rules['paymentGatewayConfigs.'.$gatewayId.'.fee_fixed'] = [
                 'required',
                 'regex:/^\d{1,13}(\.\d{1,2})?$/',
             ];
-            $rules['paymentGatewayConfigs.' . $gatewayId . '.fee_percent'] = [
+            $rules['paymentGatewayConfigs.'.$gatewayId.'.fee_percent'] = [
                 'required',
                 'regex:/^\d{1,4}(\.\d{1,4})?$/',
             ];
@@ -525,7 +527,7 @@ class EventDetail extends Component
             'fee_percent' => $eventPaymentGateway->fee_percent !== null ? (string) $eventPaymentGateway->fee_percent : '0',
         ];
 
-        app(\App\Services\Agreements\AgreementVersioningService::class)
+        app(AgreementVersioningService::class)
             ->checkForContractualChanges($this->getCurrentEventModel(), Auth::user()?->uid);
 
         session()->flash('message', 'Konfigurasi pembayaran event berhasil disimpan.');
@@ -563,7 +565,7 @@ class EventDetail extends Component
 
         $this->paymentOtpEnabled = (bool) $event->payment_otp_enabled;
 
-        app(\App\Services\Agreements\AgreementVersioningService::class)
+        app(AgreementVersioningService::class)
             ->checkForContractualChanges($this->getCurrentEventModel(), Auth::user()?->uid);
 
         session()->flash('message', 'Pengaturan OTP pembayaran event berhasil diperbarui.');
@@ -617,7 +619,7 @@ class EventDetail extends Component
 
         $this->bankRejectionReason = '';
 
-        app(\App\Services\Agreements\AgreementVersioningService::class)
+        app(AgreementVersioningService::class)
             ->checkForContractualChanges($this->getCurrentEventModel(), Auth::user()?->uid);
 
         session()->flash('message', 'Rekening event berhasil diverifikasi.');
@@ -665,7 +667,7 @@ class EventDetail extends Component
 
         $this->bankRejectionReason = '';
 
-        app(\App\Services\Agreements\AgreementVersioningService::class)
+        app(AgreementVersioningService::class)
             ->checkForContractualChanges($this->getCurrentEventModel(), Auth::user()?->uid);
 
         session()->flash('message', 'Rekening event ditolak.');
@@ -719,7 +721,7 @@ class EventDetail extends Component
 
         $this->organizerLetterRejectionReason = '';
 
-        app(\App\Services\Agreements\AgreementVersioningService::class)
+        app(AgreementVersioningService::class)
             ->checkForContractualChanges($this->getCurrentEventModel(), Auth::user()?->uid);
 
         session()->flash('message', 'Surat penyelenggara berhasil diverifikasi.');
@@ -767,7 +769,7 @@ class EventDetail extends Component
 
         $this->organizerLetterRejectionReason = '';
 
-        app(\App\Services\Agreements\AgreementVersioningService::class)
+        app(AgreementVersioningService::class)
             ->checkForContractualChanges($this->getCurrentEventModel(), Auth::user()?->uid);
 
         session()->flash('message', 'Surat penyelenggara ditolak.');
@@ -887,7 +889,7 @@ class EventDetail extends Component
         try {
             $result = app(AgreementFinalizationService::class)->finalizeForEvent($event, $actor->uid, $activeAgreement?->uid);
         } catch (\Throwable $e) {
-            session()->flash('error', 'Finalisasi dokumen gagal: ' . $e->getMessage());
+            session()->flash('error', 'Finalisasi dokumen gagal: '.$e->getMessage());
 
             return;
         }
@@ -921,7 +923,7 @@ class EventDetail extends Component
             $result = app(AgreementSignedVerificationService::class)
                 ->approveForEvent($event, $actor->uid, $activeAgreement?->uid);
         } catch (\Throwable $e) {
-            session()->flash('error', 'Verifikasi dokumen bertanda tangan gagal: ' . $e->getMessage());
+            session()->flash('error', 'Verifikasi dokumen bertanda tangan gagal: '.$e->getMessage());
 
             return;
         }
@@ -954,7 +956,7 @@ class EventDetail extends Component
             $result = app(AgreementSignedVerificationService::class)
                 ->rejectForEvent($event, $actor->uid, $validated['signedMouRejectionReason'], $activeAgreement?->uid);
         } catch (\Throwable $e) {
-            session()->flash('error', 'Penolakan dokumen bertanda tangan gagal: ' . $e->getMessage());
+            session()->flash('error', 'Penolakan dokumen bertanda tangan gagal: '.$e->getMessage());
 
             return;
         }
@@ -999,7 +1001,7 @@ class EventDetail extends Component
         }
 
         try {
-            app(\App\Services\Events\EventActivationGuardService::class)
+            app(EventActivationGuardService::class)
                 ->activateForEvent($event, (string) Auth::user()?->uid, true);
         } catch (\Throwable $e) {
             session()->flash('error', $e->getMessage());
@@ -1014,7 +1016,7 @@ class EventDetail extends Component
 
     public function toggleTicketStatus($id)
     {
-        $harga = Harga::findOrFail($id);
+        $harga = $this->scopedHarga($id);
         $harga->status = $harga->status === 'active' ? 'inactive' : 'active';
         $harga->save();
         session()->flash('message', 'Status tiket berhasil diperbarui.');
@@ -1022,7 +1024,7 @@ class EventDetail extends Component
 
     public function confirmDeleteTicket($id)
     {
-        $harga = Harga::findOrFail($id);
+        $harga = $this->scopedHarga($id);
         $hasTransactions = $harga->hargaCarts()->whereHas('cart', function ($q) {
             $q->where('status', 'SUCCESS');
         })->exists();
@@ -1040,7 +1042,7 @@ class EventDetail extends Component
     public function deleteTicket()
     {
         if ($this->deletingHargaId) {
-            $harga = Harga::findOrFail($this->deletingHargaId);
+            $harga = $this->scopedHarga($this->deletingHargaId);
             $harga->delete();
             $this->dispatch('close-modal', name: 'delete-ticket-modal');
             $this->deletingHargaId = null;
@@ -1050,12 +1052,16 @@ class EventDetail extends Component
 
     public function editTicket($id)
     {
-        $harga = Harga::findOrFail($id);
+        $harga = $this->scopedHarga($id);
+        $this->resetValidation();
         $this->editingHargaId = $id;
         $this->editingHarga = [
             'kategori' => $harga->kategori,
             'qty' => $harga->qty,
             'harga' => $harga->harga,
+            'is_promo' => (bool) ($harga->is_promo ?? false),
+            'promo_type' => $harga->promo_type ?: 'persen',
+            'promo_value' => $harga->promo_value,
         ];
 
         $this->dispatch('open-modal', name: 'edit-ticket-modal');
@@ -1067,17 +1073,87 @@ class EventDetail extends Component
             'editingHarga.kategori' => 'required|string|max:255',
             'editingHarga.qty' => 'required|integer|min:0',
             'editingHarga.harga' => 'required|integer|min:0',
+            'editingHarga.is_promo' => 'nullable|boolean',
+            'editingHarga.promo_type' => 'nullable|in:rupiah,persen',
+            'editingHarga.promo_value' => 'nullable|integer|min:0',
         ]);
 
-        $harga = Harga::findOrFail($this->editingHargaId);
-        $harga->update([
+        $promoPayload = $this->resolveValidatedPromoPayload($this->editingHarga, 'editingHarga');
+        if ($promoPayload === null) {
+            return;
+        }
+
+        $harga = $this->scopedHarga($this->editingHargaId);
+        $attributes = [
             'kategori' => $this->editingHarga['kategori'],
             'qty' => (int) $this->editingHarga['qty'],
             'harga' => (int) $this->editingHarga['harga'],
-        ]);
+        ];
+
+        if (Schema::hasColumn('hargas', 'is_promo')) {
+            $attributes = array_merge($attributes, $promoPayload);
+        }
+
+        $harga->update($attributes);
 
         $this->dispatch('close-modal', name: 'edit-ticket-modal');
         session()->flash('message', 'Data tiket berhasil diperbarui.');
+    }
+
+    private function scopedHarga($id): Harga
+    {
+        return Harga::where('uid', $this->eventUid)->findOrFail($id);
+    }
+
+    private function resolveValidatedPromoPayload(array $input, string $prefix): ?array
+    {
+        $isPromo = filter_var($input['is_promo'] ?? false, FILTER_VALIDATE_BOOLEAN);
+        if (! $isPromo) {
+            return [
+                'is_promo' => false,
+                'promo_type' => null,
+                'promo_value' => null,
+            ];
+        }
+
+        $basePrice = (int) ($input['harga'] ?? 0);
+        if ($basePrice <= 0) {
+            $this->addError($prefix.'.harga', 'Harga normal harus lebih dari 0 untuk mengaktifkan promo.');
+
+            return null;
+        }
+
+        $promoType = strtolower((string) ($input['promo_type'] ?? ''));
+        if (! in_array($promoType, [Harga::PROMO_TYPE_RUPIAH, Harga::PROMO_TYPE_PERSEN], true)) {
+            $this->addError($prefix.'.promo_type', 'Jenis promo harus Rupiah atau Persen.');
+
+            return null;
+        }
+
+        $promoValue = filter_var($input['promo_value'] ?? null, FILTER_VALIDATE_INT);
+        if ($promoValue === false || $promoValue < 1) {
+            $this->addError($prefix.'.promo_value', 'Nilai promo wajib diisi minimal 1.');
+
+            return null;
+        }
+
+        if ($promoType === Harga::PROMO_TYPE_PERSEN && $promoValue > 99) {
+            $this->addError($prefix.'.promo_value', 'Promo persen maksimal 99%.');
+
+            return null;
+        }
+
+        if ($promoType === Harga::PROMO_TYPE_RUPIAH && $promoValue >= $basePrice) {
+            $this->addError($prefix.'.promo_value', 'Potongan promo Rupiah harus lebih kecil dari harga normal.');
+
+            return null;
+        }
+
+        return [
+            'is_promo' => true,
+            'promo_type' => $promoType,
+            'promo_value' => $promoValue,
+        ];
     }
 
     public function showTransactionDetail($uid)
@@ -1273,13 +1349,13 @@ class EventDetail extends Component
             $mouPreview = app(AgreementPreviewService::class)->buildForEvent($event);
             $agreementReview = app(AgreementReviewService::class)->buildForEvent($event);
             $commercialReview = app(AgreementPreviewService::class)->buildCommercialSummaryForEvent($event);
-            $hasAgreementsTable = \Illuminate\Support\Facades\Schema::hasTable('agreements');
+            $hasAgreementsTable = Schema::hasTable('agreements');
 
             $agreementsHistory = $hasAgreementsTable
                 ? $event->agreements()
-                ->orderByRaw("CASE WHEN type = 'mou' THEN 1 ELSE 2 END ASC")
-                ->orderBy('version', 'asc')
-                ->get()
+                    ->orderByRaw("CASE WHEN type = 'mou' THEN 1 ELSE 2 END ASC")
+                    ->orderBy('version', 'asc')
+                    ->get()
                 : collect();
 
             $activeAgreement = $hasAgreementsTable
@@ -1292,7 +1368,7 @@ class EventDetail extends Component
                 : null;
 
             if ($activeAgreement?->isAddendum() && $activeAgreement->isDraft()) {
-                $addendumPreview = app(\App\Services\Agreements\AgreementVersioningService::class)
+                $addendumPreview = app(AgreementVersioningService::class)
                     ->buildAddendumPreview($event, $activeAgreement);
             }
 
@@ -1339,7 +1415,7 @@ class EventDetail extends Component
                 if ($hargaCartWithVoucher) {
                     $voucherCode = $hargaCartWithVoucher->voucher;
                 }
-                $discount = $selectedTransaction->hargaCarts->sum(fn($i) => (int) ($i->disc ?? 0));
+                $discount = $selectedTransaction->hargaCarts->sum(fn ($i) => (int) ($i->disc ?? 0));
             }
         }
 
@@ -1364,7 +1440,7 @@ class EventDetail extends Component
             'selectedTransaction' => $selectedTransaction,
             'discount' => $discount,
             'voucherCode' => $voucherCode,
-        ])->layout('admin.layout', ['title' => 'Detail Event: ' . $event->event]);
+        ])->layout('admin.layout', ['title' => 'Detail Event: '.$event->event]);
     }
 
     public function confirmResendEmail($uid)
@@ -1444,7 +1520,7 @@ class EventDetail extends Component
             $this->resendEmailUid = null;
             session()->flash('message', 'Email barcode telah dijadwalkan untuk dikirim.');
         } catch (\Exception $e) {
-            session()->flash('error', 'Gagal mengirim email: ' . $e->getMessage());
+            session()->flash('error', 'Gagal mengirim email: '.$e->getMessage());
         }
     }
 }
