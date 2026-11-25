@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Services\Payments\CheckoutPaymentOtpService;
 use App\Services\Payments\MidtransPaymentLinkService;
 use App\Services\Registrations\CheckoutRegistrationService;
+use App\Services\Tickets\CartOwnershipService;
 use App\Services\Tickets\TicketPricingService;
 use App\Services\Tickets\TicketReservationService;
 use Exception;
@@ -20,6 +21,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Midtrans\Config as konfig;
@@ -67,7 +69,8 @@ class TransactionController extends Controller
         TicketReservationService $reservationService,
         CheckoutPaymentOtpService $checkoutPaymentOtpService,
         CheckoutRegistrationService $checkoutRegistrationService,
-        MidtransPaymentLinkService $paymentLinkService
+        MidtransPaymentLinkService $paymentLinkService,
+        CartOwnershipService $ownershipService
     ) {
         $request->merge([
             'cart_uid' => $request->input('cart_uid', $request->input('cartUid')),
@@ -87,11 +90,8 @@ class TransactionController extends Controller
         }
 
         try {
-            $paymentContext = DB::transaction(function () use ($cartUid, $request, $pricingService, $reservationService, $checkoutPaymentOtpService, $checkoutRegistrationService, $paymentLinkService) {
-                $cart = Cart::where('uid', $cartUid)
-                    ->where('user_uid', Auth::user()->uid)
-                    ->lockForUpdate()
-                    ->first();
+            $paymentContext = DB::transaction(function () use ($cartUid, $request, $pricingService, $reservationService, $checkoutPaymentOtpService, $checkoutRegistrationService, $paymentLinkService, $ownershipService) {
+                $cart = $ownershipService->findOwnedCart($request, (string) $cartUid, true);
 
                 if (! $cart) {
                     throw ValidationException::withMessages(['cart_uid' => 'Cart tidak ditemukan.']);
@@ -145,17 +145,27 @@ class TransactionController extends Controller
 
                 if ($cart->recipientSnapshotLocked()) {
                     $this->assertRecipientSnapshotExists($cart);
-                } elseif ($cart->hasRecipientSnapshot() && ! $this->requestIncludesRecipientSnapshot($request)) {
+                } elseif ($cart->hasRecipientSnapshot() && ! $this->requestIncludesRecipientSnapshot($request, $cart)) {
                     // Existing carts can continue using their stored snapshot when paynow is posted directly.
                 } else {
-                    $recipientSnapshot = $this->resolveRecipientSnapshot($request);
+                    $recipientSnapshot = $this->resolveRecipientSnapshot($request, $cart);
                     $cart->ticket_holder_name = $recipientSnapshot['ticket_holder_name'];
                     $cart->ticket_recipient_email = $recipientSnapshot['ticket_recipient_email'];
+                    if (array_key_exists('ticket_holder_gender', $recipientSnapshot)
+                        && $recipientSnapshot['ticket_holder_gender'] !== null
+                        && Schema::hasColumn('carts', 'ticket_holder_gender')) {
+                        $cart->ticket_holder_gender = $recipientSnapshot['ticket_holder_gender'];
+                    }
+                    if (array_key_exists('ticket_holder_phone', $recipientSnapshot)
+                        && $recipientSnapshot['ticket_holder_phone'] !== null
+                        && Schema::hasColumn('carts', 'ticket_holder_phone')) {
+                        $cart->ticket_holder_phone = $recipientSnapshot['ticket_holder_phone'];
+                    }
                 }
 
                 if ($event->payment_otp_enabled) {
-                    $checkoutPaymentOtpService->assertOtpEligible($cart, Auth::user(), $event);
-                    $checkoutPaymentOtpService->assertVerifiedOtp($cart, Auth::user(), $event);
+                    $checkoutPaymentOtpService->assertOtpEligible($cart, Auth::user(), $event, $cart->ticket_recipient_email);
+                    $checkoutPaymentOtpService->assertVerifiedOtp($cart, Auth::user(), $event, $cart->ticket_recipient_email);
                 }
 
                 if ($cart->hasActivePaymentLink()) {
@@ -228,8 +238,9 @@ class TransactionController extends Controller
                     'midtrans_payment_code' => $midtransPaymentCode,
                     'event_uid' => $event->uid,
                     'expires_at' => $cart->expires_at,
-                    'customer_name' => Auth::user()->name,
-                    'customer_email' => Auth::user()->email,
+                    'customer_name' => $cart->isGuest() ? $cart->buyerName() : Auth::user()->name,
+                    'customer_email' => $cart->isGuest() ? $cart->buyerEmail() : Auth::user()->email,
+                    'customer_phone' => $cart->buyerPhone(),
                     'otp_required' => (bool) $event->payment_otp_enabled,
                 ];
             }, 3);
@@ -244,11 +255,12 @@ class TransactionController extends Controller
 
             $paymentUrl = $this->createMidtransPaymentUrl($paymentContext);
 
-            $paymentUrl = DB::transaction(function () use ($paymentContext, $paymentUrl, $checkoutPaymentOtpService) {
-                $cart = Cart::where('uid', $paymentContext['cart_uid'])
-                    ->where('user_uid', Auth::user()->uid)
-                    ->lockForUpdate()
-                    ->firstOrFail();
+            $paymentUrl = DB::transaction(function () use ($request, $paymentContext, $paymentUrl, $checkoutPaymentOtpService, $ownershipService) {
+                $cart = $ownershipService->findOwnedCart($request, (string) $paymentContext['cart_uid'], true);
+
+                if (! $cart) {
+                    throw ValidationException::withMessages(['cart_uid' => 'Cart tidak ditemukan.']);
+                }
 
                 if ($cart->hasActivePaymentLink()) {
                     return $cart->link;
@@ -261,7 +273,7 @@ class TransactionController extends Controller
                     $event = $cart->event;
 
                     if ($event) {
-                        $checkoutPaymentOtpService->consumeVerifiedOtp($cart, Auth::user(), $event);
+                        $checkoutPaymentOtpService->consumeVerifiedOtp($cart, Auth::user(), $event, $cart->ticket_recipient_email);
                     }
                 }
 
@@ -393,9 +405,11 @@ class TransactionController extends Controller
 
         if ($shouldSendEmail) {
             $cart = Cart::where('invoice', $orderId)->first();
-            $user = $cart ? User::where('uid', $cart->user_uid)->first() : null;
+            $user = ($cart && filled($cart->user_uid))
+                ? User::where('uid', $cart->user_uid)->first()
+                : null;
 
-            if ($cart && $user) {
+            if ($cart && ($user || $cart->isGuest())) {
                 dispatch(new sendEmailETransaksi($user, $cart));
             }
         }
@@ -423,10 +437,11 @@ class TransactionController extends Controller
                 'order_id' => $context['invoice'],
                 'gross_amount' => $context['gross_amount'],
             ],
-            'customer_details' => [
+            'customer_details' => array_filter([
                 'first_name' => $context['customer_name'],
                 'email' => $context['customer_email'],
-            ],
+                'phone' => $context['customer_phone'] ?? null,
+            ], fn ($value) => filled($value)),
             'enabled_payments' => [
                 $context['midtrans_payment_code'],
             ],
@@ -494,15 +509,45 @@ class TransactionController extends Controller
         return (int) $cart->payment_gateway_id === (int) $requestedGatewayId;
     }
 
-    protected function resolveRecipientSnapshot(Request $request): array
+    protected function resolveRecipientSnapshot(Request $request, Cart $cart): array
     {
+        if ($cart->isGuest()) {
+            $validated = $request->validate([
+                'ticket_holder_name' => 'required|string|max:255',
+                'ticket_recipient_email' => 'required|email:rfc|max:255',
+                'ticket_holder_phone' => ['required', 'string', 'regex:/^[0-9+\-\s()]{8,20}$/', 'max:30'],
+                'ticket_holder_gender' => 'required|in:'.implode(',', Cart::ALLOWED_GENDERS),
+            ], [
+                'ticket_holder_name.required' => 'Nama lengkap pemegang tiket wajib diisi.',
+                'ticket_recipient_email.required' => 'Alamat email penerima tiket wajib diisi.',
+                'ticket_recipient_email.email' => 'Format alamat email tidak valid.',
+                'ticket_holder_phone.required' => 'Nomor WhatsApp wajib diisi.',
+                'ticket_holder_phone.regex' => 'Format nomor WhatsApp tidak valid.',
+                'ticket_holder_gender.required' => 'Jenis kelamin wajib dipilih.',
+                'ticket_holder_gender.in' => 'Pilihan jenis kelamin tidak valid.',
+            ]);
+
+            return [
+                'ticket_holder_name' => trim((string) $validated['ticket_holder_name']),
+                'ticket_recipient_email' => strtolower(trim((string) $validated['ticket_recipient_email'])),
+                'ticket_holder_phone' => preg_replace('/\s+/', '', trim((string) $validated['ticket_holder_phone'])),
+                'ticket_holder_gender' => (string) $validated['ticket_holder_gender'],
+            ];
+        }
+
         $validated = $request->validate([
             'ticket_holder_name' => 'required|string|max:255',
+            'ticket_holder_phone' => ['nullable', 'string', 'regex:/^[0-9+\-\s()]{8,20}$/', 'max:30'],
+            'ticket_holder_gender' => 'nullable|in:'.implode(',', Cart::ALLOWED_GENDERS),
         ]);
 
         return [
             'ticket_holder_name' => trim((string) $validated['ticket_holder_name']),
             'ticket_recipient_email' => Auth::user()->email,
+            'ticket_holder_phone' => filled($validated['ticket_holder_phone'] ?? null)
+                ? preg_replace('/\s+/', '', trim((string) $validated['ticket_holder_phone']))
+                : null,
+            'ticket_holder_gender' => $validated['ticket_holder_gender'] ?? (Auth::user()->gender ?: null),
         ];
     }
 
@@ -517,8 +562,15 @@ class TransactionController extends Controller
         ]);
     }
 
-    protected function requestIncludesRecipientSnapshot(Request $request): bool
+    protected function requestIncludesRecipientSnapshot(Request $request, Cart $cart): bool
     {
+        if ($cart->isGuest()) {
+            return $request->has('ticket_holder_name')
+                || $request->has('ticket_recipient_email')
+                || $request->has('ticket_holder_phone')
+                || $request->has('ticket_holder_gender');
+        }
+
         return $request->has('ticket_holder_name');
     }
 
@@ -526,6 +578,9 @@ class TransactionController extends Controller
     {
         return $request->only([
             'ticket_holder_name',
+            'ticket_recipient_email',
+            'ticket_holder_phone',
+            'ticket_holder_gender',
             'registration_answers',
             'team_name',
             'members',

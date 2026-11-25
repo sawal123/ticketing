@@ -10,13 +10,18 @@ use App\Models\EventRegistrationField;
 use App\Models\HargaCart;
 use App\Models\PaymentGateway;
 use App\Models\Voucher;
+use App\Services\Tickets\CartOwnershipService;
+use App\Services\Tickets\GateTokenService;
 use App\Services\Tickets\TicketPricingService;
 use App\Services\Tickets\TicketReservationService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Throwable;
 
 class BuyTicketController extends Controller
 {
@@ -34,12 +39,20 @@ class BuyTicketController extends Controller
         $this->data_pay = $query->get();
     }
 
-    public function index($uid, $user)
+    public function showGuest(Request $request, string $uid, CartOwnershipService $ownershipService)
+    {
+        return $this->renderCheckout($request, $uid, $ownershipService);
+    }
+
+    public function index(Request $request, $uid, $user = null)
+    {
+        return $this->renderCheckout($request, (string) $uid, app(CartOwnershipService::class));
+    }
+
+    protected function renderCheckout(Request $request, string $uid, CartOwnershipService $ownershipService)
     {
         error_reporting(0);
-        $cart = Cart::where('uid', $uid)
-            ->where('user_uid', Auth::user()->uid)
-            ->first();
+        $cart = $ownershipService->findOwnedCart($request, $uid);
         if ($cart == null) {
             return redirect('/');
         }
@@ -113,11 +126,34 @@ class BuyTicketController extends Controller
             ? $pricing['gross_amount']
             : max(0, $pricing['subtotal'] + $pricing['tax_amount'] + $selectInternetFee);
 
+        $guestTicketAccessUrl = null;
+        if ($cart->isGuest() && $cart->status === Cart::STATUS_SUCCESS && filled($cart->gate_token_hash)) {
+            try {
+                $expiresAt = Carbon::parse($event->tanggal)->addDay();
+                if (! $expiresAt->isFuture()) {
+                    $expiresAt = now()->addDays(7);
+                }
+            } catch (Throwable) {
+                $expiresAt = now()->addDays(30);
+            }
+
+            $guestTicketAccessUrl = URL::temporarySignedRoute(
+                'online.ticket.show',
+                $expiresAt,
+                [
+                    'uid' => $cart->uid,
+                    'gate_access' => app(GateTokenService::class)->ticketAccessProof($cart),
+                ],
+            );
+        }
+
         return view('frontend.page.bayartiket', [
             'title' => 'Detail Ticket',
             'event' => $event,
             'harga' => $harga,
             'cart' => $cart,
+            'isGuestCart' => $cart->isGuest(),
+            'guestTicketAccessUrl' => $guestTicketAccessUrl,
             'total' => $pricing['ticket_total'],
             'uid' => $uid,
             'voucher' => $voucher,
@@ -139,20 +175,28 @@ class BuyTicketController extends Controller
         ]);
     }
 
-    public function checkVoucher(Request $request)
+    public function checkVoucher(Request $request, CartOwnershipService $ownershipService)
     {
-
         $request->validate([
             'code' => 'required|string|max:100',
             'cartUid' => 'required',
         ]);
         $code = Str::upper(trim((string) $request->code));
+        $cartUid = (string) $request->cartUid;
+        $cart = $ownershipService->findOwnedCart($request, $cartUid);
+
+        if (! $cart) {
+            return redirect()->back()->with('vError', 'Reservation sudah expired atau cart tidak valid.');
+        }
+
         try {
-            app(TicketReservationService::class)->reserveVoucherForCart(
-                (string) $request->cartUid,
-                Auth::user()->uid,
-                $code
-            );
+            $reservationService = app(TicketReservationService::class);
+            if ($cart->isGuest()) {
+                $tokenHash = $ownershipService->guestTokenHashForCart($request, $cart->uid);
+                $reservationService->reserveVoucherForGuestCart($cart->uid, (string) $tokenHash, $code);
+            } else {
+                $reservationService->reserveVoucherForCart($cart->uid, Auth::user()->uid, $code);
+            }
         } catch (ValidationException $exception) {
             return redirect()->back()->with('vError', collect($exception->errors())->flatten()->first());
         }
@@ -160,17 +204,27 @@ class BuyTicketController extends Controller
         return redirect()->back()->with('voucher', 'Voucher berhasil digunakan');
     }
 
-    public function closeVoucher(Request $request)
+    public function closeVoucher(Request $request, CartOwnershipService $ownershipService)
     {
         $request->validate([
             'cartUid' => 'required',
         ]);
 
+        $cartUid = (string) $request->cartUid;
+        $cart = $ownershipService->findOwnedCart($request, $cartUid);
+
+        if (! $cart) {
+            return redirect()->back()->with('vError', 'Reservation sudah expired atau cart tidak valid.');
+        }
+
         try {
-            app(TicketReservationService::class)->releaseVoucherForCart(
-                (string) $request->cartUid,
-                Auth::user()->uid
-            );
+            $reservationService = app(TicketReservationService::class);
+            if ($cart->isGuest()) {
+                $tokenHash = $ownershipService->guestTokenHashForCart($request, $cart->uid);
+                $reservationService->releaseVoucherForGuestCart($cart->uid, (string) $tokenHash);
+            } else {
+                $reservationService->releaseVoucherForCart($cart->uid, Auth::user()->uid);
+            }
         } catch (ValidationException $exception) {
             return redirect()->back()->with('vError', collect($exception->errors())->flatten()->first());
         }
@@ -178,8 +232,11 @@ class BuyTicketController extends Controller
         return redirect()->back()->with('voucher', 'Voucher berhasil dihapus!');
     }
 
-    public function checkout(Request $request, TicketReservationService $reservationService)
-    {
+    public function checkout(
+        Request $request,
+        TicketReservationService $reservationService,
+        CartOwnershipService $ownershipService
+    ) {
         $eventUid = $request->input('event_uid', $request->input('eventUid'));
 
         $request->merge(['event_uid' => $eventUid]);
@@ -201,11 +258,27 @@ class BuyTicketController extends Controller
         }
 
         try {
-            $reservation = $reservationService->reserveForUserEvent(
-                $event,
-                Auth::user()->uid,
-                $items
-            );
+            if (Auth::check()) {
+                $reservation = $reservationService->reserveForUserEvent(
+                    $event,
+                    Auth::user()->uid,
+                    $items
+                );
+            } else {
+                $guestSessionKeyHash = $ownershipService->guestSessionKeyHash($request);
+                $issuedToken = $ownershipService->issueGuestToken();
+
+                $reservation = $reservationService->reserveForGuestEvent(
+                    $event,
+                    $guestSessionKeyHash,
+                    $issuedToken['hash'],
+                    $items
+                );
+
+                if ($reservation['created']) {
+                    $ownershipService->storeGuestAccess($request, $reservation['cart'], $issuedToken['plain']);
+                }
+            }
         } catch (ValidationException $exception) {
             return redirect()->back()->with('error', collect($exception->errors())->flatten()->first());
         }
@@ -213,11 +286,11 @@ class BuyTicketController extends Controller
         $cart = $reservation['cart'];
 
         if (! $reservation['created']) {
-            return redirect('/detail-ticket/'.$cart->uid.'/'.Auth::user()->uid)
+            return redirect($ownershipService->detailUrl($cart))
                 ->with('error', 'Anda masih memiliki reservation aktif untuk event ini.');
         }
 
-        return redirect('/detail-ticket/'.$cart->uid.'/'.Auth::user()->uid);
+        return redirect($ownershipService->detailUrl($cart));
     }
 
     protected function parseCheckoutItems(Request $request): array

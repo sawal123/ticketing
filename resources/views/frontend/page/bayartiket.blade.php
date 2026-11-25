@@ -16,7 +16,8 @@
     </div>
 
     @php
-        $ticketDeliveryEmail = filled($cart->ticket_recipient_email) ? $cart->ticket_recipient_email : Auth::user()->email;
+        $isGuestCart = $isGuestCart ?? $cart->isGuest();
+        $ticketDeliveryEmail = $cart->buyerEmail();
     @endphp
 
     <!-- SUCCESS BANNER (Show only when status is SUCCESS) -->
@@ -33,10 +34,19 @@
                     </p>
                 </div>
                 <div class="success-actions">
-                    <a href="{{ url('/transaksi') }}" class="btn-success-action primary">
-                        <span>🎫</span>
-                        <span>Lihat Tiket Saya</span>
-                    </a>
+                    @if ($isGuestCart)
+                        @if (! empty($guestTicketAccessUrl))
+                            <a href="{{ $guestTicketAccessUrl }}" class="btn-success-action primary">
+                                <span>🎫</span>
+                                <span>Buka E-Ticket</span>
+                            </a>
+                        @endif
+                    @else
+                        <a href="{{ url('/transaksi') }}" class="btn-success-action primary">
+                            <span>🎫</span>
+                            <span>Lihat Tiket Saya</span>
+                        </a>
+                    @endif
                 </div>
             </div>
         </div>
@@ -45,8 +55,12 @@
         <div class="email-alert">
             <div class="email-alert-inner">
                 <span class="alert-icon">✉️</span>
-                <span class="alert-text">Pastikan email Anda aktif: <span
-                        class="alert-email">{{ Auth::user()->email }}</span></span>
+                @if ($isGuestCart)
+                    <span class="alert-text">Pastikan alamat email yang Anda masukkan aktif karena E-Ticket &amp; Barcode akan dikirim langsung ke email tersebut.</span>
+                @else
+                    <span class="alert-text">Pastikan email Anda aktif: <span
+                            class="alert-email">{{ Auth::user()?->email }}</span></span>
+                @endif
             </div>
         </div>
     @endif
@@ -114,16 +128,45 @@
                 $hasActivePaymentLink = $cart->hasActivePaymentLink();
                 $recipientSnapshotLocked = $cart->recipientSnapshotLocked();
                 $ticketHolderNameValue = old('ticket_holder_name', $cart->ticket_holder_name);
+                $ticketRecipientEmailValue = old('ticket_recipient_email', $cart->ticket_recipient_email);
+                $ticketHolderPhoneValue = old('ticket_holder_phone', $cart->ticket_holder_phone);
+                $ticketHolderGenderValue = old('ticket_holder_gender', $cart->ticket_holder_gender);
             @endphp
 
             <div class="card">
                 <div class="card-header">
                     <div class="card-icon" style="background:rgba(61,217,196,0.12);">👤</div>
-                    <div class="card-title">Informasi Pemegang Tiket</div>
+                    <div class="card-title">{{ $isGuestCart ? 'Informasi Pembeli' : 'Informasi Pemegang Tiket' }}</div>
                 </div>
                 <div class="card-body">
                     @if (!$recipientSnapshotLocked)
+                        @if ($isGuestCart)
+                            <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:12px 14px;border-radius:12px;margin-bottom:18px;background:rgba(139,92,246,0.12);border:1px solid rgba(139,92,246,0.28);">
+                                <div style="font-size:13px;color:var(--text);line-height:1.5;">
+                                    Biar lebih cepat — login atau daftar supaya nggak perlu isi data diri berulang kali!
+                                </div>
+                                <a href="{{ route('login') }}" style="display:inline-flex;align-items:center;padding:8px 14px;border-radius:999px;font-size:12px;font-weight:700;text-decoration:none;background:rgba(61,217,196,0.18);color:#3dd9c4;border:1px solid rgba(61,217,196,0.35);white-space:nowrap;">
+                                    Login atau daftar
+                                </a>
+                            </div>
+                        @endif
+
                         <div style="display:grid;gap:16px;">
+                            @if ($isGuestCart)
+                                <div>
+                                    <label for="ticketRecipientEmail"
+                                        style="display:block;font-weight:700;font-size:13px;margin-bottom:8px;color:var(--text);">
+                                        Alamat Email *
+                                    </label>
+                                    <input type="email" id="ticketRecipientEmail" name="ticket_recipient_email"
+                                        value="{{ $ticketRecipientEmailValue }}" maxlength="255" required form="paynowForm"
+                                        class="voucher-input" placeholder="contoh@email.com">
+                                    <div style="margin-top:8px;font-size:12px;color:var(--muted);line-height:1.6;">
+                                        Tiket akan dikirimkan ke email ini. Pastikan tidak salah ketik.
+                                    </div>
+                                </div>
+                            @endif
+
                             <div>
                                 <label for="ticketHolderName"
                                     style="display:block;font-weight:700;font-size:13px;margin-bottom:8px;color:var(--text);">
@@ -137,19 +180,59 @@
                                 </div>
                             </div>
 
-                            <div>
-                                <div style="display:block;font-weight:700;font-size:13px;margin-bottom:10px;color:var(--text);">
-                                    Email Penerima Tiket
+                            @if ($isGuestCart)
+                                <div>
+                                    <label for="ticketHolderPhone"
+                                        style="display:block;font-weight:700;font-size:13px;margin-bottom:8px;color:var(--text);">
+                                        Nomor WhatsApp *
+                                    </label>
+                                    <input type="tel" id="ticketHolderPhone" name="ticket_holder_phone"
+                                        value="{{ $ticketHolderPhoneValue }}" maxlength="30" inputmode="tel" required form="paynowForm"
+                                        class="voucher-input" placeholder="Contoh: 081234567890 atau +6281234567890">
+                                    <div style="margin-top:8px;font-size:12px;color:var(--muted);line-height:1.6;">
+                                        Masukkan nomor WhatsApp aktif yang dapat dihubungi terkait pesanan tiket Anda.
+                                    </div>
                                 </div>
 
-                                <div class="ticket-email-box">
-                                    <span class="email-box-label">Gunakan email akun saat ini</span>
-                                    <span class="email-box-email">{{ Auth::user()->email }}</span>
+                                <div>
+                                    <div style="display:block;font-weight:700;font-size:13px;margin-bottom:10px;color:var(--text);">
+                                        Jenis Kelamin *
+                                    </div>
+                                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                                        <label style="display:flex;align-items:center;justify-content:center;gap:8px;padding:11px 14px;border-radius:10px;cursor:pointer;border:1px solid rgba(255,255,255,0.14);background:rgba(255,255,255,0.04);font-size:13px;font-weight:600;color:var(--text);">
+                                            <input type="radio" name="ticket_holder_gender" value="pria" form="paynowForm" required
+                                                @checked($ticketHolderGenderValue === 'pria')>
+                                            <span>Laki-Laki</span>
+                                        </label>
+                                        <label style="display:flex;align-items:center;justify-content:center;gap:8px;padding:11px 14px;border-radius:10px;cursor:pointer;border:1px solid rgba(255,255,255,0.14);background:rgba(255,255,255,0.04);font-size:13px;font-weight:600;color:var(--text);">
+                                            <input type="radio" name="ticket_holder_gender" value="wanita" form="paynowForm" required
+                                                @checked($ticketHolderGenderValue === 'wanita')>
+                                            <span>Perempuan</span>
+                                        </label>
+                                    </div>
                                 </div>
-                                <div style="margin-top:8px;font-size:12px;color:var(--muted);line-height:1.6;">
-                                    Tiket akan dikirim ke email akun yang digunakan saat mendaftar.
+
+                                <div>
+                                    <label style="display:flex;align-items:flex-start;gap:10px;font-size:12px;color:var(--muted);line-height:1.6;cursor:pointer;">
+                                        <input type="checkbox" id="guestTermsAgreement" name="agree_terms" value="1" form="paynowForm" required style="margin-top:3px;">
+                                        <span>Saya menyetujui <a href="{{ url('/term') }}" target="_blank" style="color:#3dd9c4;text-decoration:underline;">Syarat dan Ketentuan</a> serta memastikan seluruh informasi yang diberikan sudah benar.</span>
+                                    </label>
                                 </div>
-                            </div>
+                            @else
+                                <div>
+                                    <div style="display:block;font-weight:700;font-size:13px;margin-bottom:10px;color:var(--text);">
+                                        Email Penerima Tiket
+                                    </div>
+
+                                    <div class="ticket-email-box">
+                                        <span class="email-box-label">Gunakan email akun saat ini</span>
+                                        <span class="email-box-email">{{ Auth::user()?->email }}</span>
+                                    </div>
+                                    <div style="margin-top:8px;font-size:12px;color:var(--muted);line-height:1.6;">
+                                        Tiket akan dikirim ke email akun yang digunakan saat mendaftar.
+                                    </div>
+                                </div>
+                            @endif
                         </div>
                     @else
                         <div style="display:grid;gap:12px;">
@@ -161,6 +244,18 @@
                                 <span class="label">Email Penerima Tiket</span>
                                 <span class="value">{{ $ticketDeliveryEmail ?: '-' }}</span>
                             </div>
+                            @if (filled($cart->ticket_holder_phone))
+                                <div class="detail-row">
+                                    <span class="label">Nomor WhatsApp</span>
+                                    <span class="value">{{ $cart->ticket_holder_phone }}</span>
+                                </div>
+                            @endif
+                            @if (filled($cart->ticket_holder_gender))
+                                <div class="detail-row">
+                                    <span class="label">Jenis Kelamin</span>
+                                    <span class="value">{{ $cart->ticket_holder_gender === 'pria' ? 'Laki-Laki' : 'Perempuan' }}</span>
+                                </div>
+                            @endif
                             <div style="font-size:12px;color:var(--muted);line-height:1.6;">
                                 Informasi pemegang tiket tidak dapat diubah setelah proses pembayaran dimulai.
                             </div>
@@ -450,7 +545,7 @@
             </div>
 
             <!-- PAYMENT METHOD -->
-            @if ($canChangePaymentMethod)
+            @if ($canChangePaymentMethod ?? false)
                 <div class="card">
                     <div class="card-header">
                         <div class="card-icon" style="background:rgba(108,92,231,0.12);">💳</div>
@@ -711,6 +806,7 @@
     <script>
         const checkoutPaymentOtp = {
             enabled: {{ $event->payment_otp_enabled ? 'true' : 'false' }},
+            isGuest: {{ $isGuestCart ? 'true' : 'false' }},
             cartUid: @json($cart->uid),
             sendUrl: @json(route('checkout-payment-otp.send')),
             resendUrl: @json(route('checkout-payment-otp.resend')),
@@ -719,6 +815,29 @@
             resendAvailableIn: 0,
             countdownTimer: null,
         };
+
+        function buildCheckoutOtpPayload(extra = {}) {
+            const payload = {
+                cart_uid: checkoutPaymentOtp.cartUid,
+                ...extra,
+            };
+
+            if (checkoutPaymentOtp.isGuest) {
+                const form = document.getElementById('paynowForm');
+                const emailInput = form ? form.elements.namedItem('ticket_recipient_email') : null;
+                const nameInput = form ? form.elements.namedItem('ticket_holder_name') : null;
+
+                if (emailInput && emailInput.value) {
+                    payload.ticket_recipient_email = emailInput.value.trim();
+                }
+
+                if (nameInput && nameInput.value) {
+                    payload.ticket_holder_name = nameInput.value.trim();
+                }
+            }
+
+            return payload;
+        }
 
         function parseRupiah(text) {
             return parseInt(text.replace(/[^\d]/g, '')) || 0;
@@ -1295,9 +1414,7 @@
 
         async function sendPaymentOtpIntoModal() {
             try {
-                const data = await paymentOtpRequest(checkoutPaymentOtp.sendUrl, {
-                    cart_uid: checkoutPaymentOtp.cartUid,
-                });
+                const data = await paymentOtpRequest(checkoutPaymentOtp.sendUrl, buildCheckoutOtpPayload());
 
                 handleOtpSendResponse(data);
             } catch (error) {
@@ -1308,9 +1425,7 @@
         async function handleOtpResend() {
             try {
                 checkoutPaymentOtp.secondaryAction = 'resend';
-                const data = await paymentOtpRequest(checkoutPaymentOtp.resendUrl, {
-                    cart_uid: checkoutPaymentOtp.cartUid,
-                });
+                const data = await paymentOtpRequest(checkoutPaymentOtp.resendUrl, buildCheckoutOtpPayload());
 
                 startOtpCountdown(data.resend_available_in || 0);
                 setOtpStatus(data.message || 'Kode OTP baru telah dikirim.');
@@ -1411,10 +1526,9 @@
                     }
 
                     try {
-                        return await paymentOtpRequest(checkoutPaymentOtp.verifyUrl, {
-                            cart_uid: checkoutPaymentOtp.cartUid,
+                        return await paymentOtpRequest(checkoutPaymentOtp.verifyUrl, buildCheckoutOtpPayload({
                             otp: otp,
-                        });
+                        }));
                     } catch (error) {
                         Swal.showValidationMessage(error.message);
                         return false;
@@ -1503,8 +1617,31 @@
             const paymentName = escapeHtml(selectedPayElement ? selectedPayElement.textContent.trim() : 'N/A');
             const grandTotal = escapeHtml(document.getElementById('grand-total').textContent.trim());
             const ticketHolderNameInput = form.elements.namedItem('ticket_holder_name');
-            const ticketHolderName = escapeHtml(ticketHolderNameInput ? ticketHolderNameInput.value.trim() : '');
-            const ticketRecipientEmail = escapeHtml(@json(Auth::user()->email));
+            const ticketHolderName = escapeHtml(ticketHolderNameInput ? ticketHolderNameInput.value.trim() : @json($cart->ticket_holder_name ?? ''));
+            const ticketRecipientEmailInput = form.elements.namedItem('ticket_recipient_email');
+            const ticketRecipientEmail = escapeHtml(
+                ticketRecipientEmailInput
+                    ? ticketRecipientEmailInput.value.trim()
+                    : @json($ticketDeliveryEmail ?? '')
+            );
+            const ticketHolderPhoneInput = form.elements.namedItem('ticket_holder_phone');
+            const ticketHolderPhone = ticketHolderPhoneInput
+                ? ticketHolderPhoneInput.value.trim()
+                : @json($cart->ticket_holder_phone ?? '');
+            const phoneSummaryHtml = ticketHolderPhone ? `
+                            <div class="checkout-summary-card">
+                                <label class="checkout-summary-label">Nomor WhatsApp</label>
+                                <div class="checkout-summary-value">${escapeHtml(ticketHolderPhone)}</div>
+                            </div>` : '';
+            const selectedGenderEl = form.querySelector('input[name="ticket_holder_gender"]:checked');
+            const genderLabel = selectedGenderEl
+                ? (selectedGenderEl.value === 'pria' ? 'Laki-Laki' : 'Perempuan')
+                : (@json($cart->ticket_holder_gender) === 'pria' ? 'Laki-Laki' : (@json($cart->ticket_holder_gender) === 'wanita' ? 'Perempuan' : ''));
+            const genderSummaryHtml = genderLabel ? `
+                            <div class="checkout-summary-card">
+                                <label class="checkout-summary-label">Jenis Kelamin</label>
+                                <div class="checkout-summary-value">${escapeHtml(genderLabel)}</div>
+                            </div>` : '';
 
             ticketHtml += `
                 <div class="checkout-ticket-total">
@@ -1526,8 +1663,10 @@
                             <div class="checkout-summary-card">
                                 <label class="checkout-summary-label">Email Penerima Tiket</label>
                                 <div class="checkout-summary-value">${ticketRecipientEmail}</div>
-                                <small class="checkout-summary-note">Tiket akan dikirim ke email akun Anda</small>
+                                <small class="checkout-summary-note">${checkoutPaymentOtp.isGuest ? 'E-Ticket akan dikirim ke email ini' : 'Tiket akan dikirim ke email akun Anda'}</small>
                             </div>
+                            ${phoneSummaryHtml}
+                            ${genderSummaryHtml}
                             <div class="checkout-summary-card">
                                 <label class="checkout-summary-label">Metode Pembayaran</label>
                                 <div class="checkout-summary-value">${paymentName}</div>

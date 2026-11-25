@@ -8,6 +8,7 @@ use App\Models\Event;
 use App\Models\Harga;
 use App\Models\Slider;
 use App\Models\HargaCart;
+use App\Services\Tickets\CartOwnershipService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
@@ -57,6 +58,7 @@ class landingController extends Controller
             ->toArray();
 
         $unpaidTx = null;
+        $unpaidUrl = null;
         if (Auth::check()) {
             $unpaidTx = Cart::where('user_uid', Auth::user()->uid)
                 ->whereIn('status', [Cart::STATUS_UNPAID, 'unpaid', Cart::STATUS_RESERVED, Cart::STATUS_PENDING, 'pending'])
@@ -64,6 +66,11 @@ class landingController extends Controller
                     $query->whereNull('expires_at')->orWhere('expires_at', '>', now());
                 })
                 ->first();
+            $unpaidUrl = $unpaidTx ? url('/detail-ticket/'.$unpaidTx->uid.'/'.Auth::user()->uid) : null;
+        } else {
+            $ownershipService = app(CartOwnershipService::class);
+            $unpaidTx = $ownershipService->activeGuestCart(request());
+            $unpaidUrl = $unpaidTx ? $ownershipService->detailUrl($unpaidTx) : null;
         }
 
         return view('frontend.page.ticket-new', [
@@ -75,7 +82,8 @@ class landingController extends Controller
             'jmlhQty' => $reservedAndSoldTickets,
             'lowestTicketPrice' => $lowestTicketPrice,
             'hasUnpaid' => $unpaidTx ? true : false,
-            'unpaidUid' => $unpaidTx->uid ?? null
+            'unpaidUid' => $unpaidTx->uid ?? null,
+            'unpaidUrl' => $unpaidUrl,
         ]);
     }
 

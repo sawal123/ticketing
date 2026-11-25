@@ -64,6 +64,54 @@ class TicketReservationService
         }, 3);
     }
 
+    public function reserveForGuestEvent(
+        Event $event,
+        string $guestSessionKeyHash,
+        string $guestTokenHash,
+        array $items
+    ): array {
+        return DB::transaction(function () use ($event, $guestSessionKeyHash, $guestTokenHash, $items) {
+            $expiredCarts = Cart::where('event_uid', $event->uid)
+                ->where('is_guest', true)
+                ->where('guest_session_key', $guestSessionKeyHash)
+                ->whereIn('status', Cart::ACTIVE_RESERVATION_STATUSES)
+                ->whereNotNull('expires_at')
+                ->where('expires_at', '<=', now())
+                ->whereNull('reservation_released_at')
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get();
+
+            foreach ($expiredCarts as $expiredCart) {
+                $this->releaseLockedCart($expiredCart, Cart::STATUS_EXPIRED);
+            }
+
+            $activeCart = Cart::where('event_uid', $event->uid)
+                ->where('is_guest', true)
+                ->where('guest_session_key', $guestSessionKeyHash)
+                ->whereIn('status', Cart::ACTIVE_RESERVATION_STATUSES)
+                ->where(function ($query) {
+                    $query->whereNull('expires_at')->orWhere('expires_at', '>', now());
+                })
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->first();
+
+            if ($activeCart) {
+                return ['cart' => $activeCart, 'created' => false];
+            }
+
+            return [
+                'cart' => $this->reserve($event, null, $items, [
+                    'is_guest' => true,
+                    'guest_session_key' => $guestSessionKeyHash,
+                    'guest_token_hash' => $guestTokenHash,
+                ]),
+                'created' => true,
+            ];
+        }, 3);
+    }
+
     public function reserveVoucherForCart(string $cartUid, string $userUid, string $code): array
     {
         return DB::transaction(function () use ($cartUid, $userUid, $code) {
@@ -72,113 +120,132 @@ class TicketReservationService
                 ->lockForUpdate()
                 ->first();
 
-            if (! $cart
-                || ! in_array($cart->status, Cart::ACTIVE_RESERVATION_STATUSES, true)
-                || $cart->isReservationExpired()) {
-                throw ValidationException::withMessages([
-                    'voucher' => 'Reservation sudah expired atau cart tidak valid.',
-                ]);
-            }
+            return $this->reserveVoucherLocked($cart, $code);
+        }, 3);
+    }
 
-            $cartVoucher = CartVoucher::where('uid', $cart->uid)
-                ->where('event_uid', $cart->event_uid)
+    public function reserveVoucherForGuestCart(string $cartUid, string $guestTokenHash, string $code): array
+    {
+        return DB::transaction(function () use ($cartUid, $guestTokenHash, $code) {
+            $cart = Cart::where('uid', $cartUid)
+                ->where('is_guest', true)
+                ->where('guest_token_hash', $guestTokenHash)
                 ->lockForUpdate()
                 ->first();
-            $reservation = VoucherReservation::where('cart_uid', $cart->uid)
-                ->lockForUpdate()
-                ->first();
-            $candidate = Voucher::where('code', $code)
-                ->where('event_uid', $cart->event_uid)
-                ->first();
 
-            if (! $candidate) {
-                throw ValidationException::withMessages(['voucher' => 'Voucher '.$code.' Invalid']);
-            }
+            return $this->reserveVoucherLocked($cart, $code);
+        }, 3);
+    }
 
-            $voucherIds = collect([$candidate->id, $reservation?->voucher_id])
-                ->filter()
-                ->unique()
-                ->sort()
-                ->values();
-            $lockedVouchers = Voucher::whereIn('id', $voucherIds)
-                ->orderBy('id')
+    protected function reserveVoucherLocked(?Cart $cart, string $code): array
+    {
+
+        if (! $cart
+            || ! in_array($cart->status, Cart::ACTIVE_RESERVATION_STATUSES, true)
+            || $cart->isReservationExpired()) {
+            throw ValidationException::withMessages([
+                'voucher' => 'Reservation sudah expired atau cart tidak valid.',
+            ]);
+        }
+
+        $cartVoucher = CartVoucher::where('uid', $cart->uid)
+            ->where('event_uid', $cart->event_uid)
+            ->lockForUpdate()
+            ->first();
+        $reservation = VoucherReservation::where('cart_uid', $cart->uid)
+            ->lockForUpdate()
+            ->first();
+        $candidate = Voucher::where('code', $code)
+            ->where('event_uid', $cart->event_uid)
+            ->first();
+
+        if (! $candidate) {
+            throw ValidationException::withMessages(['voucher' => 'Voucher '.$code.' Invalid']);
+        }
+
+        $voucherIds = collect([$candidate->id, $reservation?->voucher_id])
+            ->filter()
+            ->unique()
+            ->sort()
+            ->values();
+        $lockedVouchers = Voucher::whereIn('id', $voucherIds)
+            ->orderBy('id')
+            ->lockForUpdate()
+            ->get()
+            ->keyBy('id');
+        $voucher = $lockedVouchers->get($candidate->id);
+
+        if (! $voucher
+            || $voucher->status !== 'active'
+            || $voucher->event_uid !== $cart->event_uid
+            || $voucher->code !== $code) {
+            throw ValidationException::withMessages(['voucher' => 'Voucher '.$code.' Invalid']);
+        }
+
+        $ticketTotal = (int) $cart->hargaCarts()->sum(DB::raw('quantity * harga_ticket'));
+        if ($ticketTotal < (int) $voucher->min_beli) {
+            throw ValidationException::withMessages([
+                'voucher' => 'Minimal pembelian voucher belum terpenuhi.',
+            ]);
+        }
+
+        $alreadyHeld = $reservation
+            && $reservation->status === VoucherReservation::STATUS_ACTIVE
+            && (int) $reservation->voucher_id === (int) $voucher->id;
+
+        if (! $alreadyHeld && $this->voucherIsLimited($voucher)) {
+            $activeReservations = VoucherReservation::where('voucher_id', $voucher->id)
+                ->where('status', VoucherReservation::STATUS_ACTIVE)
                 ->lockForUpdate()
                 ->get()
-                ->keyBy('id');
-            $voucher = $lockedVouchers->get($candidate->id);
+                ->count();
 
-            if (! $voucher
-                || $voucher->status !== 'active'
-                || $voucher->event_uid !== $cart->event_uid
-                || $voucher->code !== $code) {
-                throw ValidationException::withMessages(['voucher' => 'Voucher '.$code.' Invalid']);
+            if (($this->committedVoucherUsageCount($voucher) + $activeReservations) >= (int) $voucher->limit) {
+                throw ValidationException::withMessages(['voucher' => 'Voucher Expired']);
             }
+        }
 
-            $ticketTotal = (int) $cart->hargaCarts()->sum(DB::raw('quantity * harga_ticket'));
-            if ($ticketTotal < (int) $voucher->min_beli) {
-                throw ValidationException::withMessages([
-                    'voucher' => 'Minimal pembelian voucher belum terpenuhi.',
-                ]);
-            }
-
-            $alreadyHeld = $reservation
-                && $reservation->status === VoucherReservation::STATUS_ACTIVE
-                && (int) $reservation->voucher_id === (int) $voucher->id;
-
-            if (! $alreadyHeld && $this->voucherIsLimited($voucher)) {
-                $activeReservations = VoucherReservation::where('voucher_id', $voucher->id)
-                    ->where('status', VoucherReservation::STATUS_ACTIVE)
-                    ->lockForUpdate()
-                    ->get()
-                    ->count();
-
-                if (($this->committedVoucherUsageCount($voucher) + $activeReservations) >= (int) $voucher->limit) {
-                    throw ValidationException::withMessages(['voucher' => 'Voucher Expired']);
-                }
-            }
-
-            if ($reservation && $reservation->status === VoucherReservation::STATUS_COMMITTED) {
-                throw ValidationException::withMessages([
-                    'voucher' => 'Voucher pada transaksi ini sudah digunakan.',
-                ]);
-            }
-
-            $reservation ??= new VoucherReservation(['cart_uid' => $cart->uid]);
-            $reservation->fill([
-                'voucher_id' => $voucher->id,
-                'voucher_uid' => $voucher->uid,
-                'invoice' => $cart->invoice,
-                'code' => $voucher->code,
-                'status' => VoucherReservation::STATUS_ACTIVE,
-                'reserved_at' => $alreadyHeld ? $reservation->reserved_at : now(),
-                'released_at' => null,
-                'committed_at' => null,
+        if ($reservation && $reservation->status === VoucherReservation::STATUS_COMMITTED) {
+            throw ValidationException::withMessages([
+                'voucher' => 'Voucher pada transaksi ini sudah digunakan.',
             ]);
-            $reservation->save();
+        }
 
-            $cartVoucher ??= new CartVoucher([
-                'uid' => $cart->uid,
-                'event_uid' => $cart->event_uid,
-            ]);
-            $cartVoucher->fill([
-                'uid_vouchers' => $voucher->uid,
-                'user_uid' => $cart->user_uid,
-                'code' => $voucher->code,
-            ]);
-            $cartVoucher->save();
+        $reservation ??= new VoucherReservation(['cart_uid' => $cart->uid]);
+        $reservation->fill([
+            'voucher_id' => $voucher->id,
+            'voucher_uid' => $voucher->uid,
+            'invoice' => $cart->invoice,
+            'code' => $voucher->code,
+            'status' => VoucherReservation::STATUS_ACTIVE,
+            'reserved_at' => $alreadyHeld ? $reservation->reserved_at : now(),
+            'released_at' => null,
+            'committed_at' => null,
+        ]);
+        $reservation->save();
 
-            $discount = app(TicketPricingService::class)->calculateVoucherDiscount($cart, $ticketTotal);
-            HargaCart::where('uid', $cart->uid)->update(['voucher' => null, 'disc' => 0]);
-            $firstItem = HargaCart::where('uid', $cart->uid)->orderBy('id')->first();
+        $cartVoucher ??= new CartVoucher([
+            'uid' => $cart->uid,
+            'event_uid' => $cart->event_uid,
+        ]);
+        $cartVoucher->fill([
+            'uid_vouchers' => $voucher->uid,
+            'user_uid' => $cart->user_uid,
+            'code' => $voucher->code,
+        ]);
+        $cartVoucher->save();
 
-            if ($firstItem) {
-                $firstItem->voucher = $voucher->code;
-                $firstItem->disc = $discount;
-                $firstItem->save();
-            }
+        $discount = app(TicketPricingService::class)->calculateVoucherDiscount($cart, $ticketTotal);
+        HargaCart::where('uid', $cart->uid)->update(['voucher' => null, 'disc' => 0]);
+        $firstItem = HargaCart::where('uid', $cart->uid)->orderBy('id')->first();
 
-            return ['voucher' => $voucher, 'discount' => $discount];
-        }, 3);
+        if ($firstItem) {
+            $firstItem->voucher = $voucher->code;
+            $firstItem->disc = $discount;
+            $firstItem->save();
+        }
+
+        return ['voucher' => $voucher, 'discount' => $discount];
     }
 
     public function releaseVoucherForCart(string $cartUid, string $userUid): void
@@ -189,24 +256,42 @@ class TicketReservationService
                 ->lockForUpdate()
                 ->first();
 
-            if (! $cart
-                || ! in_array($cart->status, Cart::ACTIVE_RESERVATION_STATUSES, true)
-                || $cart->isReservationExpired()) {
-                throw ValidationException::withMessages([
-                    'voucher' => 'Reservation sudah expired atau cart tidak valid.',
-                ]);
-            }
-
-            $this->releaseVoucherReservationLocked($cart);
-
-            CartVoucher::where('uid', $cart->uid)
-                ->where('event_uid', $cart->event_uid)
-                ->update(['code' => '', 'uid_vouchers' => null]);
-            HargaCart::where('uid', $cart->uid)->update([
-                'voucher' => null,
-                'disc' => 0,
-            ]);
+            $this->releaseVoucherForLockedCart($cart);
         }, 3);
+    }
+
+    public function releaseVoucherForGuestCart(string $cartUid, string $guestTokenHash): void
+    {
+        DB::transaction(function () use ($cartUid, $guestTokenHash) {
+            $cart = Cart::where('uid', $cartUid)
+                ->where('is_guest', true)
+                ->where('guest_token_hash', $guestTokenHash)
+                ->lockForUpdate()
+                ->first();
+
+            $this->releaseVoucherForLockedCart($cart);
+        }, 3);
+    }
+
+    protected function releaseVoucherForLockedCart(?Cart $cart): void
+    {
+        if (! $cart
+            || ! in_array($cart->status, Cart::ACTIVE_RESERVATION_STATUSES, true)
+            || $cart->isReservationExpired()) {
+            throw ValidationException::withMessages([
+                'voucher' => 'Reservation sudah expired atau cart tidak valid.',
+            ]);
+        }
+
+        $this->releaseVoucherReservationLocked($cart);
+
+        CartVoucher::where('uid', $cart->uid)
+            ->where('event_uid', $cart->event_uid)
+            ->update(['code' => '', 'uid_vouchers' => null]);
+        HargaCart::where('uid', $cart->uid)->update([
+            'voucher' => null,
+            'disc' => 0,
+        ]);
     }
 
     public function cancelOwnedReservation(string $cartUid, string $userUid): Cart
@@ -217,42 +302,60 @@ class TicketReservationService
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            if (! in_array($cart->status, Cart::ACTIVE_RESERVATION_STATUSES, true)) {
-                throw ValidationException::withMessages([
-                    'transaction' => 'Transaksi pada status ini tidak dapat dibatalkan.',
-                ]);
-            }
-
-            if ($cart->hasActivePaymentLink()) {
-                try {
-                    app(MidtransPaymentLinkService::class)->expire($cart->invoice);
-                } catch (\Throwable $exception) {
-                    Log::warning('Gagal expire link pembayaran saat pembatalan', [
-                        'cart_uid' => $cart->uid,
-                        'invoice' => $cart->invoice,
-                        'error' => $exception->getMessage(),
-                    ]);
-
-                    throw ValidationException::withMessages([
-                        'transaction' => 'Transaksi tidak dapat dibatalkan karena pembayaran sedang diproses.',
-                    ]);
-                }
-
-                $cart->link = null;
-                $cart->payment_link_expires_at = null;
-            }
-
-            $this->releaseLockedCart($cart, Cart::STATUS_CANCELLED);
-
-            Transaction::where('invoice', $cart->invoice)->update([
-                'status_transaksi' => Cart::STATUS_CANCELLED,
-            ]);
-
-            return $cart;
+            return $this->cancelLockedReservation($cart);
         }, 3);
     }
 
-    public function reserve(Event $event, string $userUid, array $items): Cart
+    public function cancelGuestReservation(string $cartUid, string $guestTokenHash): Cart
+    {
+        return DB::transaction(function () use ($cartUid, $guestTokenHash) {
+            $cart = Cart::where('uid', $cartUid)
+                ->where('is_guest', true)
+                ->where('guest_token_hash', $guestTokenHash)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            return $this->cancelLockedReservation($cart);
+        }, 3);
+    }
+
+    protected function cancelLockedReservation(Cart $cart): Cart
+    {
+        if (! in_array($cart->status, Cart::ACTIVE_RESERVATION_STATUSES, true)) {
+            throw ValidationException::withMessages([
+                'transaction' => 'Transaksi pada status ini tidak dapat dibatalkan.',
+            ]);
+        }
+
+        if ($cart->hasActivePaymentLink()) {
+            try {
+                app(MidtransPaymentLinkService::class)->expire($cart->invoice);
+            } catch (\Throwable $exception) {
+                Log::warning('Gagal expire link pembayaran saat pembatalan', [
+                    'cart_uid' => $cart->uid,
+                    'invoice' => $cart->invoice,
+                    'error' => $exception->getMessage(),
+                ]);
+
+                throw ValidationException::withMessages([
+                    'transaction' => 'Transaksi tidak dapat dibatalkan karena pembayaran sedang diproses.',
+                ]);
+            }
+
+            $cart->link = null;
+            $cart->payment_link_expires_at = null;
+        }
+
+        $this->releaseLockedCart($cart, Cart::STATUS_CANCELLED);
+
+        Transaction::where('invoice', $cart->invoice)->update([
+            'status_transaksi' => Cart::STATUS_CANCELLED,
+        ]);
+
+        return $cart;
+    }
+
+    public function reserve(Event $event, ?string $userUid, array $items, array $guestAttributes = []): Cart
     {
         if ($event->status !== 'active' || (string) $event->konfirmasi !== '1') {
             throw ValidationException::withMessages([
@@ -260,7 +363,7 @@ class TicketReservationService
             ]);
         }
 
-        return DB::transaction(function () use ($event, $userUid, $items) {
+        return DB::transaction(function () use ($event, $userUid, $items, $guestAttributes) {
             $hargaIds = collect($items)->pluck('harga_id')->unique()->sort()->values()->all();
             $hargas = Harga::whereIn('id', $hargaIds)
                 ->where('uid', $event->uid)
@@ -304,14 +407,14 @@ class TicketReservationService
                 $harga->save();
             }
 
-            $cart = Cart::create([
+            $cart = Cart::create(array_merge([
                 'uid' => (string) Str::uuid(),
                 'user_uid' => $userUid,
                 'event_uid' => $event->uid,
                 'invoice' => $this->generateInvoice(),
                 'status' => Cart::STATUS_RESERVED,
                 'expires_at' => now()->addMinutes(self::RESERVATION_MINUTES),
-            ]);
+            ], $guestAttributes));
 
             foreach ($items as $index => $item) {
                 $harga = $hargas->get($item['harga_id']);

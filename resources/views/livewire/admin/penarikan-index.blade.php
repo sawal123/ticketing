@@ -146,137 +146,252 @@
         </x-slot>
     </x-admin.table>
 
-    <x-admin.modal name="penarikan-detail-modal" title="Detail Penarikan" icon="eye" maxWidth="lg">
+    <x-admin.modal name="penarikan-detail-modal" title="Detail Penarikan" icon="wallet" maxWidth="2xl" :viewportScroll="true">
         @if ($selectedPenarikan)
             @php
                 $display = fn($value) => filled($value) ? $value : '-';
+                $statusUpper = strtoupper((string) ($selectedPenarikan->status ?? 'PENDING'));
+                $statusBadgeClass = match ($statusUpper) {
+                    'SUCCESS', 'APPROVED', 'PAID' => 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-300 dark:border-emerald-700/60',
+                    'PROCESSING' => 'bg-sky-100 text-sky-700 border-sky-200 dark:bg-sky-900/40 dark:text-sky-300 dark:border-sky-700/60',
+                    'REJECTED', 'CANCELLED', 'FAILED' => 'bg-rose-100 text-rose-700 border-rose-200 dark:bg-rose-900/40 dark:text-rose-300 dark:border-rose-700/60',
+                    default => 'bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/40 dark:text-amber-300 dark:border-amber-700/60',
+                };
+                $statusDotClass = match ($statusUpper) {
+                    'SUCCESS', 'APPROVED', 'PAID' => 'bg-emerald-500',
+                    'PROCESSING' => 'bg-sky-500',
+                    'REJECTED', 'CANCELLED', 'FAILED' => 'bg-rose-500',
+                    default => 'bg-amber-500',
+                };
+                $tenantName = $display($selectedPenarikan->user->name ?? null);
+                $tenantInitial = strtoupper(mb_substr($tenantName !== '-' ? $tenantName : 'P', 0, 1));
+                $accountNumber = $display($selectedBank['bank_account_number'] ?? null);
             @endphp
-            <div class="space-y-6">
-                <div>
-                    <h4 class="mb-3 text-xs font-bold uppercase tracking-wider text-slate-400">Penyewa</h4>
-                    <dl class="grid grid-cols-1 gap-4 md:grid-cols-3">
-                        <div>
-                            <dt class="text-xs font-semibold text-slate-400">Nama</dt>
-                            <dd class="mt-1 font-semibold text-slate-800 dark:text-white">
-                                {{ $display($selectedPenarikan->user->name ?? null) }}</dd>
+            <div class="space-y-5">
+                <!-- Hero Amount & Status Card -->
+                <div class="relative overflow-hidden rounded-2xl border border-indigo-100 dark:border-indigo-900/50 bg-gradient-to-br from-indigo-50/90 via-white to-slate-50 dark:from-indigo-950/40 dark:via-slate-800 dark:to-slate-900/60 p-5">
+                    <div class="flex flex-wrap items-start justify-between gap-4">
+                        <div class="min-w-0">
+                            <p class="text-[11px] font-bold uppercase tracking-widest text-indigo-600/80 dark:text-indigo-400">
+                                Jumlah Penarikan
+                            </p>
+                            <p class="mt-1 text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+                                Rp {{ number_format((int) $selectedPenarikan->amount, 0, ',', '.') }}
+                            </p>
+                            <p class="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
+                                Saldo Saat Pengajuan / Kwitansi:
+                                <span class="font-semibold text-slate-700 dark:text-slate-200">
+                                    Rp {{ number_format((int) $selectedPenarikan->kwitansi, 0, ',', '.') }}
+                                </span>
+                            </p>
                         </div>
-                        <div>
-                            <dt class="text-xs font-semibold text-slate-400">Email</dt>
-                            <dd class="mt-1 font-semibold text-slate-800 dark:text-white">
-                                {{ $display($selectedPenarikan->user->email ?? null) }}</dd>
+                        <div class="flex flex-col items-end gap-2">
+                            <span class="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-bold tracking-wide {{ $statusBadgeClass }}">
+                                <span class="h-1.5 w-1.5 rounded-full {{ $statusDotClass }}"></span>
+                                {{ $display($selectedPenarikan->status) }}
+                            </span>
                         </div>
-                        <div>
-                            <dt class="text-xs font-semibold text-slate-400">Nomor HP</dt>
-                            <dd class="mt-1 font-semibold text-slate-800 dark:text-white">
-                                {{ $display($selectedPenarikan->user->nomor ?? null) }}</dd>
+                    </div>
+
+                    <div class="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-indigo-100/80 dark:border-slate-700/70 pt-3">
+                        <div class="flex items-center gap-2 min-w-0">
+                            <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">UID</span>
+                            <code class="truncate rounded-lg bg-white/80 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-700 px-2 py-0.5 font-mono text-xs font-semibold text-slate-700 dark:text-slate-300">
+                                {{ $display($selectedPenarikan->uid) }}
+                            </code>
                         </div>
-                    </dl>
+                        @if (filled($selectedPenarikan->uid))
+                            <button type="button"
+                                x-data="{ copied: false }"
+                                x-on:click="navigator.clipboard.writeText(@js($selectedPenarikan->uid)); copied = true; setTimeout(() => copied = false, 1800)"
+                                class="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold text-indigo-600 hover:bg-indigo-100/70 dark:text-indigo-400 dark:hover:bg-indigo-900/30 transition-colors">
+                                <i data-lucide="copy" class="h-3.5 w-3.5"></i>
+                                <span x-show="!copied">Salin UID</span>
+                                <span x-show="copied" style="display: none;">Tersalin!</span>
+                            </button>
+                        @endif
+                    </div>
                 </div>
 
-                <div class="border-t border-slate-200 pt-5 dark:border-slate-700">
-                    <h4 class="mb-3 text-xs font-bold uppercase tracking-wider text-slate-400">Penarikan</h4>
-                    <dl class="grid grid-cols-1 gap-4 md:grid-cols-2">
-                        <div>
-                            <dt class="text-xs font-semibold text-slate-400">UID</dt>
-                            <dd class="mt-1 font-mono text-sm font-semibold text-slate-800 dark:text-white">
-                                {{ $display($selectedPenarikan->uid) }}</dd>
+                <!-- Penyewa & Rekening Tujuan Grid -->
+                <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <!-- Penyewa Card -->
+                    <div class="rounded-2xl border border-slate-200/90 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-900/40 p-4">
+                        <div class="mb-3 flex items-center gap-2">
+                            <span class="flex h-6 w-6 items-center justify-center rounded-lg bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400">
+                                <i data-lucide="user" class="h-3.5 w-3.5"></i>
+                            </span>
+                            <h4 class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Penyewa</h4>
                         </div>
-                        <div>
-                            <dt class="text-xs font-semibold text-slate-400">Jumlah</dt>
-                            <dd class="mt-1 font-semibold text-slate-800 dark:text-white">Rp
-                                {{ number_format((int) $selectedPenarikan->amount, 0, ',', '.') }}</dd>
-                        </div>
-                        <div>
-                            <dt class="text-xs font-semibold text-slate-400">Saldo Saat Pengajuan / Kwitansi</dt>
-                            <dd class="mt-1 font-semibold text-slate-800 dark:text-white">Rp
-                                {{ number_format((int) $selectedPenarikan->kwitansi, 0, ',', '.') }}</dd>
-                        </div>
-                        <div>
-                            <dt class="text-xs font-semibold text-slate-400">Status</dt>
-                            <dd class="mt-1 font-semibold text-slate-800 dark:text-white">
-                                {{ $display($selectedPenarikan->status) }}</dd>
-                        </div>
-                        <div>
-                            <dt class="text-xs font-semibold text-slate-400">Tanggal Pengajuan</dt>
-                            <dd class="mt-1 font-semibold text-slate-800 dark:text-white">
-                                {{ $selectedPenarikan->created_at?->format('d M Y, H:i') ?? '-' }}</dd>
-                        </div>
-                        <div>
-                            <dt class="text-xs font-semibold text-slate-400">Tanggal Disetujui</dt>
-                            <dd class="mt-1 font-semibold text-slate-800 dark:text-white">
-                                {{ $selectedPenarikan->approved_at?->format('d M Y, H:i') ?? '-' }}</dd>
-                        </div>
-                        <div>
-                            <dt class="text-xs font-semibold text-slate-400">Tanggal Diproses</dt>
-                            <dd class="mt-1 font-semibold text-slate-800 dark:text-white">
-                                {{ $selectedPenarikan->processing_at?->format('d M Y, H:i') ?? '-' }}</dd>
-                        </div>
-                        <div class="md:col-span-2">
-                            <dt class="text-xs font-semibold text-slate-400">Catatan</dt>
-                            <dd class="mt-1 font-semibold text-slate-800 dark:text-white">
-                                {{ $display($selectedPenarikan->note) }}</dd>
-                        </div>
-                    </dl>
-                </div>
-
-                <div class="border-t border-slate-200 pt-5 dark:border-slate-700">
-                    <h4 class="mb-3 text-xs font-bold uppercase tracking-wider text-slate-400">Rekening Tujuan</h4>
-                    <dl class="grid grid-cols-1 gap-4 md:grid-cols-3">
-                        <div>
-                            <dt class="text-xs font-semibold text-slate-400">Nama Bank</dt>
-                            <dd class="mt-1 font-semibold text-slate-800 dark:text-white">
-                                {{ $display($selectedBank['bank_name'] ?? null) }}</dd>
-                        </div>
-                        <div>
-                            <dt class="text-xs font-semibold text-slate-400">Nomor Rekening</dt>
-                            <dd class="mt-1 font-semibold text-slate-800 dark:text-white">
-                                {{ $display($selectedBank['bank_account_number'] ?? null) }}</dd>
-                        </div>
-                        <div>
-                            <dt class="text-xs font-semibold text-slate-400">Nama Pemilik</dt>
-                            <dd class="mt-1 font-semibold text-slate-800 dark:text-white">
-                                {{ $display($selectedBank['bank_account_name'] ?? null) }}</dd>
-                        </div>
-                    </dl>
-                </div>
-
-                <div class="border-t border-slate-200 pt-5 dark:border-slate-700">
-                    <h4 class="mb-3 text-xs font-bold uppercase tracking-wider text-slate-400">Bukti Transfer</h4>
-                    @if (filled($selectedPenarikan->transfer_proof))
-                        <div class="space-y-4">
-                            <div
-                                class="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-900/40">
-                                <img src="{{ route('penarikan.transfer-proof.show', $selectedPenarikan->uid) }}"
-                                    alt="Bukti transfer penarikan {{ $selectedPenarikan->uid }}"
-                                    class="max-h-96 w-full object-contain">
+                        <div class="flex items-start gap-3">
+                            <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-indigo-600 text-sm font-bold text-white shadow-sm">
+                                {{ $tenantInitial }}
                             </div>
-                            <dl class="grid grid-cols-1 gap-4 md:grid-cols-2">
-                                <div>
-                                    <dt class="text-xs font-semibold text-slate-400">Tanggal Upload</dt>
-                                    <dd class="mt-1 font-semibold text-slate-800 dark:text-white">
+                            <dl class="min-w-0 flex-1 space-y-2">
+                                <div class="min-w-0">
+                                    <dt class="text-[11px] font-medium text-slate-400">Nama</dt>
+                                    <dd class="text-sm font-bold text-slate-800 dark:text-white break-words">
+                                        {{ $tenantName }}
+                                    </dd>
+                                </div>
+                                <div class="min-w-0">
+                                    <dt class="text-[11px] font-medium text-slate-400">Email</dt>
+                                    <dd class="text-xs font-semibold text-slate-700 dark:text-slate-300 break-all">
+                                        {{ $display($selectedPenarikan->user->email ?? null) }}
+                                    </dd>
+                                </div>
+                                <div class="min-w-0">
+                                    <dt class="text-[11px] font-medium text-slate-400">Nomor HP</dt>
+                                    <dd class="text-xs font-semibold text-slate-700 dark:text-slate-300 font-mono">
+                                        {{ $display($selectedPenarikan->user->nomor ?? null) }}
+                                    </dd>
+                                </div>
+                            </dl>
+                        </div>
+                    </div>
+
+                    <!-- Rekening Tujuan Card -->
+                    <div class="rounded-2xl border border-slate-200/90 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-900/40 p-4">
+                        <div class="mb-3 flex items-center justify-between gap-2">
+                            <div class="flex items-center gap-2">
+                                <span class="flex h-6 w-6 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400">
+                                    <i data-lucide="landmark" class="h-3.5 w-3.5"></i>
+                                </span>
+                                <h4 class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Rekening Tujuan</h4>
+                            </div>
+                            @if ($accountNumber !== '-')
+                                <button type="button"
+                                    x-data="{ copied: false }"
+                                    x-on:click="navigator.clipboard.writeText(@js($accountNumber)); copied = true; setTimeout(() => copied = false, 1800)"
+                                    class="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-semibold text-emerald-600 hover:bg-emerald-100/70 dark:text-emerald-400 dark:hover:bg-emerald-900/30 transition-colors">
+                                    <i data-lucide="copy" class="h-3 w-3"></i>
+                                    <span x-show="!copied">Salin</span>
+                                    <span x-show="copied" style="display: none;">Tersalin!</span>
+                                </button>
+                            @endif
+                        </div>
+                        <dl class="space-y-2.5">
+                            <div class="min-w-0">
+                                <dt class="text-[11px] font-medium text-slate-400">Nama Bank</dt>
+                                <dd class="mt-0.5 inline-flex items-center rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2.5 py-1 text-xs font-bold text-slate-800 dark:text-white">
+                                    {{ $display($selectedBank['bank_name'] ?? null) }}
+                                </dd>
+                            </div>
+                            <div class="min-w-0">
+                                <dt class="text-[11px] font-medium text-slate-400">Nomor Rekening</dt>
+                                <dd class="text-base font-mono font-bold tracking-wider text-slate-900 dark:text-white break-all">
+                                    {{ $accountNumber }}
+                                </dd>
+                            </div>
+                            <div class="min-w-0">
+                                <dt class="text-[11px] font-medium text-slate-400">Nama Pemilik</dt>
+                                <dd class="text-sm font-semibold text-slate-700 dark:text-slate-200 break-words">
+                                    {{ $display($selectedBank['bank_account_name'] ?? null) }}
+                                </dd>
+                            </div>
+                        </dl>
+                    </div>
+                </div>
+
+                <!-- Timeline & Catatan -->
+                <div class="rounded-2xl border border-slate-200/90 dark:border-slate-700 bg-white dark:bg-slate-800/60 p-4 space-y-4">
+                    <div class="flex items-center gap-2">
+                        <span class="flex h-6 w-6 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400">
+                            <i data-lucide="clock" class="h-3.5 w-3.5"></i>
+                        </span>
+                        <h4 class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Riwayat &amp; Catatan</h4>
+                    </div>
+
+                    <dl class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                        <div class="rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-700/70 p-3">
+                            <dt class="text-[11px] font-semibold text-slate-400">Tanggal Pengajuan</dt>
+                            <dd class="mt-1 text-xs font-bold text-slate-800 dark:text-white">
+                                {{ $selectedPenarikan->created_at?->format('d M Y, H:i') ?? '-' }}
+                            </dd>
+                        </div>
+                        <div class="rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-700/70 p-3">
+                            <dt class="text-[11px] font-semibold text-slate-400">Tanggal Diproses</dt>
+                            <dd class="mt-1 text-xs font-bold text-slate-800 dark:text-white">
+                                {{ $selectedPenarikan->processing_at?->format('d M Y, H:i') ?? '-' }}
+                            </dd>
+                        </div>
+                        <div class="rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-700/70 p-3">
+                            <dt class="text-[11px] font-semibold text-slate-400">Tanggal Disetujui</dt>
+                            <dd class="mt-1 text-xs font-bold text-slate-800 dark:text-white">
+                                {{ $selectedPenarikan->approved_at?->format('d M Y, H:i') ?? '-' }}
+                            </dd>
+                        </div>
+                    </dl>
+
+                    <div class="rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-700/70 px-3.5 py-2.5">
+                        <dt class="text-[11px] font-semibold text-slate-400">Catatan</dt>
+                        <dd class="mt-0.5 text-sm font-medium text-slate-700 dark:text-slate-200 break-words">
+                            {{ $display($selectedPenarikan->note) }}
+                        </dd>
+                    </div>
+                </div>
+
+                <!-- Bukti Transfer -->
+                <div class="rounded-2xl border border-slate-200/90 dark:border-slate-700 bg-white dark:bg-slate-800/60 p-4 space-y-4">
+                    <div class="flex items-center justify-between gap-2">
+                        <div class="flex items-center gap-2">
+                            <span class="flex h-6 w-6 items-center justify-center rounded-lg bg-sky-100 dark:bg-sky-900/40 text-sky-600 dark:text-sky-400">
+                                <i data-lucide="receipt" class="h-3.5 w-3.5"></i>
+                            </span>
+                            <h4 class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Bukti Transfer</h4>
+                        </div>
+                        @if (filled($selectedPenarikan->transfer_proof))
+                            <a href="{{ route('penarikan.transfer-proof.show', $selectedPenarikan->uid) }}"
+                                target="_blank"
+                                class="inline-flex items-center gap-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 px-3 py-1.5 text-xs font-semibold text-indigo-600 hover:bg-indigo-100 dark:text-indigo-400 dark:hover:bg-indigo-900/50 transition-colors">
+                                <i data-lucide="external-link" class="h-3.5 w-3.5"></i>
+                                Lihat ukuran penuh
+                            </a>
+                        @endif
+                    </div>
+
+                    @if (filled($selectedPenarikan->transfer_proof))
+                        <div x-data="{ imgError: false }" class="space-y-3">
+                            <div class="overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50">
+                                <img x-show="!imgError"
+                                    x-on:error="imgError = true"
+                                    src="{{ route('penarikan.transfer-proof.show', $selectedPenarikan->uid) }}"
+                                    alt="Bukti transfer penarikan {{ $selectedPenarikan->uid }}"
+                                    class="max-h-72 w-full object-contain">
+                                <div x-show="imgError" style="display: none;"
+                                    class="flex flex-col items-center justify-center gap-2 py-10 px-4 text-center text-slate-400">
+                                    <i data-lucide="image-off" class="h-8 w-8 opacity-50"></i>
+                                    <p class="text-xs font-medium">Pratinjau bukti transfer tidak dapat dimuat. Klik "Lihat ukuran penuh" untuk membuka berkas.</p>
+                                </div>
+                            </div>
+                            <dl class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                <div class="rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-700/70 px-3.5 py-2.5">
+                                    <dt class="text-[11px] font-semibold text-slate-400">Tanggal Upload</dt>
+                                    <dd class="mt-0.5 text-xs font-bold text-slate-800 dark:text-white">
                                         {{ $selectedPenarikan->transfer_proof_uploaded_at?->format('d M Y, H:i') ?? '-' }}
                                     </dd>
                                 </div>
-                                <div>
-                                    <dt class="text-xs font-semibold text-slate-400">Diunggah Oleh</dt>
-                                    <dd class="mt-1 font-semibold text-slate-800 dark:text-white">
+                                <div class="rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-700/70 px-3.5 py-2.5">
+                                    <dt class="text-[11px] font-semibold text-slate-400">Diunggah Oleh</dt>
+                                    <dd class="mt-0.5 text-xs font-bold text-slate-800 dark:text-white">
                                         {{ $display($selectedPenarikan->transferProofUploader?->name) }}
                                     </dd>
                                 </div>
                             </dl>
-                            <div>
-                                <a href="{{ route('penarikan.transfer-proof.show', $selectedPenarikan->uid) }}"
-                                    target="_blank"
-                                    class="inline-flex items-center gap-2 text-sm font-semibold text-indigo-600 dark:text-indigo-400">
-                                    <i data-lucide="external-link" class="h-4 w-4"></i>
-                                    Lihat ukuran penuh
-                                </a>
-                            </div>
                         </div>
                     @else
-                        <p class="text-sm font-semibold text-slate-500 dark:text-slate-400">Bukti transfer belum
-                            tersedia.</p>
+                        <div class="flex items-center gap-3 rounded-xl border border-dashed border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-900/40 p-4 text-slate-500 dark:text-slate-400">
+                            <i data-lucide="file-x" class="h-5 w-5 flex-shrink-0 opacity-60"></i>
+                            <p class="text-sm font-medium">Bukti transfer belum tersedia.</p>
+                        </div>
                     @endif
+                </div>
+
+                <!-- Modal Footer -->
+                <div class="flex justify-end pt-2 border-t border-slate-100 dark:border-slate-700">
+                    <x-admin.button type="button" x-on:click="close()" variant="secondary" icon="x">
+                        Tutup
+                    </x-admin.button>
                 </div>
             </div>
         @endif

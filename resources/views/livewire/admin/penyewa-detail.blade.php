@@ -154,9 +154,12 @@
     <script>
         document.addEventListener('livewire:init', () => {
             Livewire.hook('morph.updated', () => {
-                if (typeof lucide !== 'undefined') {
+                if (typeof lucide === 'undefined' || window.__adminLucideScheduled) return;
+                window.__adminLucideScheduled = true;
+                requestAnimationFrame(() => {
+                    window.__adminLucideScheduled = false;
                     lucide.createIcons();
-                }
+                });
             });
         });
     </script>

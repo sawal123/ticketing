@@ -327,10 +327,10 @@ class VoucherCodeUniquenessSecurityTest extends TestCase
             'user_uid' => $tenant->uid,
             'event_uid' => $event->uid,
             'invoice' => 'INV-'.Str::upper(Str::random(8)),
-            'status' => Cart::STATUS_UNPAID,
+            'status' => Cart::STATUS_RESERVED,
             'payment_type' => 'bank_transfer',
             'gross_amount' => 100000,
-            'reservation_expires_at' => now()->addMinutes(10),
+            'expires_at' => now()->addMinutes(10),
         ]);
     }
 

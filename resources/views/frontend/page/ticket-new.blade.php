@@ -508,6 +508,7 @@
         // 🛡️ PENGECEKAN TRANSAKSI UNPAID
         const hasUnpaid = {{ $hasUnpaid ? 'true' : 'false' }};
         const unpaidUid = "{{ $unpaidUid }}";
+        const unpaidUrl = @json($unpaidUrl ?? '/transaksi');
         const csrfToken = @json(csrf_token());
 
         const checkoutForms = document.querySelectorAll('.ticket-purchase-form');
@@ -540,8 +541,8 @@
                     }
                 }).then((result) => {
                     if (result.isConfirmed) {
-                        // Lanjut ke riwayat transaksi
-                        window.location.href = '/transaksi';
+                        // Lanjut ke halaman transaksi / pembayaran tiket lama
+                        window.location.href = unpaidUrl || '/transaksi';
                     } else if (result.isDenied) {
                         // Batalkan transaksi lama & lanjut checkout baru setelah server mengonfirmasi.
                         Swal.fire({

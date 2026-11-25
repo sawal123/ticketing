@@ -221,7 +221,9 @@ class EmailBlast extends Component
 
     public function render()
     {
-        $events = Event::orderBy('created_at', 'desc')->get();
+        $events = Event::select('uid', 'event', 'created_at')
+            ->orderBy('created_at', 'desc')
+            ->get();
         $availableUsers = User::where('role', User::USER_ROLE)
             ->when($this->search_user, function($query) {
                 $query->where(function($q) {

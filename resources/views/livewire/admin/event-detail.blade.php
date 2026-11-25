@@ -1088,12 +1088,59 @@
                             <td class="px-5 py-4 text-sm text-slate-600 dark:text-slate-400">
                                 {{ $trx->created_at->format('d M Y, H:i') }}
                             </td>
+                            @php
+                                $editTrxPayload = [
+                                    'uid' => $trx->uid,
+                                    'invoice' => $trx->invoice ?? '-',
+                                    'paymentType' => strtoupper((string) ($trx->payment_type ?? 'N/A')),
+                                    'isCash' => strtolower((string) $trx->payment_type) === 'cash',
+                                    'email' => $buyerEmail === '-' ? '' : $buyerEmail,
+                                    'verification' => $isVerified ? 'verified' : 'unverified',
+                                ];
+                                $rowSubtotal = (int) $trx->hargaCarts->sum(fn ($i) => (int) $i->quantity * (int) $i->harga_ticket);
+                                $rowDiscount = (int) $trx->hargaCarts->sum(fn ($i) => (int) ($i->disc ?? 0));
+                                $rowVoucher = $trx->hargaCarts->first(fn ($i) => filled($i->voucher))?->voucher;
+                                $rowPajak = (int) ($trx->pajak ?? 0);
+                                $rowInternetFee = (int) ($trx->internet_fee ?? 0);
+                                $detailTrxPayload = [
+                                    'invoice' => $trx->invoice ?? '-',
+                                    'status' => $trx->status ?? 'SUCCESS',
+                                    'isVerified' => $isVerified,
+                                    'verifiedDate' => $trx->scanned_at ? $trx->scanned_at->format('d M Y') : '-',
+                                    'verifiedTime' => $trx->scanned_at ? $trx->scanned_at->format('H:i:s') : 'Waktu verifikasi tidak tersedia',
+                                    'buyerName' => $buyerName,
+                                    'buyerEmail' => $buyerEmail ?: 'N/A',
+                                    'operatorLabel' => ($trx->payment_type === 'cash' && $trx->users) ? ($trx->users->name.' ('.$trx->users->email.')') : '',
+                                    'items' => $trx->hargaCarts->map(fn ($i) => [
+                                        'name' => $i->masterHarga->kategori ?? ($i->kategori_harga ?? 'Kategori Dihapus'),
+                                        'qty' => (int) $i->quantity,
+                                        'price' => (int) $i->harga_ticket,
+                                        'total' => (int) $i->quantity * (int) $i->harga_ticket,
+                                    ])->values()->all(),
+                                    'subtotal' => $rowSubtotal,
+                                    'discount' => $rowDiscount,
+                                    'voucherCode' => $rowVoucher,
+                                    'internetFee' => $rowInternetFee,
+                                    'pajak' => $rowPajak,
+                                    'pajakPersen' => (int) ($trx->pajak_persen ?? 0),
+                                    'paymentType' => strtoupper((string) ($trx->payment_type ?? 'N/A')),
+                                    'totalBayar' => $rowSubtotal - $rowDiscount + $rowPajak + $rowInternetFee,
+                                    'invoiceUrl' => url('/invoice/'.$trx->uid),
+                                ];
+                            @endphp
                             <td class="px-5 py-4 text-center">
                                 <div class="flex items-center justify-center gap-1">
-                                    <x-admin.button
-                                        x-on:click="$dispatch('open-modal', {name: 'transaction-detail-modal'}); $wire.showTransactionDetail('{{ $trx->uid }}')"
+                                    <x-admin.button type="button"
+                                        data-detail-trx="{{ json_encode($detailTrxPayload) }}"
+                                        x-on:click="$dispatch('open-transaction-detail-modal', JSON.parse($el.dataset.detailTrx))"
                                         variant="ghost" size="sm" icon="eye" class="text-indigo-600" title="Lihat Detail" />
-                                    <x-admin.button wire:click="confirmResendEmail('{{ $trx->uid }}')"
+                                    <x-admin.button type="button"
+                                        data-edit-trx="{{ json_encode($editTrxPayload) }}"
+                                        x-on:click="$dispatch('open-edit-transaction-modal', JSON.parse($el.dataset.editTrx))"
+                                        variant="ghost" size="sm" icon="pencil" class="text-amber-600" title="Edit Transaksi" />
+                                    <x-admin.button type="button"
+                                        x-on:click="$dispatch('open-modal', {name: 'resend-email-modal'})"
+                                        wire:click="confirmResendEmail('{{ $trx->uid }}')"
                                         variant="ghost" size="sm" icon="mail" class="text-emerald-600"
                                         title="Kirim Ulang Email" />
                                 </div>
@@ -1209,8 +1256,8 @@
     <!-- Delete Confirmation Modal -->
     <x-admin.modal-delete name="delete-ticket-modal" title="Hapus Kategori Tiket?"
         message="Data tiket akan dihapus permanen dari sistem. Pastikan Anda sudah memeriksa laporan penjualan sebelum melanjutkan.">
-        <x-admin.button wire:click="deleteTicket" variant="primary"
-            class="w-full !bg-rose-600 hover:!bg-rose-700 !py-3 shadow-lg shadow-rose-200" icon="trash-2">
+        <x-admin.button type="button" wire:click="deleteTicket" loadingTarget="deleteTicket" variant="danger"
+            class="w-full !py-3 shadow-lg shadow-rose-200 dark:shadow-none" icon="trash-2">
             Ya, Hapus Sekarang
         </x-admin.button>
     </x-admin.modal-delete>
@@ -1239,175 +1286,15 @@
         </div>
     </x-admin.modal>
 
-    <!-- Transaction Detail Modal -->
-    <x-admin.modal name="transaction-detail-modal" title="Detail Transaksi" icon="file-text">
-        <div wire:loading wire:target="showTransactionDetail" class="w-full py-12">
-            <div class="flex flex-col items-center justify-center space-y-4">
-                <div class="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
-                <p class="text-sm text-slate-500 font-medium animate-pulse">Mengambil data transaksi...</p>
-            </div>
-        </div>
+    <!-- Transaction Detail Modal (Instant Alpine.js Open) -->
+    @if($activeTab === 'transaksi' || $selectedTransaction)
+        @include('livewire.admin.partials.transaction-detail-modal')
+    @endif
 
-        <div wire:loading.remove wire:target="showTransactionDetail">
-            @if($selectedTransaction)
-                @php
-                    $buyer = $selectedTransaction->payment_type === 'cash'
-                        ? $selectedTransaction->cashBuyer
-                        : $selectedTransaction->users;
-                    $buyerName = $selectedTransaction->payment_type === 'cash'
-                        ? ($buyer->name ?? 'Data Pembeli Tidak Ditemukan')
-                        : ($buyer->name ?? 'Guest');
-                    $buyerEmail = $selectedTransaction->payment_type === 'cash'
-                        ? ($buyer->email ?? '-')
-                        : ($buyer->email ?? 'N/A');
-                    $operator = $selectedTransaction->users;
-                    $isVerified = filled($selectedTransaction->scanned_at) || (string) $selectedTransaction->konfirmasi === '1';
-                @endphp
-                <div class="space-y-6">
-                    <!-- Transaction Info -->
-                    <div class="flex justify-between items-start border-b border-slate-100 dark:border-slate-700 pb-4">
-                        <div>
-                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Invoice</p>
-                            <p class="text-lg font-mono font-bold text-slate-800 dark:text-white">
-                                {{ $selectedTransaction->invoice }}</p>
-                        </div>
-                        <div class="text-right">
-                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Status</p>
-                            <span
-                                class="px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-bold border border-emerald-100">
-                                {{ $selectedTransaction->status }}
-                            </span>
-                        </div>
-                    </div>
-
-                    <!-- Verification Info -->
-                    <div class="rounded-2xl border border-slate-100 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-700/50">
-                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Status Verifikasi</h4>
-                        <div class="grid grid-cols-1 gap-3 md:grid-cols-3">
-                            <div>
-                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Status</p>
-                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold border {{ $isVerified ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-100 text-slate-600 border-slate-200' }}">
-                                    {{ $isVerified ? 'Terverifikasi' : 'Belum Diverifikasi' }}
-                                </span>
-                            </div>
-                            <div>
-                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Tanggal Verifikasi</p>
-                                <p class="text-sm font-semibold text-slate-800 dark:text-white">
-                                    {{ $selectedTransaction->scanned_at ? $selectedTransaction->scanned_at->format('d M Y') : '-' }}
-                                </p>
-                            </div>
-                            <div>
-                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Waktu Verifikasi</p>
-                                <p class="text-sm font-semibold text-slate-800 dark:text-white">
-                                    {{ $selectedTransaction->scanned_at ? $selectedTransaction->scanned_at->format('H:i:s') : 'Waktu verifikasi tidak tersedia' }}
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- User Info -->
-                    <div class="flex items-center gap-4 bg-slate-50 dark:bg-slate-700/50 p-4 rounded-2xl">
-                        <div
-                            class="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold">
-                            {{ substr($buyerName, 0, 1) }}
-                        </div>
-                        <div>
-                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Pembeli</p>
-                            <p class="text-sm font-bold text-slate-800 dark:text-white">
-                                {{ $buyerName }}</p>
-                            <p class="text-xs text-slate-500">{{ $buyerEmail }}</p>
-                            @if($selectedTransaction->payment_type === 'cash' && $operator)
-                                <p class="mt-2 text-[10px] text-slate-400">
-                                    Dibuat oleh: {{ $operator->name }} ({{ $operator->email }})
-                                </p>
-                            @endif
-                        </div>
-                    </div>
-
-                    <!-- Tickets Purchased -->
-                    <div>
-                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Item Tiket</h4>
-                        <div class="space-y-2">
-                            @foreach($selectedTransaction->hargaCarts as $item)
-                                <div
-                                    class="flex justify-between items-center p-3 rounded-xl border border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800">
-                                    <div>
-                                        <p class="text-sm font-bold text-slate-800 dark:text-white">
-                                            {{ $item->masterHarga->kategori ?? 'Kategori Dihapus' }}</p>
-                                        <p class="text-xs text-slate-500">{{ $item->quantity }} x Rp
-                                            {{ number_format($item->harga_ticket, 0, ',', '.') }}</p>
-                                    </div>
-                                    <div class="text-right font-bold text-indigo-600">
-                                        Rp {{ number_format($item->quantity * $item->harga_ticket, 0, ',', '.') }}
-                                    </div>
-                                </div>
-                            @endforeach
-                        </div>
-                    </div>
-
-                    <!-- Payment Info -->
-                    <div class="pt-4 border-t border-slate-100 dark:border-slate-700 space-y-2">
-                        <div class="flex justify-between text-sm">
-                            <span class="text-slate-500">Subtotal Tiket</span>
-                            <span class="font-bold text-slate-800 dark:text-white">Rp
-                                {{ number_format($selectedTransaction->hargaCarts->sum(fn($i) => $i->quantity * $i->harga_ticket), 0, ',', '.') }}</span>
-                        </div>
-                        @if($discount > 0)
-                            <div class="flex justify-between text-sm">
-                                <span class="text-slate-500 flex items-center gap-1">Diskon @if($voucherCode) <span
-                                    class="text-[10px] bg-emerald-50 text-emerald-600 px-1.5 py-0.5 rounded uppercase font-bold">{{ $voucherCode }}</span>
-                                @endif</span>
-                                <span class="font-bold text-emerald-600">-Rp {{ number_format($discount, 0, ',', '.') }}</span>
-                            </div>
-                        @endif
-                        <div class="flex justify-between text-sm">
-                            <span class="text-slate-500">Internet Fee</span>
-                            <span class="font-bold text-slate-800 dark:text-white">Rp
-                                {{ number_format($selectedTransaction->internet_fee ?? 0, 0, ',', '.') }}</span>
-                        </div>
-                        <div class="flex justify-between text-sm">
-                            <span class="text-slate-500">
-                                Pajak / Fee
-                                @if(isset($selectedTransaction->pajak_persen) && $selectedTransaction->pajak_persen > 0)
-                                    ({{ $selectedTransaction->pajak_persen }}%)
-                                @endif
-                            </span>
-                            <span class="font-bold text-rose-600">Rp
-                                {{ number_format($selectedTransaction->pajak ?? 0, 0, ',', '.') }}</span>
-                        </div>
-
-                        <div class="flex justify-between text-sm border-t border-slate-100 dark:border-slate-700 pt-2 mt-2">
-                            <span class="text-slate-500">Metode Pembayaran</span>
-                            <span
-                                class="font-bold text-slate-800 dark:text-white uppercase">{{ $selectedTransaction->payment_type }}</span>
-                        </div>
-                        <div class="flex justify-between text-lg font-extrabold pt-2">
-                            <span class="text-slate-800 dark:text-white">Total Bayar</span>
-                            @php
-                                $totalBayar = $selectedTransaction->hargaCarts->sum(fn($i) => $i->quantity * $i->harga_ticket)
-                                    - $discount
-                                    + ($selectedTransaction->pajak ?? 0)
-                                    + ($selectedTransaction->internet_fee ?? 0);
-                            @endphp
-                            <span class="text-indigo-600">Rp {{ number_format($totalBayar, 0, ',', '.') }}</span>
-                        </div>
-                    </div>
-
-                    <div class="mt-8 grid grid-cols-2 gap-3">
-                        <x-admin.button x-on:click="show = false" variant="secondary" icon="x-circle" class="w-full !py-3">
-                            Tutup
-                        </x-admin.button>
-                        <a href="{{ url('/invoice/' . $selectedTransaction->uid) }}" target="_blank" class="block w-full">
-                            <x-admin.button variant="primary" icon="download"
-                                class="w-full !py-3 shadow-lg shadow-indigo-200">
-                                Download
-                            </x-admin.button>
-                        </a>
-                    </div>
-                </div>
-            @endif
-        </div>
-    </x-admin.modal>
+    <!-- Edit Transaction Modal (Instant Alpine.js Open, Single Server Roundtrip on Save) -->
+    @if($activeTab === 'transaksi')
+        @include('livewire.admin.partials.edit-transaction-modal')
+    @endif
 
     <!-- Resend Email Confirmation Modal -->
     <x-admin.modal name="resend-email-modal" title="Kirim Ulang Barcode?" icon="mail">
@@ -1435,19 +1322,21 @@
     </x-admin.modal>
 
     <script>
-        document.addEventListener('livewire:init', () => {
-            Livewire.hook('morph.updated', (el, component) => {
-                if (typeof lucide !== 'undefined') {
+        (function () {
+            const scheduleLucide = () => {
+                if (typeof lucide === 'undefined' || window.__adminLucideScheduled) return;
+                window.__adminLucideScheduled = true;
+                requestAnimationFrame(() => {
+                    window.__adminLucideScheduled = false;
                     lucide.createIcons();
-                }
-            });
-        });
+                });
+            };
 
-        // Fallback for first load and navigation
-        document.addEventListener('livewire:navigated', () => {
-            if (typeof lucide !== 'undefined') {
-                lucide.createIcons();
-            }
-        });
+            document.addEventListener('livewire:init', () => {
+                Livewire.hook('morph.updated', scheduleLucide);
+            });
+
+            document.addEventListener('livewire:navigated', scheduleLucide);
+        })();
     </script>
 </div>

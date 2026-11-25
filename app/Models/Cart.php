@@ -36,13 +36,27 @@ class Cart extends Model
         self::STATUS_EXPIRED,
     ];
 
+    public const GENDER_MALE = 'pria';
+
+    public const GENDER_FEMALE = 'wanita';
+
+    public const ALLOWED_GENDERS = [
+        self::GENDER_MALE,
+        self::GENDER_FEMALE,
+    ];
+
     protected $fillable = [
         'uid',
         'user_uid',
+        'is_guest',
         'event_uid',
         'invoice',
         'ticket_holder_name',
         'ticket_recipient_email',
+        'ticket_holder_gender',
+        'ticket_holder_phone',
+        'guest_token_hash',
+        'guest_session_key',
         'gate_token_hash',
         'gate_token_encrypted',
         'gate_manual_code_hash',
@@ -74,6 +88,7 @@ class Cart extends Model
     ];
 
     protected $casts = [
+        'is_guest' => 'boolean',
         'expires_at' => 'datetime',
         'paid_at' => 'datetime',
         'reservation_released_at' => 'datetime',
@@ -91,6 +106,8 @@ class Cart extends Model
     ];
 
     protected $hidden = [
+        'guest_token_hash',
+        'guest_session_key',
         'gate_token_hash',
         'gate_token_encrypted',
         'gate_manual_code_hash',
@@ -156,6 +173,57 @@ class Cart extends Model
 
     public function hasRecipientSnapshot(): bool
     {
-        return filled($this->ticket_holder_name) && filled($this->ticket_recipient_email);
+        if (! filled($this->ticket_holder_name) || ! filled($this->ticket_recipient_email)) {
+            return false;
+        }
+
+        if ($this->isGuest()) {
+            return filled($this->ticket_holder_gender) && filled($this->ticket_holder_phone);
+        }
+
+        return true;
+    }
+
+    public function buyerPhone(): ?string
+    {
+        if (filled($this->ticket_holder_phone)) {
+            return (string) $this->ticket_holder_phone;
+        }
+
+        $userPhone = trim((string) ($this->users?->nomor ?? ''));
+
+        return ($userPhone !== '' && $userPhone !== '-') ? $userPhone : null;
+    }
+
+    public function isGuest(): bool
+    {
+        return (bool) $this->is_guest || blank($this->user_uid);
+    }
+
+    public function buyerName(): string
+    {
+        if (filled($this->ticket_holder_name)) {
+            return (string) $this->ticket_holder_name;
+        }
+
+        return (string) ($this->users?->name ?? 'Guest');
+    }
+
+    public function buyerEmail(): ?string
+    {
+        if (filled($this->ticket_recipient_email)) {
+            return (string) $this->ticket_recipient_email;
+        }
+
+        return $this->users?->email ? (string) $this->users->email : null;
+    }
+
+    public function buyerGender(): ?string
+    {
+        if (filled($this->ticket_holder_gender)) {
+            return (string) $this->ticket_holder_gender;
+        }
+
+        return $this->users?->gender ? (string) $this->users->gender : null;
     }
 }

@@ -142,22 +142,26 @@ Route::get('/ticket-access/{uid}', [BarcodeController::class, 'showOnlineTicket'
     ->name('online.ticket.show');
 Route::get('/generate-barcode/{data}', [BarcodeController::class, 'generateBarcode'])->name('barcode.generate');
 
+// Checkout & payment routes (accessible for both logged-in users and guest buyers)
+Route::get('/checkout/{uid}', [BuyTicketController::class, 'showGuest'])
+    ->whereUuid('uid')
+    ->name('checkout.guest.show');
+Route::get('/detail-ticket/{uid}/{user?}', [BuyTicketController::class, 'index']);
+Route::post('/checkVoucer', [BuyTicketController::class, 'checkVoucher']);
+Route::post('/closeVoucher', [BuyTicketController::class, 'closeVoucher']);
+Route::post('/checkout', [BuyTicketController::class, 'checkout'])->middleware('throttle:checkout');
+Route::post('/checkout-payment-otp/send', [CheckoutPaymentOtpController::class, 'send'])->name('checkout-payment-otp.send');
+Route::post('/checkout-payment-otp/resend', [CheckoutPaymentOtpController::class, 'resend'])->name('checkout-payment-otp.resend');
+Route::post('/checkout-payment-otp/verify', [CheckoutPaymentOtpController::class, 'verify'])->name('checkout-payment-otp.verify');
+Route::post('/paynow', [TransactionController::class, 'paynow'])->middleware('throttle:paynow');
+Route::delete('/transactions/{uid}/cancel', [DeleteController::class, 'cancelListTransaksi'])
+    ->name('transactions.cancel');
+
 Route::middleware(['auth'])->group(function () {
     Route::get('/profile', [editController::class, 'profile']);
     Route::post('/profile/update-profile', [editController::class, 'editProfile']);
     Route::get('email/notif-email', [Controller::class, 'notif']);
-    Route::get('/detail-ticket/{uid}/{user}', [BuyTicketController::class, 'index']);
-    Route::post('/checkVoucer', [BuyTicketController::class, 'checkVoucher']);
-    Route::post('/closeVoucher', [BuyTicketController::class, 'closeVoucher']);
-    Route::post('/checkout', [BuyTicketController::class, 'checkout'])->middleware('throttle:checkout');
     Route::get('/transaksi', [landingController::class, 'listTransaksi']);
-
-    Route::post('/checkout-payment-otp/send', [CheckoutPaymentOtpController::class, 'send'])->name('checkout-payment-otp.send');
-    Route::post('/checkout-payment-otp/resend', [CheckoutPaymentOtpController::class, 'resend'])->name('checkout-payment-otp.resend');
-    Route::post('/checkout-payment-otp/verify', [CheckoutPaymentOtpController::class, 'verify'])->name('checkout-payment-otp.verify');
-    Route::post('/paynow', [TransactionController::class, 'paynow'])->middleware('throttle:paynow');
-    Route::delete('/transactions/{uid}/cancel', [DeleteController::class, 'cancelListTransaksi'])
-        ->name('transactions.cancel');
     Route::post('/profile/update-password', [editController::class, 'updateProfilePassword'])->name('profile.password.update');
     Route::post('/profile/email/request-otp', [editController::class, 'requestEmailChangeOtp'])->name('profile.email.request-otp');
     Route::post('/profile/email/verify-otp', [editController::class, 'verifyEmailChangeOtp'])->name('profile.email.verify-otp');
