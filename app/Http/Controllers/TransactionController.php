@@ -241,6 +241,7 @@ class TransactionController extends Controller
                     'customer_name' => $cart->isGuest() ? $cart->buyerName() : Auth::user()->name,
                     'customer_email' => $cart->isGuest() ? $cart->buyerEmail() : Auth::user()->email,
                     'customer_phone' => $cart->buyerPhone(),
+                    'finish_url' => $ownershipService->finishUrl($request, $cart),
                     'otp_required' => (bool) $event->payment_otp_enabled,
                 ];
             }, 3);
@@ -422,14 +423,8 @@ class TransactionController extends Controller
         ]);
     }
 
-    protected function createMidtransPaymentUrl(array $context): string
+    protected function buildMidtransSnapPayload(array $context): array
     {
-        konfig::$clientKey = config('services.midtrans.clientKey');
-        konfig::$serverKey = config('services.midtrans.serverKey');
-        konfig::$isProduction = config('services.midtrans.isProduction');
-        konfig::$isSanitized = config('services.midtrans.isSanitized');
-        konfig::$is3ds = config('services.midtrans.is3ds');
-
         $duration = max(1, now()->diffInMinutes($context['expires_at'], false));
 
         $snapPayload = [
@@ -452,7 +447,24 @@ class TransactionController extends Controller
             ],
         ];
 
-        return Snap::createTransaction($snapPayload)->redirect_url;
+        if (filled($context['finish_url'] ?? null)) {
+            $snapPayload['callbacks'] = [
+                'finish' => $context['finish_url'],
+            ];
+        }
+
+        return $snapPayload;
+    }
+
+    protected function createMidtransPaymentUrl(array $context): string
+    {
+        konfig::$clientKey = config('services.midtrans.clientKey');
+        konfig::$serverKey = config('services.midtrans.serverKey');
+        konfig::$isProduction = config('services.midtrans.isProduction');
+        konfig::$isSanitized = config('services.midtrans.isSanitized');
+        konfig::$is3ds = config('services.midtrans.is3ds');
+
+        return Snap::createTransaction($this->buildMidtransSnapPayload($context))->redirect_url;
     }
 
     protected function isValidCallbackPayload(array $payload): bool

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Http\Controllers\TransactionController;
 use App\Http\Middleware\GlobalDataMiddleware;
 use App\Http\Middleware\LogActivityMiddleware;
 use App\Mail\CheckoutPaymentOtpMail;
@@ -15,6 +16,7 @@ use App\Models\PaymentGateway;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Models\Voucher;
+use App\Services\Tickets\CartOwnershipService;
 use App\Services\Tickets\GateTokenService;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
@@ -22,6 +24,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Facades\View;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -43,6 +46,16 @@ class GuestCheckoutFlowTest extends TestCase
 
         $this->createSchema();
         $this->withoutMiddleware([GlobalDataMiddleware::class, LogActivityMiddleware::class]);
+        $defaultLanding = [(object) ['logo' => '', 'icon' => '', 'keyword' => '', 'description' => '']];
+        View::share([
+            'user' => null,
+            'csrfToken' => 'test-csrf',
+            'cari' => null,
+            'logo' => $defaultLanding,
+            'seo' => $defaultLanding,
+            'contact' => collect(),
+            'contactus' => collect(),
+        ]);
     }
 
     public function test_guest_can_checkout_without_login_and_view_checkout_page(): void
@@ -357,6 +370,186 @@ class GuestCheckoutFlowTest extends TestCase
         ])->assertSessionHasErrors('msg');
 
         $this->assertSame(Cart::STATUS_RESERVED, $cart->fresh()->status);
+    }
+
+    public function test_guest_paynow_sets_midtrans_finish_callback_to_guest_finish_page(): void
+    {
+        $event = $this->event();
+        $harga = $this->harga($event, ['harga' => 100000, 'qty' => 5]);
+        $gateway = $this->gateway($event);
+
+        $this->post('/checkout', [
+            'event_uid' => $event->uid,
+            'tickets' => [['harga_id' => $harga->id, 'quantity' => 1]],
+        ])->assertRedirect();
+
+        $cart = Cart::firstOrFail();
+        $capturedPayload = null;
+
+        $this->app->bind(TransactionController::class, function () use (&$capturedPayload) {
+            return new class($capturedPayload) extends TransactionController
+            {
+                public $captured;
+
+                public function __construct(&$captured)
+                {
+                    $this->captured = &$captured;
+                }
+
+                protected function createMidtransPaymentUrl(array $context): string
+                {
+                    $this->captured = $this->buildMidtransSnapPayload($context);
+
+                    return 'https://app.sandbox.midtrans.com/snap/v4/redirection/test-guest-finish';
+                }
+            };
+        });
+
+        $this->from(route('checkout.guest.show', ['uid' => $cart->uid]))->post('/paynow', [
+            'cart_uid' => $cart->uid,
+            'payment_gateway_id' => $gateway->id,
+            'ticket_holder_name' => 'Tamu Finish',
+            'ticket_recipient_email' => 'tamu.finish@example.com',
+            'ticket_holder_phone' => '081234567890',
+            'ticket_holder_gender' => 'pria',
+        ])->assertRedirect('https://app.sandbox.midtrans.com/snap/v4/redirection/test-guest-finish');
+
+        $this->assertIsArray($capturedPayload);
+        $finishUrl = $capturedPayload['callbacks']['finish'] ?? null;
+        $this->assertNotEmpty($finishUrl);
+        $this->assertStringContainsString('/checkout/'.$cart->uid.'/selesai', $finishUrl);
+        $this->assertStringContainsString('token=', $finishUrl);
+    }
+
+    public function test_guest_finish_page_works_without_session_using_valid_token_and_uses_db_status(): void
+    {
+        Mail::fake();
+
+        $event = $this->event();
+        $harga = $this->harga($event, ['harga' => 100000, 'qty' => 5]);
+        $gateway = $this->gateway($event);
+
+        $this->post('/checkout', [
+            'event_uid' => $event->uid,
+            'tickets' => [['harga_id' => $harga->id, 'quantity' => 1]],
+        ])->assertRedirect();
+
+        $cart = Cart::firstOrFail();
+        $tokens = session(CartOwnershipService::SESSION_TOKENS_KEY, []);
+        $plainToken = $tokens[$cart->uid] ?? null;
+        $this->assertNotEmpty($plainToken);
+
+        $this->app->bind(TransactionController::class, function () {
+            return new class extends TransactionController
+            {
+                protected function createMidtransPaymentUrl(array $context): string
+                {
+                    return 'https://app.sandbox.midtrans.com/snap/v4/redirection/test-token';
+                }
+            };
+        });
+
+        $this->post('/paynow', [
+            'cart_uid' => $cart->uid,
+            'payment_gateway_id' => $gateway->id,
+            'ticket_holder_name' => 'Tamu Token',
+            'ticket_recipient_email' => 'tamu.token@example.com',
+            'ticket_holder_phone' => '081234567890',
+            'ticket_holder_gender' => 'wanita',
+        ])->assertRedirect();
+
+        $cart->refresh();
+
+        // Simulate cross-site Midtrans redirect with lost session & spoofed settlement query string while DB is still PENDING
+        $this->flushSession();
+
+        $pendingPage = $this->get(route('checkout.guest.finish', [
+            'uid' => $cart->uid,
+            'token' => $plainToken,
+            'order_id' => $cart->invoice,
+            'status_code' => '200',
+            'transaction_status' => 'settlement',
+        ]));
+
+        $pendingPage->assertOk();
+        $pendingPage->assertSee('Menunggu Konfirmasi Pembayaran');
+        $pendingPage->assertDontSee('Pembayaran Berhasil!');
+        $pendingPage->assertSee($cart->invoice);
+
+        // Settle via authoritative Midtrans callback
+        $grossAmount = (string) $cart->gross_amount;
+        $signature = hash('sha512', $cart->invoice.'200'.$grossAmount.'test-server-key');
+
+        $this->postJson('/api/callback', [
+            'order_id' => $cart->invoice,
+            'status_code' => '200',
+            'gross_amount' => $grossAmount,
+            'signature_key' => $signature,
+            'transaction_status' => 'settlement',
+            'transaction_id' => 'midtrans-tx-guest-finish',
+            'payment_type' => 'qris',
+        ])->assertOk();
+
+        $this->flushSession();
+
+        $paidPage = $this->get(route('checkout.guest.finish', [
+            'uid' => $cart->uid,
+            'token' => $plainToken,
+            'order_id' => $cart->invoice,
+            'status_code' => '200',
+            'transaction_status' => 'settlement',
+        ]));
+
+        $paidPage->assertOk();
+        $paidPage->assertSee('Pembayaran Berhasil!');
+        $paidPage->assertSee('Buka E-Ticket &amp; Barcode', false);
+        $paidPage->assertSee('tamu.token@example.com');
+    }
+
+    public function test_guest_finish_page_rejects_missing_or_invalid_token_without_session(): void
+    {
+        $event = $this->event();
+        $harga = $this->harga($event, ['harga' => 100000, 'qty' => 5]);
+
+        $this->post('/checkout', [
+            'event_uid' => $event->uid,
+            'tickets' => [['harga_id' => $harga->id, 'quantity' => 1]],
+        ])->assertRedirect();
+
+        $cart = Cart::firstOrFail();
+
+        $this->flushSession();
+
+        $this->get(route('checkout.guest.finish', ['uid' => $cart->uid]))
+            ->assertRedirect('/')
+            ->assertSessionHas('error');
+
+        $this->get(route('checkout.guest.finish', [
+            'uid' => $cart->uid,
+            'token' => str_repeat('a', 64),
+        ]))
+            ->assertRedirect('/')
+            ->assertSessionHas('error');
+    }
+
+    public function test_logged_in_user_finish_url_points_to_transaksi(): void
+    {
+        $user = $this->user();
+        $event = $this->event();
+
+        $cart = Cart::create([
+            'uid' => (string) Str::uuid(),
+            'user_uid' => $user->uid,
+            'is_guest' => false,
+            'event_uid' => $event->uid,
+            'invoice' => 'INV-USER-001',
+            'status' => Cart::STATUS_PENDING,
+        ]);
+
+        $finishUrl = app(CartOwnershipService::class)
+            ->finishUrl(request(), $cart);
+
+        $this->assertSame(url('/transaksi'), $finishUrl);
     }
 
     protected function createSchema(): void
