@@ -285,6 +285,11 @@ class UserIndex extends Component
             return [];
         }
 
+        if (\Illuminate\Support\Facades\DB::getDriverName() === 'sqlite'
+            && ! \Illuminate\Support\Facades\Schema::hasTable('carts')) {
+            return [];
+        }
+
         $formatCart = static function (\App\Models\Cart $cart): array {
             $isVerified = filled($cart->scanned_at) || (string) $cart->konfirmasi === '1';
 
