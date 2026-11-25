@@ -1016,7 +1016,7 @@ class EventDetail extends Component
 
     public function toggleTicketStatus($id)
     {
-        $harga = Harga::findOrFail($id);
+        $harga = $this->scopedHarga($id);
         $harga->status = $harga->status === 'active' ? 'inactive' : 'active';
         $harga->save();
         session()->flash('message', 'Status tiket berhasil diperbarui.');
@@ -1024,7 +1024,7 @@ class EventDetail extends Component
 
     public function confirmDeleteTicket($id)
     {
-        $harga = Harga::findOrFail($id);
+        $harga = $this->scopedHarga($id);
         $hasTransactions = $harga->hargaCarts()->whereHas('cart', function ($q) {
             $q->where('status', 'SUCCESS');
         })->exists();
@@ -1042,7 +1042,7 @@ class EventDetail extends Component
     public function deleteTicket()
     {
         if ($this->deletingHargaId) {
-            $harga = Harga::findOrFail($this->deletingHargaId);
+            $harga = $this->scopedHarga($this->deletingHargaId);
             $harga->delete();
             $this->dispatch('close-modal', name: 'delete-ticket-modal');
             $this->deletingHargaId = null;
@@ -1052,7 +1052,7 @@ class EventDetail extends Component
 
     public function editTicket($id)
     {
-        $harga = Harga::findOrFail($id);
+        $harga = $this->scopedHarga($id);
         $this->resetValidation();
         $this->editingHargaId = $id;
         $this->editingHarga = [
@@ -1083,7 +1083,7 @@ class EventDetail extends Component
             return;
         }
 
-        $harga = Harga::findOrFail($this->editingHargaId);
+        $harga = $this->scopedHarga($this->editingHargaId);
         $attributes = [
             'kategori' => $this->editingHarga['kategori'],
             'qty' => (int) $this->editingHarga['qty'],
@@ -1098,6 +1098,11 @@ class EventDetail extends Component
 
         $this->dispatch('close-modal', name: 'edit-ticket-modal');
         session()->flash('message', 'Data tiket berhasil diperbarui.');
+    }
+
+    private function scopedHarga($id): Harga
+    {
+        return Harga::where('uid', $this->eventUid)->findOrFail($id);
     }
 
     private function resolveValidatedPromoPayload(array $input, string $prefix): ?array

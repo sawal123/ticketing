@@ -16,6 +16,7 @@ use App\Services\Tickets\GateTokenService;
 use App\Services\Tickets\TicketPricingService;
 use App\Services\Tickets\TicketReservationService;
 use Carbon\Carbon;
+use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Schema;
@@ -42,7 +43,15 @@ class BuyTicketController extends Controller
 
     public function showGuest(Request $request, string $uid, CartOwnershipService $ownershipService)
     {
-        return $this->renderCheckout($request, $uid, $ownershipService);
+        $response = $this->renderCheckout($request, $uid, $ownershipService);
+
+        if ($response instanceof View) {
+            return response($response)
+                ->header('Referrer-Policy', 'no-referrer')
+                ->header('Cache-Control', 'no-store, private');
+        }
+
+        return $response;
     }
 
     public function showGuestFinish(Request $request, string $uid, CartOwnershipService $ownershipService)
@@ -54,6 +63,12 @@ class BuyTicketController extends Controller
 
         if (! $cart->isGuest()) {
             return redirect('/transaksi');
+        }
+
+        if ($request->query->has('token')) {
+            return redirect()->route('checkout.guest.finish', ['uid' => $cart->uid])
+                ->header('Referrer-Policy', 'no-referrer')
+                ->header('Cache-Control', 'no-store, private');
         }
 
         $event = Event::where('uid', $cart->event_uid)->first();
@@ -74,18 +89,21 @@ class BuyTicketController extends Controller
             Cart::STATUS_UNPAID,
         ], true) && ! $cart->isReservationExpired();
 
-        return view('frontend.page.guest-transaction-finish', [
-            'title' => $isPaid ? 'Pembayaran Berhasil' : 'Status Pembayaran',
-            'event' => $event,
-            'cart' => $cart,
-            'harga' => $harga,
-            'pricing' => $pricing,
-            'grandTotal' => $grandTotal,
-            'isPaid' => $isPaid,
-            'isPending' => $isPending,
-            'guestTicketAccessUrl' => $this->buildGuestTicketAccessUrl($cart, $event),
-            'checkoutUrl' => $ownershipService->detailUrl($cart),
-        ]);
+        return response()
+            ->view('frontend.page.guest-transaction-finish', [
+                'title' => $isPaid ? 'Pembayaran Berhasil' : 'Status Pembayaran',
+                'event' => $event,
+                'cart' => $cart,
+                'harga' => $harga,
+                'pricing' => $pricing,
+                'grandTotal' => $grandTotal,
+                'isPaid' => $isPaid,
+                'isPending' => $isPending,
+                'guestTicketAccessUrl' => $this->buildGuestTicketAccessUrl($cart, $event),
+                'checkoutUrl' => $ownershipService->detailUrl($cart),
+            ])
+            ->header('Referrer-Policy', 'no-referrer')
+            ->header('Cache-Control', 'no-store, private');
     }
 
     public function index(Request $request, $uid, $user = null)

@@ -162,9 +162,8 @@ class TicketPricingService
         }
 
         if (in_array($cart->status, [Cart::STATUS_PENDING, Cart::STATUS_SUCCESS], true)
-            && array_key_exists('partner_commission_amount', $cart->getAttributes())
-            && (int) ($cart->partner_commission_amount ?? 0) > 0) {
-            return (int) $cart->partner_commission_amount;
+            && array_key_exists('partner_commission_amount', $cart->getAttributes())) {
+            return (int) ($cart->partner_commission_amount ?? 0);
         }
 
         $partner = $cart->partner;

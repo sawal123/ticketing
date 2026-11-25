@@ -88,7 +88,9 @@ class Partner extends Model
         $type = strtolower((string) ($this->commission_type ?? ''));
         $value = (int) ($this->commission_value ?? 0);
 
-        return in_array($type, [self::TYPE_RUPIAH, self::TYPE_PERSEN], true) && $value > 0;
+        return $this->status === 'active'
+            && in_array($type, [self::TYPE_RUPIAH, self::TYPE_PERSEN], true)
+            && $value > 0;
     }
 
     public function calculateCommission(int $netSubtotal, int $totalQty): int

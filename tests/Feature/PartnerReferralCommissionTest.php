@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Http\Middleware\GlobalDataMiddleware;
 use App\Http\Middleware\LogActivityMiddleware;
+use App\Livewire\Admin\EventDetail;
 use App\Livewire\Dashboard\PartnerIndex;
 use App\Models\Cart;
 use App\Models\Event;
@@ -13,6 +14,7 @@ use App\Models\User;
 use App\Models\Voucher;
 use App\Services\Partners\PartnerReferralService;
 use App\Services\Tickets\TicketPricingService;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -296,6 +298,91 @@ class PartnerReferralCommissionTest extends TestCase
             ->call('openTransactionsModal', $partner->id)
             ->assertSee($cart->invoice)
             ->assertSee('10.000');
+    }
+
+    public function test_historical_zero_commission_snapshot_and_inactive_partner_commission_guard(): void
+    {
+        $tenant = $this->user('penyewa');
+        $event = $this->event($tenant, 'zero-commission-event');
+        $harga = Harga::create([
+            'uid' => $event->uid,
+            'kategori' => 'Reguler',
+            'qty' => 20,
+            'harga' => 100000,
+            'status' => 'active',
+            'max_order_qty' => 5,
+        ]);
+
+        $partner = Partner::create([
+            'uid' => (string) Str::uuid(),
+            'user_uid' => $tenant->uid,
+            'event_uid' => $event->uid,
+            'referensi' => 'PARTNER-ZERO1',
+            'name' => 'Partner Nol Komisi',
+            'email' => 'zero@example.test',
+            'hp' => '08123',
+            'alamat' => 'Jakarta',
+            'city' => 'Jakarta',
+            'status' => 'active',
+            'commission_type' => null,
+            'commission_value' => null,
+        ]);
+
+        $this->get('/ticket/'.$event->slug.'?ref='.$partner->referensi)->assertOk();
+        $this->post('/checkout', [
+            'event_uid' => $event->uid,
+            'tickets' => [['harga_id' => $harga->id, 'quantity' => 1]],
+        ])->assertRedirect();
+
+        $cart = Cart::firstOrFail();
+        $cart->update([
+            'status' => Cart::STATUS_SUCCESS,
+            'gross_amount' => 100000,
+            'partner_commission_amount' => 0,
+            'paid_at' => now(),
+        ]);
+
+        // Later EO enables commission on partner; historical SUCCESS cart must remain 0
+        $partner->update([
+            'commission_type' => Partner::TYPE_PERSEN,
+            'commission_value' => 10,
+        ]);
+
+        $pricing = app(TicketPricingService::class)->calculateCart($cart->fresh());
+        $this->assertSame(0, $pricing['partner_commission']);
+
+        // Deactivating partner disables active commission calculation for new carts
+        $partner->update(['status' => 'inactive']);
+        $this->assertFalse($partner->fresh()->hasActiveCommission());
+    }
+
+    public function test_admin_event_detail_cannot_mutate_ticket_from_other_event(): void
+    {
+        $admin = $this->user('admin');
+        $tenant = $this->user('penyewa');
+        $eventA = $this->event($tenant, 'admin-scope-a');
+        $eventB = $this->event($tenant, 'admin-scope-b');
+
+        $ticketB = Harga::create([
+            'uid' => $eventB->uid,
+            'kategori' => 'Ticket B',
+            'qty' => 10,
+            'harga' => 50000,
+            'status' => 'active',
+            'max_order_qty' => 5,
+        ]);
+
+        $thrown = false;
+        try {
+            Livewire::actingAs($admin)
+                ->test(EventDetail::class, ['uid' => $eventA->uid])
+                ->call('toggleTicketStatus', $ticketB->id);
+        } catch (ModelNotFoundException) {
+            $thrown = true;
+        }
+
+        $this->assertTrue($thrown, 'Expected ModelNotFoundException when mutating ticket from another event.');
+        $this->assertSame('active', $ticketB->fresh()->status);
     }
 
     private function user(string $role = 'penyewa'): User
