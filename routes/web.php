@@ -143,7 +143,9 @@ Route::get('/ticket-access/{uid}', [BarcodeController::class, 'showOnlineTicket'
 Route::get('/generate-barcode/{data}', [BarcodeController::class, 'generateBarcode'])->name('barcode.generate');
 
 // Checkout & payment routes (accessible for both logged-in users and guest buyers)
-Route::get('/checkout/{uid}', [BuyTicketController::class, 'showGuest'])->name('checkout.guest.show');
+Route::get('/checkout/{uid}', [BuyTicketController::class, 'showGuest'])
+    ->whereUuid('uid')
+    ->name('checkout.guest.show');
 Route::get('/detail-ticket/{uid}/{user?}', [BuyTicketController::class, 'index']);
 Route::post('/checkVoucer', [BuyTicketController::class, 'checkVoucher']);
 Route::post('/closeVoucher', [BuyTicketController::class, 'closeVoucher']);
