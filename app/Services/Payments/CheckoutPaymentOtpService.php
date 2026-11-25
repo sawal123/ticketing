@@ -10,19 +10,33 @@ use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 
 class CheckoutPaymentOtpService
 {
     public const OTP_LENGTH = 6;
+
     public const OTP_TTL_MINUTES = 5;
+
     public const RESEND_COOLDOWN_SECONDS = 60;
+
     public const MAX_ATTEMPTS = 5;
 
-    public function assertOtpEligible(Cart $cart, User $user, ?Event $event = null): Event
+    public function assertOtpEligible(Cart $cart, ?User $user, ?Event $event = null, ?string $recipientEmail = null): Event
     {
-        if ($cart->user_uid !== $user->uid) {
-            throw ValidationException::withMessages(['cart_uid' => 'Cart tidak ditemukan.']);
+        if (! $cart->isGuest()) {
+            if (! $user || $cart->user_uid !== $user->uid) {
+                throw ValidationException::withMessages(['cart_uid' => 'Cart tidak ditemukan.']);
+            }
+        } else {
+            $resolvedEmail = $this->resolveRecipientEmail($cart, $user, $recipientEmail);
+
+            if (! $resolvedEmail) {
+                throw ValidationException::withMessages([
+                    'ticket_recipient_email' => 'Masukkan alamat email aktif terlebih dahulu untuk mengirim kode OTP.',
+                ]);
+            }
         }
 
         $event = $event ?? $cart->event;
@@ -46,23 +60,41 @@ class CheckoutPaymentOtpService
         return $event;
     }
 
-    public function getLatestOtp(Cart $cart, User $user, Event $event): ?CheckoutPaymentOtp
+    public function getLatestOtp(Cart $cart, ?User $user, Event $event, ?string $recipientEmail = null): ?CheckoutPaymentOtp
     {
-        return CheckoutPaymentOtp::query()
+        $query = CheckoutPaymentOtp::query()
             ->where('cart_uid', $cart->uid)
-            ->where('user_uid', $user->uid)
-            ->where('event_uid', $event->uid)
-            ->latest('id')
-            ->first();
+            ->where('event_uid', $event->uid);
+
+        if ($cart->isGuest()) {
+            $email = $this->resolveRecipientEmail($cart, $user, $recipientEmail);
+            if ($email) {
+                $query->where('recipient_email', $email);
+            } else {
+                $query->whereNull('user_uid');
+            }
+        } elseif ($user) {
+            $query->where('user_uid', $user->uid);
+        }
+
+        return $query->latest('id')->first();
     }
 
-    public function issueOtp(Cart $cart, User $user, Event $event): array
+    public function issueOtp(Cart $cart, ?User $user, Event $event, ?string $recipientEmail = null, ?string $recipientName = null): array
     {
-        $latestOtp = $this->getLatestOtp($cart, $user, $event);
+        $email = $this->resolveRecipientEmail($cart, $user, $recipientEmail);
+
+        if (! $email) {
+            throw ValidationException::withMessages([
+                'ticket_recipient_email' => 'Alamat email penerima OTP tidak valid.',
+            ]);
+        }
+
+        $latestOtp = $this->getLatestOtp($cart, $user, $event, $email);
 
         if (! $latestOtp) {
-            [$otp, $plainCode] = $this->createOtp($cart, $user, $event, false);
-            Mail::to($user->email)->send(new CheckoutPaymentOtpMail($user, $event, $plainCode));
+            [$otp, $plainCode] = $this->createOtp($cart, $user, $event, false, $email);
+            Mail::to($email)->send(new CheckoutPaymentOtpMail($user, $event, $plainCode, $recipientName ?? $cart->ticket_holder_name));
 
             return [
                 'otp' => $otp,
@@ -106,9 +138,17 @@ class CheckoutPaymentOtpService
         ];
     }
 
-    public function resendOtp(Cart $cart, User $user, Event $event): array
+    public function resendOtp(Cart $cart, ?User $user, Event $event, ?string $recipientEmail = null, ?string $recipientName = null): array
     {
-        $latestOtp = $this->getLatestOtp($cart, $user, $event);
+        $email = $this->resolveRecipientEmail($cart, $user, $recipientEmail);
+
+        if (! $email) {
+            throw ValidationException::withMessages([
+                'ticket_recipient_email' => 'Alamat email penerima OTP tidak valid.',
+            ]);
+        }
+
+        $latestOtp = $this->getLatestOtp($cart, $user, $event, $email);
 
         if ($latestOtp && $this->cooldownRemaining($latestOtp) > 0) {
             throw ValidationException::withMessages([
@@ -116,8 +156,8 @@ class CheckoutPaymentOtpService
             ]);
         }
 
-        [$otp, $plainCode] = $this->createOtp($cart, $user, $event, true);
-        Mail::to($user->email)->send(new CheckoutPaymentOtpMail($user, $event, $plainCode));
+        [$otp, $plainCode] = $this->createOtp($cart, $user, $event, true, $email);
+        Mail::to($email)->send(new CheckoutPaymentOtpMail($user, $event, $plainCode, $recipientName ?? $cart->ticket_holder_name));
 
         return [
             'otp' => $otp,
@@ -127,16 +167,26 @@ class CheckoutPaymentOtpService
         ];
     }
 
-    public function verifyOtp(Cart $cart, User $user, Event $event, string $plainCode): CheckoutPaymentOtp
+    public function verifyOtp(Cart $cart, ?User $user, Event $event, string $plainCode, ?string $recipientEmail = null): CheckoutPaymentOtp
     {
-        $result = DB::transaction(function () use ($cart, $user, $event, $plainCode) {
-            $otp = CheckoutPaymentOtp::query()
+        $email = $this->resolveRecipientEmail($cart, $user, $recipientEmail);
+
+        $result = DB::transaction(function () use ($cart, $user, $event, $plainCode, $email) {
+            $query = CheckoutPaymentOtp::query()
                 ->where('cart_uid', $cart->uid)
-                ->where('user_uid', $user->uid)
-                ->where('event_uid', $event->uid)
-                ->latest('id')
-                ->lockForUpdate()
-                ->first();
+                ->where('event_uid', $event->uid);
+
+            if ($cart->isGuest()) {
+                if ($email) {
+                    $query->where('recipient_email', $email);
+                } else {
+                    $query->whereNull('user_uid');
+                }
+            } elseif ($user) {
+                $query->where('user_uid', $user->uid);
+            }
+
+            $otp = $query->latest('id')->lockForUpdate()->first();
 
             if (! $otp || $otp->isConsumed() || $otp->isExpired()) {
                 return [
@@ -187,9 +237,10 @@ class CheckoutPaymentOtpService
         return $result['otp'];
     }
 
-    public function assertVerifiedOtp(Cart $cart, User $user, Event $event): CheckoutPaymentOtp
+    public function assertVerifiedOtp(Cart $cart, ?User $user, Event $event, ?string $recipientEmail = null): CheckoutPaymentOtp
     {
-        $otp = $this->getLatestOtp($cart, $user, $event);
+        $email = $this->resolveRecipientEmail($cart, $user, $recipientEmail);
+        $otp = $this->getLatestOtp($cart, $user, $event, $email);
 
         if (
             ! $otp
@@ -197,6 +248,7 @@ class CheckoutPaymentOtpService
             || $otp->isExpired()
             || ! $otp->isVerified()
             || ! $otp->canAttempt()
+            || ($cart->isGuest() && $email && strcasecmp((string) $otp->recipient_email, $email) !== 0)
         ) {
             throw ValidationException::withMessages([
                 'cart_uid' => 'Verifikasi OTP email diperlukan sebelum pembayaran.',
@@ -206,9 +258,9 @@ class CheckoutPaymentOtpService
         return $otp;
     }
 
-    public function consumeVerifiedOtp(Cart $cart, User $user, Event $event): void
+    public function consumeVerifiedOtp(Cart $cart, ?User $user, Event $event, ?string $recipientEmail = null): void
     {
-        $otp = $this->getLatestOtp($cart, $user, $event);
+        $otp = $this->getLatestOtp($cart, $user, $event, $recipientEmail);
 
         if (! $otp || $otp->isConsumed() || ! $otp->isVerified() || $otp->isExpired()) {
             return;
@@ -227,25 +279,42 @@ class CheckoutPaymentOtpService
         return max(0, now()->diffInSeconds($otp->sent_at->copy()->addSeconds(self::RESEND_COOLDOWN_SECONDS), false));
     }
 
-    private function createOtp(Cart $cart, User $user, Event $event, bool $invalidateExisting): array
+    private function resolveRecipientEmail(Cart $cart, ?User $user, ?string $overrideEmail = null): ?string
+    {
+        $candidate = trim((string) ($overrideEmail ?: ($cart->isGuest() ? $cart->ticket_recipient_email : $user?->email)));
+
+        if ($candidate === '' || filter_var($candidate, FILTER_VALIDATE_EMAIL) === false) {
+            return null;
+        }
+
+        return strtolower($candidate);
+    }
+
+    private function createOtp(Cart $cart, ?User $user, Event $event, bool $invalidateExisting, string $recipientEmail): array
     {
         if ($invalidateExisting) {
-            CheckoutPaymentOtp::query()
+            $query = CheckoutPaymentOtp::query()
                 ->where('cart_uid', $cart->uid)
-                ->where('user_uid', $user->uid)
                 ->where('event_uid', $event->uid)
-                ->whereNull('consumed_at')
-                ->update([
-                    'expires_at' => now(),
-                    'updated_at' => now(),
-                ]);
+                ->whereNull('consumed_at');
+
+            if ($cart->isGuest()) {
+                $query->whereNull('user_uid');
+            } elseif ($user) {
+                $query->where('user_uid', $user->uid);
+            }
+
+            $query->update([
+                'expires_at' => now(),
+                'updated_at' => now(),
+            ]);
         }
 
         $plainCode = str_pad((string) random_int(0, 999999), self::OTP_LENGTH, '0', STR_PAD_LEFT);
 
-        $otp = CheckoutPaymentOtp::create([
+        $payload = [
             'cart_uid' => $cart->uid,
-            'user_uid' => $user->uid,
+            'user_uid' => $cart->isGuest() ? null : $user?->uid,
             'event_uid' => $event->uid,
             'code_hash' => Hash::make($plainCode),
             'expires_at' => now()->addMinutes(self::OTP_TTL_MINUTES),
@@ -253,7 +322,13 @@ class CheckoutPaymentOtpService
             'sent_at' => now(),
             'verified_at' => null,
             'consumed_at' => null,
-        ]);
+        ];
+
+        if (Schema::hasColumn('checkout_payment_otps', 'recipient_email')) {
+            $payload['recipient_email'] = $recipientEmail;
+        }
+
+        $otp = CheckoutPaymentOtp::create($payload);
 
         return [$otp, $plainCode];
     }

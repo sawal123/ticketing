@@ -20,6 +20,7 @@ use App\Services\Tickets\GateTokenService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Livewire\Attributes\Locked;
@@ -61,6 +62,19 @@ class EventDetail extends Component
 
     // For Resend Email Confirmation
     public $resendEmailUid;
+
+    // For Edit Transaction Modal
+    public $editingTransactionUid = null;
+
+    public $editingTransactionInvoice = '';
+
+    public $editingTransactionPaymentType = '';
+
+    public $editingTransactionIsCash = false;
+
+    public $editingTransactionEmail = '';
+
+    public $editingTransactionVerification = 'unverified';
 
     public $paymentGatewayConfigs = [];
 
@@ -187,16 +201,23 @@ class EventDetail extends Component
 
     protected function getEventData()
     {
-        return Event::with([
-            'talents',
-            'hargas' => function ($query) {
-                $query->withSum(['hargaCarts as sold_count' => function ($q) {
-                    $q->whereHas('cart', function ($c) {
-                        $c->where('status', 'SUCCESS');
-                    });
-                }], 'quantity');
-            },
-        ])->where('uid', $this->eventUid)->firstOrFail();
+        $query = Event::query()->where('uid', $this->eventUid);
+
+        if ($this->activeTab === 'umum') {
+            $query->with(['talents']);
+        } elseif ($this->activeTab === 'tiket') {
+            $query->with([
+                'hargas' => function ($q) {
+                    $q->withSum(['hargaCarts as sold_count' => function ($hc) {
+                        $hc->whereHas('cart', function ($c) {
+                            $c->where('status', 'SUCCESS');
+                        });
+                    }], 'quantity');
+                },
+            ]);
+        }
+
+        return $query->firstOrFail();
     }
 
     protected function getCurrentEventModel(): Event
@@ -208,13 +229,43 @@ class EventDetail extends Component
     {
         $this->sanitizeFilters();
 
-        $query = Cart::where('event_uid', $this->eventUid)->where('status', 'SUCCESS');
+        $query = Cart::query()
+            ->where('carts.event_uid', $this->eventUid)
+            ->where('carts.status', 'SUCCESS');
         $query = $this->applyFilters($query);
+
+        $canUseSqlAggregation = DB::getDriverName() !== 'sqlite'
+            || Schema::hasColumn('carts', 'gross_amount');
+
+        if ($canUseSqlAggregation) {
+            $snapshotService = app(FinancialSnapshotService::class);
+            $lineSubquery = $snapshotService->cartLineSnapshotSubquery();
+            $ownerRevenueExpr = $snapshotService->ownerRevenueSqlExpression('carts', 'line_snapshots');
+            $taxExpr = $snapshotService->taxSnapshotSqlExpression('carts', 'line_snapshots');
+
+            $row = $query
+                ->leftJoinSub($lineSubquery, 'line_snapshots', function ($join) {
+                    $join->on('line_snapshots.uid', '=', 'carts.uid');
+                })
+                ->selectRaw('COUNT(carts.id) as total_transactions')
+                ->selectRaw('COALESCE(SUM(COALESCE(line_snapshots.total_quantity, 0)), 0) as total_tickets')
+                ->selectRaw('COALESCE(SUM('.$ownerRevenueExpr.'), 0) as total_revenue')
+                ->selectRaw('COALESCE(SUM('.$taxExpr.'), 0) as total_pajak')
+                ->selectRaw('COALESCE(SUM(COALESCE(carts.internet_fee, 0)), 0) as total_internet_fee')
+                ->first();
+
+            return [
+                'total_transactions' => (int) ($row->total_transactions ?? 0),
+                'total_revenue' => (int) ($row->total_revenue ?? 0),
+                'total_tickets' => (int) ($row->total_tickets ?? 0),
+                'total_pajak' => (int) ($row->total_pajak ?? 0),
+                'total_internet_fee' => (int) ($row->total_internet_fee ?? 0),
+            ];
+        }
 
         $carts = (clone $query)->with('hargaCarts')->get();
         $totalTransactions = $carts->count();
         $snapshotTotals = app(FinancialSnapshotService::class)->collectionTotals($carts);
-
         $totalInternetFee = $query->sum('internet_fee');
 
         return [
@@ -1047,6 +1098,128 @@ class EventDetail extends Component
         $this->dispatch('open-modal', name: 'transaction-detail-modal');
     }
 
+    public function openEditTransactionModal(string $uid): void
+    {
+        $cart = $this->authorizedTransactionQuery()
+            ->with(['users', 'cashBuyer'])
+            ->where('uid', $uid)
+            ->where('status', 'SUCCESS')
+            ->first();
+
+        if (! $cart) {
+            $this->resetEditingTransaction();
+            session()->flash('error', 'Transaksi tidak ditemukan pada event ini.');
+
+            return;
+        }
+
+        $isCash = strtolower((string) $cart->payment_type) === 'cash';
+        $isVerified = filled($cart->scanned_at) || (string) $cart->konfirmasi === '1';
+
+        $this->editingTransactionUid = $cart->uid;
+        $this->editingTransactionInvoice = (string) ($cart->invoice ?? '-');
+        $this->editingTransactionPaymentType = strtoupper((string) ($cart->payment_type ?? 'N/A'));
+        $this->editingTransactionIsCash = $isCash;
+        $this->editingTransactionEmail = $isCash
+            ? (string) ($cart->cashBuyer?->email ?? '')
+            : (string) ($cart->buyerEmail() ?? '');
+        $this->editingTransactionVerification = $isVerified ? 'verified' : 'unverified';
+        $this->resetErrorBag();
+        $this->dispatch('open-modal', name: 'edit-transaction-modal');
+    }
+
+    public function updateTransaction(): void
+    {
+        if (! filled($this->editingTransactionUid)) {
+            session()->flash('error', 'Transaksi tidak ditemukan pada event ini.');
+
+            return;
+        }
+
+        $cart = $this->authorizedTransactionQuery()
+            ->with(['cashBuyer'])
+            ->where('uid', $this->editingTransactionUid)
+            ->where('status', 'SUCCESS')
+            ->first();
+
+        if (! $cart) {
+            $this->resetEditingTransaction();
+            $this->dispatch('close-modal', name: 'edit-transaction-modal');
+            session()->flash('error', 'Transaksi tidak ditemukan pada event ini.');
+
+            return;
+        }
+
+        $isCash = strtolower((string) $cart->payment_type) === 'cash';
+
+        $rules = [
+            'editingTransactionVerification' => ['required', 'in:unverified,verified'],
+        ];
+
+        if ($isCash) {
+            $rules['editingTransactionEmail'] = ['required', 'email:rfc', 'max:255'];
+        }
+
+        $this->validate($rules, [
+            'editingTransactionEmail.required' => 'Email pembeli wajib diisi untuk transaksi cash.',
+            'editingTransactionEmail.email' => 'Format email pembeli tidak valid.',
+            'editingTransactionVerification.required' => 'Status verifikasi wajib dipilih.',
+            'editingTransactionVerification.in' => 'Status verifikasi tidak valid.',
+        ]);
+
+        if ($isCash && ! $cart->cashBuyer) {
+            session()->flash('error', 'Data pembeli tunai tidak ditemukan.');
+
+            return;
+        }
+
+        DB::transaction(function () use ($cart, $isCash) {
+            if ($isCash) {
+                $cart->cashBuyer->email = strtolower(trim((string) $this->editingTransactionEmail));
+                $cart->cashBuyer->save();
+            }
+
+            if ($this->editingTransactionVerification === 'verified') {
+                $cart->konfirmasi = '1';
+            } else {
+                $cart->konfirmasi = '0';
+                $cart->scanned_at = null;
+                if (array_key_exists('scanned_by', $cart->getAttributes())) {
+                    $cart->scanned_by = null;
+                }
+                if (array_key_exists('scan_device_id', $cart->getAttributes())) {
+                    $cart->scan_device_id = null;
+                }
+            }
+
+            $cart->save();
+        });
+
+        $this->resetEditingTransaction();
+        $this->dispatch('close-modal', name: 'edit-transaction-modal');
+        session()->flash('message', 'Data transaksi berhasil diperbarui.');
+    }
+
+    public function saveEditedTransaction(string $uid, string $email, string $verification): void
+    {
+        $this->editingTransactionUid = $uid;
+        $this->editingTransactionEmail = $email;
+        $this->editingTransactionVerification = $verification;
+
+        $this->updateTransaction();
+    }
+
+    private function resetEditingTransaction(): void
+    {
+        $this->editingTransactionUid = null;
+        $this->editingTransactionInvoice = '';
+        $this->editingTransactionPaymentType = '';
+        $this->editingTransactionIsCash = false;
+        $this->editingTransactionEmail = '';
+        $this->editingTransactionVerification = 'unverified';
+        $this->resetErrorBag();
+    }
+
     public function updated($propertyName)
     {
         if (in_array($propertyName, ['filterPayment', 'filterRange', 'searchTransaction', 'activeTab'])) {
@@ -1060,7 +1233,15 @@ class EventDetail extends Component
         $this->sanitizeFilters();
 
         $event = $this->getEventData();
-        $metrics = $this->getMetricsData();
+        $metrics = $this->activeTab === 'transaksi'
+            ? $this->getMetricsData()
+            : [
+                'total_transactions' => 0,
+                'total_revenue' => 0,
+                'total_tickets' => 0,
+                'total_pajak' => 0,
+                'total_internet_fee' => 0,
+            ];
         $paymentGateways = collect();
         $mouPreview = null;
         $agreementReview = null;
@@ -1134,7 +1315,7 @@ class EventDetail extends Component
         $transactions = [];
         if ($this->activeTab === 'transaksi') {
             $transactions = $this->authorizedTransactionQuery()
-                ->with(['users', 'cashBuyer'])
+                ->with(['users', 'cashBuyer', 'hargaCarts.masterHarga'])
                 ->where('status', 'SUCCESS');
 
             $transactions = $this->applyFilters($transactions)

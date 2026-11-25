@@ -28,6 +28,10 @@ class LogActivityMiddleware
             if ($method !== 'GET' || str_contains($path, 'login') || str_contains($path, 'logout') || str_contains($path, 'payment-gateway')) {
                 
                 $livewireActivity = $this->getLivewireActivity($request);
+                if ($this->isLivewireRequest($request) && $livewireActivity === null) {
+                    return $response;
+                }
+
                 $routeMutationActivity = $this->getRouteMutationActivity($request);
                 $detectedActivity = $livewireActivity ?? $routeMutationActivity;
                 $impactLevel = $detectedActivity['impact_level'] ?? 'Normal';

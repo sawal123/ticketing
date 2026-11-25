@@ -6,7 +6,12 @@
             <p class="text-slate-500 dark:text-slate-400 text-sm">Kelola syarat dan ketentuan layanan Gotik.</p>
         </div>
         <div>
-            <x-admin.button wire:click="create" variant="primary" icon="plus">
+            <x-admin.button type="button"
+                x-on:click="$dispatch('open-modal', { name: 'term-modal' })"
+                wire:click="create"
+                loadingTarget="create"
+                variant="primary"
+                icon="plus">
                 Tambah Term
             </x-admin.button>
         </div>
@@ -41,7 +46,7 @@
                         <span class="text-xs text-slate-500 dark:text-slate-400">{{ $item->updated_at->format('d M Y, H:i') }}</span>
                     </td>
                     <td class="px-5 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                        <button wire:click="edit('{{ $item->uid }}')"
+                        <button type="button" wire:click="edit('{{ $item->uid }}')"
                             wire:loading.attr="disabled"
                             wire:target="edit('{{ $item->uid }}')"
                             class="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors disabled:pointer-events-none disabled:opacity-60" title="Edit">
@@ -51,7 +56,11 @@
                                 <path class="opacity-90" fill="currentColor" d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z"></path>
                             </svg>
                         </button>
-                        <button wire:click="confirmDelete('{{ $item->uid }}')" class="p-2 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors" title="Hapus">
+                        <button type="button"
+                            x-on:click="$dispatch('open-modal', { name: 'delete-modal' })"
+                            wire:click="confirmDelete('{{ $item->uid }}')"
+                            class="p-2 text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                            title="Hapus">
                             <i data-lucide="trash-2" class="w-4 h-4"></i>
                         </button>
                     </td>
@@ -122,6 +131,21 @@
     </x-admin.modal>
 
     <!-- Delete Confirmation Modal -->
-    <x-admin.modal-delete name="delete-modal" title="Hapus Ketentuan?" description="Apakah Anda yakin ingin menghapus data ini? Tindakan ini tidak dapat dibatalkan." />
+    <x-admin.modal-delete
+        name="delete-modal"
+        title="Hapus Ketentuan?"
+        message="Apakah Anda yakin ingin menghapus data ini? Tindakan ini tidak dapat dibatalkan."
+    >
+        <x-admin.button
+            type="button"
+            wire:click="delete"
+            loadingTarget="delete,confirmDelete"
+            variant="danger"
+            class="w-full !py-3 shadow-lg shadow-rose-200 dark:shadow-none"
+            icon="trash-2"
+        >
+            Ya, Hapus Sekarang
+        </x-admin.button>
+    </x-admin.modal-delete>
 
 </div>

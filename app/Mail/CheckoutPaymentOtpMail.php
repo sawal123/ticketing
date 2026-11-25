@@ -15,9 +15,10 @@ class CheckoutPaymentOtpMail extends Mailable
     use Queueable, SerializesModels;
 
     public function __construct(
-        protected User $user,
+        protected ?User $user,
         protected Event $event,
-        protected string $otpCode
+        protected string $otpCode,
+        protected ?string $recipientName = null
     ) {}
 
     public function envelope(): Envelope
@@ -32,7 +33,7 @@ class CheckoutPaymentOtpMail extends Mailable
         return new Content(
             view: 'emails.checkout-payment-otp',
             with: [
-                'name' => $this->user->name,
+                'name' => filled($this->recipientName) ? $this->recipientName : ($this->user?->name ?? 'Pembeli'),
                 'eventName' => $this->event->event,
                 'otpCode' => $this->otpCode,
             ],

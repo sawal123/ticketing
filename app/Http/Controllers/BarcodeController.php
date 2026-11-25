@@ -147,7 +147,11 @@ class BarcodeController extends Controller
             ->where('status', Cart::STATUS_SUCCESS)
             ->first();
 
-        if (! $cart || ! $cart->users || ! $cart->event || $cart->hargaCarts->isEmpty()) {
+        if (! $cart || ! $cart->event || $cart->hargaCarts->isEmpty()) {
+            return $this->barcodeError('Tiket online tidak ditemukan atau sudah tidak dapat diakses.', 404);
+        }
+
+        if (! $cart->users && ! ($cart->isGuest() && filled($cart->ticket_recipient_email))) {
             return $this->barcodeError('Tiket online tidak ditemukan atau sudah tidak dapat diakses.', 404);
         }
 
@@ -163,13 +167,18 @@ class BarcodeController extends Controller
             return $this->barcodeError('Credential gate tiket tidak valid.', 409);
         }
 
+        $userBarcode = $cart->users ?? (object) [
+            'name' => $cart->buyerName(),
+            'email' => $cart->buyerEmail(),
+        ];
+
         return response()->view('barcode', [
             'barcodeData' => QrCode::size(250)->generate($gateCredential),
             'invoice' => $cart->invoice,
             'manualCode' => $manualCode,
             'event' => $cart->event,
             'hargaC' => $cart->hargaCarts,
-            'userBarcode' => $cart->users,
+            'userBarcode' => $userBarcode,
         ])->header('Cache-Control', 'private, no-store, max-age=0');
     }
 

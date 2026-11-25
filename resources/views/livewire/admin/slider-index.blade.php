@@ -6,7 +6,12 @@
             <p class="text-slate-500 dark:text-slate-400 text-sm">Kelola banner promosi dan pengumuman di halaman depan.</p>
         </div>
         <div>
-            <x-admin.button wire:click="create" variant="primary" icon="plus">
+            <x-admin.button type="button"
+                x-on:click="$dispatch('open-modal', { name: 'slider-modal' })"
+                wire:click="create"
+                loadingTarget="create"
+                variant="primary"
+                icon="plus">
                 Tambah Slide
             </x-admin.button>
         </div>
@@ -58,15 +63,15 @@
                     <td class="px-5 py-4 whitespace-nowrap text-right text-sm font-medium space-x-1">
                         <div class="flex items-center justify-end gap-1">
                             <div class="flex flex-col gap-1">
-                                <button wire:click="moveUp('{{ $item->uid }}')" class="p-1 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors" title="Naikkan">
+                                <button type="button" wire:click="moveUp('{{ $item->uid }}')" wire:loading.attr="disabled" wire:target="moveUp('{{ $item->uid }}')" class="p-1 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors disabled:opacity-50" title="Naikkan">
                                     <i data-lucide="chevron-up" class="w-3.5 h-3.5"></i>
                                 </button>
-                                <button wire:click="moveDown('{{ $item->uid }}')" class="p-1 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors" title="Turunkan">
+                                <button type="button" wire:click="moveDown('{{ $item->uid }}')" wire:loading.attr="disabled" wire:target="moveDown('{{ $item->uid }}')" class="p-1 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors disabled:opacity-50" title="Turunkan">
                                     <i data-lucide="chevron-down" class="w-3.5 h-3.5"></i>
                                 </button>
                             </div>
                             <div class="h-8 w-px bg-slate-100 dark:bg-slate-700 mx-1"></div>
-                            <button wire:click="edit('{{ $item->uid }}')"
+                            <button type="button" wire:click="edit('{{ $item->uid }}')"
                                 wire:loading.attr="disabled"
                                 wire:target="edit('{{ $item->uid }}')"
                                 class="p-2 text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg transition-colors disabled:pointer-events-none disabled:opacity-60" title="Edit">
@@ -76,7 +81,11 @@
                                     <path class="opacity-90" fill="currentColor" d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z"></path>
                                 </svg>
                             </button>
-                            <button wire:click="confirmDelete('{{ $item->uid }}')" class="p-2 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/30 rounded-lg transition-colors" title="Hapus">
+                            <button type="button"
+                                x-on:click="$dispatch('open-modal', { name: 'delete-modal' })"
+                                wire:click="confirmDelete('{{ $item->uid }}')"
+                                class="p-2 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/30 rounded-lg transition-colors"
+                                title="Hapus">
                                 <i data-lucide="trash-2" class="w-4 h-4"></i>
                             </button>
                         </div>
@@ -179,6 +188,21 @@
     </x-admin.modal>
 
     <!-- Delete Confirmation Modal -->
-    <x-admin.modal-delete name="delete-modal" title="Hapus Slide?" description="Apakah Anda yakin ingin menghapus slide ini? Gambar yang tersimpan juga akan dihapus dari server." />
+    <x-admin.modal-delete
+        name="delete-modal"
+        title="Hapus Slide?"
+        message="Apakah Anda yakin ingin menghapus slide ini? Gambar yang tersimpan juga akan dihapus dari server."
+    >
+        <x-admin.button
+            type="button"
+            wire:click="delete"
+            loadingTarget="delete,confirmDelete"
+            variant="danger"
+            class="w-full !py-3 shadow-lg shadow-rose-200 dark:shadow-none"
+            icon="trash-2"
+        >
+            Ya, Hapus Sekarang
+        </x-admin.button>
+    </x-admin.modal-delete>
 
 </div>

@@ -273,22 +273,31 @@ class EventDetail extends Component
         $isAdmin = $user->role === 'admin';
         $ownerId = ($user->role === 'staff') ? $user->parent_uid : $user->uid;
 
-        $with = [
-            'talents',
-            'hargas' => function ($query) {
+        $with = [];
+
+        if ($this->activeTab === 'umum') {
+            $with[] = 'talents';
+        } elseif ($this->activeTab === 'tiket') {
+            $with['hargas'] = function ($query) {
                 $query->withSum(['hargaCarts as sold_count' => function ($q) {
                     $q->whereHas('cart', function ($c) {
                         $c->where('status', 'SUCCESS');
                     });
                 }], 'quantity');
-            },
-        ];
-
-        if (Schema::hasTable('event_registration_fields')) {
-            $with[] = 'registrationFields';
+            };
         }
 
-        $query = Event::with($with)->where('uid', $this->eventUid);
+        if (in_array($this->activeTab, ['form-pendaftaran', 'peserta'], true)
+            || filled($this->selectedRegistrationUid)) {
+            if (Schema::hasTable('event_registration_fields')) {
+                $with[] = 'registrationFields';
+            }
+        }
+
+        $query = Event::query()->where('uid', $this->eventUid);
+        if ($with !== []) {
+            $query->with($with);
+        }
 
         if (! $isAdmin) {
             $query->where('user_uid', $ownerId);
@@ -301,8 +310,41 @@ class EventDetail extends Component
     {
         $this->sanitizeFilters();
 
-        $query = Cart::where('event_uid', $this->eventUid)->where('status', 'SUCCESS');
+        $query = Cart::query()
+            ->where('carts.event_uid', $this->eventUid)
+            ->where('carts.status', 'SUCCESS');
         $query = $this->applyFilters($query);
+
+        $canUseSqlAggregation = DB::getDriverName() !== 'sqlite'
+            || Schema::hasColumn('carts', 'gross_amount');
+
+        if ($canUseSqlAggregation) {
+            $snapshotService = app(FinancialSnapshotService::class);
+            $lineSubquery = $snapshotService->cartLineSnapshotSubquery();
+            $ownerRevenueExpr = $snapshotService->ownerRevenueSqlExpression('carts', 'line_snapshots');
+            $taxExpr = $snapshotService->taxSnapshotSqlExpression('carts', 'line_snapshots');
+
+            $row = $query
+                ->leftJoinSub($lineSubquery, 'line_snapshots', function ($join) {
+                    $join->on('line_snapshots.uid', '=', 'carts.uid');
+                })
+                ->selectRaw('COUNT(carts.id) as total_transactions')
+                ->selectRaw('COALESCE(SUM(COALESCE(line_snapshots.total_quantity, 0)), 0) as total_tickets')
+                ->selectRaw('COALESCE(SUM(COALESCE(line_snapshots.discount_total, 0)), 0) as total_discount')
+                ->selectRaw('COALESCE(SUM('.$ownerRevenueExpr.'), 0) as total_revenue')
+                ->selectRaw('COALESCE(SUM('.$taxExpr.'), 0) as total_pajak')
+                ->selectRaw('COALESCE(SUM(COALESCE(carts.internet_fee, 0)), 0) as total_internet_fee')
+                ->first();
+
+            return [
+                'total_transactions' => (int) ($row->total_transactions ?? 0),
+                'total_revenue' => (int) ($row->total_revenue ?? 0),
+                'total_tickets' => (int) ($row->total_tickets ?? 0),
+                'total_pajak' => (int) ($row->total_pajak ?? 0),
+                'total_internet_fee' => (int) ($row->total_internet_fee ?? 0),
+                'total_discount' => (int) ($row->total_discount ?? 0),
+            ];
+        }
 
         $carts = (clone $query)->with('hargaCarts')->get();
         $totalTransactions = $carts->count();
@@ -321,7 +363,15 @@ class EventDetail extends Component
 
     protected function authorizedTransactionQuery()
     {
-        $this->getEventData();
+        $user = auth()->user();
+        $isAdmin = $user->role === 'admin';
+        $ownerId = ($user->role === 'staff') ? $user->parent_uid : $user->uid;
+
+        $eventQuery = Event::query()->where('uid', $this->eventUid);
+        if (! $isAdmin) {
+            $eventQuery->where('user_uid', $ownerId);
+        }
+        abort_unless($eventQuery->exists(), 404);
 
         return Cart::query()
             ->where('event_uid', $this->eventUid);
@@ -1114,12 +1164,21 @@ class EventDetail extends Component
         $this->sanitizeFilters();
 
         $event = $this->getEventData();
-        $metrics = $this->getMetricsData();
+        $metrics = $this->activeTab === 'transaksi'
+            ? $this->getMetricsData()
+            : [
+                'total_transactions' => 0,
+                'total_revenue' => 0,
+                'total_tickets' => 0,
+                'total_pajak' => 0,
+                'total_internet_fee' => 0,
+                'total_discount' => 0,
+            ];
 
         $transactions = [];
         if ($this->activeTab === 'transaksi') {
             $transactions = $this->authorizedTransactionQuery()
-                ->with(['users', 'cashBuyer'])
+                ->with(['users', 'cashBuyer', 'hargaCarts.masterHarga'])
                 ->withSum(['hargaCarts as total_qty' => function ($q) {
                     $q->whereNull('deleted_at');
                 }], 'quantity')
@@ -1372,7 +1431,7 @@ class EventDetail extends Component
                 }
             } else {
                 $user = $cart->users;
-                if ($user) {
+                if ($user || $cart->isGuest()) {
                     if (! sendEmailETransaksi::resolveRecipient($user, $cart)) {
                         session()->flash('error', 'Email penerima tiket tidak valid atau kosong.');
 

@@ -104,26 +104,50 @@
                 <td class="px-5 py-4 text-slate-600 dark:text-slate-400 whitespace-nowrap text-xs font-medium">
                     {{ $trx->created_at->format('d M Y, H:i') }}
                 </td>
+                @php
+                    $rowSubtotal = (int) $trx->hargaCarts->sum(fn ($i) => (int) $i->quantity * (int) $i->harga_ticket);
+                    $rowDiscount = (int) $trx->hargaCarts->sum(fn ($i) => (int) ($i->disc ?? 0));
+                    $rowVoucher = $trx->hargaCarts->first(fn ($i) => filled($i->voucher))?->voucher;
+                    $rowPajak = (int) ($trx->pajak ?? 0);
+                    $rowInternetFee = (int) ($trx->internet_fee ?? 0);
+                    $trxDetailPayload = [
+                        'invoice' => $trx->invoice ?? '-',
+                        'createdAt' => $trx->created_at ? $trx->created_at->format('d F Y, H:i') : '-',
+                        'status' => $trx->status ?? 'PENDING',
+                        'buyerName' => $trx->buyerName(),
+                        'buyerEmail' => $trx->buyerEmail() ?? 'N/A',
+                        'buyerPhone' => $trx->buyerPhone() ?? '',
+                        'eventName' => $trx->event->event ?? 'N/A',
+                        'items' => $trx->hargaCarts->map(fn ($i) => [
+                            'name' => $i->kategori_harga ?? 'Tiket',
+                            'qty' => (int) $i->quantity,
+                            'price' => (int) $i->harga_ticket,
+                            'total' => (int) $i->quantity * (int) $i->harga_ticket,
+                        ])->values()->all(),
+                        'subtotal' => $rowSubtotal,
+                        'discount' => $rowDiscount,
+                        'voucherCode' => $rowVoucher,
+                        'internetFee' => $rowInternetFee,
+                        'pajak' => $rowPajak,
+                        'pajakPersen' => (int) ($trx->pajak_persen ?? 0),
+                        'paymentType' => strtoupper((string) ($trx->payment_type ?? 'N/A')),
+                        'isCash' => $isCash,
+                        'totalBayar' => $rowSubtotal - $rowDiscount + $rowPajak + $rowInternetFee,
+                        'invoiceUrl' => url('/invoice/'.$trx->uid),
+                    ];
+                @endphp
                 <td class="px-5 py-4 text-center">
                     <x-admin.button
-                        x-on:click="$dispatch('open-modal', { name: 'trx-detail-modal' })"
-                        wire:click="openDetail({{ $trx->id }})"
-                        wire:loading.attr="disabled"
-                        wire:target="openDetail({{ $trx->id }})"
+                        type="button"
+                        data-trx-detail="{{ json_encode($trxDetailPayload) }}"
+                        x-on:click="$dispatch('open-trx-index-detail', JSON.parse($el.dataset.trxDetail))"
                         variant="ghost"
                         size="sm"
-                        class="text-indigo-600 disabled:pointer-events-none disabled:opacity-60"
+                        class="text-indigo-600"
                     >
-                        <span wire:loading.remove wire:target="openDetail({{ $trx->id }})" class="flex items-center gap-2">
+                        <span class="flex items-center gap-2">
                             <i data-lucide="eye" class="w-4 h-4"></i>
                             Detail
-                        </span>
-                        <span wire:loading.flex wire:target="openDetail({{ $trx->id }})" class="items-center gap-2">
-                            <svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                <path class="opacity-90" fill="currentColor" d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z"></path>
-                            </svg>
-                            Memuat...
                         </span>
                     </x-admin.button>
                 </td>
@@ -135,154 +159,134 @@
         </x-slot>
     </x-admin.table>
 
-    <x-admin.modal name="trx-detail-modal" title="Detail Transaksi" icon="file-text">
-        <div wire:loading wire:target="openDetail" class="w-full py-12">
-            <div class="flex flex-col items-center justify-center space-y-4">
-                <div class="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
-                <p class="text-sm text-slate-500 font-medium animate-pulse">Mengambil data transaksi...</p>
-            </div>
-        </div>
-
-        <div wire:loading.remove wire:target="openDetail">
-            @if($selectedTrx)
-                <div class="space-y-6 max-h-[75vh] overflow-y-auto px-1 custom-scrollbar">
-                    <!-- Transaction Info -->
-                    <div class="flex justify-between items-start border-b border-slate-100 dark:border-slate-700 pb-4">
-                        <div>
-                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Invoice</p>
-                            <p class="text-lg font-mono font-bold text-slate-800 dark:text-white">
-                                {{ $selectedTrx->invoice }}</p>
-                            <p class="text-[10px] text-slate-500 mt-1">{{ $selectedTrx->created_at->format('d F Y, H:i') }}</p>
-                        </div>
-                        <div class="text-right">
-                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Status</p>
-                            @php
-                                $statusStyles = match($selectedTrx->status) {
-                                    'SUCCESS' => 'bg-emerald-50 text-emerald-700 border-emerald-100',
-                                    'PENDING' => 'bg-amber-50 text-amber-700 border-amber-100',
-                                    'UNPAID' => 'bg-rose-50 text-rose-700 border-rose-100',
-                                    default => 'bg-slate-50 text-slate-700 border-slate-100',
-                                };
-                            @endphp
-                            <span class="px-3 py-1 rounded-full text-xs font-bold border {{ $statusStyles }}">
-                                {{ $selectedTrx->status }}
-                            </span>
-                        </div>
-                    </div>
-
-                    <!-- User Info -->
-                    <div class="flex items-center gap-4 bg-slate-50 dark:bg-slate-700/50 p-4 rounded-2xl">
-                        <div class="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold">
-                            {{ substr($selectedTrx->users->name ?? '?', 0, 1) }}
-                        </div>
-                        <div>
-                            <p class="text-sm font-bold text-slate-800 dark:text-white">
-                                {{ $selectedTrx->users->name ?? 'Guest/Cash' }}</p>
-                            <p class="text-xs text-slate-500">{{ $selectedTrx->users->email ?? 'N/A' }} @if($selectedTrx->users->nomor) | {{ $selectedTrx->users->nomor }} @endif</p>
-                        </div>
-                    </div>
-
-                    <!-- Event Info -->
-                    <div class="p-3 bg-indigo-50/50 dark:bg-indigo-900/10 rounded-xl border border-indigo-100/50 flex items-center gap-3">
-                        <i data-lucide="calendar" class="w-4 h-4 text-indigo-600"></i>
-                        <div class="flex flex-col">
-                            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Event Terkait</span>
-                            <span class="text-xs font-bold text-slate-700 dark:text-slate-300">{{ $selectedTrx->event->event ?? 'N/A' }}</span>
-                        </div>
-                    </div>
-
-                    <!-- Tickets Purchased -->
+    <div
+        x-data="{
+            trx: null,
+            formatRp(val) {
+                return 'Rp ' + (Number(val) || 0).toLocaleString('id-ID');
+            },
+            statusClass(status) {
+                if (status === 'SUCCESS') return 'bg-emerald-50 text-emerald-700 border-emerald-100';
+                if (status === 'PENDING') return 'bg-amber-50 text-amber-700 border-amber-100';
+                if (status === 'UNPAID') return 'bg-rose-50 text-rose-700 border-rose-100';
+                return 'bg-slate-50 text-slate-700 border-slate-100';
+            },
+            openDetail(detail) {
+                if (!detail) return;
+                this.trx = detail;
+                $dispatch('open-modal', { name: 'trx-detail-modal' });
+            },
+        }"
+        x-on:open-trx-index-detail.window="openDetail($event.detail)"
+    >
+        <x-admin.modal name="trx-detail-modal" title="Detail Transaksi" icon="file-text">
+            <div x-show="trx !== null" style="display: none;" class="space-y-6 max-h-[75vh] overflow-y-auto px-1 custom-scrollbar">
+                <div class="flex justify-between items-start border-b border-slate-100 dark:border-slate-700 pb-4">
                     <div>
-                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Item Tiket</h4>
-                        <div class="space-y-2">
-                            @foreach($selectedTrx->hargaCarts as $item)
-                                <div class="flex justify-between items-center p-3 rounded-xl border border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800">
-                                    <div>
-                                        <p class="text-sm font-bold text-slate-800 dark:text-white">
-                                            {{ $item->kategori_harga }}</p>
-                                        <p class="text-xs text-slate-500">{{ $item->quantity }} x Rp
-                                            {{ number_format($item->harga_ticket, 0, ',', '.') }}</p>
-                                    </div>
-                                    <div class="text-right font-bold text-indigo-600">
-                                        Rp {{ number_format($item->quantity * $item->harga_ticket, 0, ',', '.') }}
-                                    </div>
-                                </div>
-                            @endforeach
-                        </div>
+                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Invoice</p>
+                        <p class="text-lg font-mono font-bold text-slate-800 dark:text-white" x-text="trx?.invoice || '-'"></p>
+                        <p class="text-[10px] text-slate-500 mt-1" x-text="trx?.createdAt || '-'"></p>
                     </div>
-
-                    <!-- Payment Info -->
-                    <div class="pt-4 border-t border-slate-100 dark:border-slate-700 space-y-2">
-                        <div class="flex justify-between text-sm">
-                            <span class="text-slate-500">Subtotal Tiket</span>
-                            <span class="font-bold text-slate-800 dark:text-white">Rp
-                                {{ number_format($selectedTrx->hargaCarts->sum(fn($i) => $i->quantity * $i->harga_ticket), 0, ',', '.') }}</span>
-                        </div>
-                        @if($discount > 0)
-                            <div class="flex justify-between text-sm">
-                                <span class="text-slate-500 flex items-center gap-1">Diskon @if($voucherCode) <span
-                                    class="text-[10px] bg-emerald-50 text-emerald-600 px-1.5 py-0.5 rounded uppercase font-bold">{{ $voucherCode }}</span>
-                                @endif</span>
-                                <span class="font-bold text-emerald-600">-Rp {{ number_format($discount, 0, ',', '.') }}</span>
-                            </div>
-                        @endif
-                        <div class="flex justify-between text-sm">
-                            <span class="text-slate-500">Internet Fee</span>
-                            <span class="font-bold text-slate-800 dark:text-white">Rp
-                                {{ number_format($selectedTrx->internet_fee ?? 0, 0, ',', '.') }}</span>
-                        </div>
-                        <div class="flex justify-between text-sm">
-                            <span class="text-slate-500">
-                                Pajak / Fee
-                                @if(isset($selectedTrx->pajak_persen) && $selectedTrx->pajak_persen > 0)
-                                    ({{ $selectedTrx->pajak_persen }}%)
-                                @endif
-                            </span>
-                            <span class="font-bold text-rose-600">Rp
-                                {{ number_format($selectedTrx->pajak ?? 0, 0, ',', '.') }}</span>
-                        </div>
-
-                        <div class="flex justify-between text-sm border-t border-slate-100 dark:border-slate-700 pt-2 mt-2">
-                            <span class="text-slate-500 font-medium">Metode Pembayaran</span>
-                            <div class="flex items-center gap-1.5 font-bold text-slate-800 dark:text-white uppercase">
-                                <i data-lucide="{{ strtolower($selectedTrx->payment_type) === 'cash' ? 'banknote' : 'credit-card' }}" class="w-4 h-4 text-slate-400"></i>
-                                {{ $selectedTrx->payment_type }}
-                            </div>
-                        </div>
-                        <div class="flex justify-between text-lg font-extrabold pt-2">
-                            <span class="text-slate-800 dark:text-white">Total Bayar</span>
-                            @php
-                                $totalBayar = $selectedTrx->hargaCarts->sum(fn($i) => $i->quantity * $i->harga_ticket)
-                                    - $discount
-                                    + ($selectedTrx->pajak ?? 0)
-                                    + ($selectedTrx->internet_fee ?? 0);
-                            @endphp
-                            <span class="text-indigo-600">Rp {{ number_format($totalBayar, 0, ',', '.') }}</span>
-                        </div>
-                    </div>
-
-                    <div class="mt-8 grid grid-cols-2 gap-3">
-                        <x-admin.button x-on:click="show = false" variant="secondary" icon="x-circle" class="w-full !py-3">
-                            Tutup
-                        </x-admin.button>
-                        <a href="{{ url('/invoice/' . $selectedTrx->uid) }}" target="_blank" class="block w-full">
-                            <x-admin.button variant="primary" icon="download"
-                                class="w-full !py-3 shadow-lg shadow-indigo-200">
-                                Download
-                            </x-admin.button>
-                        </a>
+                    <div class="text-right">
+                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Status</p>
+                        <span class="px-3 py-1 rounded-full text-xs font-bold border"
+                            x-bind:class="statusClass(trx?.status)"
+                            x-text="trx?.status || '-'"></span>
                     </div>
                 </div>
-            @endif
-        </div>
-    </x-admin.modal>
+
+                <div class="flex items-center gap-4 bg-slate-50 dark:bg-slate-700/50 p-4 rounded-2xl">
+                    <div class="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold"
+                        x-text="(trx?.buyerName || '?').substring(0, 1)"></div>
+                    <div>
+                        <p class="text-sm font-bold text-slate-800 dark:text-white" x-text="trx?.buyerName || 'Guest/Cash'"></p>
+                        <p class="text-xs text-slate-500" x-text="(trx?.buyerEmail || 'N/A') + (trx?.buyerPhone ? ' | ' + trx.buyerPhone : '')"></p>
+                    </div>
+                </div>
+
+                <div class="p-3 bg-indigo-50/50 dark:bg-indigo-900/10 rounded-xl border border-indigo-100/50 flex items-center gap-3">
+                    <i data-lucide="calendar" class="w-4 h-4 text-indigo-600"></i>
+                    <div class="flex flex-col">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Event Terkait</span>
+                        <span class="text-xs font-bold text-slate-700 dark:text-slate-300" x-text="trx?.eventName || 'N/A'"></span>
+                    </div>
+                </div>
+
+                <div>
+                    <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Item Tiket</h4>
+                    <div class="space-y-2">
+                        <template x-for="(item, idx) in (trx?.items || [])" :key="idx">
+                            <div class="flex justify-between items-center p-3 rounded-xl border border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800">
+                                <div>
+                                    <p class="text-sm font-bold text-slate-800 dark:text-white" x-text="item.name"></p>
+                                    <p class="text-xs text-slate-500" x-text="item.qty + ' x ' + formatRp(item.price)"></p>
+                                </div>
+                                <div class="text-right font-bold text-indigo-600" x-text="formatRp(item.total)"></div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+
+                <div class="pt-4 border-t border-slate-100 dark:border-slate-700 space-y-2">
+                    <div class="flex justify-between text-sm">
+                        <span class="text-slate-500">Subtotal Tiket</span>
+                        <span class="font-bold text-slate-800 dark:text-white" x-text="formatRp(trx?.subtotal)"></span>
+                    </div>
+                    <div x-show="(trx?.discount || 0) > 0" style="display: none;" class="flex justify-between text-sm">
+                        <span class="text-slate-500 flex items-center gap-1">
+                            Diskon
+                            <span x-show="trx?.voucherCode" style="display: none;"
+                                class="text-[10px] bg-emerald-50 text-emerald-600 px-1.5 py-0.5 rounded uppercase font-bold"
+                                x-text="trx?.voucherCode"></span>
+                        </span>
+                        <span class="font-bold text-emerald-600" x-text="'-' + formatRp(trx?.discount)"></span>
+                    </div>
+                    <div class="flex justify-between text-sm">
+                        <span class="text-slate-500">Internet Fee</span>
+                        <span class="font-bold text-slate-800 dark:text-white" x-text="formatRp(trx?.internetFee)"></span>
+                    </div>
+                    <div class="flex justify-between text-sm">
+                        <span class="text-slate-500">
+                            Pajak / Fee
+                            <span x-show="(trx?.pajakPersen || 0) > 0" style="display: none;"
+                                x-text="'(' + trx?.pajakPersen + '%)'"></span>
+                        </span>
+                        <span class="font-bold text-rose-600" x-text="formatRp(trx?.pajak)"></span>
+                    </div>
+                    <div class="flex justify-between text-sm border-t border-slate-100 dark:border-slate-700 pt-2 mt-2">
+                        <span class="text-slate-500 font-medium">Metode Pembayaran</span>
+                        <span class="font-bold text-slate-800 dark:text-white uppercase" x-text="trx?.paymentType || 'N/A'"></span>
+                    </div>
+                    <div class="flex justify-between text-lg font-extrabold pt-2">
+                        <span class="text-slate-800 dark:text-white">Total Bayar</span>
+                        <span class="text-indigo-600" x-text="formatRp(trx?.totalBayar)"></span>
+                    </div>
+                </div>
+
+                <div class="mt-8 grid grid-cols-2 gap-3">
+                    <x-admin.button type="button" x-on:click="show = false" variant="secondary" icon="x-circle" class="w-full !py-3">
+                        Tutup
+                    </x-admin.button>
+                    <a x-bind:href="trx?.invoiceUrl || '#'" target="_blank" class="block w-full">
+                        <x-admin.button type="button" variant="primary" icon="download"
+                            class="w-full !py-3 shadow-lg shadow-indigo-200">
+                            Download
+                        </x-admin.button>
+                    </a>
+                </div>
+            </div>
+        </x-admin.modal>
+    </div>
 
     <script>
         document.addEventListener('livewire:init', () => {
-            Livewire.hook('morph.updated', (el, component) => {
-                if (typeof lucide !== 'undefined') {
+            Livewire.hook('morph.updated', () => {
+                if (typeof lucide === 'undefined' || window.__adminLucideScheduled) return;
+                window.__adminLucideScheduled = true;
+                requestAnimationFrame(() => {
+                    window.__adminLucideScheduled = false;
                     lucide.createIcons();
-                }
+                });
             });
         });
     </script>

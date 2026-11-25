@@ -4,7 +4,12 @@
             <h2 class="text-2xl font-bold text-slate-800 dark:text-white">Manajemen Pengguna</h2>
             <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Kelola hak akses dan data profil pengguna sistem.</p>
         </div>
-        <x-admin.button variant="primary" icon="user-plus" wire:click="openCreateModal">
+        <x-admin.button type="button"
+            variant="primary"
+            icon="user-plus"
+            x-on:click="$dispatch('open-modal', { name: 'user-modal' })"
+            wire:click="openCreateModal"
+            loadingTarget="openCreateModal">
             Tambah User
         </x-admin.button>
     </div>
@@ -156,9 +161,17 @@
                                         />
                                     </a>
                                 @else
+                                    @php
+                                        $rowHistoryPayload = $preloadedHistories[$user->id] ?? [
+                                            'name' => $user->name,
+                                            'email' => $user->email,
+                                            'items' => [],
+                                        ];
+                                    @endphp
                                     <x-admin.button
-                                        x-on:click="$dispatch('open-modal', { name: 'history-modal' })"
-                                        wire:click="openHistory({{ $user->id }})"
+                                        type="button"
+                                        data-user-history="{{ base64_encode(json_encode($rowHistoryPayload)) }}"
+                                        x-on:click="$dispatch('open-user-history-modal', $el.dataset.userHistory)"
                                         variant="ghost"
                                         size="sm"
                                         icon="history"
@@ -181,10 +194,12 @@
                                         <path class="opacity-90" fill="currentColor" d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z"></path>
                                     </svg>
                                 </x-admin.button>
-                                <x-admin.button 
-                                    wire:click="confirmDelete({{ $user->id }})" 
-                                    variant="ghost" 
-                                    size="sm" 
+                                <x-admin.button
+                                    type="button"
+                                    x-on:click="$dispatch('open-modal', { name: 'delete-user-modal' })"
+                                    wire:click="confirmDelete({{ $user->id }})"
+                                    variant="ghost"
+                                    size="sm"
                                     icon="trash-2"
                                     class="text-rose-600"
                                     title="Hapus"
@@ -287,106 +302,193 @@
         title="Hapus Pengguna?" 
         message="Akun pengguna ini akan dihapus secara permanen. Pengguna tidak akan bisa login lagi ke sistem."
     >
-        <x-admin.button 
-            wire:click="delete" 
-            variant="primary" 
-            class="w-full !bg-rose-600 hover:!bg-rose-700 !py-3 shadow-lg shadow-rose-200"
+        <x-admin.button
+            type="button"
+            wire:click="delete"
+            loadingTarget="delete,confirmDelete"
+            variant="danger"
+            class="w-full !py-3 shadow-lg shadow-rose-200 dark:shadow-none"
             icon="trash-2"
         >
             Ya, Hapus Sekarang
         </x-admin.button>
     </x-admin.modal-delete>
 
-    <x-admin.modal name="history-modal" title="Riwayat Transaksi" icon="history">
-        <div wire:loading wire:target="openHistory" class="w-full py-12">
-            <div class="flex flex-col items-center justify-center space-y-4">
-                <div class="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
-                <p class="text-sm text-slate-500 font-medium animate-pulse">Mengambil riwayat transaksi...</p>
-            </div>
-        </div>
-
-        <div wire:loading.remove wire:target="openHistory" class="space-y-6">
-            @if($historyUser)
+    <div
+        x-data="{
+            historyData: null,
+            formatRp(val) {
+                return 'Rp ' + (Number(val) || 0).toLocaleString('en-US');
+            },
+            statusClass(status) {
+                if (status === 'SUCCESS') return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400';
+                if (status === 'PENDING') return 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400';
+                return 'bg-slate-100 text-slate-700 dark:bg-slate-900/30 dark:text-slate-400';
+            },
+            openHistoryModal(encoded) {
+                if (!encoded) return;
+                if (typeof encoded === 'string') {
+                    const bytes = Uint8Array.from(atob(encoded), c => c.charCodeAt(0));
+                    this.historyData = JSON.parse(new TextDecoder().decode(bytes));
+                } else {
+                    this.historyData = encoded;
+                }
+                $dispatch('open-modal', { name: 'history-modal' });
+            },
+        }"
+        x-on:open-user-history-modal.window="openHistoryModal($event.detail)"
+    >
+        <x-admin.modal name="history-modal" title="Riwayat Transaksi" icon="history">
+            <!-- Instant Alpine.js Preloaded View (0ms, no server roundtrip) -->
+            <div x-show="historyData !== null" style="display: none;" class="space-y-6">
                 <div class="flex items-center gap-4 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-700">
-                    <div class="w-12 h-12 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold">
-                        {{ substr($historyUser->name, 0, 1) }}
-                    </div>
-                    <div>
-                        <h4 class="font-bold text-slate-800 dark:text-white">{{ $historyUser->name }}</h4>
-                        <p class="text-sm text-slate-500">{{ $historyUser->email }}</p>
+                    <div class="w-12 h-12 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold"
+                        x-text="(historyData?.name || '?').substring(0, 1)"></div>
+                    <div class="min-w-0">
+                        <h4 class="font-bold text-slate-800 dark:text-white break-words" x-text="historyData?.name || '-'"></h4>
+                        <p class="text-sm text-slate-500 break-all" x-text="historyData?.email || '-'"></p>
                     </div>
                 </div>
-            @endif
 
-            <div class="space-y-3 max-h-[450px] overflow-y-auto pr-2 custom-scrollbar">
-                @forelse($historyItems as $cart)
-                    <div class="p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
-                        <div class="flex justify-between items-start mb-3">
-                            <div class="flex flex-col">
-                                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Event</span>
-                                <span class="font-bold text-slate-800 dark:text-white">{{ $cart->event->event ?? 'N/A' }}</span>
-                            </div>
-                            @php
-                                $statusColor = match($cart->status) {
-                                    'SUCCESS' => 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
-                                    'PENDING' => 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
-                                    default => 'bg-slate-100 text-slate-700 dark:bg-slate-900/30 dark:text-slate-400',
-                                };
-                                $isVerified = filled($cart->scanned_at) || (string) $cart->konfirmasi === '1';
-                                $verificationColor = $isVerified
-                                    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
-                                    : 'bg-slate-100 text-slate-700 dark:bg-slate-900/30 dark:text-slate-400';
-                            @endphp
-                            <div class="flex flex-col items-end gap-1">
-                                <span class="px-2 py-0.5 rounded text-[10px] font-bold {{ $statusColor }}">
-                                    {{ $cart->status }}
-                                </span>
-                                <span class="px-2 py-0.5 rounded text-[10px] font-bold {{ $verificationColor }}">
-                                    {{ $isVerified ? 'Terverifikasi' : 'Belum Diverifikasi' }}
-                                </span>
-                            </div>
+                <div class="space-y-3 max-h-[450px] overflow-y-auto pr-2 custom-scrollbar">
+                    <template x-if="(historyData?.items || []).length === 0">
+                        <div class="py-12 text-center">
+                            <p class="text-slate-500 italic">Belum ada riwayat transaksi.</p>
                         </div>
-                        
-                        <div class="grid grid-cols-2 gap-4 mb-3 p-2 bg-slate-50 dark:bg-slate-900/50 rounded-lg">
-                            <div class="flex flex-col">
-                                <span class="text-[10px] text-slate-400 uppercase font-bold">Invoice</span>
-                                <span class="text-xs font-mono font-semibold">{{ $cart->invoice }}</span>
-                            </div>
-                            <div class="flex flex-col">
-                                <span class="text-[10px] text-slate-400 uppercase font-bold">Waktu</span>
-                                <span class="text-xs font-semibold">{{ $cart->created_at->format('d/m/Y H:i') }}</span>
-                            </div>
-                        </div>
-
-                        <div class="space-y-1">
-                            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Tiket</span>
-                            @foreach($cart->hargaCarts as $hc)
-                                <div class="flex justify-between items-center text-xs p-1">
-                                    <span class="text-slate-600 dark:text-slate-400">{{ $hc->kategori_harga }} x{{ $hc->quantity }}</span>
-                                    <span class="font-bold text-slate-800 dark:text-200">Rp {{ number_format($hc->harga_ticket * $hc->quantity) }}</span>
+                    </template>
+                    <template x-for="(cart, idx) in (historyData?.items || [])" :key="idx">
+                        <div class="p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                            <div class="flex justify-between items-start mb-3">
+                                <div class="flex flex-col">
+                                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Event</span>
+                                    <span class="font-bold text-slate-800 dark:text-white" x-text="cart.event"></span>
                                 </div>
-                            @endforeach
+                                <div class="flex flex-col items-end gap-1">
+                                    <span class="px-2 py-0.5 rounded text-[10px] font-bold"
+                                        x-bind:class="statusClass(cart.status)"
+                                        x-text="cart.status"></span>
+                                    <span class="px-2 py-0.5 rounded text-[10px] font-bold"
+                                        x-bind:class="cart.isVerified ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-slate-100 text-slate-700 dark:bg-slate-900/30 dark:text-slate-400'"
+                                        x-text="cart.isVerified ? ('Ter' + 'verifikasi') : ('Belum ' + 'Diverifikasi')"></span>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-4 mb-3 p-2 bg-slate-50 dark:bg-slate-900/50 rounded-lg">
+                                <div class="flex flex-col">
+                                    <span class="text-[10px] text-slate-400 uppercase font-bold">Invoice</span>
+                                    <span class="text-xs font-mono font-semibold" x-text="cart.invoice"></span>
+                                </div>
+                                <div class="flex flex-col">
+                                    <span class="text-[10px] text-slate-400 uppercase font-bold">Waktu</span>
+                                    <span class="text-xs font-semibold" x-text="cart.time"></span>
+                                </div>
+                            </div>
+
+                            <div class="space-y-1">
+                                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Tiket</span>
+                                <template x-for="(hc, hIdx) in (cart.items || [])" :key="hIdx">
+                                    <div class="flex justify-between items-center text-xs p-1">
+                                        <span class="text-slate-600 dark:text-slate-400" x-text="hc.name + ' x' + hc.qty"></span>
+                                        <span class="font-bold text-slate-800 dark:text-slate-200" x-text="formatRp(hc.total)"></span>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+
+                <div class="flex justify-end">
+                    <x-admin.button type="button" x-on:click="show = false" variant="primary">Tutup</x-admin.button>
+                </div>
+            </div>
+
+            <!-- Server-rendered fallback (when opened programmatically via Livewire openHistory) -->
+            <div x-show="historyData === null" class="space-y-6">
+                @if($historyUser)
+                    <div class="flex items-center gap-4 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-700">
+                        <div class="w-12 h-12 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold">
+                            {{ substr($historyUser->name, 0, 1) }}
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-slate-800 dark:text-white">{{ $historyUser->name }}</h4>
+                            <p class="text-sm text-slate-500">{{ $historyUser->email }}</p>
                         </div>
                     </div>
-                @empty
-                    <div class="py-12 text-center">
-                        <p class="text-slate-500 italic">Belum ada riwayat transaksi.</p>
-                    </div>
-                @endforelse
+                @endif
+
+                <div class="space-y-3 max-h-[450px] overflow-y-auto pr-2 custom-scrollbar">
+                    @forelse($historyItems as $cart)
+                        <div class="p-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                            <div class="flex justify-between items-start mb-3">
+                                <div class="flex flex-col">
+                                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Event</span>
+                                    <span class="font-bold text-slate-800 dark:text-white">{{ $cart->event->event ?? 'N/A' }}</span>
+                                </div>
+                                @php
+                                    $statusColor = match($cart->status) {
+                                        'SUCCESS' => 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
+                                        'PENDING' => 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
+                                        default => 'bg-slate-100 text-slate-700 dark:bg-slate-900/30 dark:text-slate-400',
+                                    };
+                                    $isVerified = filled($cart->scanned_at) || (string) $cart->konfirmasi === '1';
+                                    $verificationColor = $isVerified
+                                        ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                                        : 'bg-slate-100 text-slate-700 dark:bg-slate-900/30 dark:text-slate-400';
+                                @endphp
+                                <div class="flex flex-col items-end gap-1">
+                                    <span class="px-2 py-0.5 rounded text-[10px] font-bold {{ $statusColor }}">
+                                        {{ $cart->status }}
+                                    </span>
+                                    <span class="px-2 py-0.5 rounded text-[10px] font-bold {{ $verificationColor }}">
+                                        {{ $isVerified ? 'Terverifikasi' : 'Belum Diverifikasi' }}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-4 mb-3 p-2 bg-slate-50 dark:bg-slate-900/50 rounded-lg">
+                                <div class="flex flex-col">
+                                    <span class="text-[10px] text-slate-400 uppercase font-bold">Invoice</span>
+                                    <span class="text-xs font-mono font-semibold">{{ $cart->invoice }}</span>
+                                </div>
+                                <div class="flex flex-col">
+                                    <span class="text-[10px] text-slate-400 uppercase font-bold">Waktu</span>
+                                    <span class="text-xs font-semibold">{{ $cart->created_at->format('d/m/Y H:i') }}</span>
+                                </div>
+                            </div>
+
+                            <div class="space-y-1">
+                                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Tiket</span>
+                                @foreach($cart->hargaCarts as $hc)
+                                    <div class="flex justify-between items-center text-xs p-1">
+                                        <span class="text-slate-600 dark:text-slate-400">{{ $hc->kategori_harga }} x{{ $hc->quantity }}</span>
+                                        <span class="font-bold text-slate-800 dark:text-slate-200">Rp {{ number_format($hc->harga_ticket * $hc->quantity) }}</span>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    @empty
+                        <div class="py-12 text-center">
+                            <p class="text-slate-500 italic">Belum ada riwayat transaksi.</p>
+                        </div>
+                    @endforelse
+                </div>
+
+                <div class="flex justify-end">
+                    <x-admin.button type="button" x-on:click="show = false" variant="primary">Tutup</x-admin.button>
+                </div>
             </div>
-            
-            <div class="flex justify-end">
-                <x-admin.button type="button" x-on:click="show = false" variant="primary">Tutup</x-admin.button>
-            </div>
-        </div>
-    </x-admin.modal>
+        </x-admin.modal>
+    </div>
 
     <script>
         document.addEventListener('livewire:init', () => {
-            Livewire.hook('morph.updated', (el, component) => {
-                if (typeof lucide !== 'undefined') {
+            Livewire.hook('morph.updated', () => {
+                if (typeof lucide === 'undefined' || window.__adminLucideScheduled) return;
+                window.__adminLucideScheduled = true;
+                requestAnimationFrame(() => {
+                    window.__adminLucideScheduled = false;
                     lucide.createIcons();
-                }
+                });
             });
         });
     </script>

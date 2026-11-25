@@ -14,7 +14,9 @@ use App\Models\Term;
 use App\Models\User;
 use App\Models\Voucher;
 use App\Services\SecureImageStorage;
+use App\Services\Tickets\CartOwnershipService;
 use App\Services\Tickets\TicketReservationService;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -31,19 +33,34 @@ class DeleteController extends Controller
         return redirect()->back()->with('hapus', 'Talent Berhasil dihapus');
     }
 
-    public function cancelListTransaksi($uid, TicketReservationService $reservationService)
-    {
+    public function cancelListTransaksi(
+        $uid,
+        Request $request,
+        TicketReservationService $reservationService,
+        CartOwnershipService $ownershipService
+    ) {
+        $cart = $ownershipService->findOwnedCart($request, (string) $uid);
+
+        if (! $cart) {
+            abort(404);
+        }
+
         try {
-            $reservationService->cancelOwnedReservation($uid, Auth::user()->uid);
+            if ($cart->isGuest()) {
+                $tokenHash = $ownershipService->guestTokenHashForCart($request, $cart->uid);
+                $reservationService->cancelGuestReservation($cart->uid, (string) $tokenHash);
+            } else {
+                $reservationService->cancelOwnedReservation($cart->uid, Auth::user()->uid);
+            }
         } catch (ValidationException $exception) {
-            if (request()->expectsJson()) {
+            if ($request->expectsJson()) {
                 throw $exception;
             }
 
             return redirect()->back()->with('error', collect($exception->errors())->flatten()->first());
         }
 
-        if (request()->expectsJson()) {
+        if ($request->expectsJson()) {
             return response()->json(['message' => 'Transaksi berhasil dibatalkan.']);
         }
 

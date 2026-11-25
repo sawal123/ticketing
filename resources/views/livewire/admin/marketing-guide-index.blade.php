@@ -1,4 +1,4 @@
-<div class="space-y-6">
+<div class="space-y-6" x-data="{ revokeTargetId: null, revokeTargetName: '', revoking: false }">
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
             <h1 class="text-2xl font-bold text-slate-800 dark:text-white">Marketing Guide</h1>
@@ -10,7 +10,12 @@
                 <i data-lucide="edit-3" class="w-4 h-4"></i>
                 Editor Konten
             </a>
-            <x-admin.button wire:click="openCreateModal" variant="primary" icon="plus">
+            <x-admin.button type="button"
+                x-on:click="$dispatch('open-modal', { name: 'marketing-guide-create-modal' })"
+                wire:click="openCreateModal"
+                loadingTarget="openCreateModal"
+                variant="primary"
+                icon="plus">
                 Buat Link
             </x-admin.button>
         </div>
@@ -35,14 +40,17 @@
                         data-generated-url="{{ $generatedUrl }}"
                         id="marketing-guide-generated-url" />
                     <x-admin.button type="button" variant="primary" icon="copy"
-                        x-data
+                        x-data="{ copied: false }"
                         x-on:click="
                             const el = document.getElementById('marketing-guide-generated-url');
                             if (el) {
                                 navigator.clipboard.writeText(el.value);
+                                copied = true;
+                                setTimeout(() => copied = false, 2000);
                             }
                         ">
-                        Copy Link
+                        <span x-show="!copied">Copy Link</span>
+                        <span x-show="copied" style="display: none;">Tersalin!</span>
                     </x-admin.button>
                     <x-admin.button type="button" variant="secondary" wire:click="clearGeneratedUrl">
                         Tutup
@@ -95,29 +103,33 @@
                             @if ($canCopyThis)
                                 <button type="button"
                                     class="px-2.5 py-1.5 text-xs font-semibold rounded-lg text-indigo-600 hover:bg-indigo-50"
-                                    x-data
-                                    x-on:click="navigator.clipboard.writeText(@js($generatedUrl))">
-                                    Copy Link
+                                    x-data="{ copied: false }"
+                                    x-on:click="navigator.clipboard.writeText(@js($generatedUrl)); copied = true; setTimeout(() => copied = false, 2000)">
+                                    <span x-show="!copied">Copy Link</span>
+                                    <span x-show="copied" style="display: none;">Tersalin!</span>
                                 </button>
                             @else
                                 <button type="button"
                                     wire:click="regenerateLink({{ $item->id }})"
                                     wire:loading.attr="disabled"
+                                    wire:target="regenerateLink({{ $item->id }})"
                                     class="px-2.5 py-1.5 text-xs font-semibold rounded-lg text-slate-600 hover:bg-slate-100 disabled:opacity-60">
                                     Generate Ulang
                                 </button>
                             @endif
 
                             <button type="button"
+                                x-on:click="$dispatch('open-modal', { name: 'marketing-guide-extend-modal' })"
                                 wire:click="openExtendModal({{ $item->id }})"
-                                class="px-2.5 py-1.5 text-xs font-semibold rounded-lg text-sky-600 hover:bg-sky-50">
+                                wire:loading.attr="disabled"
+                                wire:target="openExtendModal({{ $item->id }})"
+                                class="px-2.5 py-1.5 text-xs font-semibold rounded-lg text-sky-600 hover:bg-sky-50 disabled:opacity-60">
                                 Perpanjang
                             </button>
 
                             @if ($status !== 'Revoked')
                                 <button type="button"
-                                    wire:click="revokeLink({{ $item->id }})"
-                                    wire:confirm="Revoke link ini? Link tidak dapat digunakan lagi."
+                                    x-on:click="revokeTargetId = {{ $item->id }}; revokeTargetName = @js($item->recipient_name ?: 'link ini'); $dispatch('open-modal', { name: 'marketing-guide-revoke-modal', message: 'Revoke akses untuk ' + revokeTargetName + '? Link tidak dapat digunakan lagi.' })"
                                     class="px-2.5 py-1.5 text-xs font-semibold rounded-lg text-rose-600 hover:bg-rose-50">
                                     Revoke
                                 </button>
@@ -162,10 +174,11 @@
             </div>
 
             <div class="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-700">
-                <x-admin.button type="button" x-on:click="$dispatch('close-modal', {name: 'marketing-guide-create-modal'})" variant="secondary">
+                <x-admin.button type="button" x-on:click="$dispatch('close-modal', {name: 'marketing-guide-create-modal'})" variant="secondary"
+                    wire:loading.attr="disabled" wire:target="generateLink">
                     Batal
                 </x-admin.button>
-                <x-admin.button type="submit" variant="primary">
+                <x-admin.button type="submit" variant="primary" loadingTarget="generateLink">
                     Generate Link
                 </x-admin.button>
             </div>
@@ -189,13 +202,40 @@
             </div>
 
             <div class="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-700">
-                <x-admin.button type="button" x-on:click="$dispatch('close-modal', {name: 'marketing-guide-extend-modal'})" variant="secondary">
+                <x-admin.button type="button" x-on:click="$dispatch('close-modal', {name: 'marketing-guide-extend-modal'})" variant="secondary"
+                    wire:loading.attr="disabled" wire:target="extendLink">
                     Batal
                 </x-admin.button>
-                <x-admin.button type="submit" variant="primary">
+                <x-admin.button type="submit" variant="primary" loadingTarget="extendLink">
                     Simpan Perpanjangan
                 </x-admin.button>
             </div>
         </form>
     </x-admin.modal>
+
+    <x-admin.modal-delete
+        name="marketing-guide-revoke-modal"
+        title="Revoke Link Marketing Guide?"
+        message="Revoke link ini? Link tidak dapat digunakan lagi."
+    >
+        <x-admin.button
+            type="button"
+            variant="danger"
+            class="w-full !py-3 shadow-lg shadow-rose-200 dark:shadow-none"
+            icon="ban"
+            x-bind:disabled="revoking"
+            x-on:click="
+                if (!revokeTargetId || revoking) return;
+                revoking = true;
+                $wire.revokeLink(revokeTargetId).finally(() => {
+                    revoking = false;
+                    revokeTargetId = null;
+                    $dispatch('close-modal', { name: 'marketing-guide-revoke-modal' });
+                });
+            "
+        >
+            <span x-show="!revoking">Ya, Revoke Link</span>
+            <span x-show="revoking" style="display: none;">Memproses...</span>
+        </x-admin.button>
+    </x-admin.modal-delete>
 </div>

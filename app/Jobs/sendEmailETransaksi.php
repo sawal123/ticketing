@@ -24,16 +24,16 @@ class sendEmailETransaksi implements ShouldBeUnique, ShouldQueue
 
     public $uniqueFor = 3600;
 
-    public string $userUid;
+    public ?string $userUid;
 
     public string $cartUid;
 
     public function __construct(
-        User $user,
+        ?User $user,
         Cart $cart,
         public bool $isResend = false
     ) {
-        $this->userUid = $user->uid;
+        $this->userUid = $user?->uid;
         $this->cartUid = $cart->uid;
         $this->afterCommit();
     }
@@ -55,8 +55,14 @@ class sendEmailETransaksi implements ShouldBeUnique, ShouldQueue
      */
     public function handle(): void
     {
-        $user = User::where('uid', $this->userUid)->firstOrFail();
         $cart = Cart::where('uid', $this->cartUid)->firstOrFail();
+        $user = filled($this->userUid)
+            ? User::where('uid', $this->userUid)->first()
+            : null;
+
+        if (! $user && ! $cart->isGuest()) {
+            return;
+        }
 
         if ($this->isResend && ($cart->scanned_at || (string) $cart->konfirmasi === '1')) {
             return;
@@ -79,7 +85,7 @@ class sendEmailETransaksi implements ShouldBeUnique, ShouldQueue
             ->send(new MidtransPaymentNotification($user, $cart, $this->isResend));
     }
 
-    public static function resolveRecipient(User $user, Cart $cart): ?array
+    public static function resolveRecipient(?User $user, Cart $cart): ?array
     {
         $snapshotEmail = trim((string) $cart->ticket_recipient_email);
         $snapshotName = trim((string) $cart->ticket_holder_name);
@@ -91,11 +97,11 @@ class sendEmailETransaksi implements ShouldBeUnique, ShouldQueue
 
             return [
                 'email' => $snapshotEmail,
-                'name' => $snapshotName !== '' ? $snapshotName : $user->name,
+                'name' => $snapshotName !== '' ? $snapshotName : ($user?->name ?? 'Pembeli'),
             ];
         }
 
-        $fallbackEmail = trim((string) $user->email);
+        $fallbackEmail = trim((string) ($user?->email ?? ''));
 
         if ($fallbackEmail === '' || filter_var($fallbackEmail, FILTER_VALIDATE_EMAIL) === false) {
             return null;
@@ -103,7 +109,7 @@ class sendEmailETransaksi implements ShouldBeUnique, ShouldQueue
 
         return [
             'email' => $fallbackEmail,
-            'name' => $snapshotName !== '' ? $snapshotName : $user->name,
+            'name' => $snapshotName !== '' ? $snapshotName : ($user?->name ?? 'Pembeli'),
         ];
     }
 }

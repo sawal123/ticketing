@@ -4,7 +4,12 @@
             <h2 class="text-2xl font-bold text-slate-800 dark:text-white">Payment Gateway</h2>
             <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Kelola metode pembayaran dan fee default payment gateway.</p>
         </div>
-        <x-admin.button variant="primary" icon="plus" wire:click="openCreateModal">
+        <x-admin.button type="button"
+            variant="primary"
+            icon="plus"
+            x-on:click="$dispatch('open-modal', { name: 'payment-gateway-modal' })"
+            wire:click="openCreateModal"
+            loadingTarget="openCreateModal">
             Tambah Payment
         </x-admin.button>
     </div>
@@ -95,10 +100,12 @@
                                     <path class="opacity-90" fill="currentColor" d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z"></path>
                                 </svg>
                             </x-admin.button>
-                            <x-admin.button 
-                                wire:click="confirmDelete({{ $gateway->id }})" 
-                                variant="ghost" 
-                                size="sm" 
+                            <x-admin.button
+                                type="button"
+                                wire:click="confirmDelete({{ $gateway->id }})"
+                                loadingTarget="confirmDelete({{ $gateway->id }})"
+                                variant="ghost"
+                                size="sm"
                                 icon="trash-2"
                                 class="text-rose-600"
                                 title="Hapus"
@@ -236,10 +243,12 @@
         title="Hapus Payment Gateway?" 
         message="Metode pembayaran ini akan dihapus permanen. Pastikan tidak ada transaksi aktif yang bergantung pada metode ini."
     >
-        <x-admin.button 
-            wire:click="delete" 
-            variant="primary" 
-            class="w-full !bg-rose-600 hover:!bg-rose-700 !py-3 shadow-lg shadow-rose-200"
+        <x-admin.button
+            type="button"
+            wire:click="delete"
+            loadingTarget="delete"
+            variant="danger"
+            class="w-full !py-3 shadow-lg shadow-rose-200 dark:shadow-none"
             icon="trash-2"
         >
             Ya, Hapus Sekarang
@@ -268,10 +277,13 @@
 
     <script>
         document.addEventListener('livewire:init', () => {
-            Livewire.hook('morph.updated', (el, component) => {
-                if (typeof lucide !== 'undefined') {
+            Livewire.hook('morph.updated', () => {
+                if (typeof lucide === 'undefined' || window.__adminLucideScheduled) return;
+                window.__adminLucideScheduled = true;
+                requestAnimationFrame(() => {
+                    window.__adminLucideScheduled = false;
                     lucide.createIcons();
-                }
+                });
             });
         });
     </script>

@@ -271,9 +271,109 @@ class UserIndex extends Component
         }
 
         $users = $query->latest()->paginate(10);
+        $preloadedHistories = $this->buildPreloadedHistories($users->getCollection());
 
         return view('livewire.admin.user-index', [
-            'users' => $users
+            'users' => $users,
+            'preloadedHistories' => $preloadedHistories,
         ])->layout('admin.layout', ['title' => 'Manajemen Pengguna']);
+    }
+
+    private function buildPreloadedHistories($pageItems): array
+    {
+        if ($this->activeTab === 'penyewa' || $pageItems->isEmpty()) {
+            return [];
+        }
+
+        $formatCart = static function (\App\Models\Cart $cart): array {
+            $isVerified = filled($cart->scanned_at) || (string) $cart->konfirmasi === '1';
+
+            return [
+                'event' => $cart->event->event ?? 'N/A',
+                'status' => $cart->status ?? '-',
+                'isVerified' => $isVerified,
+                'invoice' => $cart->invoice ?? '-',
+                'time' => $cart->created_at ? $cart->created_at->format('d/m/Y H:i') : '-',
+                'items' => $cart->hargaCarts->map(fn ($hc) => [
+                    'name' => $hc->kategori_harga ?? '-',
+                    'qty' => (int) $hc->quantity,
+                    'total' => (int) $hc->harga_ticket * (int) $hc->quantity,
+                ])->values()->all(),
+            ];
+        };
+
+        $histories = [];
+
+        if ($this->activeTab === 'cashes') {
+            $emails = $pageItems->pluck('email')->filter()->unique()->values();
+            $cashRecords = Cash::query()
+                ->select(['uid', 'email'])
+                ->whereIn('email', $emails)
+                ->get();
+            $uidsByEmail = $cashRecords->groupBy('email')->map(fn ($rows) => $rows->pluck('uid')->all());
+            $allUids = $cashRecords->pluck('uid')->unique()->values();
+
+            $cartsByUid = $allUids->isEmpty()
+                ? collect()
+                : \App\Models\Cart::query()
+                    ->select(['id', 'uid', 'user_uid', 'event_uid', 'invoice', 'status', 'konfirmasi', 'scanned_at', 'created_at'])
+                    ->with([
+                        'event:id,uid,event',
+                        'hargaCarts:id,uid,kategori_harga,quantity,harga_ticket',
+                    ])
+                    ->whereIn('uid', $allUids)
+                    ->latest('created_at')
+                    ->get()
+                    ->keyBy('uid');
+
+            foreach ($pageItems as $cashUser) {
+                $matchedUids = $uidsByEmail->get($cashUser->email, []);
+                $items = collect($matchedUids)
+                    ->map(fn ($uid) => $cartsByUid->get($uid))
+                    ->filter()
+                    ->sortByDesc('created_at')
+                    ->values()
+                    ->map($formatCart)
+                    ->all();
+
+                $histories[$cashUser->id] = [
+                    'name' => $cashUser->name,
+                    'email' => $cashUser->email,
+                    'items' => $items,
+                ];
+            }
+
+            return $histories;
+        }
+
+        $userUids = $pageItems->pluck('uid')->filter()->unique()->values();
+        $cartsByUserUid = $userUids->isEmpty()
+            ? collect()
+            : \App\Models\Cart::query()
+                ->select(['id', 'uid', 'user_uid', 'event_uid', 'invoice', 'status', 'konfirmasi', 'scanned_at', 'created_at'])
+                ->with([
+                    'event:id,uid,event',
+                    'hargaCarts:id,uid,kategori_harga,quantity,harga_ticket',
+                ])
+                ->whereIn('user_uid', $userUids)
+                ->latest('created_at')
+                ->get()
+                ->groupBy('user_uid');
+
+        foreach ($pageItems as $user) {
+            $items = ($cartsByUserUid->get($user->uid) ?? collect())
+                ->take(20)
+                ->map($formatCart)
+                ->values()
+                ->all();
+
+            $histories[$user->id] = [
+                'name' => $user->name,
+                'email' => $user->email,
+                'items' => $items,
+            ];
+        }
+
+        return $histories;
     }
 }

@@ -13,6 +13,7 @@ class CheckoutPaymentOtp extends Model
     protected $fillable = [
         'cart_uid',
         'user_uid',
+        'recipient_email',
         'event_uid',
         'code_hash',
         'expires_at',

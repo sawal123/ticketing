@@ -31,7 +31,7 @@ class MidtransPaymentNotification extends Mailable
     public string $ticketUrl;
 
     public function __construct(
-        protected User $user,
+        protected ?User $user,
         protected Cart $cart,
         public bool $isResend = false
     ) {
@@ -68,7 +68,9 @@ class MidtransPaymentNotification extends Mailable
         return new Content(
             view: 'email.notif-email',
             with: [
-                'name' => filled($this->cart->ticket_holder_name) ? $this->cart->ticket_holder_name : $this->user->name,
+                'name' => filled($this->cart->ticket_holder_name)
+                    ? $this->cart->ticket_holder_name
+                    : ($this->user?->name ?? 'Pembeli'),
                 'cart' => $this->cart->invoice,
                 'event' => $this->event,
                 'ticketUrl' => $this->ticketUrl,

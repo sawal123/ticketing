@@ -5,7 +5,12 @@
             <h1 class="text-2xl font-bold text-slate-800 dark:text-white">Master Fasilitas</h1>
             <p class="text-slate-500 dark:text-slate-400 text-sm">Kelola daftar fasilitas yang tersedia untuk event.</p>
         </div>
-        <x-admin.button wire:click="openCreateModal" icon="plus" variant="primary">
+        <x-admin.button type="button"
+            x-on:click="$dispatch('open-modal', { name: 'fasilitas-modal' })"
+            wire:click="openCreateModal"
+            loadingTarget="openCreateModal"
+            icon="plus"
+            variant="primary">
             Tambah Fasilitas
         </x-admin.button>
     </div>
@@ -50,7 +55,7 @@
                     </td>
                     <td class="px-5 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div class="flex items-center gap-2">
-                            <button wire:click="openEditModal({{ $item->id }})"
+                            <button type="button" wire:click="openEditModal({{ $item->id }})"
                                 wire:loading.attr="disabled"
                                 wire:target="openEditModal({{ $item->id }})"
                                 class="p-2 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-xl transition-colors disabled:pointer-events-none disabled:opacity-60"
@@ -61,7 +66,9 @@
                                     <path class="opacity-90" fill="currentColor" d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z"></path>
                                 </svg>
                             </button>
-                            <button wire:click="confirmDelete({{ $item->id }})"
+                            <button type="button"
+                                x-on:click="$dispatch('open-modal', { name: 'delete-modal' })"
+                                wire:click="confirmDelete({{ $item->id }})"
                                 class="p-2 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-xl transition-colors"
                                 title="Hapus">
                                 <i data-lucide="trash-2" class="w-4 h-4"></i>
@@ -161,10 +168,11 @@
             <p class="text-slate-600 dark:text-slate-400 mb-6">Apakah Anda yakin ingin menghapus fasilitas ini? Tindakan
                 ini tidak dapat dibatalkan.</p>
             <div class="flex justify-center gap-3">
-                <x-admin.button variant="secondary" x-on:click="show = false">
+                <x-admin.button type="button" variant="secondary" x-on:click="show = false"
+                    wire:loading.attr="disabled" wire:target="delete">
                     Batal
                 </x-admin.button>
-                <x-admin.button variant="danger" wire:click="delete">
+                <x-admin.button type="button" variant="danger" wire:click="delete" loadingTarget="delete,confirmDelete">
                     Ya, Hapus
                 </x-admin.button>
             </div>

@@ -288,15 +288,30 @@
     </div>
 
     @if ($showPreviewModal)
-        <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 px-4 py-6">
-            <div class="max-h-[90vh] w-full max-w-5xl overflow-hidden rounded-2xl bg-white shadow-2xl">
+        <div
+            x-data="{ open: true, dismiss() { this.open = false; $wire.closePreview(); } }"
+            x-show="open"
+            x-on:keydown.escape.window="dismiss()"
+            x-transition:enter="transition ease-out duration-200"
+            x-transition:enter-start="opacity-0"
+            x-transition:enter-end="opacity-100"
+            x-transition:leave="transition ease-in duration-150"
+            x-transition:leave-start="opacity-100"
+            x-transition:leave-end="opacity-0"
+            class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm px-4 py-6"
+            role="dialog"
+            aria-modal="true"
+        >
+            <div class="absolute inset-0" x-on:click="dismiss()"></div>
+            <div class="relative z-10 max-h-[90vh] w-full max-w-5xl overflow-hidden rounded-2xl bg-white shadow-2xl">
                 <div class="flex items-center justify-between border-b border-slate-200 px-6 py-4">
                     <div>
                         <h2 class="text-lg font-semibold text-slate-900">Preview Email</h2>
                         <p class="mt-1 text-sm text-slate-500">Tampilan email sebelum dikirim.</p>
                     </div>
-                    <button type="button" wire:click="closePreview"
-                        class="rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700">
+                    <button type="button" x-on:click="dismiss()"
+                        class="rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
+                        aria-label="Tutup preview">
                         <i data-lucide="x" class="h-5 w-5"></i>
                     </button>
                 </div>
@@ -318,8 +333,22 @@
     @endif
 
     @if ($showConfirmationModal)
-        <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 px-4 py-6">
-            <div class="w-full max-w-lg overflow-hidden rounded-2xl bg-white shadow-2xl">
+        <div
+            x-data="{ open: true, dismiss() { this.open = false; $wire.cancelSendBlast(); } }"
+            x-show="open"
+            x-on:keydown.escape.window="dismiss()"
+            x-transition:enter="transition ease-out duration-200"
+            x-transition:enter-start="opacity-0"
+            x-transition:enter-end="opacity-100"
+            x-transition:leave="transition ease-in duration-150"
+            x-transition:leave-start="opacity-100"
+            x-transition:leave-end="opacity-0"
+            class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm px-4 py-6"
+            role="dialog"
+            aria-modal="true"
+        >
+            <div class="absolute inset-0" x-on:click="dismiss()"></div>
+            <div class="relative z-10 w-full max-w-lg overflow-hidden rounded-2xl bg-white shadow-2xl">
                 <div class="border-b border-slate-200 px-6 py-4">
                     <h2 class="text-lg font-semibold text-slate-900">Konfirmasi Pengiriman</h2>
                     <p class="mt-1 text-sm text-slate-500">Periksa kembali jumlah penerima sebelum blast dijalankan.</p>
@@ -333,8 +362,9 @@
                 </div>
 
                 <div class="flex justify-end gap-3 border-t border-slate-200 px-6 py-4">
-                    <button type="button" wire:click="cancelSendBlast"
-                        class="px-4 py-2 text-sm font-medium text-slate-700 transition hover:text-slate-900">
+                    <button type="button" x-on:click="dismiss()"
+                        wire:loading.attr="disabled" wire:target="confirmSendBlast"
+                        class="px-4 py-2 text-sm font-medium text-slate-700 transition hover:text-slate-900 disabled:opacity-50">
                         Batal
                     </button>
                     <button type="button" wire:click="confirmSendBlast" wire:loading.attr="disabled"

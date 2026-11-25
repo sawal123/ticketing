@@ -64,6 +64,27 @@ class DemoIndex extends Component
         $this->isDirectEntry = false;
     }
 
+    public function submitCashPos(array $payload)
+    {
+        $this->resetErrorBag();
+        $this->selectedEventId = $payload['event_uid'] ?? null;
+        $this->selectedTickets = collect($payload['selected_tickets'] ?? [])
+            ->map(fn ($item) => [
+                'id' => isset($item['id']) ? (int) $item['id'] : null,
+                'qty' => isset($item['qty']) ? (int) $item['qty'] : 0,
+            ])
+            ->values()
+            ->all();
+        $this->buyerName = $payload['buyer_name'] ?? '';
+        $this->buyerEmail = $payload['buyer_email'] ?? '';
+        $this->buyerBirthday = $payload['buyer_birthday'] ?? '';
+        $this->buyerGender = $payload['buyer_gender'] ?? '';
+        $this->partnerId = $payload['partner_id'] ?? null;
+        $this->isDirectEntry = (bool) ($payload['is_direct_entry'] ?? false);
+
+        return $this->checkout();
+    }
+
     public function selectEvent($uid)
     {
         $user = auth()->user();
@@ -568,8 +589,25 @@ class DemoIndex extends Component
         $activeEvents = (clone $totalEvent)
             ->where('konfirmasi', '1')
             ->where('status', 'active')
+            ->with(['hargas' => fn ($query) => $query->orderBy('id')])
             ->latest()
             ->get();
+
+        $posEventsPayload = $activeEvents->map(function (Event $event) {
+            return [
+                'uid' => $event->uid,
+                'name' => $event->event,
+                'cover' => asset('storage/cover/'.$event->cover),
+                'fee' => (int) ($event->fee ?? 0),
+                'tickets' => $event->hargas->map(fn (Harga $ticket) => [
+                    'id' => $ticket->id,
+                    'kategori' => $ticket->kategori,
+                    'harga' => (int) $ticket->harga,
+                    'status' => $ticket->status,
+                    'remaining_stock' => $ticket->remainingQty(),
+                ])->values()->all(),
+            ];
+        })->values()->all();
 
         // GRAPHIC ANALYTIC (Last 7 Days) - Like Admin Dashboard
         $last7Days = collect(range(6, 0))->map(function ($days) {
@@ -635,6 +673,7 @@ class DemoIndex extends Component
                 'event_aktif' => $eventAktifCount,
             ],
             'activeEvents' => $activeEvents,
+            'posEventsPayload' => $posEventsPayload,
             'availablePartners' => $availablePartners,
             'chart' => [
                 'labels' => $chartLabels,

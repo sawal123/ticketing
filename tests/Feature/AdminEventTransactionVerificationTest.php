@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Livewire\Admin\EventDetail;
 use App\Models\Cart;
+use App\Models\Cash;
 use App\Models\Event;
 use App\Models\Harga;
 use App\Models\HargaCart;
@@ -298,5 +299,128 @@ class AdminEventTransactionVerificationTest extends TestCase
         ]);
 
         return $cart;
+    }
+
+    public function test_admin_can_edit_cash_transaction_email_and_toggle_verification_status(): void
+    {
+        $admin = $this->makeUser(['uid' => 'admin-edit-1', 'role' => 'admin']);
+        $buyer = $this->makeUser(['uid' => 'buyer-edit-1', 'role' => 'user']);
+        $event = $this->makeEvent();
+
+        $cart = $this->makeCart($buyer, $event, [
+            'uid' => 'cash-edit-cart',
+            'invoice' => 'CASH-EDIT-001',
+            'payment_type' => 'cash',
+            'konfirmasi' => '0',
+            'scanned_at' => null,
+        ]);
+
+        Cash::create([
+            'uid' => $cart->uid,
+            'name' => 'Pembeli Tunai',
+            'email' => 'lama@example.test',
+            'nomor' => '08123456789',
+        ]);
+
+        Livewire::actingAs($admin)
+            ->test(EventDetail::class, ['uid' => $event->uid])
+            ->set('activeTab', 'transaksi')
+            ->assertSeeHtml('open-edit-transaction-modal')
+            ->call('saveEditedTransaction', $cart->uid, 'BARU@example.test', 'verified')
+            ->assertHasNoErrors()
+            ->assertDispatched('close-modal', name: 'edit-transaction-modal');
+
+        $this->assertSame('baru@example.test', Cash::where('uid', $cart->uid)->value('email'));
+        $this->assertSame('1', (string) $cart->fresh()->konfirmasi);
+
+        // Toggle back to BELUM VERIFIKASI
+        Livewire::actingAs($admin)
+            ->test(EventDetail::class, ['uid' => $event->uid])
+            ->call('openEditTransactionModal', $cart->uid)
+            ->assertSet('editingTransactionVerification', 'verified')
+            ->set('editingTransactionVerification', 'unverified')
+            ->call('updateTransaction')
+            ->assertHasNoErrors();
+
+        $this->assertSame('0', (string) $cart->fresh()->konfirmasi);
+        $this->assertNull($cart->fresh()->scanned_at);
+    }
+
+    public function test_admin_cannot_edit_email_on_non_cash_transaction_even_if_livewire_state_is_forged(): void
+    {
+        $admin = $this->makeUser(['uid' => 'admin-edit-2', 'role' => 'admin']);
+        $buyer = $this->makeUser(['uid' => 'buyer-edit-2', 'email' => 'asli@example.test', 'role' => 'user']);
+        $event = $this->makeEvent();
+
+        $cart = $this->makeCart($buyer, $event, [
+            'uid' => 'gopay-edit-cart',
+            'invoice' => 'INV-GOPAY-001',
+            'payment_type' => 'gopay',
+            'konfirmasi' => '1',
+            'scanned_at' => Carbon::parse('2026-08-12 09:00:00'),
+        ]);
+
+        Livewire::actingAs($admin)
+            ->test(EventDetail::class, ['uid' => $event->uid])
+            ->call('openEditTransactionModal', $cart->uid)
+            ->assertSet('editingTransactionIsCash', false)
+            ->assertSet('editingTransactionVerification', 'verified')
+            ->set('editingTransactionIsCash', true)
+            ->set('editingTransactionEmail', 'forged@example.test')
+            ->set('editingTransactionVerification', 'unverified')
+            ->call('updateTransaction')
+            ->assertHasNoErrors()
+            ->assertDispatched('close-modal', name: 'edit-transaction-modal');
+
+        $this->assertSame('asli@example.test', $buyer->fresh()->email);
+        $this->assertSame('0', (string) $cart->fresh()->konfirmasi);
+        $this->assertNull($cart->fresh()->scanned_at);
+    }
+
+    public function test_admin_edit_cash_transaction_validates_email_and_verification_and_scopes_event(): void
+    {
+        $admin = $this->makeUser(['uid' => 'admin-edit-3', 'role' => 'admin']);
+        $buyer = $this->makeUser(['uid' => 'buyer-edit-3', 'role' => 'user']);
+        $eventA = $this->makeEvent();
+        $eventB = $this->makeEvent();
+
+        $cashCartA = $this->makeCart($buyer, $eventA, [
+            'uid' => 'cash-event-a',
+            'invoice' => 'CASH-A-001',
+            'payment_type' => 'cash',
+            'konfirmasi' => '0',
+        ]);
+        Cash::create([
+            'uid' => $cashCartA->uid,
+            'name' => 'Buyer A',
+            'email' => 'valid@example.test',
+        ]);
+
+        $cartB = $this->makeCart($buyer, $eventB, [
+            'uid' => 'cart-event-b',
+            'invoice' => 'INV-B-001',
+            'payment_type' => 'gopay',
+            'konfirmasi' => '0',
+        ]);
+
+        Livewire::actingAs($admin)
+            ->test(EventDetail::class, ['uid' => $eventA->uid])
+            ->call('openEditTransactionModal', $cashCartA->uid)
+            ->set('editingTransactionEmail', 'bukan-email')
+            ->set('editingTransactionVerification', 'invalid-status')
+            ->call('updateTransaction')
+            ->assertHasErrors(['editingTransactionEmail', 'editingTransactionVerification']);
+
+        $this->assertSame('valid@example.test', Cash::where('uid', $cashCartA->uid)->value('email'));
+        $this->assertSame('0', (string) $cashCartA->fresh()->konfirmasi);
+
+        // Cross-event transaction cannot be edited from eventA component
+        Livewire::actingAs($admin)
+            ->test(EventDetail::class, ['uid' => $eventA->uid])
+            ->set('editingTransactionUid', $cartB->uid)
+            ->set('editingTransactionVerification', 'verified')
+            ->call('updateTransaction');
+
+        $this->assertSame('0', (string) $cartB->fresh()->konfirmasi);
     }
 }
