@@ -44,6 +44,49 @@ class BuyTicketController extends Controller
         return $this->renderCheckout($request, $uid, $ownershipService);
     }
 
+    public function showGuestFinish(Request $request, string $uid, CartOwnershipService $ownershipService)
+    {
+        $cart = $ownershipService->findOwnedCartOrByToken($request, $uid);
+        if (! $cart) {
+            return redirect('/')->with('error', 'Transaksi tidak ditemukan atau akses tidak valid.');
+        }
+
+        if (! $cart->isGuest()) {
+            return redirect('/transaksi');
+        }
+
+        $event = Event::where('uid', $cart->event_uid)->first();
+        if (! $event) {
+            return redirect('/')->with('error', 'Event tidak tersedia.');
+        }
+
+        $harga = HargaCart::where('uid', $cart->uid)->get();
+        $pricing = app(TicketPricingService::class)->calculateCart($cart);
+        $grandTotal = $cart->gross_amount !== null
+            ? (int) $cart->gross_amount
+            : (int) $pricing['gross_amount'];
+
+        $isPaid = $cart->status === Cart::STATUS_SUCCESS;
+        $isPending = in_array($cart->status, [
+            Cart::STATUS_PENDING,
+            Cart::STATUS_RESERVED,
+            Cart::STATUS_UNPAID,
+        ], true) && ! $cart->isReservationExpired();
+
+        return view('frontend.page.guest-transaction-finish', [
+            'title' => $isPaid ? 'Pembayaran Berhasil' : 'Status Pembayaran',
+            'event' => $event,
+            'cart' => $cart,
+            'harga' => $harga,
+            'pricing' => $pricing,
+            'grandTotal' => $grandTotal,
+            'isPaid' => $isPaid,
+            'isPending' => $isPending,
+            'guestTicketAccessUrl' => $this->buildGuestTicketAccessUrl($cart, $event),
+            'checkoutUrl' => $ownershipService->detailUrl($cart),
+        ]);
+    }
+
     public function index(Request $request, $uid, $user = null)
     {
         return $this->renderCheckout($request, (string) $uid, app(CartOwnershipService::class));
@@ -126,26 +169,7 @@ class BuyTicketController extends Controller
             ? $pricing['gross_amount']
             : max(0, $pricing['subtotal'] + $pricing['tax_amount'] + $selectInternetFee);
 
-        $guestTicketAccessUrl = null;
-        if ($cart->isGuest() && $cart->status === Cart::STATUS_SUCCESS && filled($cart->gate_token_hash)) {
-            try {
-                $expiresAt = Carbon::parse($event->tanggal)->addDay();
-                if (! $expiresAt->isFuture()) {
-                    $expiresAt = now()->addDays(7);
-                }
-            } catch (Throwable) {
-                $expiresAt = now()->addDays(30);
-            }
-
-            $guestTicketAccessUrl = URL::temporarySignedRoute(
-                'online.ticket.show',
-                $expiresAt,
-                [
-                    'uid' => $cart->uid,
-                    'gate_access' => app(GateTokenService::class)->ticketAccessProof($cart),
-                ],
-            );
-        }
+        $guestTicketAccessUrl = $this->buildGuestTicketAccessUrl($cart, $event);
 
         return view('frontend.page.bayartiket', [
             'title' => 'Detail Ticket',
@@ -347,5 +371,30 @@ class BuyTicketController extends Controller
             ->sortBy('harga_id')
             ->values()
             ->all();
+    }
+
+    protected function buildGuestTicketAccessUrl(Cart $cart, Event $event): ?string
+    {
+        if (! $cart->isGuest() || $cart->status !== Cart::STATUS_SUCCESS || ! filled($cart->gate_token_hash)) {
+            return null;
+        }
+
+        try {
+            $expiresAt = Carbon::parse($event->tanggal)->addDay();
+            if (! $expiresAt->isFuture()) {
+                $expiresAt = now()->addDays(7);
+            }
+        } catch (Throwable) {
+            $expiresAt = now()->addDays(30);
+        }
+
+        return URL::temporarySignedRoute(
+            'online.ticket.show',
+            $expiresAt,
+            [
+                'uid' => $cart->uid,
+                'gate_access' => app(GateTokenService::class)->ticketAccessProof($cart),
+            ],
+        );
     }
 }

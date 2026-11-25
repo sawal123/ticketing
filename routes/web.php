@@ -146,6 +146,9 @@ Route::get('/generate-barcode/{data}', [BarcodeController::class, 'generateBarco
 Route::get('/checkout/{uid}', [BuyTicketController::class, 'showGuest'])
     ->whereUuid('uid')
     ->name('checkout.guest.show');
+Route::get('/checkout/{uid}/selesai', [BuyTicketController::class, 'showGuestFinish'])
+    ->whereUuid('uid')
+    ->name('checkout.guest.finish');
 Route::get('/detail-ticket/{uid}/{user?}', [BuyTicketController::class, 'index']);
 Route::post('/checkVoucer', [BuyTicketController::class, 'checkVoucher']);
 Route::post('/closeVoucher', [BuyTicketController::class, 'closeVoucher']);

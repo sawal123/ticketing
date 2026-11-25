@@ -48,7 +48,7 @@ class CartOwnershipService
         $request->session()->put(self::SESSION_TOKENS_KEY, $tokens);
     }
 
-    public function guestTokenHashForCart(Request $request, string $cartUid): ?string
+    public function guestAccessToken(Request $request, string $cartUid): ?string
     {
         $tokens = (array) $request->session()->get(self::SESSION_TOKENS_KEY, []);
         $plain = $tokens[$cartUid] ?? null;
@@ -57,7 +57,49 @@ class CartOwnershipService
             return null;
         }
 
+        return $plain;
+    }
+
+    public function guestTokenHashForCart(Request $request, string $cartUid): ?string
+    {
+        $plain = $this->guestAccessToken($request, $cartUid);
+
+        if ($plain === null) {
+            return null;
+        }
+
         return hash('sha256', $plain);
+    }
+
+    public function requestHasValidGuestToken(Request $request, Cart $cart): bool
+    {
+        if (! $cart->isGuest() || ! filled($cart->guest_token_hash)) {
+            return false;
+        }
+
+        $token = $request->query('token');
+        if (! is_string($token) || strlen($token) < 32) {
+            return false;
+        }
+
+        return hash_equals((string) $cart->guest_token_hash, hash('sha256', $token));
+    }
+
+    public function findOwnedCartOrByToken(Request $request, string $cartUid): ?Cart
+    {
+        $owned = $this->findOwnedCart($request, $cartUid);
+        if ($owned !== null) {
+            return $owned;
+        }
+
+        $cart = Cart::where('uid', $cartUid)->first();
+        if (! $cart || ! $this->requestHasValidGuestToken($request, $cart)) {
+            return null;
+        }
+
+        $this->storeGuestAccess($request, $cart, (string) $request->query('token'));
+
+        return $cart;
     }
 
     public function findOwnedCart(Request $request, string $cartUid, bool $forUpdate = false): ?Cart
@@ -137,5 +179,20 @@ class CartOwnershipService
         }
 
         return url('/detail-ticket/'.$cart->uid.'/'.$cart->user_uid);
+    }
+
+    public function finishUrl(Request $request, Cart $cart): string
+    {
+        if ($cart->isGuest()) {
+            $params = ['uid' => $cart->uid];
+            $plainToken = $this->guestAccessToken($request, $cart->uid);
+            if ($plainToken !== null) {
+                $params['token'] = $plainToken;
+            }
+
+            return route('checkout.guest.finish', $params);
+        }
+
+        return url('/transaksi');
     }
 }
