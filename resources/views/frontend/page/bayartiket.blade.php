@@ -545,7 +545,7 @@
             </div>
 
             <!-- PAYMENT METHOD -->
-            @if ($canChangePaymentMethod)
+            @if ($canChangePaymentMethod ?? false)
                 <div class="card">
                     <div class="card-header">
                         <div class="card-icon" style="background:rgba(108,92,231,0.12);">💳</div>
