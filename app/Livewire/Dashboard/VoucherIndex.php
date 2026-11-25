@@ -7,6 +7,7 @@ use App\Models\Event;
 use App\Models\Voucher;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
@@ -41,6 +42,8 @@ class VoucherIndex extends Component
 
     public $status = 'active';
 
+    public $allow_promo_tickets = false;
+
     public $isEditMode = false;
 
     public $confirmingDeletion = false;
@@ -64,7 +67,8 @@ class VoucherIndex extends Component
 
     public function resetForm()
     {
-        $this->reset(['voucher_id', 'code', 'selected_event_uid', 'unit', 'nominal', 'min_beli', 'max_disc', 'limit', 'status', 'isEditMode']);
+        $this->reset(['voucher_id', 'code', 'selected_event_uid', 'unit', 'nominal', 'min_beli', 'max_disc', 'limit', 'status', 'allow_promo_tickets', 'isEditMode']);
+        $this->allow_promo_tickets = false;
     }
 
     public function openCreateModal()
@@ -136,6 +140,7 @@ class VoucherIndex extends Component
         $this->max_disc = $voucher->max_disc;
         $this->limit = $voucher->limit;
         $this->status = $voucher->status;
+        $this->allow_promo_tickets = (bool) ($voucher->allow_promo_tickets ?? false);
 
         $this->dispatch('open-modal', name: 'voucher-modal');
     }
@@ -166,6 +171,7 @@ class VoucherIndex extends Component
             'min_beli' => 'required|numeric|min:0',
             'max_disc' => 'nullable|numeric|min:0',
             'limit' => 'required|numeric|min:1',
+            'allow_promo_tickets' => 'nullable|boolean',
         ];
 
         $this->validate($rules);
@@ -186,6 +192,10 @@ class VoucherIndex extends Component
             'max_disc' => $this->max_disc ?? 0,
             'limit' => $this->limit,
         ];
+
+        if (Schema::hasColumn('vouchers', 'allow_promo_tickets')) {
+            $data['allow_promo_tickets'] = (bool) $this->allow_promo_tickets;
+        }
 
         try {
             if ($this->isEditMode) {

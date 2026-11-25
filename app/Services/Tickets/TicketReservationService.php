@@ -182,6 +182,13 @@ class TicketReservationService
             throw ValidationException::withMessages(['voucher' => 'Voucher '.$code.' Invalid']);
         }
 
+        if (! (bool) ($voucher->allow_promo_tickets ?? false)
+            && app(TicketPricingService::class)->cartHasPromoTickets($cart)) {
+            throw ValidationException::withMessages([
+                'voucher' => 'Voucher ini tidak dapat digunakan untuk tiket harga promo.',
+            ]);
+        }
+
         $ticketTotal = (int) $cart->hargaCarts()->sum(DB::raw('quantity * harga_ticket'));
         if ($ticketTotal < (int) $voucher->min_beli) {
             throw ValidationException::withMessages([
@@ -425,7 +432,7 @@ class TicketReservationService
                     'event_uid' => $event->uid,
                     'harga_id' => $harga->id,
                     'quantity' => (int) $item['quantity'],
-                    'harga_ticket' => (int) $harga->harga,
+                    'harga_ticket' => $harga->effectivePrice(),
                     'kategori_harga' => $harga->kategori,
                     'voucher' => null,
                     'disc' => 0,

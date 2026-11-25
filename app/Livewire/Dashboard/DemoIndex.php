@@ -134,7 +134,10 @@ class DemoIndex extends Component
             $this->selectedTickets[] = [
                 'id' => $ticket->id,
                 'name' => $ticket->kategori,
-                'price' => $ticket->harga,
+                'price' => $ticket->effectivePrice(),
+                'original_price' => (int) $ticket->harga,
+                'is_promo' => $ticket->hasActivePromo(),
+                'promo_percent' => $ticket->promoDiscountPercent(),
                 'qty' => 1,
                 'max_qty' => $remainingStock,
             ];
@@ -291,7 +294,7 @@ class DemoIndex extends Component
                     }
                 }
 
-                $subtotal = collect($validatedTickets)->sum(fn ($item) => (int) $item['model']->harga * $item['qty']);
+                $subtotal = collect($validatedTickets)->sum(fn ($item) => $item['model']->effectivePrice() * $item['qty']);
                 $quantity = collect($validatedTickets)->sum('qty');
                 $taxPercent = (int) ($event->fee ?? 0);
                 $tax = (int) round(($taxPercent / 100) * $subtotal);
@@ -324,7 +327,7 @@ class DemoIndex extends Component
                         'harga_id' => $ticket->id,
                         'event_uid' => $event->uid,
                         'quantity' => $item['qty'],
-                        'harga_ticket' => (int) $ticket->harga,
+                        'harga_ticket' => $ticket->effectivePrice(),
                         'kategori_harga' => $ticket->kategori,
                         'voucher' => null,
                         'disc' => 0,
@@ -466,7 +469,10 @@ class DemoIndex extends Component
             ->map(fn (Harga $ticket) => [
                 'id' => $ticket->id,
                 'kategori' => $ticket->kategori,
-                'harga' => (int) $ticket->harga,
+                'harga' => $ticket->effectivePrice(),
+                'original_harga' => (int) $ticket->harga,
+                'is_promo' => $ticket->hasActivePromo(),
+                'promo_percent' => $ticket->promoDiscountPercent(),
                 'status' => $ticket->status,
                 'remaining_stock' => $ticket->remainingQty(),
             ])
@@ -602,7 +608,10 @@ class DemoIndex extends Component
                 'tickets' => $event->hargas->map(fn (Harga $ticket) => [
                     'id' => $ticket->id,
                     'kategori' => $ticket->kategori,
-                    'harga' => (int) $ticket->harga,
+                    'harga' => $ticket->effectivePrice(),
+                    'original_harga' => (int) $ticket->harga,
+                    'is_promo' => $ticket->hasActivePromo(),
+                    'promo_percent' => $ticket->promoDiscountPercent(),
                     'status' => $ticket->status,
                     'remaining_stock' => $ticket->remainingQty(),
                 ])->values()->all(),

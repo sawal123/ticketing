@@ -65,16 +65,26 @@
                                             {{ $hargaItem->description }}
                                         </div>
                                     @endif
+                                    @if ($hargaItem->hasActivePromo())
+                                        <div class="tier-promo-meta" style="display:flex;align-items:center;gap:6px;margin-top:4px;">
+                                            <span class="tier-price-original" style="font-size:12px;text-decoration:line-through;opacity:0.6;">
+                                                Rp {{ number_format($hargaItem->harga, 0, ',', '.') }}
+                                            </span>
+                                            <span class="tier-promo-badge" style="display:inline-flex;align-items:center;padding:2px 7px;border-radius:999px;background:#ef4444;color:#ffffff;font-size:11px;font-weight:800;line-height:1.2;">
+                                                -{{ $hargaItem->promoDiscountPercent() }}%
+                                            </span>
+                                        </div>
+                                    @endif
                                     <div class="tier-price">
                                         <span class="currency">Rp</span>
-                                        {{ number_format($hargaItem->harga, 0, ',', '.') }}
+                                        {{ number_format($hargaItem->effectivePrice(), 0, ',', '.') }}
                                     </div>
                                 </div>
 
 
                                 @if ($sold < $qty && $hargaItem->status === 'active' && $ticket->status === 'active')
                                     <div class="qty-control ticket-quantity-control input-wrapper"
-                                        data-target="quantity{{ $loop->index }}" data-price="{{ $hargaItem->harga }}"
+                                        data-target="quantity{{ $loop->index }}" data-price="{{ $hargaItem->effectivePrice() }}"
                                         data-max="{{ $effectiveMax }}">
 
                                         <input type="hidden" name="tickets[{{ $loop->index }}][harga_id]"
@@ -313,16 +323,26 @@
                                             {{ $hargaItemMobile->description }}
                                         </div>
                                     @endif
+                                    @if ($hargaItemMobile->hasActivePromo())
+                                        <div class="tier-promo-meta" style="display:flex;align-items:center;gap:6px;margin-top:4px;">
+                                            <span class="tier-price-original" style="font-size:12px;text-decoration:line-through;opacity:0.6;">
+                                                Rp {{ number_format($hargaItemMobile->harga, 0, ',', '.') }}
+                                            </span>
+                                            <span class="tier-promo-badge" style="display:inline-flex;align-items:center;padding:2px 7px;border-radius:999px;background:#ef4444;color:#ffffff;font-size:11px;font-weight:800;line-height:1.2;">
+                                                -{{ $hargaItemMobile->promoDiscountPercent() }}%
+                                            </span>
+                                        </div>
+                                    @endif
                                     <div class="tier-price">
                                         <span class="currency">Rp</span>
-                                        {{ number_format($hargaItemMobile->harga, 0, ',', '.') }}
+                                        {{ number_format($hargaItemMobile->effectivePrice(), 0, ',', '.') }}
                                     </div>
                                 </div>
 
                                 @if ($soldMob < $qtyMob && $hargaItemMobile->status === 'active' && $ticket->status === 'active')
                                     <div class="qty-control ticket-quantity-control input-wrapper"
                                         data-target="quantity{{ $loop->index }}"
-                                        data-price="{{ $hargaItemMobile->harga }}" data-max="{{ $effectiveMaxMob }}">
+                                        data-price="{{ $hargaItemMobile->effectivePrice() }}" data-max="{{ $effectiveMaxMob }}">
 
                                         <input type="hidden" name="tickets[{{ $loop->index }}][harga_id]"
                                             value="{{ $hargaItemMobile->id }}">

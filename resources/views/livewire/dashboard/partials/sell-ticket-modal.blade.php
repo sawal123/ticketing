@@ -57,6 +57,9 @@
                 id: ticket.id,
                 name: ticket.kategori,
                 price: Number(ticket.harga) || 0,
+                original_price: Number(ticket.original_harga ?? ticket.harga) || 0,
+                is_promo: Boolean(ticket.is_promo),
+                promo_percent: Number(ticket.promo_percent) || 0,
                 qty: 1,
                 max_qty: Number(ticket.remaining_stock) || 0,
             });
@@ -198,7 +201,7 @@
                                 <template x-for="ticket in (selectedEvent?.tickets || [])" :key="ticket.id">
                                     <option :value="ticket.id"
                                         :disabled="ticket.status !== 'active' || ticket.remaining_stock < 1"
-                                        x-text="ticket.kategori + ' (Rp ' + formatNumber(ticket.harga) + ') - ' + (ticket.status !== 'active' ? 'Nonaktif' : (ticket.remaining_stock < 1 ? 'Sold Out' : 'Sisa ' + formatNumber(ticket.remaining_stock)))">
+                                        x-text="ticket.kategori + ' (Rp ' + formatNumber(ticket.harga) + (ticket.is_promo ? ' • -' + ticket.promo_percent + '%' : '') + ') - ' + (ticket.status !== 'active' ? 'Nonaktif' : (ticket.remaining_stock < 1 ? 'Sold Out' : 'Sisa ' + formatNumber(ticket.remaining_stock)))">
                                     </option>
                                 </template>
                             </select>
@@ -214,7 +217,15 @@
                                 <div class="flex items-center gap-4 p-4 bg-indigo-50/50 dark:bg-indigo-900/10 border border-indigo-100 dark:border-indigo-800/50 rounded-2xl">
                                     <div class="flex-1 min-w-0">
                                         <h5 class="text-sm font-black text-slate-800 dark:text-white uppercase truncate" x-text="item.name"></h5>
-                                        <p class="text-[10px] font-bold text-indigo-600 dark:text-indigo-400" x-text="'Rp ' + formatNumber(item.price) + ' / tiket'"></p>
+                                        <div class="flex items-center gap-1.5 flex-wrap">
+                                            <template x-if="item.is_promo">
+                                                <span class="text-[10px] text-slate-400 line-through" x-text="'Rp ' + formatNumber(item.original_price)"></span>
+                                            </template>
+                                            <p class="text-[10px] font-bold text-indigo-600 dark:text-indigo-400" x-text="'Rp ' + formatNumber(item.price) + ' / tiket'"></p>
+                                            <template x-if="item.is_promo && item.promo_percent > 0">
+                                                <span class="px-1.5 py-0.5 rounded-full bg-rose-500/15 text-rose-600 dark:text-rose-400 text-[9px] font-extrabold" x-text="'-' + item.promo_percent + '%'"></span>
+                                            </template>
+                                        </div>
                                         <p class="text-[10px] font-medium text-slate-400" x-text="'Stok tersedia: ' + formatNumber(item.max_qty)"></p>
                                     </div>
                                     <div class="flex items-center gap-3">

@@ -96,6 +96,9 @@ class EventDetail extends Component
         'harga' => 0,
         'max_order_qty' => 5,
         'description' => '',
+        'is_promo' => false,
+        'promo_type' => 'persen',
+        'promo_value' => null,
     ];
 
     public $editingHargaId;
@@ -106,6 +109,9 @@ class EventDetail extends Component
         'harga' => 0,
         'max_order_qty' => 5,
         'description' => '',
+        'is_promo' => false,
+        'promo_type' => 'persen',
+        'promo_value' => null,
     ];
 
     public $registrationField = ['label' => '', 'type' => 'text', 'scope' => 'registration', 'is_required' => false, 'options' => ''];
@@ -1026,6 +1032,9 @@ class EventDetail extends Component
             'harga' => 0,
             'max_order_qty' => 5,
             'description' => '',
+            'is_promo' => false,
+            'promo_type' => 'persen',
+            'promo_value' => null,
         ];
 
         $this->dispatch('open-modal', name: 'add-ticket-modal');
@@ -1047,11 +1056,19 @@ class EventDetail extends Component
             'newHarga.harga' => 'required|integer|min:0',
             'newHarga.max_order_qty' => 'required|integer|min:1',
             'newHarga.description' => 'nullable|string|max:2000',
+            'newHarga.is_promo' => 'nullable|boolean',
+            'newHarga.promo_type' => 'nullable|in:rupiah,persen',
+            'newHarga.promo_value' => 'nullable|integer|min:0',
         ], [
             'newHarga.kategori.unique' => 'Nama kategori tiket sudah digunakan pada event ini.',
         ]);
 
-        Harga::create([
+        $promoPayload = $this->resolveValidatedPromoPayload($this->newHarga, 'newHarga');
+        if ($promoPayload === null) {
+            return;
+        }
+
+        $attributes = [
             'uid' => $this->eventUid,
             'kategori' => $validated['newHarga']['kategori'],
             'qty' => (int) $validated['newHarga']['qty'],
@@ -1059,7 +1076,13 @@ class EventDetail extends Component
             'status' => 'active',
             'max_order_qty' => (int) $validated['newHarga']['max_order_qty'],
             'description' => $validated['newHarga']['description'] ?? null,
-        ]);
+        ];
+
+        if (Schema::hasColumn('hargas', 'is_promo')) {
+            $attributes = array_merge($attributes, $promoPayload);
+        }
+
+        Harga::create($attributes);
 
         $this->dispatch('close-modal', name: 'add-ticket-modal');
         session()->flash('message', 'Tiket berhasil ditambahkan.');
@@ -1068,6 +1091,7 @@ class EventDetail extends Component
     public function editTicket($id)
     {
         $harga = $this->authorizedHarga($id);
+        $this->resetValidation();
         $this->editingHargaId = $id;
         $this->editingHarga = [
             'kategori' => $harga->kategori,
@@ -1075,6 +1099,9 @@ class EventDetail extends Component
             'harga' => $harga->harga,
             'max_order_qty' => $harga->maxOrderQty(),
             'description' => $harga->description,
+            'is_promo' => (bool) ($harga->is_promo ?? false),
+            'promo_type' => $harga->promo_type ?: 'persen',
+            'promo_value' => $harga->promo_value,
         ];
 
         $this->dispatch('open-modal', name: 'edit-ticket-modal');
@@ -1088,7 +1115,15 @@ class EventDetail extends Component
             'editingHarga.harga' => 'required|integer|min:0',
             'editingHarga.max_order_qty' => 'required|integer|min:1',
             'editingHarga.description' => 'nullable|string|max:2000',
+            'editingHarga.is_promo' => 'nullable|boolean',
+            'editingHarga.promo_type' => 'nullable|in:rupiah,persen',
+            'editingHarga.promo_value' => 'nullable|integer|min:0',
         ]);
+
+        $promoPayload = $this->resolveValidatedPromoPayload($this->editingHarga, 'editingHarga');
+        if ($promoPayload === null) {
+            return;
+        }
 
         $harga = $this->authorizedHarga($this->editingHargaId);
         $minimumQty = $this->minimumLockedQty($harga);
@@ -1099,16 +1134,73 @@ class EventDetail extends Component
             return;
         }
 
-        $harga->update([
+        $attributes = [
             'kategori' => $this->editingHarga['kategori'],
             'qty' => (int) $this->editingHarga['qty'],
             'harga' => (int) $this->editingHarga['harga'],
             'max_order_qty' => (int) $this->editingHarga['max_order_qty'],
             'description' => $this->editingHarga['description'] ?: null,
-        ]);
+        ];
+
+        if (Schema::hasColumn('hargas', 'is_promo')) {
+            $attributes = array_merge($attributes, $promoPayload);
+        }
+
+        $harga->update($attributes);
 
         $this->dispatch('close-modal', name: 'edit-ticket-modal');
         session()->flash('message', 'Data tiket berhasil diperbarui.');
+    }
+
+    private function resolveValidatedPromoPayload(array $input, string $prefix): ?array
+    {
+        $isPromo = filter_var($input['is_promo'] ?? false, FILTER_VALIDATE_BOOLEAN);
+        if (! $isPromo) {
+            return [
+                'is_promo' => false,
+                'promo_type' => null,
+                'promo_value' => null,
+            ];
+        }
+
+        $basePrice = (int) ($input['harga'] ?? 0);
+        if ($basePrice <= 0) {
+            $this->addError($prefix.'.harga', 'Harga normal harus lebih dari 0 untuk mengaktifkan promo.');
+
+            return null;
+        }
+
+        $promoType = strtolower((string) ($input['promo_type'] ?? ''));
+        if (! in_array($promoType, [Harga::PROMO_TYPE_RUPIAH, Harga::PROMO_TYPE_PERSEN], true)) {
+            $this->addError($prefix.'.promo_type', 'Jenis promo harus Rupiah atau Persen.');
+
+            return null;
+        }
+
+        $promoValue = filter_var($input['promo_value'] ?? null, FILTER_VALIDATE_INT);
+        if ($promoValue === false || $promoValue < 1) {
+            $this->addError($prefix.'.promo_value', 'Nilai promo wajib diisi minimal 1.');
+
+            return null;
+        }
+
+        if ($promoType === Harga::PROMO_TYPE_PERSEN && $promoValue > 99) {
+            $this->addError($prefix.'.promo_value', 'Promo persen maksimal 99%.');
+
+            return null;
+        }
+
+        if ($promoType === Harga::PROMO_TYPE_RUPIAH && $promoValue >= $basePrice) {
+            $this->addError($prefix.'.promo_value', 'Potongan promo Rupiah harus lebih kecil dari harga normal.');
+
+            return null;
+        }
+
+        return [
+            'is_promo' => true,
+            'promo_type' => $promoType,
+            'promo_value' => $promoValue,
+        ];
     }
 
     public function showTransactionDetail($uid)

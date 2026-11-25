@@ -17,8 +17,13 @@ class TicketPricingService
         $cart->loadMissing(['hargaCarts.masterHarga', 'event']);
 
         $items = $cart->hargaCarts;
-        $ticketTotal = (int) $items->sum(function (HargaCart $item) {
-            $price = $item->masterHarga ? (int) $item->masterHarga->harga : (int) $item->harga_ticket;
+        $useStoredItemSnapshot = in_array($cart->status, [Cart::STATUS_PENDING, Cart::STATUS_SUCCESS], true);
+        $ticketTotal = (int) $items->sum(function (HargaCart $item) use ($useStoredItemSnapshot) {
+            if ($useStoredItemSnapshot) {
+                return (int) $item->quantity * (int) $item->harga_ticket;
+            }
+
+            $price = $item->masterHarga ? $item->masterHarga->effectivePrice() : (int) $item->harga_ticket;
 
             return (int) $item->quantity * $price;
         });
@@ -92,6 +97,10 @@ class TicketPricingService
             return 0;
         }
 
+        if (! (bool) ($voucher->allow_promo_tickets ?? false) && $this->cartHasPromoTickets($cart)) {
+            return 0;
+        }
+
         if ($voucher->unit === 'persen') {
             $discount = (int) round(((int) $voucher->nominal / 100) * $ticketTotal);
             $maxDiscount = (int) ($voucher->max_disc ?? 0);
@@ -100,6 +109,20 @@ class TicketPricingService
         }
 
         return min((int) $voucher->nominal, $ticketTotal);
+    }
+
+    public function cartHasPromoTickets(Cart $cart): bool
+    {
+        $cart->loadMissing('hargaCarts.masterHarga');
+
+        return $cart->hargaCarts->contains(function (HargaCart $item) {
+            if ($item->masterHarga && $item->masterHarga->hasActivePromo()) {
+                return true;
+            }
+
+            return $item->masterHarga
+                && (int) $item->harga_ticket < (int) $item->masterHarga->harga;
+        });
     }
 
     public function taxPercent(?Event $event): int
