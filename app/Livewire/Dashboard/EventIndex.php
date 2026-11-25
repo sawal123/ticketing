@@ -9,6 +9,7 @@ use App\Models\Event;
 use App\Models\Harga;
 use App\Models\HargaCart;
 use App\Models\Transaction;
+use App\Services\Events\EventActivationGuardService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
@@ -42,11 +43,16 @@ class EventIndex extends Component
             return;
         }
 
-        abort_unless(strtolower((string) $actor?->role) === 'admin', 403);
+        $isAdmin = strtolower((string) $actor?->role) === 'admin';
+        $isOwnerReactivatingConfirmedEvent = strtolower((string) $actor?->role) !== 'staff'
+            && (string) $event->user_uid === (string) $actor?->uid
+            && $event->konfirmasi !== null;
+
+        abort_unless($isAdmin || $isOwnerReactivatingConfirmedEvent, 403);
 
         try {
-            app(\App\Services\Events\EventActivationGuardService::class)
-                ->activateForEvent($event, (string) $actor?->uid, true);
+            app(EventActivationGuardService::class)
+                ->activateForEvent($event, (string) $actor?->uid, $isAdmin);
         } catch (\Throwable $e) {
             session()->flash('error', $e->getMessage());
 
