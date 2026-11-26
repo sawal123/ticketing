@@ -5,6 +5,7 @@ namespace App\Services\Tickets;
 use App\Models\Cart;
 use App\Models\CartVoucher;
 use App\Models\Event;
+use App\Models\EventRegistration;
 use App\Models\Harga;
 use App\Models\HargaCart;
 use App\Models\Transaction;
@@ -13,6 +14,7 @@ use App\Models\Voucher;
 use App\Models\VoucherReservation;
 use App\Models\VoucherUsage;
 use App\Services\Payments\MidtransPaymentLinkService;
+use App\Services\Registrations\CheckoutRegistrationService;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -338,7 +340,26 @@ class TicketReservationService
 
     protected function cancelLockedReservation(Cart $cart): Cart
     {
-        if (! in_array($cart->status, Cart::ACTIVE_RESERVATION_STATUSES, true)) {
+        $statusUpper = strtoupper((string) $cart->status);
+
+        if ($statusUpper === Cart::STATUS_CANCELLED || $statusUpper === Cart::STATUS_EXPIRED) {
+            if ($cart->reservation_released_at === null) {
+                $this->releaseLockedCart($cart, $statusUpper);
+            }
+
+            return $cart;
+        }
+
+        $cancellableStatuses = [
+            Cart::STATUS_RESERVED,
+            Cart::STATUS_PENDING,
+            Cart::STATUS_UNPAID,
+            'RESERVED',
+            'PENDING',
+            'UNPAID',
+        ];
+
+        if (! in_array($cart->status, $cancellableStatuses, true) && ! in_array($statusUpper, [Cart::STATUS_RESERVED, Cart::STATUS_PENDING, Cart::STATUS_UNPAID], true)) {
             throw ValidationException::withMessages([
                 'transaction' => 'Transaksi pada status ini tidak dapat dibatalkan.',
             ]);
@@ -353,10 +374,6 @@ class TicketReservationService
                     'invoice' => $cart->invoice,
                     'error' => $exception->getMessage(),
                 ]);
-
-                throw ValidationException::withMessages([
-                    'transaction' => 'Transaksi tidak dapat dibatalkan karena pembayaran sedang diproses.',
-                ]);
             }
 
             $cart->link = null;
@@ -368,6 +385,10 @@ class TicketReservationService
         Transaction::where('invoice', $cart->invoice)->update([
             'status_transaksi' => Cart::STATUS_CANCELLED,
         ]);
+
+        if (class_exists(CheckoutRegistrationService::class)) {
+            app(CheckoutRegistrationService::class)->syncStatus($cart, EventRegistration::STATUS_CANCELLED);
+        }
 
         return $cart;
     }
@@ -631,7 +652,9 @@ class TicketReservationService
 
     protected function canRelease(Cart $cart): bool
     {
-        return in_array($cart->status, Cart::ACTIVE_RESERVATION_STATUSES, true)
+        $statusUpper = strtoupper((string) $cart->status);
+
+        return in_array($statusUpper, [Cart::STATUS_RESERVED, Cart::STATUS_PENDING, Cart::STATUS_UNPAID, Cart::STATUS_CANCELLED, Cart::STATUS_EXPIRED], true)
             && $cart->reservation_released_at === null;
     }
 

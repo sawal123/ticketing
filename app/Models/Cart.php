@@ -28,6 +28,10 @@ class Cart extends Model
     public const ACTIVE_RESERVATION_STATUSES = [
         self::STATUS_RESERVED,
         self::STATUS_PENDING,
+        self::STATUS_UNPAID,
+        'reserved',
+        'pending',
+        'unpaid',
     ];
 
     public const TERMINAL_STATUSES = [
