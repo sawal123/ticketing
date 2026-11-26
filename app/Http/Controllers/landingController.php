@@ -63,15 +63,17 @@ class landingController extends Controller
         $unpaidUrl = null;
         if (Auth::check()) {
             $unpaidTx = Cart::where('user_uid', Auth::user()->uid)
+                ->where('event_uid', $ticket->uid)
                 ->whereIn('status', [Cart::STATUS_UNPAID, 'unpaid', Cart::STATUS_RESERVED, Cart::STATUS_PENDING, 'pending'])
                 ->where(function ($query) {
                     $query->whereNull('expires_at')->orWhere('expires_at', '>', now());
                 })
+                ->latest('id')
                 ->first();
             $unpaidUrl = $unpaidTx ? url('/detail-ticket/'.$unpaidTx->uid.'/'.Auth::user()->uid) : null;
         } else {
             $ownershipService = app(CartOwnershipService::class);
-            $unpaidTx = $ownershipService->activeGuestCart(request());
+            $unpaidTx = $ownershipService->activeGuestCart(request(), $ticket->uid);
             $unpaidUrl = $unpaidTx ? $ownershipService->detailUrl($unpaidTx) : null;
         }
 

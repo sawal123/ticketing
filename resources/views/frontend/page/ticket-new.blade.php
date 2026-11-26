@@ -602,7 +602,8 @@
                                 const payload = await response.json().catch(() => ({}));
 
                                 if (!response.ok) {
-                                    throw new Error(payload.message || 'Transaksi tidak dapat dibatalkan');
+                                    const errMsg = payload.message || (payload.errors && payload.errors.transaction ? payload.errors.transaction[0] : null) || 'Transaksi tidak dapat dibatalkan';
+                                    throw new Error(errMsg);
                                 }
 
                                 if (currentForm) {
@@ -612,7 +613,14 @@
                                 }
                             })
                             .catch(err => {
-                                Swal.fire('Tidak dapat dibatalkan', err.message, 'error');
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Tidak dapat dibatalkan',
+                                    text: err.message || 'Terjadi kesalahan saat membatalkan transaksi.',
+                                    background: '#16152a',
+                                    color: '#fff',
+                                    confirmButtonColor: '#6366f1'
+                                });
                             });
                     }
                 });
