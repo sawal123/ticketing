@@ -47,9 +47,22 @@ class SettingIndex extends Component
 
     public $new_icon;
 
+    // Empty state fields
+    public $nodata_image;
+
+    public $new_nodata_image;
+
+    public $nodata_title;
+
+    public $nodata_subtitle;
+
     public function mount()
     {
         $this->ensureAdmin();
+
+        if (request()->has('tab')) {
+            $this->activeTab = (string) request('tab');
+        }
 
         $setting = Landing::first();
         if ($setting) {
@@ -57,6 +70,12 @@ class SettingIndex extends Component
             $this->keyword = $setting->keyword;
             $this->logo = $setting->logo;
             $this->icon = $setting->icon;
+            $this->nodata_image = $setting->nodata_image;
+            $this->nodata_title = $setting->nodata_title ?: 'Tidak ada event yang ditemukan';
+            $this->nodata_subtitle = $setting->nodata_subtitle ?: 'Coba ubah kata kunci pencarian Anda atau jelajahi kategori event populer di bawah ini.';
+        } else {
+            $this->nodata_title = 'Tidak ada event yang ditemukan';
+            $this->nodata_subtitle = 'Coba ubah kata kunci pencarian Anda atau jelajahi kategori event populer di bawah ini.';
         }
 
         $this->fillLegalProfileFields($this->resolveLegalProfile());
@@ -76,7 +95,12 @@ class SettingIndex extends Component
             'keyword' => 'required|string|max:255',
         ]);
 
-        $setting = Landing::first() ?? new Landing;
+        $setting = Landing::first() ?? new Landing([
+            'description' => 'Gotik Ticketing Platform',
+            'keyword' => 'gotik, tiket',
+            'logo' => 'logo.webp',
+            'icon' => 'icon.webp',
+        ]);
         $setting->description = $this->description;
         $setting->keyword = $this->keyword;
         $setting->save();
@@ -92,7 +116,12 @@ class SettingIndex extends Component
             'new_logo' => SecureImageStorage::rules(true),
         ]);
 
-        $setting = Landing::first() ?? new Landing;
+        $setting = Landing::first() ?? new Landing([
+            'description' => 'Gotik Ticketing Platform',
+            'keyword' => 'gotik, tiket',
+            'logo' => 'logo.webp',
+            'icon' => 'icon.webp',
+        ]);
 
         $oldLogo = $setting->logo;
         $setting->logo = app(SecureImageStorage::class)
@@ -114,7 +143,12 @@ class SettingIndex extends Component
             'new_icon' => SecureImageStorage::rules(true),
         ]);
 
-        $setting = Landing::first() ?? new Landing;
+        $setting = Landing::first() ?? new Landing([
+            'description' => 'Gotik Ticketing Platform',
+            'keyword' => 'gotik, tiket',
+            'logo' => 'logo.webp',
+            'icon' => 'icon.webp',
+        ]);
 
         $oldIcon = $setting->icon;
         $setting->icon = app(SecureImageStorage::class)
@@ -126,6 +160,61 @@ class SettingIndex extends Component
         $this->new_icon = null;
 
         session()->flash('success', 'Icon berhasil diperbarui.');
+    }
+
+    public function updateEmptyState()
+    {
+        $this->ensureAdmin();
+
+        $this->validate([
+            'new_nodata_image' => SecureImageStorage::rules(false),
+            'nodata_title' => 'required|string|max:255',
+            'nodata_subtitle' => 'nullable|string|max:1000',
+        ]);
+
+        $setting = Landing::first() ?? new Landing([
+            'description' => 'Gotik Ticketing Platform',
+            'keyword' => 'gotik, tiket',
+            'logo' => 'logo.webp',
+            'icon' => 'icon.webp',
+        ]);
+
+        if ($this->new_nodata_image) {
+            $oldImage = $setting->nodata_image;
+            $setting->nodata_image = app(SecureImageStorage::class)
+                ->storeBasename($this->new_nodata_image, 'setting');
+
+            if ($oldImage && $oldImage !== $setting->nodata_image) {
+                app(SecureImageStorage::class)->delete('setting', $oldImage);
+            }
+
+            $this->nodata_image = $setting->nodata_image;
+            $this->new_nodata_image = null;
+        }
+
+        $setting->nodata_title = $this->nodata_title;
+        $setting->nodata_subtitle = $this->nodata_subtitle;
+        $setting->save();
+
+        session()->flash('success', 'Pengaturan tampilan empty state berhasil disimpan.');
+    }
+
+    public function resetEmptyStateImage()
+    {
+        $this->ensureAdmin();
+
+        $setting = Landing::first();
+        if ($setting && $setting->nodata_image) {
+            $oldImage = $setting->nodata_image;
+            $setting->nodata_image = null;
+            $setting->save();
+
+            app(SecureImageStorage::class)->delete('setting', $oldImage);
+            $this->nodata_image = null;
+            $this->new_nodata_image = null;
+
+            session()->flash('success', 'Gambar empty state berhasil direset ke ilustrasi bawaan.');
+        }
     }
 
     public function updateLegalProfile()

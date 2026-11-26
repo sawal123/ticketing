@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Cart;
+use App\Models\Category;
 use App\Models\Event;
 use App\Models\Harga;
+use App\Models\Landing;
 use App\Models\Slider;
 use App\Models\Term;
 use App\Services\Partners\PartnerReferralService;
@@ -123,39 +125,64 @@ class landingController extends Controller
 
     public function search($search = null)
     {
-        // Siapkan query dasar
-        $query = Event::with(['harga', 'hargas' => function ($q) {
-            $q->where('status', 'active');
-        }, 'user'])->where('konfirmasi', '1');
+        $search = is_string($search) ? trim($search) : null;
 
-        if ($search) {
+        // Siapkan query dasar
+        $query = Event::with(['harga' => function ($q) {
+            $q->where('status', 'active')->orderByRaw('CAST(harga AS UNSIGNED) ASC');
+        }, 'hargas' => function ($q) {
+            $q->where('status', 'active');
+        }, 'user', 'category'])->where('konfirmasi', '1');
+
+        if ($search !== null && $search !== '') {
             $query->where(function ($q) use ($search) {
                 $q->where('event', 'LIKE', "%$search%")
-
                     ->orWhere('alamat', 'LIKE', "%$search%")
                     ->orWhere('slug', 'LIKE', "%$search%")
-                    // Mencari berdasarkan nama talent menggunakan nama relasi yang baru: talents
                     ->orWhereHas('talents', function ($q2) use ($search) {
                         $q2->where('talent', 'LIKE', "%$search%");
+                    })
+                    ->orWhereHas('category', function ($q3) use ($search) {
+                        $q3->where('name', 'LIKE', "%$search%")
+                            ->orWhere('slug', 'LIKE', "%$search%");
                     });
             });
         }
 
         $events = $query->orderBy('created_at', 'desc')->get();
+        $categories = Category::orderBy('name')->get();
+
+        $recommendedEvents = Event::with(['harga' => function ($q) {
+            $q->where('status', 'active')->orderByRaw('CAST(harga AS UNSIGNED) ASC');
+        }, 'hargas' => function ($q) {
+            $q->where('status', 'active');
+        }, 'user', 'category'])
+            ->where('status', 'active')
+            ->where('konfirmasi', '1')
+            ->orderBy('created_at', 'desc')
+            ->take(6)
+            ->get();
+
+        $setting = Landing::first();
 
         return view('frontend.page.post.post', [
-            'title' => 'Search Event',
+            'title' => $search ? "Cari: {$search}" : 'Semua Event',
             'event' => $events,
+            'search' => $search,
+            'categories' => $categories,
+            'recommendedEvents' => $recommendedEvents,
+            'setting' => $setting,
         ]);
     }
 
     public function cari(Request $request)
     {
+        $cari = trim((string) $request->input('cari'));
 
-        // Best practice Laravel: gunakan class Request daripada $_GET native php
-        $cari = $request->input('cari');
+        if ($cari === '') {
+            return redirect('/search');
+        }
 
-        // dd($cari);
         return redirect('/search/'.$cari)->withInput();
     }
 

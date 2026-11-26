@@ -24,6 +24,11 @@
                 <i data-lucide="image" class="w-5 h-5"></i>
                 <span class="font-medium text-sm">Logo & Icon</span>
             </button>
+            <button wire:click="setTab('empty-state')"
+                class="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 {{ $activeTab === 'empty-state' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200 dark:shadow-none' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800' }}">
+                <i data-lucide="image-off" class="w-5 h-5"></i>
+                <span class="font-medium text-sm">Tampilan Empty State</span>
+            </button>
             <button wire:click="setTab('seo')"
                 class="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 {{ $activeTab === 'seo' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200 dark:shadow-none' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800' }}">
                 <i data-lucide="search" class="w-5 h-5"></i>
@@ -121,6 +126,72 @@
                                 <div class="pt-4">
                                     <x-admin.button type="submit" variant="primary" wire:loading.attr="disabled">
                                         <span wire:loading.remove>Simpan Icon</span>
+                                        <span wire:loading.flex class="items-center gap-2">
+                                            <i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i>
+                                            Memproses...
+                                        </span>
+                                    </x-admin.button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </x-admin.card>
+            @endif
+
+            @if ($activeTab === 'empty-state')
+                <!-- Empty State Settings -->
+                <x-admin.card title="Pengaturan Tampilan Event Tidak Ditemukan" icon="image-off">
+                    <form wire:submit.prevent="updateEmptyState" class="space-y-6">
+                        <div class="flex flex-col md:flex-row items-start gap-8">
+                            <div class="w-full md:w-1/3">
+                                <div class="relative group aspect-video rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-700/50 border-2 border-dashed border-slate-200 dark:border-slate-600 flex items-center justify-center p-4">
+                                    @if ($new_nodata_image)
+                                        <img src="{{ $new_nodata_image->temporaryUrl() }}" class="max-w-full max-h-full object-contain">
+                                    @elseif ($nodata_image)
+                                        <img src="{{ asset('storage/setting/' . $nodata_image) }}" class="max-w-full max-h-full object-contain">
+                                    @else
+                                        <img src="{{ asset('/storage/setting/nodata.svg') }}" class="max-w-full max-h-full object-contain">
+                                    @endif
+                                </div>
+                                <p class="text-[10px] text-slate-400 mt-2 text-center uppercase tracking-widest font-bold">Preview Gambar Ilustrasi</p>
+                                @if ($nodata_image)
+                                    <div class="text-center mt-2">
+                                        <button type="button" wire:click="resetEmptyStateImage" wire:confirm="Kembalikan ke ilustrasi bawaan?" class="text-xs text-rose-500 hover:text-rose-600 font-medium transition-colors">
+                                            Reset ke Ilustrasi Default
+                                        </button>
+                                    </div>
+                                @endif
+                            </div>
+
+                            <div class="flex-1 space-y-4">
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-2 uppercase tracking-wider">Unggah Gambar Ilustrasi Baru</label>
+                                    <div class="flex items-center gap-3">
+                                        <input type="file" wire:model="new_nodata_image" id="nodata-input" class="hidden" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp">
+                                        <label for="nodata-input" class="px-4 py-2.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-xl text-sm font-bold cursor-pointer hover:bg-indigo-100 transition-colors flex items-center gap-2">
+                                            <i data-lucide="upload" class="w-4 h-4"></i>
+                                            Pilih Gambar
+                                        </label>
+                                        <span class="text-xs text-slate-400">Maks. 2MB (JPG, PNG, WEBP)</span>
+                                    </div>
+                                    @error('new_nodata_image') <p class="mt-1 text-xs text-rose-500">{{ $message }}</p> @enderror
+                                </div>
+
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-2 uppercase tracking-wider">Judul Pesan</label>
+                                    <input type="text" wire:model.defer="nodata_title" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-700/50 border-0 ring-1 ring-slate-200 dark:ring-slate-600 focus:ring-2 focus:ring-indigo-600 rounded-2xl text-slate-900 dark:text-white placeholder-slate-400 transition-all duration-200" placeholder="Tidak ada event yang ditemukan">
+                                    @error('nodata_title') <p class="mt-1 text-xs text-rose-500">{{ $message }}</p> @enderror
+                                </div>
+
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-2 uppercase tracking-wider">Subjudul / Deskripsi Petunjuk</label>
+                                    <textarea rows="3" wire:model.defer="nodata_subtitle" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-700/50 border-0 ring-1 ring-slate-200 dark:ring-slate-600 focus:ring-2 focus:ring-indigo-600 rounded-2xl text-slate-900 dark:text-white placeholder-slate-400 transition-all duration-200 resize-none" placeholder="Coba ubah kata kunci pencarian Anda atau jelajahi kategori event populer di bawah ini."></textarea>
+                                    @error('nodata_subtitle') <p class="mt-1 text-xs text-rose-500">{{ $message }}</p> @enderror
+                                </div>
+
+                                <div class="pt-2">
+                                    <x-admin.button type="submit" variant="primary" wire:loading.attr="disabled">
+                                        <span wire:loading.remove>Simpan Tampilan Empty State</span>
                                         <span wire:loading.flex class="items-center gap-2">
                                             <i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i>
                                             Memproses...

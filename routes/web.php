@@ -112,8 +112,8 @@ Route::get('/login', Login::class)->name('login');
 // Route::post('/loginUser', [UserLoginController::class, 'loginUser']);
 
 // Route::get('/postEvent/{search?}', [landingController::class, 'cari']);
-Route::get('/search/{cari?}/', [landingController::class, 'search']);
-Route::get('/cari', [landingController::class, 'cari']);
+Route::get('/search/{cari?}', [landingController::class, 'search'])->name('events.search');
+Route::match(['get', 'post'], '/cari', [landingController::class, 'cari'])->name('events.cari');
 Route::get('/term', [landingController::class, 'term']);
 
 Route::get('/contact', [landingController::class, 'contact']);
