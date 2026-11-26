@@ -305,6 +305,8 @@
         </x-admin.card>
     </div>
 
+    <livewire:dashboard.qr-section />
+
     @if (auth()->user()?->role === 'penyewa')
         <livewire:tutorials.interactive-tour tutorial-key="dashboard.overview" :steps="$dashboardTourSteps" />
     @endif

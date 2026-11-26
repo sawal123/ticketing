@@ -432,7 +432,7 @@ class TransactionController extends Controller
 
     protected function buildMidtransSnapPayload(array $context): array
     {
-        $duration = max(1, now()->diffInMinutes($context['expires_at'], false));
+        $duration = max(1, (int) ceil(now()->diffInMinutes($context['expires_at'], false)));
 
         $snapPayload = [
             'transaction_details' => [

@@ -276,7 +276,7 @@ class CheckoutPaymentOtpService
             return 0;
         }
 
-        return max(0, now()->diffInSeconds($otp->sent_at->copy()->addSeconds(self::RESEND_COOLDOWN_SECONDS), false));
+        return max(0, (int) ceil(now()->diffInSeconds($otp->sent_at->copy()->addSeconds(self::RESEND_COOLDOWN_SECONDS), false)));
     }
 
     private function resolveRecipientEmail(Cart $cart, ?User $user, ?string $overrideEmail = null): ?string

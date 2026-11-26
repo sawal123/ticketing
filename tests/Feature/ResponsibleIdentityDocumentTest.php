@@ -13,13 +13,13 @@ use App\Models\EventOrganizer;
 use App\Models\User;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\UploadedFile;
-use Illuminate\View\ViewException;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\Str;
+use Illuminate\View\ViewException;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -350,6 +350,8 @@ class ResponsibleIdentityDocumentTest extends TestCase
                 ->test(EventCreate::class, ['uid' => $event->uid]);
 
             $this->fail('Expected cross-tenant edit to be denied.');
+        } catch (ModelNotFoundException) {
+            $this->addToAssertionCount(1);
         } catch (ViewException $exception) {
             $this->assertInstanceOf(ModelNotFoundException::class, $exception->getPrevious());
         }

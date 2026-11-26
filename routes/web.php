@@ -30,6 +30,7 @@ use App\Http\Controllers\Penyewa\DeleteController as PenyewaDelete;
 use App\Http\Controllers\Penyewa\EditController as PenyewaEditController;
 use App\Http\Controllers\Penyewa\PenyewaController;
 use App\Http\Controllers\Penyewa\StaffController;
+use App\Http\Controllers\QrScanController;
 use App\Http\Controllers\TransactionController;
 use App\Http\Middleware\GlobalDataMiddleware;
 use App\Http\Middleware\LogActivityMiddleware;
@@ -141,6 +142,12 @@ Route::get('/ticket-access/{uid}', [BarcodeController::class, 'showOnlineTicket'
     ->middleware(['signed', 'throttle:30,1'])
     ->name('online.ticket.show');
 Route::get('/generate-barcode/{data}', [BarcodeController::class, 'generateBarcode'])->name('barcode.generate');
+Route::get('/qr/{uid}', [QrScanController::class, 'scan'])
+    ->middleware('throttle:60,1')
+    ->name('qr.scan');
+Route::post('/qr/{uid}/download-pdf', [QrScanController::class, 'downloadPdf'])
+    ->middleware(['auth', 'throttle:60,1'])
+    ->name('qr.scan.download.pdf');
 
 // Checkout & payment routes (accessible for both logged-in users and guest buyers)
 Route::get('/checkout/{uid}', [BuyTicketController::class, 'showGuest'])
