@@ -20,6 +20,8 @@ trait CreatesApplication
      */
     private const TESTING_ENV = [
         'APP_ENV' => 'testing',
+        'DB_CONNECTION' => 'mysql',
+        'DB_DATABASE' => 'ticketing_test',
         'CACHE_DRIVER' => 'array',
         'SESSION_DRIVER' => 'array',
         'QUEUE_CONNECTION' => 'sync',

@@ -946,6 +946,14 @@ class DashboardCashCheckoutTest extends TestCase
             $table->softDeletes();
         });
 
+        Schema::create('qr_scans', function ($table) {
+            $table->id();
+            $table->string('event_uid')->index();
+            $table->string('ip_address', 45)->nullable();
+            $table->string('user_agent', 512)->nullable();
+            $table->timestamps();
+        });
+
         Schema::create('talent', function ($table) {
             $table->id();
             $table->string('uid');
