@@ -963,13 +963,14 @@
                         <x-admin.table title="Daftar Transaksi Terfilter" :headers="['User', 'Invoice', 'Qty', 'Status', 'Tanggal', 'Aksi']" :count="$transactions->total()">
                             @forelse($transactions as $trx)
                                 @php
-                                    $buyer = $trx->payment_type === 'cash' ? $trx->cashBuyer : $trx->users;
+                                    $isCash = strtolower((string) $trx->payment_type) === 'cash';
+                                    $buyer = $isCash ? $trx->cashBuyer : $trx->users;
                                     $buyerName =
-                                        $trx->payment_type === 'cash'
-                                            ? $buyer->name ?? 'Data Pembeli Tidak Ditemukan'
-                                            : $buyer->name ?? 'Guest';
+                                        $isCash
+                                            ? ($buyer->name ?? 'Data Pembeli Tidak Ditemukan')
+                                            : ($trx->buyerName() ?: ($buyer->name ?? 'Guest'));
                                     $buyerEmail =
-                                        $trx->payment_type === 'cash' ? $buyer->email ?? '-' : $buyer->email ?? '';
+                                        $isCash ? ($buyer->email ?? '-') : ($trx->buyerEmail() ?: ($buyer->email ?? ''));
                                 @endphp
                                 <tr class="table-row-hover transition-colors">
                                     <td class="px-5 py-4 whitespace-nowrap">
@@ -1024,7 +1025,7 @@
                                             'invoice' => $trx->invoice ?? '-',
                                             'status' => $trx->status ?? 'SUCCESS',
                                             'buyerName' => $buyerName,
-                                            'buyerEmail' => $buyerEmail ?: 'N/A',
+                                            'buyerEmail' => ($buyerEmail && $buyerEmail !== '-') ? $buyerEmail : 'N/A',
                                             'operatorLabel' => ($trx->payment_type === 'cash' && $trx->users) ? ($trx->users->name.' ('.$trx->users->email.')') : '',
                                             'items' => $trx->hargaCarts->map(fn ($i) => [
                                                 'name' => $i->masterHarga->kategori ?? ($i->kategori_harga ?? 'Kategori Dihapus'),

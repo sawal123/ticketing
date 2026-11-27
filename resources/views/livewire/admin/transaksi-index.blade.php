@@ -62,11 +62,11 @@
                 <td class="px-5 py-4 whitespace-nowrap">
                     <div class="flex items-center gap-3">
                         <div class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-xs font-bold text-slate-500">
-                            {{ substr($trx->users->name ?? 'G', 0, 1) }}
+                            {{ substr($trx->buyerName(), 0, 1) }}
                         </div>
                         <div class="flex flex-col">
-                            <span class="font-bold text-slate-800 dark:text-white">{{ $trx->users->name ?? 'Guest/Cash' }}</span>
-                            <span class="text-[10px] text-slate-500">{{ $trx->users->email ?? '-' }}</span>
+                            <span class="font-bold text-slate-800 dark:text-white">{{ $trx->buyerName() }}</span>
+                            <span class="text-[10px] text-slate-500">{{ $trx->buyerEmail() ?? '-' }}</span>
                         </div>
                     </div>
                 </td>

@@ -301,7 +301,7 @@
         }
     </style>
 
-    <div class="search-page-container">
+    <div class="search-page-container search-page-wrap">
         <div class="container">
             @if (session('deleteList'))
                 <div class="alert alert-danger mb-4">

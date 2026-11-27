@@ -163,7 +163,7 @@
                     : asset('/storage/setting/nodata.svg');
                 $emptyTitle = ($setting && filled($setting->nodata_title))
                     ? $setting->nodata_title
-                    : 'Tidak Ada Event yang Ditemukan';
+                    : 'Tidak ada event yang ditemukan';
                 $emptySubtitle = ($setting && filled($setting->nodata_subtitle))
                     ? $setting->nodata_subtitle
                     : (isset($search) && $search

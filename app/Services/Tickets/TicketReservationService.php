@@ -342,14 +342,6 @@ class TicketReservationService
     {
         $statusUpper = strtoupper((string) $cart->status);
 
-        if ($statusUpper === Cart::STATUS_CANCELLED || $statusUpper === Cart::STATUS_EXPIRED) {
-            if ($cart->reservation_released_at === null) {
-                $this->releaseLockedCart($cart, $statusUpper);
-            }
-
-            return $cart;
-        }
-
         $cancellableStatuses = [
             Cart::STATUS_RESERVED,
             Cart::STATUS_PENDING,
@@ -357,6 +349,9 @@ class TicketReservationService
             'RESERVED',
             'PENDING',
             'UNPAID',
+            'reserved',
+            'pending',
+            'unpaid',
         ];
 
         if (! in_array($cart->status, $cancellableStatuses, true) && ! in_array($statusUpper, [Cart::STATUS_RESERVED, Cart::STATUS_PENDING, Cart::STATUS_UNPAID], true)) {
@@ -373,6 +368,10 @@ class TicketReservationService
                     'cart_uid' => $cart->uid,
                     'invoice' => $cart->invoice,
                     'error' => $exception->getMessage(),
+                ]);
+
+                throw ValidationException::withMessages([
+                    'transaction' => 'Transaksi tidak dapat dibatalkan karena pembayaran sedang diproses.',
                 ]);
             }
 
