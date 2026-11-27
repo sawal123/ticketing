@@ -41,6 +41,13 @@ class LandingPageThemeTest extends TestCase
             $table->timestamps();
         });
 
+        Schema::create('categories', function ($table) {
+            $table->id();
+            $table->string('name');
+            $table->string('slug')->nullable();
+            $table->timestamps();
+        });
+
         Schema::create('events', function ($table) {
             $table->id();
             $table->string('category_id')->nullable();

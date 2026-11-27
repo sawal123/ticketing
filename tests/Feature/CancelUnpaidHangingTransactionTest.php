@@ -290,7 +290,7 @@ class CancelUnpaidHangingTransactionTest extends TestCase
         $this->assertSame(Cart::STATUS_CANCELLED, $tx->status_transaksi);
     }
 
-    public function test_cancelling_already_cancelled_or_expired_cart_is_idempotent(): void
+    public function test_cancelling_already_cancelled_or_expired_cart_is_rejected(): void
     {
         $user = $this->createUser();
         $event = $this->createEvent();
@@ -310,8 +310,7 @@ class CancelUnpaidHangingTransactionTest extends TestCase
 
         $response = $this->deleteJson("/transactions/{$cart->uid}/cancel");
 
-        $response->assertOk()
-            ->assertJson(['message' => 'Transaksi berhasil dibatalkan.']);
+        $response->assertUnprocessable();
     }
 
     public function test_guest_can_cancel_unpaid_transaction(): void
@@ -416,7 +415,7 @@ class CancelUnpaidHangingTransactionTest extends TestCase
         $this->assertSame(2, (int) $harga->fresh()->reserved_qty);
     }
 
-    public function test_cancellation_gracefully_handles_midtrans_expire_failure(): void
+    public function test_cancellation_is_rejected_when_midtrans_expire_fails(): void
     {
         $user = $this->createUser();
         $event = $this->createEvent();
@@ -456,12 +455,9 @@ class CancelUnpaidHangingTransactionTest extends TestCase
 
         $response = $this->deleteJson("/transactions/{$cart->uid}/cancel");
 
-        $response->assertOk()
-            ->assertJson(['message' => 'Transaksi berhasil dibatalkan.']);
+        $response->assertUnprocessable();
 
         $cart->refresh();
-        $this->assertSame(Cart::STATUS_CANCELLED, $cart->status);
-        $this->assertNull($cart->link);
-        $this->assertNull($cart->payment_link_expires_at);
+        $this->assertSame(Cart::STATUS_UNPAID, $cart->status);
     }
 }
