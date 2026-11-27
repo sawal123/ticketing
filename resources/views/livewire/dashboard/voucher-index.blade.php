@@ -269,8 +269,8 @@
                                 {{ $trx->invoice }}</td>
                             <td class="px-4 py-3">
                                 <div class="font-semibold text-slate-800 dark:text-slate-200">
-                                    {{ $trx->users->name ?? 'User' }}</div>
-                                <div class="text-[10px] text-slate-400">{{ $trx->users->email ?? '' }}</div>
+                                    {{ $trx->buyerName() ?: ($trx->users->name ?? 'User') }}</div>
+                                <div class="text-[10px] text-slate-400">{{ $trx->buyerEmail() ?: ($trx->users->email ?? '') }}</div>
                             </td>
                             <td class="px-4 py-3">
                                 <span class="px-2 py-1 text-[10px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400 rounded-full border border-emerald-200 dark:border-emerald-800">

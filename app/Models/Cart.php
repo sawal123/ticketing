@@ -200,6 +200,10 @@ class Cart extends Model
 
     public function buyerPhone(): ?string
     {
+        if (strtolower((string) $this->payment_type) === 'cash' && filled($this->cashBuyer?->nomor)) {
+            return (string) $this->cashBuyer->nomor;
+        }
+
         if (filled($this->ticket_holder_phone)) {
             return (string) $this->ticket_holder_phone;
         }
@@ -216,6 +220,10 @@ class Cart extends Model
 
     public function buyerName(): string
     {
+        if (strtolower((string) $this->payment_type) === 'cash' && filled($this->cashBuyer?->name)) {
+            return (string) $this->cashBuyer->name;
+        }
+
         if (filled($this->ticket_holder_name)) {
             return (string) $this->ticket_holder_name;
         }
@@ -225,6 +233,10 @@ class Cart extends Model
 
     public function buyerEmail(): ?string
     {
+        if (strtolower((string) $this->payment_type) === 'cash' && filled($this->cashBuyer?->email)) {
+            return (string) $this->cashBuyer->email;
+        }
+
         if (filled($this->ticket_recipient_email)) {
             return (string) $this->ticket_recipient_email;
         }
@@ -234,6 +246,10 @@ class Cart extends Model
 
     public function buyerGender(): ?string
     {
+        if (strtolower((string) $this->payment_type) === 'cash' && filled($this->cashBuyer?->gender)) {
+            return (string) $this->cashBuyer->gender;
+        }
+
         if (filled($this->ticket_holder_gender)) {
             return (string) $this->ticket_holder_gender;
         }

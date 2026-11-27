@@ -1042,13 +1042,14 @@
                 <x-admin.table title="Daftar Transaksi Terfilter" :headers="['User', 'Invoice', 'Payment', 'Verifikasi', 'Tanggal', 'Aksi']" :count="$transactions->total()">
                     @forelse($transactions as $trx)
                         @php
-                            $buyer = $trx->payment_type === 'cash' ? $trx->cashBuyer : $trx->users;
-                            $buyerName = $trx->payment_type === 'cash'
+                            $isCash = strtolower((string) $trx->payment_type) === 'cash';
+                            $buyer = $isCash ? $trx->cashBuyer : $trx->users;
+                            $buyerName = $isCash
                                 ? ($buyer->name ?? 'Data Pembeli Tidak Ditemukan')
-                                : ($buyer->name ?? 'Guest');
-                            $buyerEmail = $trx->payment_type === 'cash'
+                                : ($trx->buyerName() ?: ($buyer->name ?? 'Guest'));
+                            $buyerEmail = $isCash
                                 ? ($buyer->email ?? '-')
-                                : ($buyer->email ?? '');
+                                : ($trx->buyerEmail() ?: ($buyer->email ?? ''));
                             $isVerified = filled($trx->scanned_at) || (string) $trx->konfirmasi === '1';
                             $verificationClass = $isVerified
                                 ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-700'
@@ -1109,7 +1110,7 @@
                                     'verifiedDate' => $trx->scanned_at ? $trx->scanned_at->format('d M Y') : '-',
                                     'verifiedTime' => $trx->scanned_at ? $trx->scanned_at->format('H:i:s') : 'Waktu verifikasi tidak tersedia',
                                     'buyerName' => $buyerName,
-                                    'buyerEmail' => $buyerEmail ?: 'N/A',
+                                    'buyerEmail' => ($buyerEmail && $buyerEmail !== '-') ? $buyerEmail : 'N/A',
                                     'operatorLabel' => ($trx->payment_type === 'cash' && $trx->users) ? ($trx->users->name.' ('.$trx->users->email.')') : '',
                                     'items' => $trx->hargaCarts->map(fn ($i) => [
                                         'name' => $i->masterHarga->kategori ?? ($i->kategori_harga ?? 'Kategori Dihapus'),

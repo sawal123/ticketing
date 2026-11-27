@@ -112,15 +112,16 @@
         <div x-show="trx === null">
             @if ($selectedTransaction)
                 @php
-                    $buyer = $selectedTransaction->payment_type === 'cash'
+                    $isCash = strtolower((string) $selectedTransaction->payment_type) === 'cash';
+                    $buyer = $isCash
                         ? $selectedTransaction->cashBuyer
                         : $selectedTransaction->users;
-                    $buyerName = $selectedTransaction->payment_type === 'cash'
+                    $buyerName = $isCash
                         ? ($buyer->name ?? 'Data Pembeli Tidak Ditemukan')
-                        : ($buyer->name ?? 'Guest');
-                    $buyerEmail = $selectedTransaction->payment_type === 'cash'
+                        : ($selectedTransaction->buyerName() ?: ($buyer->name ?? 'Guest'));
+                    $buyerEmail = $isCash
                         ? ($buyer->email ?? '-')
-                        : ($buyer->email ?? 'N/A');
+                        : ($selectedTransaction->buyerEmail() ?: ($buyer->email ?? 'N/A'));
                     $operator = $selectedTransaction->users;
                 @endphp
                 <div class="space-y-6">

@@ -153,8 +153,8 @@
                     <div class="mb-8 space-y-6">
                         <div>
                             <h3 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Pembeli</h3>
-                            <p class="text-sm font-bold text-slate-800">{{ $cart->users->name ?? 'Guest' }}</p>
-                            <p class="text-xs text-slate-500">{{ $cart->users->email ?? '' }}</p>
+                            <p class="text-sm font-bold text-slate-800">{{ $cart->buyerName() }}</p>
+                            <p class="text-xs text-slate-500">{{ $cart->buyerEmail() ?? '' }}</p>
                         </div>
 
                         <div>
